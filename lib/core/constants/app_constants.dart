@@ -16,7 +16,7 @@ class AppConstants {
   /// CWA API 授權金鑰（從編譯時 `--dart-define` 注入）
   /// 使用方式：`flutter run --dart-define=CWA_API_KEY=your_key`
   static String get cwaApiKey => const String.fromEnvironment(
- 'CWA_API_KEY',
+        'CWA_API_KEY',
         defaultValue: '',
       );
 

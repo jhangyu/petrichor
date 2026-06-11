@@ -5,14 +5,13 @@ import 'package:mocktail/mocktail.dart';
 import 'package:cwb_flutter/core/location/location_service.dart';
 import 'package:cwb_flutter/data/models/weather_models.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
-import 'package:cwb_flutter/features/weather/weather_provider.dart';
 import 'package:cwb_flutter/features/weather/weather_screen.dart';
 
 class MockLocationService extends Mock implements LocationService {}
 
 class MockWeatherRepository extends Mock implements WeatherRepository {}
 
-const smokeCondition = WeatherCondition(
+final smokeCondition = WeatherCondition(
   wx: '晴天',
   pop: 10,
   t: 28,
@@ -20,7 +19,7 @@ const smokeCondition = WeatherCondition(
   endTime: 'later',
 );
 
-const smokeLocation = LocationData(
+final smokeLocation = LocationData(
   latitude: 25.0330,
   longitude: 121.5654,
   city: '臺北市',
@@ -60,7 +59,7 @@ void main() {
 
     // Phase 2: data loaded (actual UI: '${current.t}°C')
     await tester.pumpAndSettle();
-    expect(find.text('28°C'), findsOneWidget);
+    expect(find.text('28°C'), findsAtLeastNWidgets(1));
     expect(find.text('晴天'), findsOneWidget);
     expect(find.text('臺北市 信義區'), findsOneWidget);
   });

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,7 +14,7 @@ class MockWeatherRepository extends Mock implements WeatherRepository {}
 
 /// Mock data that passes [Contract] verification:
 /// DailyForecast: 6 fields with correct types.
-const mockDailyForecast = DailyForecast(
+final mockDailyForecast = DailyForecast(
   date: '2026-06-11',
   weatherDescription: '晴天',
   weatherCode: '01',
@@ -21,12 +23,12 @@ const mockDailyForecast = DailyForecast(
   minTemperature: 24.0,
 );
 
-const mockWeeklyForecast = WeeklyForecast(
+final mockWeeklyForecast = WeeklyForecast(
   locationName: '信義區',
   days: [mockDailyForecast],
 );
 
-const mockCurrentWeather = CurrentWeather(
+final mockCurrentWeather = CurrentWeather(
   locationName: '信義區',
   temperature: 28.0,
   feelsLike: 30.0,
@@ -38,12 +40,37 @@ const mockCurrentWeather = CurrentWeather(
   observationTime: '2026-06-11T12:00:00Z',
 );
 
-const mockLocation = LocationData(
+final mockLocation = LocationData(
   latitude: 25.0330,
   longitude: 121.5654,
   city: '臺北市',
   district: '信義區',
 );
+
+/// Wait for provider state to settle (loading becomes false)
+Future<WeatherState> _waitForState(ProviderContainer container) async {
+  // Listen for state changes
+  final completer = Completer<WeatherState>();
+  late ProviderSubscription<WeatherState> subscription;
+
+  subscription = container.listen<WeatherState>(
+    weatherNotifierProvider,
+    (previous, next) {
+      if (!next.isLoading) {
+        subscription.close();
+        if (!completer.isCompleted) {
+          completer.complete(next);
+        }
+      }
+    },
+    fireImmediately: true,
+  );
+
+  return completer.future.timeout(
+    const Duration(seconds: 5),
+    onTimeout: () => container.read(weatherNotifierProvider),
+  );
+}
 
 void main() {
   group('WeatherNotifier', () {
@@ -59,7 +86,7 @@ void main() {
     });
 
     test('[Contract] WeatherState initial state is correct', () {
-      const state = WeatherState();
+      final state = WeatherState();
       expect(state.isLoading, isTrue);
       expect(state.forecast, isEmpty);
       expect(state.location, isNull);
@@ -67,7 +94,7 @@ void main() {
     });
 
     test('[Contract] WeatherState.copyWith updates only specified fields', () {
-      const state = WeatherState(isLoading: true);
+      final state = WeatherState(isLoading: true);
       final updated = state.copyWith(isLoading: false, error: 'test error');
 
       expect(updated.isLoading, isFalse);
@@ -77,15 +104,22 @@ void main() {
     });
 
     test('[Contract] WeatherState.copyWith preserves unchanged fields', () {
+      final condition = WeatherCondition(
+        wx: '晴天',
+        pop: 10,
+        t: 28,
+        startTime: 'now',
+        endTime: 'later',
+      );
       final state = WeatherState(
         location: mockLocation,
-        forecast: [mockDailyForecast],
+        forecast: [condition],
         isLoading: false,
       );
       final updated = state.copyWith(error: 'some error');
 
       expect(updated.location, equals(mockLocation));
-      expect(updated.forecast, equals([mockDailyForecast]));
+      expect(updated.forecast, equals([condition]));
       expect(updated.isLoading, isFalse);
       expect(updated.error, equals('some error'));
     });
@@ -96,10 +130,9 @@ void main() {
 
       when(() => mockLocService.getCurrentLocation())
           .thenAnswer((_) async => mockLocation);
-      // Provider calls get24hForecast(city, district)
       when(() => mockRepo.get24hForecast('臺北市', '信義區'))
           .thenAnswer((_) async => [
-                const WeatherCondition(
+                WeatherCondition(
                   wx: '晴天',
                   pop: 10,
                   t: 28,
@@ -117,10 +150,7 @@ void main() {
 
       addTearDown(container.dispose);
 
-      // Wait for async _init() to complete
-      await Future.delayed(Duration.zero);
-
-      final state = container.read(weatherNotifierProvider);
+      final state = await _waitForState(container);
 
       expect(state.location, equals(mockLocation));
       expect(state.forecast, hasLength(1));
@@ -146,9 +176,7 @@ void main() {
 
       addTearDown(container.dispose);
 
-      await Future.delayed(Duration.zero);
-
-      final state = container.read(weatherNotifierProvider);
+      final state = await _waitForState(container);
 
       expect(state.isLoading, isFalse);
       expect(state.error, isNotNull);
@@ -172,9 +200,7 @@ void main() {
 
       addTearDown(container.dispose);
 
-      await Future.delayed(Duration.zero);
-
-      final state = container.read(weatherNotifierProvider);
+      final state = await _waitForState(container);
 
       expect(state.isLoading, isFalse);
       expect(state.error, isNotNull);
@@ -198,9 +224,7 @@ void main() {
 
       addTearDown(container.dispose);
 
-      await Future.delayed(Duration.zero);
-
-      final state = container.read(weatherNotifierProvider);
+      final state = await _waitForState(container);
 
       expect(state.isLoading, isFalse);
       expect(state.error, isNull);

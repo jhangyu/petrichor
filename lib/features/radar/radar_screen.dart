@@ -9,7 +9,11 @@ import '../../core/constants/app_constants.dart';
 
 final radarImageProvider = FutureProvider.family<String?, String>((ref, datasetId) async {
   final repo = ref.watch(weatherRepositoryProvider);
-  return repo.getRadarImageUrl(datasetId);
+  final result = await repo.getRadarImageUrl(datasetId: datasetId);
+  return result.fold(
+    onSuccess: (url) => url,
+    onFailure: (_, __) => null,
+  );
 });
 
 class RadarScreen extends ConsumerStatefulWidget {

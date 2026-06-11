@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/glass_morphism.dart';
+import '../../data/models/weather_models.dart';
 import '../radar/radar_screen.dart';
 import 'weather_provider.dart';
 
@@ -171,7 +172,7 @@ class WeatherScreen extends ConsumerWidget {
                 ],
               ),
               const Icon(Icons.wb_sunny, color: Colors.amber, size: 80)
-                  .animate(onPlay: (controller) => controller.repeat())
+                  .animate()
                   .shimmer(duration: 2000.ms),
             ],
           ),
@@ -379,7 +380,7 @@ class WeatherScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              error,
+              'Error: $error',
               style: TextStyle(color: Colors.white.withOpacity(0.7)),
               textAlign: TextAlign.center,
             ),

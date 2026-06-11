@@ -54,7 +54,6 @@ final class Success<T> extends Result<T> {
 
 /// 失敗結果
 final class Failure<T> extends Result<T> {
-  @override
   final String message;
   final int? statusCode;
   const Failure(this.message, {this.statusCode});
@@ -243,6 +242,19 @@ class WeatherRepository {
       _formatDioError(e),
       statusCode: e.response?.statusCode,
     );
+  }
+
+  /// 格式化 Dio 例外為可讀訊息
+  String _formatDioError(DioException e) {
+    return switch (e.type) {
+      DioExceptionType.connectionTimeout => '連線逾時，請檢查網路',
+      DioExceptionType.sendTimeout => '傳送逾時，請稍後再試',
+      DioExceptionType.receiveTimeout => '接收逾時，請稍後再試',
+      DioExceptionType.badResponse => '伺服器回應錯誤：${e.response?.statusCode}',
+      DioExceptionType.cancel => '請求已取消',
+      DioExceptionType.connectionError => '連線失敗，請檢查網路',
+      _ => '網路錯誤：${e.message}',
+    };
   }
 
   /// 從 CWA JSON 結構中提取雷達圖 URL

@@ -1,6 +1,4 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// This file was manually updated to match the expanded model set.
-// In a proper environment, run `dart run build_runner build` to regenerate.
 
 part of 'weather_models.dart';
 
@@ -8,9 +6,7 @@ part of 'weather_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-// ─── CurrentWeather ────────────────────────────────────────────────────────
-
-CurrentWeather _$CurrentWeatherFromJson(Map<String, dynamic> json) =>
+_CurrentWeather _$CurrentWeatherFromJson(Map<String, dynamic> json) =>
     _CurrentWeather(
       locationName: json['locationName'] as String,
       temperature: (json['temperature'] as num).toDouble(),
@@ -23,7 +19,7 @@ CurrentWeather _$CurrentWeatherFromJson(Map<String, dynamic> json) =>
       observationTime: json['observationTime'] as String,
     );
 
-Map<String, dynamic> _$CurrentWeatherToJson(CurrentWeather instance) =>
+Map<String, dynamic> _$CurrentWeatherToJson(_CurrentWeather instance) =>
     <String, dynamic>{
       'locationName': instance.locationName,
       'temperature': instance.temperature,
@@ -36,9 +32,7 @@ Map<String, dynamic> _$CurrentWeatherToJson(CurrentWeather instance) =>
       'observationTime': instance.observationTime,
     };
 
-// ─── WeeklyForecast ──────────────────────────────────────────────────────
-
-WeeklyForecast _$WeeklyForecastFromJson(Map<String, dynamic> json) =>
+_WeeklyForecast _$WeeklyForecastFromJson(Map<String, dynamic> json) =>
     _WeeklyForecast(
       locationName: json['locationName'] as String,
       days: (json['days'] as List<dynamic>)
@@ -46,15 +40,13 @@ WeeklyForecast _$WeeklyForecastFromJson(Map<String, dynamic> json) =>
           .toList(),
     );
 
-Map<String, dynamic> _$WeeklyForecastToJson(WeeklyForecast instance) =>
+Map<String, dynamic> _$WeeklyForecastToJson(_WeeklyForecast instance) =>
     <String, dynamic>{
       'locationName': instance.locationName,
-      'days': instance.days.map((e) => e.toJson()).toList(),
+      'days': instance.days,
     };
 
-// ─── DailyForecast ────────────────────────────────────────────────────────
-
-DailyForecast _$DailyForecastFromJson(Map<String, dynamic> json) =>
+_DailyForecast _$DailyForecastFromJson(Map<String, dynamic> json) =>
     _DailyForecast(
       date: json['date'] as String,
       weatherDescription: json['weatherDescription'] as String,
@@ -64,7 +56,7 @@ DailyForecast _$DailyForecastFromJson(Map<String, dynamic> json) =>
       minTemperature: (json['minTemperature'] as num).toDouble(),
     );
 
-Map<String, dynamic> _$DailyForecastToJson(DailyForecast instance) =>
+Map<String, dynamic> _$DailyForecastToJson(_DailyForecast instance) =>
     <String, dynamic>{
       'date': instance.date,
       'weatherDescription': instance.weatherDescription,
@@ -73,8 +65,6 @@ Map<String, dynamic> _$DailyForecastToJson(DailyForecast instance) =>
       'maxTemperature': instance.maxTemperature,
       'minTemperature': instance.minTemperature,
     };
-
-// ─── WeatherCondition (backward-compatible) ──────────────────────────────
 
 _WeatherCondition _$WeatherConditionFromJson(Map<String, dynamic> json) =>
     _WeatherCondition(
@@ -93,8 +83,6 @@ Map<String, dynamic> _$WeatherConditionToJson(_WeatherCondition instance) =>
       'startTime': instance.startTime,
       'endTime': instance.endTime,
     };
-
-// ─── RadarImage (backward-compatible) ────────────────────────────────────
 
 _RadarImage _$RadarImageFromJson(Map<String, dynamic> json) =>
     _RadarImage(url: json['url'] as String, time: json['time'] as String);
