@@ -131,58 +131,94 @@ sealed class WeeklyForecast with _$WeeklyForecast {
   const WeeklyForecast._();
 
   /// 解析 CWA 鄉鎮天氣預報（F-D0047-089）API 回應
-  factory WeeklyForecast.fromCwaJson(Map<String, dynamic> json) {
+  ///
+  /// [targetLocation] 要過濾的地點名稱（如「臺北市」），為 null 時取第一個
+  factory WeeklyForecast.fromCwaJson(Map<String, dynamic> json, {String? targetLocation}) {
     final records = json['records'] ?? json;
-    final locations = (records['locations'] as List?) ?? [];
+    final locations = (records['Locations'] ?? records['locations']) as List?;
 
-    if (locations.isEmpty) {
+    if (locations == null || locations.isEmpty) {
       return const WeeklyForecast(locationName: '', days: []);
     }
 
+    // records.Locations[0] 是「台灣」，其 Location[]才是各縣市
     final firstLocation = locations.first as Map<String, dynamic>;
-    final locationName = firstLocation['locationName']?.toString() ?? '未知';
+    final locationList = (firstLocation['Location'] ?? firstLocation['location']) as List? ?? [];
 
-    final weatherElements =
-        (firstLocation['weatherElement'] as List?) ?? [];
-
-    // 解析各天氣要素
-    final Map<String, List<Map<String, dynamic>>> elementMap = {};
-    for (final element in weatherElements) {
-      final elementName = element['elementName']?.toString() ?? '';
-      final times = (element['time'] as List?) ?? [];
-      elementMap[elementName] = times.map((t) => Map<String, dynamic>.from(t)).toList();
+    if (locationList.isEmpty) {
+      return const WeeklyForecast(locationName: '', days: []);
     }
 
-    //取出 Wx（天氣現象）、PoP（降雨機率）、MaxT/MinT（高低溫）
-    final wxTimes = elementMap['Wx'] ?? [];
-    final popTimes = elementMap['PoP'] ?? [];
-    final maxTTimes = elementMap['MaxT'] ?? [];
-    final minTTimes = elementMap['MinT'] ?? [];
+    // 找到目標地點（精確匹配）
+    Map<String, dynamic> selectedCounty;
+    if (targetLocation != null) {
+      Map<String, dynamic>? matched;
+      for (final loc in locationList) {
+        final l = loc as Map<String, dynamic>;
+        if (l['LocationName']?.toString() == targetLocation ||
+            l['locationName']?.toString() == targetLocation) {
+          matched = l;
+          break;
+        }
+      }
+      if (matched == null) {
+        return const WeeklyForecast(locationName: '', days: []);
+      }
+      selectedCounty = matched;
+    } else {
+      selectedCounty = locationList.first as Map<String, dynamic>;
+    }
 
-    // 建立每日預報（取每天第一個時段）
+    final locationName = (selectedCounty['LocationName'] ?? selectedCounty['locationName'])?.toString() ?? '未知';
+    final weatherElements = (selectedCounty['weatherElement'] ?? selectedCounty['WeatherElement']) as List? ?? [];
+
+    // 解析各天氣要素（使用中文元素名稱）
+    final Map<String, List<Map<String, dynamic>>> elementMap = {};
+    for (final element in weatherElements) {
+      final em = element as Map<String, dynamic>;
+      final elementName = (em['ElementName'] ?? em['elementName'])?.toString() ?? '';
+      final times = (em['Time'] ?? em['time'] ?? []) as List;
+      elementMap[elementName] = times.map((t) => Map<String, dynamic>.from(t as Map)).toList();
+    }
+
+    // CWA API 使用中文元素名稱：
+    // 天氣現象=Wx,3小時降雨機率=PoP, 溫度=MaxT/MinT
+    final wxTimes = elementMap['天氣現象'] ?? [];
+    final popTimes = elementMap['3小時降雨機率'] ?? [];
+    final maxTTimes = elementMap['溫度'] ?? [];
+
+    // 建立每日預報（每8筆為一天，3小時一筆）
     final days = <DailyForecast>[];
-    final maxDays = wxTimes.length.clamp(0, 7);
+    final maxDays = (wxTimes.length / 8).floor().clamp(0, 7);
 
     for (var i = 0; i < maxDays; i++) {
-      final wxTime = wxTimes[i];
-      final wxData = (wxTime['elementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
-      final popTime = i < popTimes.length ? popTimes[i] : null;
-      final popData = (popTime?['elementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
-      final maxTTime = i < maxTTimes.length ? maxTTimes[i] : null;
-      final maxTData = (maxTTime?['elementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
-      final minTTime = i < minTTimes.length ? minTTimes[i] : null;
-      final minTData = (minTTime?['elementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
+      final dayStartIdx = i * 8;
+      final wxTime = wxTimes[dayStartIdx];
+      final wxData = (wxTime['ElementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
+      final popTime = dayStartIdx < popTimes.length ? popTimes[dayStartIdx] : null;
+      final popData = (popTime?['ElementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
+      final maxTTime = dayStartIdx < maxTTimes.length ? maxTTimes[dayStartIdx] : null;
+      final maxTData = (maxTTime?['ElementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
 
-      final startTime = wxTime['startTime']?.toString() ?? '';
+      final startTime = (wxTime['StartTime'] ?? wxTime['startTime'])?.toString() ?? '';
       final date = startTime.split('T').first;
+
+      // 找當天最低溫（取8筆中的最小值）
+      double minTemp = _parseDouble(maxTData['Temperature']);
+      for (var j = 1; j < 8 && (dayStartIdx + j) < maxTTimes.length; j++) {
+        final t = maxTTimes[dayStartIdx + j];
+        final tData = (t['ElementValue'] as List?)?.first as Map<String, dynamic>? ?? {};
+        final temp = _parseDouble(tData['Temperature']);
+        if (temp < minTemp) minTemp = temp;
+      }
 
       days.add(DailyForecast(
         date: date,
-        weatherDescription: wxData['value']?.toString() ?? '未知',
-        weatherCode: wxData['code']?.toString() ?? '',
-        pop: _parseInt(popData['value']),
-        maxTemperature: _parseDouble(maxTData['value']),
-        minTemperature: _parseDouble(minTData['value']),
+        weatherDescription: wxData['Weather']?.toString() ?? '未知',
+        weatherCode: wxData['WeatherCode']?.toString() ?? '',
+        pop: _parseInt(popData['ProbabilityOfPrecipitation']),
+        maxTemperature: _parseDouble(maxTData['Temperature']),
+        minTemperature: minTemp,
       ));
     }
 
@@ -234,7 +270,7 @@ sealed class DailyForecast with _$DailyForecast {
     return dt.weekday;
   }
 
-  /// 星期名稱
+  ///星期名稱
   String get weekdayName {
     const names = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
     return names[weekday % 7];

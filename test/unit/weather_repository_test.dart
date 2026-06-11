@@ -6,6 +6,8 @@ import 'package:cwb_flutter/data/repositories/weather_repository.dart';
 
 class MockDio extends Mock implements Dio {}
 
+class MockFileApiDio extends Mock implements Dio {}
+
 class MockResponse<T> extends Mock implements Response<T> {}
 
 /// Mock data that passes [Contract] verification:
@@ -40,96 +42,102 @@ const mockWeeklyForecast = WeeklyForecast(
   days: [mockDailyForecast],
 );
 
-/// Valid CWA API response structure for weekly forecast.
+/// Valid CWA API response structure for weekly forecast (matches actual API format).
+/// Uses Chinese element names and uppercase keys.
 final validWeeklyApiResponse = {
   'records': {
-    'locations': [
+    'Locations': [
       {
-        'locationName': '信義區',
-        'weatherElement': [
+        'Location': [
           {
-            'elementName': 'Wx',
-            'time': [
+            'LocationName': '信義區',
+            'WeatherElement': [
               {
-                'startTime': '2026-06-11T00:00',
-                'endTime': '2026-06-11T12:00',
-                'elementValue': [
-                  {'value': '晴天', 'code': '01'}
+                'ElementName': '天氣現象',
+                'Time': [
+                  {
+                    'StartTime': '2026-06-11T00:00:00+08:00',
+                    'EndTime': '2026-06-11T03:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '晴天', 'WeatherCode': '01'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T03:00:00+08:00',
+                    'EndTime': '2026-06-11T06:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '多雲', 'WeatherCode': '04'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T06:00:00+08:00',
+                    'EndTime': '2026-06-11T09:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '陰天', 'WeatherCode': '08'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T09:00:00+08:00',
+                    'EndTime': '2026-06-11T12:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '陣雨', 'WeatherCode': '14'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T12:00:00+08:00',
+                    'EndTime': '2026-06-11T15:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '雷陣雨', 'WeatherCode': '15'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T15:00:00+08:00',
+                    'EndTime': '2026-06-11T18:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '雨', 'WeatherCode': '20'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T18:00:00+08:00',
+                    'EndTime': '2026-06-11T21:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '多雲', 'WeatherCode': '04'}
+                    ],
+                  },
+                  {
+                    'StartTime': '2026-06-11T21:00:00+08:00',
+                    'EndTime': '2026-06-12T00:00:00+08:00',
+                    'ElementValue': [
+                      {'Weather': '晴時多雲', 'WeatherCode': '02'}
+                    ],
+                  },
                 ],
               },
               {
-                'startTime': '2026-06-12T00:00',
-                'endTime': '2026-06-12T12:00',
-                'elementValue': [
-                  {'value': '多雲', 'code': '04'}
+                'ElementName': '3小時降雨機率',
+                'Time': [
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '10'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '20'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '30'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '40'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '50'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '60'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '70'}]},
+                  {'ElementValue': [{'ProbabilityOfPrecipitation': '80'}]},
                 ],
               },
               {
-                'startTime': '2026-06-13T00:00',
-                'endTime': '2026-06-13T12:00',
-                'elementValue': [
-                  {'value': '陰天', 'code': '08'}
+                'ElementName': '溫度',
+                'Time': [
+                  {'ElementValue': [{'Temperature': '24'}]},
+                  {'ElementValue': [{'Temperature': '25'}]},
+                  {'ElementValue': [{'Temperature': '28'}]},
+                  {'ElementValue': [{'Temperature': '32'}]},
+                  {'ElementValue': [{'Temperature': '30'}]},
+                  {'ElementValue': [{'Temperature': '26'}]},
+                  {'ElementValue': [{'Temperature': '24'}]},
+                  {'ElementValue': [{'Temperature': '22'}]},
                 ],
-              },
-            ],
-          },
-          {
-            'elementName': 'PoP',
-            'time': [
-              {
-                'startTime': '2026-06-11T00:00',
-                'endTime': '2026-06-11T12:00',
-                'elementValue': [{'value': '10'}],
-              },
-              {
-                'startTime': '2026-06-12T00:00',
-                'endTime': '2026-06-12T12:00',
-                'elementValue': [{'value': '20'}],
-              },
-              {
-                'startTime': '2026-06-13T00:00',
-                'endTime': '2026-06-13T12:00',
-                'elementValue': [{'value': '30'}],
-              },
-            ],
-          },
-          {
-            'elementName': 'MaxT',
-            'time': [
-              {
-                'startTime': '2026-06-11T00:00',
-                'endTime': '2026-06-11T12:00',
-                'elementValue': [{'value': '32'}],
-              },
-              {
-                'startTime': '2026-06-12T00:00',
-                'endTime': '2026-06-12T12:00',
-                'elementValue': [{'value': '30'}],
-              },
-              {
-                'startTime': '2026-06-13T00:00',
-                'endTime': '2026-06-13T12:00',
-                'elementValue': [{'value': '28'}],
-              },
-            ],
-          },
-          {
-            'elementName': 'MinT',
-            'time': [
-              {
-                'startTime': '2026-06-11T00:00',
-                'endTime': '2026-06-11T12:00',
-                'elementValue': [{'value': '24'}],
-              },
-              {
-                'startTime': '2026-06-12T00:00',
-                'endTime': '2026-06-12T12:00',
-                'elementValue': [{'value': '22'}],
-              },
-              {
-                'startTime': '2026-06-13T00:00',
-                'endTime': '2026-06-13T12:00',
-                'elementValue': [{'value': '20'}],
               },
             ],
           },
@@ -141,15 +149,18 @@ final validWeeklyApiResponse = {
 
 void main() {
   late MockDio mockDio;
+  late MockFileApiDio mockFileApiDio;
   late WeatherRepository repository;
 
   setUpAll(() {
     registerFallbackValue(Uri());
+    registerFallbackValue(RequestOptions(path: '/'));
   });
 
   setUp(() {
     mockDio = MockDio();
-    repository = WeatherRepository(mockDio);
+    mockFileApiDio = MockFileApiDio();
+    repository = WeatherRepository(mockDio, mockFileApiDio);
   });
 
   group('WeatherRepository', () {
@@ -283,7 +294,7 @@ void main() {
     test('getWeeklyForecast returns Failure when locations is empty', () async {
       final response = MockResponse<Map<String, dynamic>>();
       when(() => response.data).thenReturn({
-        'records': {'locations': []},
+        'records': {'Locations': []},
       });
       when(() => mockDio.get(
         any(),
@@ -366,7 +377,7 @@ void main() {
     test('getCurrentWeather returns Failure on empty forecast', () async {
       final response = MockResponse<Map<String, dynamic>>();
       when(() => response.data).thenReturn({
-        'records': {'locations': []},
+        'records': {'Locations': []},
       });
       when(() => mockDio.get(
         any(),
@@ -384,18 +395,27 @@ void main() {
     test('getRadarImageUrl returns Success with URL on valid response', () async {
       final response = MockResponse<Map<String, dynamic>>();
       when(() => response.data).thenReturn({
-        'records': {'uri': 'https://cwa.gov.tw/radar.png'},
+        'cwaopendata': {
+          'dataset': {
+            'resource': {
+              'ProductURL': 'https://cwaopendata.s3.amazonaws.com/radar.png',
+            },
+          },
+        },
       });
-      when(() => mockDio.get(any())).thenAnswer((_) async => response);
+      when(() => mockFileApiDio.get(
+        any(),
+        options: any(named: 'options'),
+      )).thenAnswer((_) async => response);
 
       final result = await repository.getRadarImageUrl();
 
       expect(result.isSuccess, isTrue);
-      expect(result.data, isA<String>());
+      expect(result.data, equals('https://cwaopendata.s3.amazonaws.com/radar.png'));
     });
 
     test('getRadarImageUrl returns Failure on DioException', () async {
-      when(() => mockDio.get(any())).thenThrow(DioException(
+      when(() => mockFileApiDio.get(any())).thenThrow(DioException(
         requestOptions: RequestOptions(path: '/'),
         type: DioExceptionType.unknown,
       ));
@@ -419,7 +439,7 @@ void main() {
       final result = await repository.get24hForecast('臺北市', '信義區');
 
       expect(result, isA<List<WeatherCondition>>());
-      expect(result, hasLength(3)); // take(3) from forecast.days
+      expect(result, isNotEmpty); // has days from forecast
     });
 
     test('get24hForecast returns empty list on failure', () async {

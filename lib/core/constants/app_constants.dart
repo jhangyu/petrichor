@@ -37,13 +37,17 @@ class AppConstants {
   static const String dailyAccumulatedRainfallMap = 'O-A0040-002';
 
   // -------------------------------------------------------------------------
-  // 雷達資料集
+  // 雷達資料集（fileapi/v1/opendataapi）
   // -------------------------------------------------------------------------
 
-  /// 台灣雷達站
-  static const String radarTaiwan = 'O-A0058-003';
+  /// CWA Open Data fileapi base URL
+  static const String cwaFileApiBaseUrl =
+      'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/';
 
-  ///水利署雷達（新竹）
+  /// 整合雷達圖（台灣大範圍）
+  static const String radarTaiwan = 'O-A0058-001';
+
+  /// 水利署雷達（新竹）
   static const String radarShulin = 'O-A0084-001';
 
   /// 水利署雷達（南屯）
@@ -51,6 +55,14 @@ class AppConstants {
 
   /// 水利署雷達（林園）
   static const String radarLinyuan = 'O-A0084-003';
+
+  /// 雷達 API query參數模板（不含 dataset ID）
+  static String radarApiQueryParams(String apiKey) =>
+      'Authorization=$apiKey&downloadType=WEB&format=JSON';
+
+  /// 完整雷達 API URL
+  static String radarApiUrl(String datasetId, String apiKey) =>
+      '$cwaFileApiBaseUrl$datasetId?${radarApiQueryParams(apiKey)}';
 
   // -------------------------------------------------------------------------
   // 預報資料集

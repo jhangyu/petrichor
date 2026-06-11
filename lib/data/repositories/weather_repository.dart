@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
@@ -65,7 +66,7 @@ final class Failure<T> extends Result<T> {
 
 /// WeatherRepository 單例 Provider
 final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
-  return WeatherRepository(ref.watch(dioProvider));
+  return WeatherRepository(ref.watch(dioProvider), ref.watch(fileApiDioProvider));
 });
 
 // ============================================================================
@@ -78,8 +79,9 @@ final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
 /// 所有 API 呼叫皆回傳 [Result] 型別，確保錯誤可被 caller 處理。
 class WeatherRepository {
   final Dio _dio;
+  final Dio _fileApiDio;
 
-  WeatherRepository(this._dio);
+  WeatherRepository(this._dio, this._fileApiDio);
 
   // ==========================================================================
   // 一週預報
@@ -103,7 +105,7 @@ class WeatherRepository {
         queryParameters: {'locationName': locationName},
       );
 
-      final forecast = WeeklyForecast.fromCwaJson(response.data);
+      final forecast = WeeklyForecast.fromCwaJson(response.data, targetLocation: locationName);
 
       if (forecast.days.isEmpty) {
         return Failure('查無此地點的天氣預報：$locationName');
@@ -138,7 +140,7 @@ class WeatherRepository {
         queryParameters: {'locationName': locationName},
       );
 
-      final forecast = WeeklyForecast.fromCwaJson(response.data);
+      final forecast = WeeklyForecast.fromCwaJson(response.data, targetLocation: locationName);
 
       if (forecast.days.isEmpty) {
         return Failure('查無此地點的天氣資料：$locationName');
@@ -170,27 +172,43 @@ class WeatherRepository {
 
   /// 取得雷達圖 URL
   ///
-  /// [datasetId] 雷達資料集 ID，預設為台灣雷達站
+  /// 使用 fileapi/v1/opendataapi 端點，解析 JSON 中的 ProductURL。
+  /// [datasetId] 雷達資料集 ID，預設為台灣雷達站（O-A0058-001）
   Future<Result<String>> getRadarImageUrl({String? datasetId}) async {
     if (!AppConstants.hasApiKey) {
       return const Failure('API Key 未設定，請使用 --dart-define=CWA_API_KEY=your_key');
     }
 
     final dataset = datasetId ?? AppConstants.radarTaiwan;
+    final url = AppConstants.radarApiUrl(dataset, AppConstants.cwaApiKey);
 
     try {
-      final response = await _dio.get(dataset);
-      final records = response.data['records'] ?? {};
+      final response = await _fileApiDio.get(
+        url,
+        options: Options(
+          followRedirects: true,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
 
-      // 嘗試從複雜的 CWA JSON 結構中取出雷達圖 URL
-      // 實際結構依 dataset 不同，需查閱 CWA API 文件確認
-      final url = _extractRadarUrl(records, dataset);
-
-      if (url == null) {
-        return const Failure('無法解析雷達圖 URL，請確認 dataset ID');
+      // 處理 response.data 可能為 String 或 Map 的情況
+      Map<String, dynamic> data;
+      if (response.data is String) {
+        // 如果是字串，手動解析 JSON
+        data = Map<String, dynamic>.from(
+          const JsonDecoder().convert(response.data as String) as Map,
+        );
+      } else {
+        data = response.data as Map<String, dynamic>;
       }
 
-      return Success(url);
+      final productUrl = data['cwaopendata']?['dataset']?['resource']?['ProductURL'] as String?;
+
+      if (productUrl == null || productUrl.isEmpty) {
+        return const Failure('無法解析雷達圖 URL，API 回應缺少 ProductURL 欄位');
+      }
+
+      return Success(productUrl);
     } on DioException catch (e) {
       return _handleDioError(e);
     } catch (e) {
@@ -255,28 +273,5 @@ class WeatherRepository {
       DioExceptionType.connectionError => '連線失敗，請檢查網路',
       _ => '網路錯誤：${e.message}',
     };
-  }
-
-  /// 從 CWA JSON 結構中提取雷達圖 URL
-  ///
-  /// CWA 雷達圖 URL 可能位於多個位置，依 dataset 不同而異。
-  /// 此處嘗試常見的幾種結構。
-  String? _extractRadarUrl(Map<String, dynamic> records, String dataset) {
-    //嘗試常見的 URL 欄位名稱
-    final candidates = [
-      records['uri'],
-      records['resource']?['uri'],
-      records['resources']?['resource']?['uri'],
-      records['dataset']?['resource']?['uri'],
-    ];
-
-    for (final candidate in candidates) {
-      if (candidate != null && candidate.toString().contains('radar')) {
-        return candidate.toString();
-      }
-    }
-
-    // 回傳預設雷達圖 URL（需確認）
-    return 'https://cwa.gov.tw/V8/C/W/Observe/Radar/Image';
   }
 }

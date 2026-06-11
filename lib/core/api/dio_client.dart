@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_constants.dart';
 
-/// Dio HTTP 用戶端 Provider
+/// Dio HTTP 用戶端 Provider（REST API）
 ///
 ///單例模式，全域共享。自動處理：
 /// - API 授權 header
@@ -58,6 +58,34 @@ final dioProvider = Provider<Dio>((ref) {
     responseBody: false,
     error: true,
     logPrint: (obj) => print('[DioClient] $obj'),
+  ));
+
+  return dio;
+});
+
+/// Dio HTTP 用戶端 Provider（File API）
+///
+/// 獨立的 Dio實例，用於 fileapi/v1/opendataapi 端點。
+/// 不使用 baseUrl 和預設 queryParameters，直接使用完整 URL。
+final fileApiDioProvider = Provider<Dio>((ref) {
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
+      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
+      headers: {
+        'Accept': 'application/json',
+      },
+    ),
+  );
+
+  dio.interceptors.add(LogInterceptor(
+    request: false,
+    requestHeader: false,
+    requestBody: false,
+    responseHeader: false,
+    responseBody: false,
+    error: true,
+    logPrint: (obj) => print('[FileApiDio] $obj'),
   ));
 
   return dio;
