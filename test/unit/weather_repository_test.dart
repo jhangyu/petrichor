@@ -50,7 +50,7 @@ final validWeeklyApiResponse = {
       {
         'Location': [
           {
-            'LocationName': '信義區',
+            'LocationName': '臺北市',
             'WeatherElement': [
               {
                 'ElementName': '天氣現象',
@@ -269,14 +269,14 @@ void main() {
         queryParameters: any(named: 'queryParameters'),
       )).thenAnswer((_) async => response);
 
-      final result = await repository.getWeeklyForecast('信義區');
+      final result = await repository.getWeeklyForecast('臺北市');
 
       expect(result.isSuccess, isTrue);
-      expect(result.data.locationName, equals('信義區'));
+      expect(result.data.locationName, equals('臺北市'));
       expect(result.data.days, isNotEmpty);
       verify(() => mockDio.get(
         any(),
-        queryParameters: {'locationName': '信義區'},
+        queryParameters: {'locationName': '臺北市'},
       )).called(1);
     });
 
@@ -361,10 +361,10 @@ void main() {
         queryParameters: any(named: 'queryParameters'),
       )).thenAnswer((_) async => response);
 
-      final result = await repository.getCurrentWeather('信義區');
+      final result = await repository.getCurrentWeather('臺北市');
 
       expect(result.isSuccess, isTrue);
-      expect(result.data.locationName, equals('信義區'));
+      expect(result.data.locationName, equals('臺北市'));
       expect(result.data.temperature, isA<double>());
     });
 
@@ -436,10 +436,14 @@ void main() {
         queryParameters: any(named: 'queryParameters'),
       )).thenAnswer((_) async => response);
 
-      final result = await repository.get24hForecast('臺北市', '信義區');
+      final result = await repository.get24hForecast('台北市', '信義區');
 
       expect(result, isA<List<WeatherCondition>>());
       expect(result, isNotEmpty); // has days from forecast
+      verify(() => mockDio.get(
+        any(),
+        queryParameters: {'locationName': '臺北市'},
+      )).called(1);
     });
 
     test('get24hForecast returns empty list on failure', () async {

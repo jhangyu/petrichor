@@ -226,7 +226,7 @@ class WeatherRepository {
     String city,
     String district,
   ) async {
-    final result = await getWeeklyForecast(district);
+    final result = await getWeeklyForecast(_normalizeCountyName(city));
     return result.fold(
       onSuccess: (forecast) {
         return forecast.days
@@ -240,8 +240,18 @@ class WeatherRepository {
                 ))
             .toList();
       },
-      onFailure: (_, __) => [],
+      onFailure: (_, _) => [],
     );
+  }
+
+  String _normalizeCountyName(String countyName) {
+    const cwaCountyNames = {
+      '台北市': '臺北市',
+      '台中市': '臺中市',
+      '台南市': '臺南市',
+      '台東縣': '臺東縣',
+    };
+    return cwaCountyNames[countyName] ?? countyName;
   }
 
   // ==========================================================================
