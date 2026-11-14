@@ -53,6 +53,9 @@ class CurrentWeather {
   });
 }
 
+/// 太陽過中天時位於天頂的哪一側（資料以 N／S 後綴表示）
+enum TransitSide { north, south }
+
 /// 縣市單日日出日沒時刻（A-B0062-001）；時刻為絕對時刻（資料為臺灣時間 UTC+8）。
 class SunDay {
   /// 臺灣曆日（yyyy-MM-dd）
@@ -64,12 +67,20 @@ class SunDay {
   final DateTime sunset;
   final DateTime civilDusk;
 
+  /// 太陽過中天時刻，及當時仰角（度）與所在側（如 47S → 47°、南）
+  final DateTime transit;
+  final int transitAltitudeDegrees;
+  final TransitSide transitSide;
+
   const SunDay({
     required this.date,
     required this.civilDawn,
     required this.sunrise,
     required this.sunset,
     required this.civilDusk,
+    required this.transit,
+    required this.transitAltitudeDegrees,
+    required this.transitSide,
   });
 }
 

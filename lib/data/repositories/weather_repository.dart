@@ -527,10 +527,23 @@ List<SunDay> _parseSunTimes(Map<String, dynamic> body, String county, List<Strin
   );
 }
 
-SunDay _sunDay(Map<String, dynamic> day, String date) => SunDay(
+/// 過中天仰角「47S」→ (47, 南)；格式不符即 FormatException。
+(int, TransitSide) _transitAltitude(Object? raw, String date) {
+  final match = RegExp(r'^(\d{1,2})([NS])$').firstMatch(_text(raw) ?? '');
+  if (match == null) throw FormatException('SunTransitAlt@$date：期望「度數+N/S」（如 47S），實際「$raw」');
+  return (int.parse(match.group(1)!), match.group(2) == 'S' ? TransitSide.south : TransitSide.north);
+}
+
+SunDay _sunDay(Map<String, dynamic> day, String date) {
+  final (altitude, side) = _transitAltitude(day['SunTransitAlt'], date);
+  return SunDay(
       date: date,
       civilDawn: _sunTime(day['BeginCivilTwilightTime'], date, 'BeginCivilTwilightTime'),
       sunrise: _sunTime(day['SunRiseTime'], date, 'SunRiseTime'),
       sunset: _sunTime(day['SunSetTime'], date, 'SunSetTime'),
       civilDusk: _sunTime(day['EndCivilTwilightTime'], date, 'EndCivilTwilightTime'),
+      transit: _sunTime(day['SunTransitTime'], date, 'SunTransitTime'),
+      transitAltitudeDegrees: altitude,
+      transitSide: side,
     );
+}

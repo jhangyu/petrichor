@@ -1,3 +1,4 @@
+import 'package:cwb_flutter/data/models/weather_models.dart';
 import 'package:cwb_flutter/core/location/location_service.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -211,6 +212,9 @@ void main() {
       expect(days[0].sunrise.toUtc(), DateTime.utc(2026, 11, 13, 22, 10));
       expect(days[0].sunset.toUtc(), DateTime.utc(2026, 11, 14, 9, 7));
       expect(days[0].civilDusk.toUtc(), DateTime.utc(2026, 11, 14, 9, 31));
+      expect(days[0].transit.toUtc(), DateTime.utc(2026, 11, 14, 3, 38));
+      expect(days[0].transitAltitudeDegrees, 47);
+      expect(days[0].transitSide, TransitSide.south);
       expect(days[1].sunset.toUtc(), DateTime.utc(2026, 11, 15, 9, 6));
       final q = adapter.requests.single.queryParameters;
       expect(q['CountyName'], '臺北市');
@@ -243,6 +247,19 @@ void main() {
       final r = await repo.getSunTimes('臺北市', now);
 
       expect((r as Failure).message, contains('期望縣市「臺北市」'));
+    });
+
+    test('unknown transit altitude format is a Failure, not a guess', () async {
+      adapter.serveFixture('A-B0062-001', (json) {
+        final loc = ((json['records'] as Map)['locations'] as Map)['location'] as List;
+        (((loc.first as Map)['time'] as List).first as Map)['SunTransitAlt'] = '47E';
+        return null;
+      });
+      final r = await repo.getSunTimes('臺北市', now);
+
+      final f = r as Failure;
+      expect(f.dataset, 'A-B0062-001');
+      expect(f.message, contains('SunTransitAlt'));
     });
   });
 }
