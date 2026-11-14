@@ -208,7 +208,13 @@ class _TimelineState extends State<_Timeline> {
   void _revealCurrent(Duration duration) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = _currentKey.currentContext;
-      if (ctx != null) Scrollable.ensureVisible(ctx, alignment: 0.5, duration: duration);
+      if (ctx == null) return;
+      // Nearest scrollable only: Scrollable.ensureVisible would also scroll the page.
+      Scrollable.of(ctx).position.ensureVisible(
+        ctx.findRenderObject()!,
+        alignment: 0.5,
+        duration: duration,
+      );
     });
   }
 
