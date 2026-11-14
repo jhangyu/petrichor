@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/cwa_names.dart';
 import '../../core/location/location_service.dart';
 import '../models/weather_models.dart';
 
@@ -136,8 +137,8 @@ class WeatherRepository {
     required String Function(({String threeDay, String oneWeek})) datasetOf,
     required T Function(Map<String, dynamic> body, String township) parse,
   }) async {
-    final county = _normalizeName(city);
-    final township = _normalizeName(district);
+    final county = normalizeCwaName(city);
+    final township = normalizeCwaName(district);
     final ids = AppConstants.townshipForecastDatasets[county];
     if (ids == null) {
       return Failure(
@@ -276,9 +277,6 @@ const int _weeklyDayCount = 7;
 /// 12 小時預報中「白天時段」的起始時（臺灣時間）
 const int _daySlotStartHour = 6;
 const String _wgs84 = 'WGS84';
-
-/// CWA 縣市／鄉鎮名一律用「臺」，用「台」會回 200 但資料為空。
-String _normalizeName(String name) => name.replaceAll('台', '臺');
 
 Map<String, dynamic> _obj(Object? v, String path) {
   if (v is Map<String, dynamic>) return v;
