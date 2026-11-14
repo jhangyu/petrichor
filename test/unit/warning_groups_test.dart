@@ -13,6 +13,7 @@ CountyWarning _w(String phenomena, DateTime start, {WarningBulletin? bulletin}) 
 WarningBulletin _bulletin(String title) => WarningBulletin(
       title: title,
       issueTime: DateTime.utc(2026, 11, 14),
+      updatedAt: DateTime.utc(2026, 11, 14),
       start: DateTime.utc(2026, 11, 14),
       end: DateTime.utc(2026, 11, 15),
       description: '內文',
@@ -24,7 +25,7 @@ void main() {
   final t1 = DateTime.utc(2026, 11, 14, 10);
 
   test('merges counties sharing kind and validity, sorts by level then start', () {
-    final groups = groupWarnings(ActiveWarnings(bulletins: const [], counties: [
+    final groups = groupWarnings(ActiveWarnings(bulletins: const [], fetchedAt: DateTime.utc(2026, 11, 14), counties: [
       CountyWarnings(county: '宜蘭縣', warnings: [_w('豪雨', t1), _w('低溫', t0)]),
       CountyWarnings(county: '花蓮縣', warnings: [_w('豪雨', t1)]),
       CountyWarnings(county: '臺北市', warnings: [_w('大雨', t0)]),
@@ -37,7 +38,7 @@ void main() {
   });
 
   test('bulletin title wins over phenomena (-001 labels 大雨 as 豪雨)', () {
-    final groups = groupWarnings(ActiveWarnings(bulletins: const [], counties: [
+    final groups = groupWarnings(ActiveWarnings(bulletins: const [], fetchedAt: DateTime.utc(2026, 11, 14), counties: [
       CountyWarnings(county: '臺北市', warnings: [_w('豪雨', t0, bulletin: _bulletin('大雨特報'))]),
     ]));
     expect(groups.single.name, '大雨特報');
@@ -45,7 +46,7 @@ void main() {
   });
 
   test('higher rain levels do not match the shorter name', () {
-    final groups = groupWarnings(ActiveWarnings(bulletins: const [], counties: [
+    final groups = groupWarnings(ActiveWarnings(bulletins: const [], fetchedAt: DateTime.utc(2026, 11, 14), counties: [
       CountyWarnings(county: 'A', warnings: [_w('超大豪雨', t0)]),
       CountyWarnings(county: 'B', warnings: [_w('大豪雨', t0)]),
     ]));

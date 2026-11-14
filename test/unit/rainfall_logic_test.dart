@@ -1,3 +1,4 @@
+import 'package:cwb_flutter/core/theme/app_tokens.dart';
 import 'package:cwb_flutter/data/models/hazard_models.dart';
 import 'package:cwb_flutter/features/hazard/rainfall/rainfall_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,9 +38,29 @@ void main() {
     expect(sortStations(list, StationSort.name).map((s) => s.name), ['a', 'b', 'c']);
   });
 
+  test('map legend has one label per colour', () {
+    expect(rainfallMapScaleLabels.length, AppPalette.rainfallMapScale.length);
+  });
+
+  test('county chips start with the current county, then the others once', () {
+    RainStation inCounty(String county) => RainStation(
+          id: county,
+          name: county,
+          county: county,
+          town: 't',
+          latitude: 25,
+          longitude: 121.5,
+          todayMm: 1,
+          obsTime: DateTime.utc(2026, 11, 14),
+        );
+    final stations = [inCounty('基隆市'), inCounty('臺北市'), inCounty('基隆市'), inCounty('宜蘭縣')];
+    expect(countyChipOrder(stations, '臺北市'), ['臺北市', '基隆市', '宜蘭縣']);
+  });
+
   test('forecast buckets blank out missing and under 1 mm', () {
     final grid = RainForecastGrid(
       baseTime: DateTime.utc(2026, 11, 14, 6),
+      issuedAt: DateTime.utc(2026, 11, 14, 6, 15),
       startLongitude: 120,
       startLatitude: 22,
       resolution: 0.0125,

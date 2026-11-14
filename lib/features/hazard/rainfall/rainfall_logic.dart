@@ -10,6 +10,28 @@ const rainLevelNames = ['未達警戒', '大雨', '豪雨', '大豪雨', '超大
 /// in the threshold bar (mockup `.thr__bar`).
 const thresholdSegmentPercents = [16.0, 24.0, 30.0, 30.0];
 
+/// Legend labels of the CWA accumulated-rainfall map, one per colour of
+/// `AppPalette.rainfallMapScale` (same order, low → high).
+const rainfallMapScaleLabels = [
+  '< 1',
+  '1–2',
+  '2–6',
+  '6–10',
+  '10–15',
+  '15–20',
+  '20–30',
+  '30–40',
+  '40–50',
+  '50–70',
+  '70–90',
+  '90–110',
+  '110–130',
+  '130–150',
+  '150–200',
+  '200–300',
+  '≥ 300',
+];
+
 /// Forecast cells below this are blank on the map (mockup hint).
 const forecastVisibleMinMm = 1.0;
 
@@ -42,6 +64,12 @@ double thresholdMarkerFraction(double mm) {
 
 /// 1 decimal, e.g. `86.5`; null (station reported no value) → `—`.
 String formatMm(double? mm) => mm == null ? '—' : mm.toStringAsFixed(1);
+
+/// County chip order: [current] first, then the other counties of [stations] by first appearance.
+List<String> countyChipOrder(List<RainStation> stations, String current) {
+  final others = {for (final s in stations) s.county}..remove(current);
+  return [current, ...others];
+}
 
 /// Stations sorted high → low (missing values last) or by name.
 enum StationSort { rainfall, name }

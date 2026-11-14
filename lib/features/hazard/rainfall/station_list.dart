@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
+import '../../../core/widgets/choices.dart';
 import '../../../data/models/hazard_models.dart';
 import 'level_style.dart';
 import 'rainfall_logic.dart';
@@ -13,12 +14,14 @@ const _collapsedRowCount = 6;
 /// Bar full width = the top warning threshold.
 final _barFullMm = rainWarningThresholds.last;
 
-/// `測站今日累積雨量` flush card: sort button + station rows.
-/// The data layer returns only the user's county, so there is no county filter.
+/// `測站今日累積雨量` flush card: sort button, county chips + station rows.
+/// Starts on [county] (the current place's county); the chips switch to any county or all.
 class StationListCard extends StatefulWidget {
   const StationListCard({super.key, required this.county, required this.stations, required this.nearestId});
 
   final String county;
+
+  /// Every station of the dataset (all counties).
   final List<RainStation> stations;
   final String nearestId;
 
@@ -30,13 +33,32 @@ class _StationListCardState extends State<StationListCard> {
   StationSort _sort = StationSort.rainfall;
   bool _expanded = false;
 
+  /// Selected county; null = 全部縣市.
+  late String? _county = widget.county;
+
+  @override
+  void didUpdateWidget(StationListCard old) {
+    super.didUpdateWidget(old);
+    if (old.county != widget.county) {
+      _county = widget.county;
+      _expanded = false;
+    }
+  }
+
   void _toggleSort() => setState(() {
         _sort = _sort == StationSort.rainfall ? StationSort.name : StationSort.rainfall;
       });
 
+  void _selectCounty(String? county) => setState(() {
+        _county = county;
+        _expanded = false;
+      });
+
   @override
   Widget build(BuildContext context) {
-    final sorted = sortStations(widget.stations, _sort);
+    final counties = countyChipOrder(widget.stations, widget.county);
+    final inScope = _county == null ? widget.stations : widget.stations.where((s) => s.county == _county).toList();
+    final sorted = sortStations(inScope, _sort);
     final visible = _expanded ? sorted : sorted.take(_collapsedRowCount).toList();
     final sortLabel = _sort == StationSort.rainfall ? '雨量高到低' : '站名';
     return AppCard(
@@ -49,27 +71,44 @@ class _StationListCardState extends State<StationListCard> {
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: AppSpace.s12,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: AppSpace.s4,
-                    children: [
-                      Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
-                      Text(
-                        '${widget.county} · ${widget.stations.length} 站 · 依$sortLabel',
-                        style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: AppSpace.s4,
+                        children: [
+                          Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
+                          Text(
+                            '${_county ?? '全部縣市'} · ${sorted.length} 站 · 依$sortLabel',
+                            style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                          ),
+                        ],
                       ),
+                    ),
+                    AppButton(
+                      label: '排序',
+                      icon: Icons.tune,
+                      variant: AppButtonVariant.subtle,
+                      small: true,
+                      onPressed: _toggleSort,
+                    ),
+                  ],
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    spacing: AppSpace.s8,
+                    children: [
+                      AppChip(label: '全部縣市', selected: _county == null, onTap: () => _selectCounty(null)),
+                      for (final c in counties)
+                        AppChip(label: c, selected: _county == c, onTap: () => _selectCounty(c)),
                     ],
                   ),
-                ),
-                AppButton(
-                  label: '排序',
-                  icon: Icons.tune,
-                  variant: AppButtonVariant.subtle,
-                  small: true,
-                  onPressed: _toggleSort,
                 ),
               ],
             ),

@@ -39,7 +39,10 @@ class HazardRepository {
   final Dio _fileApiDio;
   final String apiKey;
 
-  HazardRepository(this._dio, this._fileApiDio, {required this.apiKey});
+  /// 取得 [ActiveWarnings.fetchedAt] 的時鐘（測試注入）
+  final DateTime Function() clock;
+
+  HazardRepository(this._dio, this._fileApiDio, {required this.apiKey, this.clock = DateTime.now});
 
   /// 目前生效的縣市層級特報（-001）併公告（-002）。
   ///
@@ -58,7 +61,7 @@ class HazardRepository {
       final w1 = _datastoreRecords(responses[0].data, warningsByCountyDataset);
       final w2 = _datastoreRecords(responses[1].data, warningBulletinsDataset);
       final bulletins = _bulletins(w2);
-      final warnings = ActiveWarnings.fromJson(w1, bulletins);
+      final warnings = ActiveWarnings.fromJson(w1, bulletins, clock());
       if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
         return const Failure(
           '[$warningBulletinsDataset] expected bulletins because $warningsByCountyDataset lists active warnings, got none',
@@ -94,7 +97,7 @@ class HazardRepository {
         return Failure('[$rainObservationDataset] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
       }
       withValue.sort((a, b) => a.distanceSqTo(latitude, longitude).compareTo(b.distanceSqTo(latitude, longitude)));
-      return Success(CountyRainfall(county: county, stations: inCounty, nearest: withValue.first));
+      return Success(CountyRainfall(county: county, stations: inCounty, allStations: all, nearest: withValue.first));
     } on DioException catch (e) {
       return _dioFailure(rainObservationDataset, e);
     } on FormatException catch (e) {

@@ -165,7 +165,7 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
           errorTitle: '無法取得測站列表',
           skeleton: const AppCard.loading(title: '測站今日累積雨量', skeletonHeight: _listSkeletonHeight),
           onRetry: retryRainfall,
-          builder: (r) => StationListCard(county: r.county, stations: r.stations, nearestId: r.nearest.id),
+          builder: (r) => StationListCard(county: r.county, stations: r.allStations, nearestId: r.nearest.id),
           showError: false,
         ),
         if (result is Success) Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
@@ -181,7 +181,7 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
     void retry() => ref.invalidate(rainForecastProvider(loc));
     return _scaffold(
       subtitle: switch (forecast.value) {
-        Success(:final data) => '${place.name} · 預測發布 ${formatTaiwanClock(data.grid.baseTime)}',
+        Success(:final data) => '${place.name} · 預測發布 ${formatTaiwanClock(data.grid.issuedAt)}',
         Failure() => '${place.name} · 無法取得預測',
         null => _loadingSubtitle,
       },

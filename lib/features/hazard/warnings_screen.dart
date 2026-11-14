@@ -12,6 +12,7 @@ import '../../data/models/hazard_models.dart';
 import '../../data/repositories/hazard_repository.dart' show warningBulletinsDataset, warningsByCountyDataset;
 import '../../data/repositories/weather_repository.dart' show Failure, Success;
 import '../location/place_provider.dart';
+import '../radar/radar_playback.dart' show formatTaiwanClock;
 import 'hazard_provider.dart';
 import 'warnings/warning_card.dart';
 import 'warnings/warning_groups.dart';
@@ -79,12 +80,14 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
     final mine = groupsForCounty(all, county);
     final shown = _mineOnly ? mine : all;
     final now = ref.watch(warningsClockProvider)();
+    final updatedAt = active.updatedAt;
+    final checkedFoot = (icon: Icons.schedule, text: '最近檢查 ${formatTaiwanClock(active.fetchedAt)}');
     final WarningsHero hero;
     if (_mineOnly) {
       hero = WarningsHero(
         label: shown.isEmpty ? '$county目前無警特報' : '$county目前生效',
         groups: shown,
-        foot: shown.isEmpty ? null : (icon: Icons.schedule, text: WarningsHero.periodText(shown)),
+        foot: shown.isEmpty ? checkedFoot : (icon: Icons.schedule, text: WarningsHero.periodText(shown)),
         emptyText: '$county目前沒有生效中的警特報。',
       );
     } else {
@@ -92,7 +95,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
         label: shown.isEmpty ? '目前無警特報' : '目前生效',
         groups: shown,
         foot: shown.isEmpty
-            ? null
+            ? checkedFoot
             : (
                 icon: Icons.location_on_outlined,
                 text: '影響 ${countyCount(shown)} 個縣市 · '
@@ -102,6 +105,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
       );
     }
     return _page(
+      subtitle: updatedAt == null ? checkedFoot.text : '更新於 ${formatTaiwanClock(updatedAt)}',
       source: SourceLine(datasetIds: const [warningsByCountyDataset, warningBulletinsDataset]),
       children: [
         hero,

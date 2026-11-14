@@ -25,13 +25,11 @@ String _str(Object? v, String path) {
   throw FormatException('expected string at $path, got ${v.runtimeType}');
 }
 
-/// 可能缺值的數字字串；"-99" → null，其他無法解析 → FormatException
+/// 雨量字串；"-99" 與非數字（如微量 "T"）→ null（使用者裁決：只留數字值），非字串 → FormatException
 double? _mm(Object? v, String path) {
   final s = _str(v, path);
   if (s == _missingMarker) return null;
-  final n = double.tryParse(s);
-  if (n == null) throw FormatException('expected number or "$_missingMarker" at $path, got "$s"');
-  return n;
+  return double.tryParse(s);
 }
 
 double _num(Object? v, String path) {
@@ -85,6 +83,9 @@ class WarningBulletin {
   /// 公告名稱，如「豪雨特報」
   final String title;
   final DateTime issueTime;
+
+  /// CWA 最後更新此公告的時間（`datasetInfo.update`）
+  final DateTime updatedAt;
   final DateTime start;
   final DateTime end;
   final String description;
@@ -95,6 +96,7 @@ class WarningBulletin {
   const WarningBulletin({
     required this.title,
     required this.issueTime,
+    required this.updatedAt,
     required this.start,
     required this.end,
     required this.description,
@@ -122,6 +124,7 @@ class WarningBulletin {
     return WarningBulletin(
       title: _str(info['datasetDescription'], '$path.datasetInfo.datasetDescription'),
       issueTime: _time(info['issueTime'], '$path.datasetInfo.issueTime'),
+      updatedAt: _time(info['update'], '$path.datasetInfo.update'),
       start: _time(valid['startTime'], '$path.datasetInfo.validTime.startTime'),
       end: _time(valid['endTime'], '$path.datasetInfo.validTime.endTime'),
       description: _str(content['contentText'], '$path.contents.content.contentText').trim(),
@@ -134,7 +137,16 @@ class WarningBulletin {
 class ActiveWarnings {
   final List<CountyWarnings> counties;
   final List<WarningBulletin> bulletins;
-  const ActiveWarnings({required this.counties, required this.bulletins});
+
+  /// App 取得此資料的時刻（W-C0033-001 的 datastore 回應不含發布時間）
+  final DateTime fetchedAt;
+  const ActiveWarnings({required this.counties, required this.bulletins, required this.fetchedAt});
+
+  /// 公告中最新的 CWA 更新時間；無公告（無生效特報）為 null
+  DateTime? get updatedAt {
+    if (bulletins.isEmpty) return null;
+    return bulletins.map((b) => b.updatedAt).reduce((a, b) => a.isAfter(b) ? a : b);
+  }
 
   /// 指定縣市的特報；無生效特報回空 list
   List<CountyWarning> forCounty(String county) {
@@ -147,7 +159,7 @@ class ActiveWarnings {
   /// 解析 W-C0033-001（[w1Records] = `records`）；缺 `location` 陣列視為格式錯誤，
   /// 因為此資料集無特報時仍列出全部縣市（hazards 為空陣列）。
   /// [bulletins] 為已解析的 W-C0033-002 公告。
-  factory ActiveWarnings.fromJson(Object? w1Records, List<WarningBulletin> bulletins) {
+  factory ActiveWarnings.fromJson(Object? w1Records, List<WarningBulletin> bulletins, DateTime fetchedAt) {
     final locations = _list(_map(w1Records, 'records')['location'], 'records.location');
     final counties = <CountyWarnings>[];
     for (var i = 0; i < locations.length; i++) {
@@ -174,7 +186,7 @@ class ActiveWarnings {
       }
       counties.add(CountyWarnings(county: name, warnings: warnings));
     }
-    return ActiveWarnings(counties: counties, bulletins: bulletins);
+    return ActiveWarnings(counties: counties, bulletins: bulletins, fetchedAt: fetchedAt);
   }
 
   /// 以「縣市在公告區域內＋有效期間完全相同」配對。
@@ -191,7 +203,7 @@ class ActiveWarnings {
 // 雨量觀測（O-A0002-001）
 // ============================================================================
 
-/// 雨量站：今日累積雨量 [todayMm]（null = 站台回報缺值）
+/// 雨量站：今日累積雨量 [todayMm]、近 1／3 小時 [past1hrMm]／[past3hrMm]（null = 缺值或非數字）
 class RainStation {
   final String id;
   final String name;
@@ -200,6 +212,8 @@ class RainStation {
   final double latitude;
   final double longitude;
   final double? todayMm;
+  final double? past1hrMm;
+  final double? past3hrMm;
   final DateTime obsTime;
 
   const RainStation({
@@ -210,6 +224,8 @@ class RainStation {
     required this.latitude,
     required this.longitude,
     required this.todayMm,
+    this.past1hrMm,
+    this.past3hrMm,
     required this.obsTime,
   });
 
@@ -220,7 +236,12 @@ class RainStation {
     final wgs84 = coords.map((c) => _map(c, '$path.GeoInfo.Coordinates[]')).where((c) => c['CoordinateName'] == 'WGS84');
     if (wgs84.isEmpty) throw FormatException('no WGS84 coordinate at $path.GeoInfo.Coordinates');
     final c = wgs84.first;
-    final now = _map(_map(m['RainfallElement'], '$path.RainfallElement')['Now'], '$path.RainfallElement.Now');
+    final element = _map(m['RainfallElement'], '$path.RainfallElement');
+    double? precipitation(String key) {
+      final p = '$path.RainfallElement.$key';
+      return _mm(_map(element[key], p)['Precipitation'], '$p.Precipitation');
+    }
+
     return RainStation(
       id: _str(m['StationId'], '$path.StationId'),
       name: _str(m['StationName'], '$path.StationName'),
@@ -228,7 +249,9 @@ class RainStation {
       town: _str(geo['TownName'], '$path.GeoInfo.TownName'),
       latitude: _num(c['StationLatitude'], '$path.WGS84.StationLatitude'),
       longitude: _num(c['StationLongitude'], '$path.WGS84.StationLongitude'),
-      todayMm: _mm(now['Precipitation'], '$path.RainfallElement.Now.Precipitation'),
+      todayMm: precipitation('Now'),
+      past1hrMm: precipitation('Past1hr'),
+      past3hrMm: precipitation('Past3hr'),
       obsTime: _time(_map(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
     );
   }
@@ -241,15 +264,21 @@ class RainStation {
   }
 }
 
-/// 某縣市的雨量觀測：該縣市所有雨量站與最近的有值測站
+/// 某縣市的雨量觀測：該縣市所有雨量站與最近的有值測站，另附全臺測站供切換縣市
 class CountyRainfall {
   final String county;
   final List<RainStation> stations;
 
+  /// 資料集內全部測站（所有縣市）
+  final List<RainStation> allStations;
+
   /// 離使用者最近且今日累積有值的測站
   final RainStation nearest;
 
-  const CountyRainfall({required this.county, required this.stations, required this.nearest});
+  const CountyRainfall({required this.county, required this.stations, required this.allStations, required this.nearest});
+
+  /// 資料集內有測站的縣市名，依首次出現順序
+  List<String> get counties => {for (final s in allStations) s.county}.toList();
 }
 
 /// 解析 O-A0002-001 的 `records.Station[]` 全部測站
@@ -318,7 +347,11 @@ class RainfallMap {
 /// 先經向遞增（x 最快），再緯向遞增；index = y * columns + x。
 /// 值為 mm，null = 無效值（-99，雷達無回波覆蓋或無資料）。
 class RainForecastGrid {
+  /// 預報起算時間（`parameterSet.DateTime`）
   final DateTime baseTime;
+
+  /// CWA 發布時間（回應 `sent`），晚於 [baseTime]
+  final DateTime issuedAt;
   final double startLongitude;
   final double startLatitude;
 
@@ -330,6 +363,7 @@ class RainForecastGrid {
 
   RainForecastGrid({
     required this.baseTime,
+    required this.issuedAt,
     required this.startLongitude,
     required this.startLatitude,
     required this.resolution,
@@ -352,6 +386,7 @@ class RainForecastGrid {
     final values = [for (final s in raw.split(',')) _gridValue(s.trim())];
     return RainForecastGrid(
       baseTime: _time(ps['DateTime'], '$pp.DateTime'),
+      issuedAt: _time(_map(root, 'cwaopendata')['sent'], 'cwaopendata.sent'),
       startLongitude: _num(ps['StartPointLongitude'], '$pp.StartPointLongitude'),
       startLatitude: _num(ps['StartPointLatitude'], '$pp.StartPointLatitude'),
       resolution: _num(ps['GridResolution'], '$pp.GridResolution'),

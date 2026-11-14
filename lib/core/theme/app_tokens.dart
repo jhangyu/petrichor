@@ -136,6 +136,30 @@ abstract final class AppPalette {
   static const dbz40 = Color(0xFFFF8A00);
   static const dbz50 = Color(0xFFE81123);
   static const dbz60 = Color(0xFFA0119E);
+
+  // DATA-VIZ EXCEPTION: CWA daily accumulated rainfall map (O-A0040-002) scale,
+  // sampled from the legend bar of the CWA image. Low → high, 17 bands:
+  // <1, 1–2, 2–6, 6–10, 10–15, 15–20, 20–30, 30–40, 40–50, 50–70, 70–90,
+  // 90–110, 110–130, 130–150, 150–200, 200–300, ≥300 mm. Legends must label numbers.
+  static const rainfallMapScale = [
+    Color(0xFFCACACA),
+    Color(0xFF9EFDFF),
+    Color(0xFF01D2FD),
+    Color(0xFF00A5FE),
+    Color(0xFF0177FD),
+    Color(0xFF27A31C),
+    Color(0xFF02F930),
+    Color(0xFFFEFD31),
+    Color(0xFFFFD328),
+    Color(0xFFFFA71F),
+    Color(0xFFFF2B06),
+    Color(0xFFDA2304),
+    Color(0xFFAA1802),
+    Color(0xFFAA21A3),
+    Color(0xFFDC2DD2),
+    Color(0xFFFF38FB),
+    Color(0xFFFFD6FD),
+  ];
 }
 
 /// `--space-*` tokens (4px grid).

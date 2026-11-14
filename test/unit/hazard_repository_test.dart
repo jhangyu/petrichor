@@ -32,11 +32,15 @@ Map<String, dynamic> _fixtureJson(String id) => jsonDecode(_fixture(id)) as Map<
 
 ({int status, String body}) _ok(Object body) => (status: 200, body: body is String ? body : jsonEncode(body));
 
-HazardRepository _repo(Map<String, ({int status, String body})> routes, {String apiKey = 'test-key'}) {
+HazardRepository _repo(
+  Map<String, ({int status, String body})> routes, {
+  String apiKey = 'test-key',
+  DateTime Function() clock = DateTime.now,
+}) {
   final adapter = _FakeAdapter(routes);
   final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1/rest/datastore/'))..httpClientAdapter = adapter;
   final fileDio = Dio()..httpClientAdapter = adapter;
-  return HazardRepository(dio, fileDio, apiKey: apiKey);
+  return HazardRepository(dio, fileDio, apiKey: apiKey, clock: clock);
 }
 
 DateTime _tw(String s) => DateTime.parse('$s+08:00');
@@ -78,6 +82,17 @@ void main() {
       expect(w.forCounty('臺北市'), isEmpty);
     });
 
+    test('updatedAt is the newest bulletin update, fetchedAt comes from the injected clock', () async {
+      final fetched = _tw('2026-11-14T22:50:00');
+      final repo = _repo({
+        'W-C0033-001': _ok(_fixture('W-C0033-001')),
+        'W-C0033-002': _ok(_fixture('W-C0033-002')),
+      }, clock: () => fetched);
+      final w = (await repo.getActiveWarnings()).data;
+      expect(w.fetchedAt, fetched);
+      expect(w.updatedAt, _tw('2026-11-14T18:59:50'));
+    });
+
     test('no active warnings is Success with empty counties', () async {
       final w1 = _fixtureJson('W-C0033-001');
       for (final loc in (w1['records']['location'] as List)) {
@@ -91,6 +106,7 @@ void main() {
       expect(r.isSuccess, isTrue);
       expect(r.data.counties, isEmpty);
       expect(r.data.bulletins, isEmpty);
+      expect(r.data.updatedAt, isNull);
     });
 
     test('active warnings without any bulletin is Failure naming -002', () async {
@@ -160,11 +176,31 @@ void main() {
       expect(r.nearest.name, '遠站');
     });
 
-    test('non-numeric station value is Failure', () async {
+    test('non-numeric station value (e.g. T) becomes null without failing the dataset', () async {
       final body = _fixtureJson('O-A0002-001');
-      body['records']['Station'][0]['RainfallElement']['Now']['Precipitation'] = 'abc';
+      final element = body['records']['Station'][0]['RainfallElement'] as Map<String, dynamic>;
+      element['Past1hr']['Precipitation'] = 'T';
+      element['Past3hr']['Precipitation'] = 'abc';
+      final r = (await _repo({'O-A0002-001': _ok(body)}).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9)).data;
+      final station = r.stations.single;
+      expect(station.todayMm, 27.5);
+      expect(station.past1hrMm, isNull);
+      expect(station.past3hrMm, isNull);
+      expect(r.allStations.length, 3);
+    });
+
+    test('wrong structure (Precipitation not a string) is still Failure', () async {
+      final body = _fixtureJson('O-A0002-001');
+      body['records']['Station'][0]['RainfallElement']['Past1hr']['Precipitation'] = 1.5;
       final r = await _repo({'O-A0002-001': _ok(body)}).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9);
-      expect(r, isA<Failure<CountyRainfall>>());
+      expect((r as Failure).message, allOf(contains('O-A0002-001'), contains('Past1hr')));
+    });
+
+    test('reads past 1 and 3 hour values and lists every county', () async {
+      final r = (await _repo(routes).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9)).data;
+      expect(r.nearest.past1hrMm, 0.5);
+      expect(r.nearest.past3hrMm, 11.0);
+      expect(r.counties, ['南投縣', '基隆市', '新北市']);
     });
   });
 
@@ -198,6 +234,8 @@ void main() {
       final repo = _repo({'F-B0046-001': _ok(_fullGrid({cell: '1.250E+01'}))});
       final f = (await repo.getRainForecast(latitude: 25.0375, longitude: 121.5)).data;
       expect(f.mmAtLocation, 12.5);
+      expect(f.grid.baseTime, _tw('2026-11-14T20:30:00'));
+      expect(f.grid.issuedAt, _tw('2026-11-14T20:45:09'));
       expect(f.grid.columns, 441);
       expect(f.grid.rows, 561);
       expect(f.grid.resolution, 0.0125);

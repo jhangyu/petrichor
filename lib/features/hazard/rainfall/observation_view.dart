@@ -11,6 +11,8 @@ import '../../radar/widgets/radar_map_view.dart';
 import 'level_style.dart';
 import 'rainfall_logic.dart';
 
+String _mmText(double? mm) => mm == null ? '—' : '${formatMm(mm)} mm';
+
 /// Hero: nearest station's accumulated rain, level badge, threshold bar.
 class ObservationHeroCard extends StatelessWidget {
   const ObservationHeroCard({super.key, required this.rainfall});
@@ -60,15 +62,17 @@ class ObservationHeroCard extends StatelessWidget {
             ],
           ),
           _ThresholdBar(mm: mm),
-          if (next != null)
-            MetricGrid(children: [
+          MetricGrid(children: [
+            MetricTile(icon: Icons.schedule, label: '近 1 小時', value: _mmText(station.past1hrMm), onHero: true),
+            MetricTile(icon: Icons.schedule, label: '近 3 小時', value: _mmText(station.past3hrMm), onHero: true),
+            if (next != null)
               MetricTile(
                 icon: Icons.warning_amber_outlined,
                 label: '距${next.name}門檻',
-                value: '${formatMm(next.remainingMm)} mm',
+                value: _mmText(next.remainingMm),
                 onHero: true,
               ),
-            ]),
+          ]),
         ],
       ),
     );
@@ -148,8 +152,8 @@ class _ThresholdBar extends StatelessWidget {
   }
 }
 
-/// `累積雨量圖`: CWA's O-A0040-002 image over the base map. The image keeps CWA's own
-/// colour scale, so no token legend is drawn (it would not match the pixels).
+/// `累積雨量圖`: CWA's O-A0040-002 image over the base map, with a legend of CWA's own
+/// colour scale (`AppPalette.rainfallMapScale`, sampled from the image's legend bar).
 class RainfallMapCard extends StatelessWidget {
   const RainfallMapCard({super.key, required this.map, required this.latitude, required this.longitude});
 
@@ -163,17 +167,59 @@ class RainfallMapCard extends StatelessWidget {
     return AppCard(
       title: '累積雨量圖',
       meta: '今日 · $clock',
-      child: RadarMapView(
-        chipIcon: Icons.schedule,
-        chipText: '今日累積 $clock',
-        semanticsLabel: '今日累積雨量圖',
-        overlayBuilder: (_) => [
-          OverlayImage(
-            bounds: LatLngBounds(LatLng(map.minLatitude, map.minLongitude), LatLng(map.maxLatitude, map.maxLongitude)),
-            imageProvider: NetworkImage(map.imageUrl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpace.s16,
+        children: [
+          RadarMapView(
+            chipIcon: Icons.schedule,
+            chipText: '今日累積 $clock',
+            semanticsLabel: '今日累積雨量圖',
+            overlayBuilder: (_) => [
+              OverlayImage(
+                bounds: LatLngBounds(LatLng(map.minLatitude, map.minLongitude), LatLng(map.maxLatitude, map.maxLongitude)),
+                imageProvider: NetworkImage(map.imageUrl),
+              ),
+            ],
+            me: LatLng(latitude, longitude),
           ),
+          const _MapLegend(),
         ],
-        me: LatLng(latitude, longitude),
+      ),
+    );
+  }
+}
+
+/// CWA accumulated-rainfall colour scale; every swatch is labelled with its mm band.
+class _MapLegend extends StatelessWidget {
+  const _MapLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '累積雨量圖例（毫米）',
+      child: Wrap(
+        spacing: AppSpace.s12,
+        runSpacing: AppSpace.s8,
+        children: [
+          for (var i = 0; i < rainfallMapScaleLabels.length; i++)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpace.s4,
+              children: [
+                Container(
+                  width: AppSize.icon16,
+                  height: AppSize.icon16,
+                  decoration: BoxDecoration(
+                    color: AppPalette.rainfallMapScale[i],
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                ),
+                Text(rainfallMapScaleLabels[i], style: AppType.caption1.copyWith(color: AppPalette.fg2)),
+              ],
+            ),
+          Text('單位：毫米', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+        ],
       ),
     );
   }
