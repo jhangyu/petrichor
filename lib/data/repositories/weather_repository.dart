@@ -5,6 +5,7 @@ import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/cwa_names.dart';
 import '../../core/location/location_service.dart';
+import '../models/place.dart';
 import '../models/weather_models.dart';
 
 // ============================================================================
@@ -151,6 +152,29 @@ class WeatherRepository {
     );
   }
 
+  // ==========================================================================
+  // 鄉鎮清單
+  // ==========================================================================
+
+  /// 取得 [county] 全部鄉鎮與經緯度（取自該縣市 3 天鄉鎮預報資料集的地點清單）。
+  Future<Result<List<Place>>> getTowns(String county) {
+    final name = normalizeCwaName(county);
+    final ids = AppConstants.townshipForecastDatasets[name];
+    if (ids == null) {
+      return Future.value(Failure(
+        '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$county」',
+        location: county,
+      ));
+    }
+    return _query(
+      dataset: ids.threeDay,
+      location: name,
+      // 只取單一要素，縮小回應；地點清單與經緯度不受影響
+      query: {'ElementName': _townListElement},
+      parse: (body) => _parseTowns(body, name),
+    );
+  }
+
   Future<Result<T>> _townshipForecast<T>(
     String city,
     String district, {
@@ -250,6 +274,9 @@ const int _sunDayCount = 2;
 /// 12 小時預報中「白天時段」的起始時（臺灣時間）
 const int _daySlotStartHour = 6;
 const String _wgs84 = 'WGS84';
+
+/// 鄉鎮清單查詢只帶的預報要素（任一既有要素皆可，取其一縮小回應）
+const String _townListElement = '天氣現象';
 
 Map<String, dynamic> _obj(Object? v, String path) {
   if (v is Map<String, dynamic>) return v;
@@ -354,6 +381,30 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
       _dig(we, ['DailyExtreme', 'DailyLow', 'TemperatureInfo', 'AirTemperature']),
       'DailyLow',
     ),
+  );
+}
+
+List<Place> _parseTowns(Map<String, dynamic> body, String county) {
+  final groups = _list(_dig(body, ['records', 'Locations']), 'records.Locations');
+  if (groups.isEmpty) throw const FormatException('records.Locations：期望 1 組，實際 0 組');
+  final group = _obj(groups.first, 'records.Locations[0]');
+  final actual = normalizeCwaName(_text(group['LocationsName']) ?? '');
+  if (actual != county) throw FormatException('LocationsName：期望「$county」，實際「$actual」');
+  final list = _list(group['Location'], 'Location');
+  if (list.isEmpty) throw FormatException('$county Location：期望至少 1 個鄉鎮，實際 0 個');
+  return [
+    for (var i = 0; i < list.length; i++)
+      _town(_obj(list[i], 'Location[$i]'), county, 'Location[$i]'),
+  ];
+}
+
+Place _town(Map<String, dynamic> loc, String county, String path) {
+  final town = _text(loc['LocationName']) ?? (throw FormatException('$path.LocationName：期望鄉鎮名，實際「${loc['LocationName']}」'));
+  return Place(
+    county: county,
+    town: normalizeCwaName(town),
+    latitude: _num(loc['Latitude'], '$path.Latitude') ?? (throw FormatException('$path.Latitude：期望緯度，實際缺值')),
+    longitude: _num(loc['Longitude'], '$path.Longitude') ?? (throw FormatException('$path.Longitude：期望經度，實際缺值')),
   );
 }
 

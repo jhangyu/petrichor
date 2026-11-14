@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/location/location_service.dart';
+import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
 import '../../data/repositories/weather_repository.dart';
+import '../location/place_provider.dart';
 
-/// 首頁狀態。四組資料各自成敗（null＝尚未載入或定位失敗），單一資料集失敗不影響其他。
-/// [error] 僅用於整頁級錯誤（定位失敗）。
+/// 首頁狀態。四組資料各自成敗（null＝尚未載入或尚無地點），單一資料集失敗不影響其他。
+/// [error] 僅用於整頁級錯誤（尚無地點、地點儲存資料損毀）。
 class WeatherState {
-  final LocationData? location;
+  final Place? location;
   final Result<CurrentWeather>? current;
   final Result<List<HourlyForecast>>? hourly;
   final Result<List<DailyForecast>>? weekly;
@@ -29,46 +30,41 @@ class WeatherState {
   });
 }
 
-/// 定位失敗 → 使用者可讀訊息（含下一步）
-String locationFailureMessage(LocationException e) {
-  return switch (e.failure) {
-    LocationFailure.serviceDisabled => '裝置的定位服務已關閉，請開啟後重試',
-    LocationFailure.permissionDenied => '尚未允許定位權限，請允許後重試',
-    LocationFailure.permissionDeniedForever => '定位權限已被永久拒絕，請到系統設定開啟',
-    LocationFailure.positionUnavailable => '無法取得目前位置，請稍後重試',
-    LocationFailure.addressUnresolved => '無法判斷所在縣市與鄉鎮，請稍後重試',
-  };
-}
-
 /// 首頁「今天」的時鐘（測試可覆寫）
 final weatherClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
+/// 依目前地點（[currentPlaceProvider]）載入首頁資料；地點變更即重新載入。
 class WeatherNotifier extends Notifier<WeatherState> {
   @override
   WeatherState build() {
-    Future.microtask(_init);
-    return const WeatherState();
+    return switch (ref.watch(currentPlaceProvider)) {
+      AsyncLoading() => const WeatherState(),
+      AsyncError(:final error) => WeatherState(isLoading: false, error: '$error'),
+      AsyncData(value: NoPlace(:final reason)) =>
+        WeatherState(isLoading: false, error: locationFailureMessage(reason)),
+      AsyncData(value: PlaceSelected(:final place)) => _startLoad(place),
+    };
   }
 
-  Future<void> _init() async {
-    final LocationData location;
-    try {
-      location = await ref.read(locationServiceProvider).getCurrentLocation();
-    } on LocationException catch (e) {
-      state = WeatherState(isLoading: false, error: locationFailureMessage(e));
-      return;
-    }
+  WeatherState _startLoad(Place place) {
+    final buildRef = ref;
+    Future.microtask(() => _load(place, buildRef));
+    return WeatherState(location: place);
+  }
 
+  Future<void> _load(Place place, Ref buildRef) async {
     final repo = ref.read(weatherRepositoryProvider);
     final (current, hourly, weekly, sun) = await (
-      repo.getCurrentWeather(location),
-      repo.getHourlyForecast(location.city, location.district),
-      repo.getWeeklyForecast(location.city, location.district),
-      repo.getSunTimes(location.city, ref.read(weatherClockProvider)()),
+      repo.getCurrentWeather(place.toLocationData()),
+      repo.getHourlyForecast(place.county, place.town),
+      repo.getWeeklyForecast(place.county, place.town),
+      repo.getSunTimes(place.county, ref.read(weatherClockProvider)()),
     ).wait;
+    // 地點已變更（重新 build）則丟棄舊結果
+    if (!buildRef.mounted) return;
 
     state = WeatherState(
-      location: location,
+      location: place,
       current: current,
       hourly: hourly,
       weekly: weekly,

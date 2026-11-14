@@ -128,7 +128,7 @@ class WeatherScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${location?.city ?? ''} ${location?.district ?? ''}',
+              '${location?.county ?? ''} ${location?.town ?? ''}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 28,

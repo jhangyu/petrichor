@@ -1,36 +1,36 @@
 import 'dart:async';
 
 import 'package:cwb_flutter/core/location/location_service.dart';
+import 'package:cwb_flutter/data/models/place.dart';
 import 'package:cwb_flutter/data/models/weather_models.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:cwb_flutter/features/location/place_provider.dart';
 import 'package:cwb_flutter/features/weather/weather_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_cwa_adapter.dart';
 
 class MockLocationService extends Mock implements LocationService {}
 
 final _taipei = LocationData(latitude: 25.046, longitude: 121.5166, city: '臺北市', district: '中正區');
+const _banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01154, longitude: 121.450888);
 
-/// 縣市級樣本（臺北市）借作鄉鎮資料集：改名成查詢的鄉鎮
-Object? _renameToZhongzheng(Map<String, dynamic> json) {
-  final locations = ((json['records'] as Map)['Locations'] as List).first as Map;
-  ((locations['Location'] as List).first as Map)['LocationName'] = '中正區';
-  return null;
-}
+/// 臺北市樣本借作其他鄉鎮資料集：改名成查詢的鄉鎮
+Object? Function(Map<String, dynamic>) _renameTo(String town) => (json) {
+      final locations = ((json['records'] as Map)['Locations'] as List).first as Map;
+      ((locations['Location'] as List).first as Map)['LocationName'] = town;
+      return null;
+    };
 
 Future<WeatherState> _settled(ProviderContainer container) {
   final completer = Completer<WeatherState>();
-  late ProviderSubscription<WeatherState> sub;
-  sub = container.listen<WeatherState>(weatherNotifierProvider, (_, next) {
-    if (!next.isLoading && !completer.isCompleted) {
-      sub.close();
-      completer.complete(next);
-    }
+  final sub = container.listen<WeatherState>(weatherNotifierProvider, (_, next) {
+    if (!next.isLoading && !completer.isCompleted) completer.complete(next);
   }, fireImmediately: true);
-  return completer.future;
+  return completer.future.whenComplete(sub.close);
 }
 
 void main() {
@@ -39,6 +39,7 @@ void main() {
   late ProviderContainer container;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     location = MockLocationService();
     adapter = FakeCwaAdapter();
     container = ProviderContainer(overrides: [
@@ -49,40 +50,68 @@ void main() {
     addTearDown(container.dispose);
   });
 
-  test('loads real observation, 3-hourly and weekly data', () async {
-    when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
+  void serveTaipei() {
     adapter.serveFixture('O-A0003-001');
     adapter.serveFixture('F-D0047-061');
     adapter.serveFixture('A-B0062-001');
-    adapter.serveFixture('F-D0047-091', _renameToZhongzheng, 'F-D0047-063');
+    adapter.serveFixture('F-D0047-091', _renameTo('中正區'), 'F-D0047-063');
+  }
+
+  test('loads real observation, 3-hourly and weekly data for the GPS place', () async {
+    when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
+    serveTaipei();
 
     final s = await _settled(container);
 
     expect(s.error, isNull);
-    expect(s.location, _taipei);
+    expect(s.location, Place.fromLocation(_taipei));
     expect(s.current!.data.temperature, isNotNull);
     expect(s.hourly!.data, hasLength(4));
     expect(s.weekly!.data.first.minTemperature, 21);
     expect(s.sun!.data, hasLength(2));
   });
 
-  test('location failure maps to a Chinese message and never calls the API', () async {
+  test('permission denied with no saved choice: no place, denial reason, API never called', () async {
     when(() => location.getCurrentLocation()).thenThrow(
-      LocationException(LocationFailure.permissionDeniedForever, 'denied'),
+      LocationException(LocationFailure.permissionDenied, 'denied'),
     );
 
     final s = await _settled(container);
+    final place = await container.read(currentPlaceProvider.future);
 
-    expect(s.error, '定位權限已被永久拒絕，請到系統設定開啟');
+    expect(place, isA<NoPlace>().having((p) => p.reason, 'reason', LocationFailure.permissionDenied));
+    expect(s.error, locationFailureMessage(LocationFailure.permissionDenied));
+    expect(s.location, isNull);
     expect(s.current, isNull);
     expect(adapter.requests, isEmpty);
+  });
+
+  test('after selecting a manual town the home provider queries that town', () async {
+    when(() => location.getCurrentLocation()).thenThrow(
+      LocationException(LocationFailure.permissionDenied, 'denied'),
+    );
+    adapter.serveFixture('O-A0003-001');
+    adapter.serveFixture('F-D0047-061', _renameTo('板橋區'), 'F-D0047-069');
+    adapter.serveFixture('F-D0047-091', _renameTo('板橋區'), 'F-D0047-071');
+    adapter.serveFixture('A-B0062-001');
+    await _settled(container);
+
+    await container.read(currentPlaceProvider.notifier).select(_banqiao);
+    final s = await _settled(container);
+
+    expect(s.location, _banqiao);
+    expect(s.hourly!.data, hasLength(4));
+    final byDataset = {for (final r in adapter.requests) r.pathSegments.last: r.queryParameters};
+    expect(byDataset['F-D0047-069']!['LocationName'], '板橋區');
+    expect(byDataset['F-D0047-071']!['LocationName'], '板橋區');
+    expect(byDataset['A-B0062-001']!['CountyName'], '新北市');
   });
 
   test('failing sun times keep observation and both forecasts', () async {
     when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
     adapter.serveFixture('O-A0003-001');
     adapter.serveFixture('F-D0047-061');
-    adapter.serveFixture('F-D0047-091', _renameToZhongzheng, 'F-D0047-063');
+    adapter.serveFixture('F-D0047-091', _renameTo('中正區'), 'F-D0047-063');
     adapter.serveStatus('A-B0062-001', 500);
 
     final s = await _settled(container);
@@ -97,7 +126,7 @@ void main() {
     when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
     adapter.serveFixture('O-A0003-001');
     adapter.serveStatus('F-D0047-061', 500);
-    adapter.serveFixture('F-D0047-091', _renameToZhongzheng, 'F-D0047-063');
+    adapter.serveFixture('F-D0047-091', _renameTo('中正區'), 'F-D0047-063');
     adapter.serveFixture('A-B0062-001');
 
     final s = await _settled(container);

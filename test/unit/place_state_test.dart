@@ -1,0 +1,68 @@
+import 'package:cwb_flutter/core/location/location_service.dart';
+import 'package:cwb_flutter/data/models/place.dart';
+import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:cwb_flutter/features/location/place_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/fake_cwa_adapter.dart';
+
+class MockLocationService extends Mock implements LocationService {}
+
+const _banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01154, longitude: 121.450888);
+const _magong = Place(county: '澎湖縣', town: '馬公市', latitude: 23.565, longitude: 119.586);
+
+void main() {
+  late MockLocationService location;
+
+  ProviderContainer newContainer() {
+    final container = ProviderContainer(overrides: [locationServiceProvider.overrideWithValue(location)]);
+    addTearDown(container.dispose);
+    return container;
+  }
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    location = MockLocationService();
+  });
+
+  test('town list parses with county in 「臺」 and coordinates', () async {
+    final adapter = FakeCwaAdapter()..serveFixture('F-D0047-061');
+
+    final towns = (await WeatherRepository(adapter.dio()).getTowns('台北市')).data;
+
+    expect(adapter.requests.single.pathSegments.last, 'F-D0047-061');
+    expect(towns, [const Place(county: '臺北市', town: '中正區', latitude: 25.046058, longitude: 121.516565)]);
+  });
+
+  test('saved places and the manual choice round-trip through persistence', () async {
+    when(() => location.getCurrentLocation()).thenThrow(LocationException(LocationFailure.permissionDenied, 'denied'));
+    final first = newContainer();
+    final saved = first.read(savedPlacesProvider.notifier);
+    await saved.save(_banqiao);
+    await saved.save(_magong);
+    await saved.save(_banqiao);
+    await saved.remove(_magong);
+    await saved.save(_magong);
+    await first.read(currentPlaceProvider.notifier).select(_banqiao);
+
+    clearInteractions(location);
+    final second = newContainer();
+
+    expect(await second.read(savedPlacesProvider.future), [_banqiao, _magong]);
+    final current = await second.read(currentPlaceProvider.future) as PlaceSelected;
+    expect((current.place, current.source), (_banqiao, PlaceSource.manual));
+    verifyNever(() => location.getCurrentLocation());
+  });
+
+  test('corrupted stored places surface a typed error', () async {
+    SharedPreferences.setMockInitialValues({PlaceStore.savedKey: '[{"county":"新北市"}]'});
+
+    await expectLater(
+      newContainer().read(savedPlacesProvider.future),
+      throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', PlaceStore.savedKey)),
+    );
+  });
+}
