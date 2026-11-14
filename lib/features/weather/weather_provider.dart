@@ -17,6 +17,9 @@ class WeatherState {
 
   /// 72 小時預報（[hourly] 同一資料集）的發布時間
   final Result<DateTime>? hourlyIssuedAt;
+
+  /// App 完成這次載入的時刻（[weatherClockProvider]）；首頁「更新於」。尚未載入完成為 null
+  final DateTime? fetchedAt;
   final bool isLoading;
 
   /// 使用者可讀的中文錯誤訊息（整頁級）
@@ -29,6 +32,7 @@ class WeatherState {
     this.weekly,
     this.sun,
     this.hourlyIssuedAt,
+    this.fetchedAt,
     this.isLoading = true,
     this.error,
   });
@@ -75,6 +79,7 @@ class WeatherNotifier extends Notifier<WeatherState> {
       weekly: weekly,
       sun: sun,
       hourlyIssuedAt: hourlyIssuedAt,
+      fetchedAt: ref.read(weatherClockProvider)(),
       isLoading: false,
     );
   }

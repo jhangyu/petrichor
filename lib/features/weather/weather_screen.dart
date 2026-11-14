@@ -81,7 +81,8 @@ class WeatherScreen extends ConsumerWidget {
     };
   }
 
-  /// 「目前位置 · 更新於 14:00」: the observation time of the current data (O-A0003-001 ObsTime).
+  /// 「目前位置 · 更新於 14:10」: when the app last finished loading the home data
+  /// ([WeatherState.fetchedAt]); the observation time stays on the hero's 即時觀測 line.
   String _subtitle(AsyncValue<CurrentPlace> place, WeatherState weather) {
     final source = switch (place) {
       AsyncData(value: PlaceSelected(source: PlaceSource.gps)) => '目前位置',
@@ -91,9 +92,9 @@ class WeatherScreen extends ConsumerWidget {
     };
     if (!(place is AsyncData && place.value is PlaceSelected)) return source;
     if (weather.isLoading) return '$source · 更新中…';
-    return switch (weather.current) {
-      Success(:final data) => '$source · 更新於 ${clockText(data.observedAt)}',
-      _ => source,
+    return switch (weather.fetchedAt) {
+      final at? => '$source · 更新於 ${clockText(at)}',
+      null => source,
     };
   }
 

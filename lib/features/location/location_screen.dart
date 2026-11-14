@@ -659,7 +659,11 @@ class _PlaceHero extends ConsumerWidget {
             ],
           ),
           Text(
-            [?data.weather, '降雨 ${percentText(pop)}', '更新於 ${clockText(data.observedAt)}'].join(' · '),
+            [
+              ?data.weather,
+              '降雨 ${percentText(pop)}',
+              if (weather.fetchedAt case final at?) '更新於 ${clockText(at)}',
+            ].join(' · '),
             style: AppType.caption1.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular),
           ),
         ),

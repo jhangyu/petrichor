@@ -94,6 +94,16 @@ void main() {
     expect(adapter.fileRequests.single.pathSegments.last, 'F-D0047-061');
   });
 
+  test('更新於 is the injected clock at load completion, not the observation time', () async {
+    when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
+    serveTaipei();
+
+    final s = await _settled(container);
+
+    expect(s.fetchedAt, DateTime.utc(2026, 11, 14, 4));
+    expect(s.fetchedAt, isNot(s.current!.data.observedAt));
+  });
+
   test('permission denied with no saved choice: no place, denial reason, API never called', () async {
     when(() => location.getCurrentLocation()).thenThrow(
       LocationException(LocationFailure.permissionDenied, 'denied'),
