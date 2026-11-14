@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_shell.dart' show AppTab, appTabProvider;
 import '../../core/location/location_service.dart' show LocationFailure;
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
@@ -89,19 +90,23 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
     );
   }
 
-  /// 「手動選擇」 cannot switch to the 地點 tab from a page (AppShell owns the tab index),
-  /// so the guidance names the tab instead of linking to it.
   Widget _noPlaceBanner(LocationFailure reason) {
     return StatusBanner(
       tone: StatusTone.permission,
       title: '尚無目前地點',
-      text: '${locationFailureMessage(reason)}。手動選擇請到下方「地點」分頁。',
+      text: locationFailureMessage(reason),
       actions: [
         AppButton(
           label: '允許定位',
           variant: AppButtonVariant.primary,
           small: true,
           onPressed: () => ref.read(currentPlaceProvider.notifier).useGps(),
+        ),
+        AppButton(
+          label: '手動選擇',
+          variant: AppButtonVariant.subtle,
+          small: true,
+          onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
         ),
       ],
     );

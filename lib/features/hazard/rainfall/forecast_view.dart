@@ -69,7 +69,7 @@ class ForecastHeroCard extends StatelessWidget {
                   ],
                 ),
                 Text(
-                  mm == null ? '$placeName 此格無預測值' : '$placeName預估雨量${umbrella ? ' · 出門請帶傘' : ''}',
+                  mm == null ? '$placeName 此格無有效預測（雷達無回波或無資料）' : '$placeName預估雨量${umbrella ? ' · 出門請帶傘' : ''}',
                   style: AppType.caption1.copyWith(color: AppPalette.fg3),
                 ),
               ],
