@@ -41,8 +41,9 @@ final radarWindowFramesProvider = NotifierProvider<RadarWindowFrames, int>(Radar
 final radarFramesProvider = FutureProvider.autoDispose<List<RadarFrame>>((ref) =>
     ref.watch(radarFrameRepositoryProvider).refresh(windowFrames: ref.watch(radarWindowFramesProvider)));
 
-/// Latest open-data station radar image (O-A0084-00x) with bounds from the response.
-final openDataRadarProvider = FutureProvider.autoDispose.family<OpenDataRadarImage, String>((ref, datasetId) async {
+/// Latest open-data station radar image (O-A0084-00x) with bounds from the
+/// response and echo statistics of the image.
+final openDataRadarProvider = FutureProvider.autoDispose.family<StationRadarFrame, String>((ref, datasetId) async {
   if (!AppConstants.hasApiKey) {
     throw RadarDataException(datasetId, expected: 'CWA_API_KEY via --dart-define', actual: 'none');
   }
@@ -56,5 +57,5 @@ final openDataRadarProvider = FutureProvider.autoDispose.family<OpenDataRadarIma
   if (body is! Map<String, dynamic>) {
     throw RadarDataException(datasetId, expected: 'JSON object', actual: body.runtimeType);
   }
-  return OpenDataRadarImage.fromJson(datasetId, body);
+  return loadStationRadarFrame(ref.watch(fileApiDioProvider), OpenDataRadarImage.fromJson(datasetId, body));
 });

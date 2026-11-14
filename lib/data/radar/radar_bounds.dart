@@ -19,6 +19,10 @@ final websiteRadarBandBounds = [
     ),
 ];
 
+/// Whole source frame (linear in latitude), for echo statistics lookups.
+final websiteRadarFrameBounds =
+    LatLngBounds(const LatLng(radarFrameSouth, radarFrameWest), const LatLng(radarFrameNorth, radarFrameEast));
+
 double _edgeLat(int row) => mercatorRowEdgeLat(row,
     height: radarFrameRowMap.length, south: radarFrameSouth, north: radarFrameNorth);
 

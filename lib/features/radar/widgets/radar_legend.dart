@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../data/radar/radar_echo_stats.dart';
 
 /// dBZ legend steps: colour (data-vis tokens), tick label, intensity word.
 const _steps = [
@@ -16,10 +17,7 @@ const _steps = [
 /// Colour name of each legend step, as the hero says it (「最強約 45 dBZ（橙）」).
 const _colourNames = ['淺藍', '藍', '綠', '黃', '橙', '紅', '紫'];
 
-/// Each legend step spans this many dBZ.
-const _dbzPerStep = 10;
-
-int _stepOf(int dbz) => (dbz ~/ _dbzPerStep).clamp(0, _steps.length - 1);
+int _stepOf(int dbz) => (dbz ~/ radarDbzBandWidth).clamp(0, _steps.length - 1);
 
 /// Legend colour of the step containing [dbz].
 Color radarDbzColour(int dbz) => _steps[_stepOf(dbz)].$1;

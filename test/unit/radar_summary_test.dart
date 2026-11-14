@@ -1,42 +1,75 @@
 import 'dart:typed_data';
 
 import 'package:cwb_flutter/data/models/place.dart';
+import 'package:cwb_flutter/data/radar/radar_bounds.dart';
 import 'package:cwb_flutter/data/radar/radar_echo_stats.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:cwb_flutter/features/radar/radar_summary.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 
 const _columns = radarFrameSize ~/ radarStatsCellPixels;
 
-/// Full-frame stats with [strongest] dBZ somewhere and [nearTaipei] in the
-/// Taipei cell (113, 73).
-RadarEchoStats _frame({required int strongest, int? nearTaipei}) {
-  final cells = Uint8List(_columns * _columns)..fillRange(0, _columns * _columns, radarNoEcho);
-  if (nearTaipei != null) cells[73 * _columns + 113] = nearTaipei;
+/// Stats over [frame] with [strongest] dBZ reached by enough pixels and the
+/// given cell band pixels keyed (col, row, band).
+RadarEchoStats _frame({required int strongest, Map<(int, int, int), int> cells = const {}, LatLngBounds? frame}) {
+  final grid = Uint16List(_columns * _columns * radarDbzBands);
+  cells.forEach((k, px) => grid[(k.$2 * _columns + k.$1) * radarDbzBands + k.$3] = px);
   return RadarEchoStats(
-    pixelsPerDbz: [for (var d = 0; d < radarEchoPalette.length; d++) d == strongest ? radarEchoMinPixels : 0],
-    cellMaxDbz: cells,
+    frame: frame ?? websiteRadarFrameBounds,
+    imageWidth: radarFrameSize,
+    imageHeight: radarFrameSize,
+    pixelsPerDbz: [for (var d = 0; d < radarEchoPalette.length; d++) d == strongest ? 100000 : 0],
+    cellBandPixels: grid,
     gridColumns: _columns,
     gridRows: _columns,
   );
 }
 
 const _taipei = Place(county: '臺北市', town: '中正區', latitude: 25.046058, longitude: 121.516565);
+const _coverage = '臺灣本島及周邊海域';
 
 void main() {
-  test('below the significant level: 無明顯回波', () {
-    expect(radarEchoSummary(_frame(strongest: radarSignificantEchoDbz - 1)).title, '目前無明顯回波');
+  test('below the significant level: 無明顯回波 with the coverage name', () {
+    final s = radarEchoSummary(_frame(strongest: radarSignificantEchoDbz - 1), coverage: _coverage);
+    expect(s, (title: '目前無明顯回波', meta: '資料正常更新；臺灣本島及周邊海域未偵測到降雨訊號'));
   });
 
-  test('strong echo with echo near the place', () {
-    final s = radarEchoSummary(_frame(strongest: 45, nearTaipei: 32), place: _taipei);
-    expect(s.title, '目前有強回波');
-    expect(s.meta, '最強約 45 dBZ（橙） · 臺北市 中正區附近最強約 32 dBZ');
+  test('strong regions are named in fixed order; band near the place', () {
+    final s = radarEchoSummary(
+      _frame(strongest: 45, cells: {(92, 115, 4): 200, (113, 73, 3): 200}),
+      coverage: _coverage,
+      place: _taipei,
+    );
+    expect(s.title, '南部有強回波');
+    expect(s.meta, '最強約 45 dBZ（橙） · 臺北市 中正區附近30–40 dBZ');
   });
 
-  test('moderate echo, only weak echo near the place', () {
-    final s = radarEchoSummary(_frame(strongest: radarStrongEchoDbz - 1, nearTaipei: 12), place: _taipei);
-    expect(s.title, '目前有降雨回波');
-    expect(s.meta, '最強約 39 dBZ（黃） · 臺北市 中正區附近無明顯回波');
+  test('no strong region: regions with rain echo in order; weak echo near the place', () {
+    final s = radarEchoSummary(
+      _frame(strongest: 39, cells: {(139, 126, 3): 200, (113, 73, 3): 200, (113, 75, 1): 500}),
+      coverage: _coverage,
+      place: _taipei,
+    );
+    expect(s.title, '北部、外海有降雨回波');
+    expect(s.meta, '最強約 39 dBZ（黃） · 臺北市 中正區附近30–40 dBZ');
+    final weak = radarEchoSummary(_frame(strongest: 39, cells: {(113, 73, 1): 500}), coverage: _coverage, place: _taipei);
+    expect(weak.title, '目前有零星回波');
+    expect(weak.meta, '最強約 39 dBZ（黃） · 臺北市 中正區附近無明顯回波');
+  });
+
+  test('station geometry: cells map through the station bounds; top band label', () {
+    // 樹林 radar (O-A0084-001): centre 25.00 N 121.40 E, ±150 km; image centre
+    // cell (100, 100) is the station, in 北部. Station pixels are ~0.007 km²,
+    // so the area rule needs ~1,700 px: 2 x 1,000 px.
+    final bounds = stationRadarBounds(const LatLng(25.0, 121.4), radiusKm: 150);
+    final s = radarEchoSummary(
+      _frame(strongest: 62, frame: bounds, cells: {(100, 100, 6): 1000, (101, 100, 6): 1000}),
+      coverage: '樹林雷達站涵蓋範圍內',
+      place: const Place(county: '新北市', town: '樹林區', latitude: 25.0, longitude: 121.4),
+    );
+    expect(s.title, '北部有強回波');
+    expect(s.meta, '最強約 62 dBZ（紫） · 新北市 樹林區附近60+ dBZ');
   });
 }

@@ -13,7 +13,7 @@ import 'radar_frame_processor.dart';
 
 /// Cache sub-directory; the suffix changes whenever processing output changes,
 /// so frames made by an older pipeline are never shown.
-const radarFrameCacheDirName = 'radar_cv1_3600_webp_v3';
+const radarFrameCacheDirName = 'radar_cv1_3600_webp_v4';
 
 /// Radar data could not be obtained or did not have the expected shape.
 class RadarDataException implements Exception {
@@ -102,7 +102,7 @@ class RadarFrameRepository {
       for (var i = 0; i < processed.bands.length; i++) {
         await bandFile(tmp, i).writeAsBytes(processed.bands[i], flush: true);
       }
-      await statsFile(tmp).writeAsBytes(processed.stats.toBytes(), flush: true);
+      await statsFile(tmp).writeAsBytes(gzip.encode(processed.stats.toBytes()), flush: true);
       await tmp.rename(target.path);
     }
     return [
@@ -113,14 +113,42 @@ class RadarFrameRepository {
             for (var i = 0; i < websiteRadarBandBounds.length; i++)
               RadarFrameBand(file: bandFile(frameDir(f), i), bounds: websiteRadarBandBounds[i]),
           ],
-          stats: RadarEchoStats.fromBytes(await statsFile(frameDir(f)).readAsBytes(), source: statsFile(frameDir(f)).path),
+          stats: RadarEchoStats.fromBytes(
+            Uint8List.fromList(gzip.decode(await statsFile(frameDir(f)).readAsBytes())),
+            source: statsFile(frameDir(f)).path,
+          ),
         ),
     ];
   }
 }
 
-/// Per-frame echo statistics file (see [RadarEchoStats.toBytes]).
-const _statsFileName = 'echo_stats.bin';
+/// Latest open-data station radar image with its echo statistics. The PNG is
+/// kept in memory and shown from there (one download for map and stats).
+class StationRadarFrame {
+  final OpenDataRadarImage image;
+  final Uint8List png;
+  final RadarEchoStats stats;
+
+  const StationRadarFrame({required this.image, required this.png, required this.stats});
+
+  /// Decoded at [decodeWidth] px (see [RadarFrameBand.imageProvider]).
+  ImageProvider imageProvider({required int decodeWidth}) =>
+      ResizeImage(MemoryImage(png), width: decodeWidth, policy: ResizeImagePolicy.fit);
+}
+
+/// Downloads [image]'s PNG and computes its echo statistics off the UI isolate.
+Future<StationRadarFrame> loadStationRadarFrame(Dio dio, OpenDataRadarImage image) async {
+  final response = await dio.get<List<int>>(image.imageUrl, options: Options(responseType: ResponseType.bytes));
+  final body = response.data ??
+      (throw RadarDataException(image.imageUrl, expected: 'PNG body', actual: 'HTTP ${response.statusCode} without body'));
+  final png = Uint8List.fromList(body);
+  final bounds = image.bounds;
+  return StationRadarFrame(image: image, png: png, stats: await Isolate.run(() => processStationRadarImage(png, frame: bounds)));
+}
+
+/// Per-frame echo statistics file: gzip of [RadarEchoStats.toBytes] (the cell
+/// grid is mostly zeros: ~560 KB raw).
+const _statsFileName = 'echo_stats.bin.gz';
 
 /// Top-level so the isolate closure captures only [png].
 Future<({List<Uint8List> bands, RadarEchoStats stats})> _processOffUiIsolate(Uint8List png) =>

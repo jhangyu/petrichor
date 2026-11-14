@@ -14,7 +14,6 @@ import '../../core/widgets/choices.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
-import '../../data/radar/radar_bounds.dart';
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart';
 import '../location/place_provider.dart';
@@ -213,7 +212,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       data: (frames) {
         final index = _currentIndex(frames.length);
         final frame = frames[index];
-        final summary = radarEchoSummary(frames.last.stats, place: _place);
+        final summary = radarEchoSummary(
+          frames.last.stats,
+          coverage: '臺灣本島及周邊海域',
+          place: _place,
+        );
         return _RadarView(
           subtitle: '觀測 ${formatTaiwanFull(frames.last.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新',
           sourceIds: const ['雷達回波：官網時間戳記圖', AppConstants.radarTaiwan],
@@ -265,7 +268,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     );
   }
 
-  _RadarView _stationView(AsyncValue<OpenDataRadarImage> async) {
+  _RadarView _stationView(AsyncValue<StationRadarFrame> async) {
     final name = _stationNames[_source]!;
     if (!AppConstants.hasApiKey) {
       return _RadarView(
@@ -279,25 +282,32 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     return async.when(
       loading: () => _loadingView(),
       error: (e, _) => _errorView(e),
-      data: (image) {
+      data: (station) {
+        final image = station.image;
         final center = image.bounds.center;
         final radius = const Distance().as(LengthUnit.Meter, center, LatLng(image.bounds.north, center.longitude));
+        final summary = radarEchoSummary(
+          station.stats,
+          coverage: '$name雷達站涵蓋範圍內',
+          place: _place,
+        );
         return _RadarView(
           subtitle: '$name站 · 觀測 ${formatTaiwanFull(image.time)}',
           sourceIds: [_source],
           hero: _heroCard(
             eyebrow: '$name雷達站',
-            note: '僅顯示虛線圈內範圍 · 圈外請改看全台合成',
+            title: summary.title,
+            note: '${summary.meta}\n僅顯示虛線圈內範圍 · 圈外請改看全台合成',
             map: RadarMapView(
               me: _me,
               chipIcon: Icons.schedule,
               chipText: formatTaiwanMonthDayClock(image.time),
               semanticsLabel: '$name雷達回波地圖，虛線圈為涵蓋範圍',
-              overlayBuilder: (_) => [
+              overlayBuilder: (decodeWidth) => [
                 OverlayImage(
                   bounds: image.bounds,
                   opacity: _opacityPercent / 100,
-                  imageProvider: NetworkImage(image.imageUrl),
+                  imageProvider: station.imageProvider(decodeWidth: decodeWidth),
                 ),
               ],
               extraLayers: [

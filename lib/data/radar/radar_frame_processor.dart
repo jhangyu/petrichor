@@ -1,8 +1,10 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter_map/flutter_map.dart';
 import 'package:image/image.dart' as img;
 
+import 'radar_bounds.dart';
 import 'radar_echo_stats.dart';
 
 /// Post-processing of a website `CV1_3600_` frame: background → transparent,
@@ -75,7 +77,7 @@ List<(int, int)> radarBandRows({int bands = radarFrameBands}) {
           lossless: true,
         ),
     ],
-    stats: radarEchoStats(src, decorations: websiteFrameDecorations),
+    stats: radarEchoStats(src, frame: websiteRadarFrameBounds, decorations: websiteFrameDecorations),
   );
 }
 
@@ -87,6 +89,23 @@ Uint32List radarEchoColourBits() {
     bits[c >> 5] |= 1 << (c & 31);
   }
   return bits;
+}
+
+/// Decorations of the O-A0084-00x station images drawn in legend colours: only
+/// the dBZ colour bar (identical on all three stations, 66 x 1032 px; no other
+/// legend-colour pixels outside the 150 km circle, measured 2026-11-14).
+const stationFrameDecorations = <PixelRect>[
+  (left: 3461, top: 2541, right: 3527, bottom: 3573),
+];
+
+/// Echo statistics of one open-data station image (3600 x 3600 PNG, same
+/// legend colours as the website frames). Pure: run it in a background isolate.
+RadarEchoStats processStationRadarImage(Uint8List png, {required LatLngBounds frame}) {
+  final src = img.decodePng(png) ?? (throw const FormatException('station radar: expected PNG bytes, decode failed'));
+  if (src.width != radarFrameSize || src.height != radarFrameSize) {
+    throw FormatException('station radar: expected ${radarFrameSize}x$radarFrameSize, got ${src.width}x${src.height}');
+  }
+  return radarEchoStats(src, frame: frame, decorations: stationFrameDecorations);
 }
 
 /// Throws unless [src] is 8-bit RGB without palette (the website frame format).
