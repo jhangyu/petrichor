@@ -34,7 +34,10 @@ class RadarLegend extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('回波強度', style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
+                Text(
+                  '回波強度',
+                  style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600),
+                ),
                 Text('dBZ', style: caption),
               ],
             ),
@@ -48,8 +51,16 @@ class RadarLegend extends StatelessWidget {
               ),
             ),
           ),
-          row([for (final (_, tick, _) in _steps) Text(tick, textAlign: TextAlign.center, style: caption.copyWith(fontFeatures: AppType.tabular))]),
-          if (showWords) row([for (final (_, _, word) in _steps) Text(word, textAlign: TextAlign.center, style: caption)]),
+          row([
+            for (final (_, tick, _) in _steps)
+              Text(
+                tick,
+                textAlign: TextAlign.center,
+                style: caption.copyWith(fontFeatures: AppType.tabular),
+              ),
+          ]),
+          if (showWords)
+            row([for (final (_, _, word) in _steps) Text(word, textAlign: TextAlign.center, style: caption)]),
         ],
       ),
     );

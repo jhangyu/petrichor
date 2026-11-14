@@ -5,12 +5,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_frame_processor.dart';
 
-/// Map centre and zoom: Taiwan overview.
+/// Map centre and zoom: Taiwan overview when the place is unknown, else the place.
 const _taiwanCenter = LatLng(23.7, 121.0);
 const _overviewZoom = 6.5;
+const _locatedZoom = 8.0;
 
 const _tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const _userAgentPackage = 'com.example.cwbweather';
@@ -20,13 +22,20 @@ const _frameLonSpanDegrees = 11.5;
 const _webMercatorTileSize = 256.0;
 const _fullCircleDegrees = 360.0;
 
-/// `.radar-map`: 5:6 map with the time chip (top left). [overlayBuilder] gets the pixel width the
+const _pinDot = 9.0;
+const _pinHalo = 20.0;
+const _pinHaloAlpha = 0.2;
+const _pinBorder = 2.0;
+
+/// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 button
+/// (top right) and the current place's pin. [overlayBuilder] gets the pixel width the
 /// radar bands should be decoded at: the viewport width while [playing] (a
 /// full-size decoded frame is ~54 MB), the on-screen image width (capped at the
 /// full frame) when paused so a zoomed frame stays sharp.
 class RadarMapView extends StatefulWidget {
   const RadarMapView({
     super.key,
+    required this.me,
     this.chipText,
     this.chipIcon,
     this.overlayBuilder,
@@ -36,6 +45,9 @@ class RadarMapView extends StatefulWidget {
     this.muted = false,
     this.semanticsLabel,
   });
+
+  /// Current place; null = no place (pin hidden, locate button disabled).
+  final LatLng? me;
 
   /// Top-left chip (observation time / 無雷達資料); none while loading.
   final String? chipText;
@@ -57,7 +69,16 @@ class RadarMapView extends StatefulWidget {
 
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
-  late int _zoomStep = _overviewZoom.ceil();
+  late int _zoomStep = _initialZoom().ceil();
+
+  double _initialZoom() => widget.me == null ? _overviewZoom : _locatedZoom;
+
+  @override
+  void didUpdateWidget(RadarMapView old) {
+    super.didUpdateWidget(old);
+    final me = widget.me;
+    if (me != null && me != old.me) _controller.move(me, _locatedZoom);
+  }
 
   @override
   void dispose() {
@@ -75,6 +96,7 @@ class _RadarMapViewState extends State<RadarMapView> {
 
   @override
   Widget build(BuildContext context) {
+    final me = widget.me;
     final builder = widget.overlayBuilder;
     final chipText = widget.chipText;
     final map = ClipRRect(
@@ -90,8 +112,8 @@ class _RadarMapViewState extends State<RadarMapView> {
                 child: FlutterMap(
                   mapController: _controller,
                   options: MapOptions(
-                    initialCenter: _taiwanCenter,
-                    initialZoom: _overviewZoom,
+                    initialCenter: me ?? _taiwanCenter,
+                    initialZoom: _initialZoom(),
                     onPositionChanged: (camera, _) {
                       final step = camera.zoom.ceil();
                       if (step != _zoomStep) setState(() => _zoomStep = step);
@@ -101,13 +123,27 @@ class _RadarMapViewState extends State<RadarMapView> {
                     TileLayer(urlTemplate: _tileUrl, userAgentPackageName: _userAgentPackage),
                     if (builder != null) OverlayImageLayer(overlayImages: builder(_decodeWidth(box.maxWidth))),
                     ...widget.extraLayers,
+                    if (me != null)
+                      MarkerLayer(
+                        markers: [Marker(point: me, width: _pinHalo, height: _pinHalo, child: const _MePin())],
+                      ),
                   ],
                 ),
               ),
               if (chipText != null)
-                Positioned(top: AppSpace.s12, left: AppSpace.s12, child: _MapChip(icon: widget.chipIcon, text: chipText)),
+                Positioned(
+                  top: AppSpace.s12,
+                  left: AppSpace.s12,
+                  child: _MapChip(icon: widget.chipIcon, text: chipText),
+                ),
               if (widget.loading)
-                const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true)),
+                const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))
+              else
+                Positioned(
+                  top: AppSpace.s12,
+                  right: AppSpace.s12,
+                  child: _LocateFab(onPressed: me == null ? null : () => _controller.move(me, _locatedZoom)),
+                ),
             ],
           ),
         ),
@@ -129,12 +165,18 @@ class _MapChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = (large ? AppType.body1 : AppType.caption1)
-        .copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular);
+    final style = (large ? AppType.body1 : AppType.caption1).copyWith(
+      color: AppPalette.fg1,
+      fontWeight: FontWeight.w600,
+      fontFeatures: AppType.tabular,
+    );
     final glyph = icon;
     return Container(
       constraints: BoxConstraints(minHeight: large ? AppSize.touch : AppSize.controlSm),
-      padding: EdgeInsets.symmetric(horizontal: large ? AppSpace.s16 : AppSpace.s12, vertical: large ? AppSpace.s8 : AppSpace.s4),
+      padding: EdgeInsets.symmetric(
+        horizontal: large ? AppSpace.s16 : AppSpace.s12,
+        vertical: large ? AppSpace.s8 : AppSpace.s4,
+      ),
       decoration: BoxDecoration(
         color: AppPalette.bgOverlay,
         borderRadius: BorderRadius.circular(AppRadius.circular),
@@ -144,9 +186,68 @@ class _MapChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: large ? AppSpace.s8 : AppSpace.s4,
         children: [
-          if (spinner) const AppSpinner() else if (glyph != null) Icon(glyph, size: AppSize.icon16, color: AppPalette.fg1),
+          if (spinner)
+            const AppSpinner()
+          else if (glyph != null)
+            Icon(glyph, size: AppSize.icon16, color: AppPalette.fg1),
           Text(text, style: style),
         ],
+      ),
+    );
+  }
+}
+
+class _MePin extends StatelessWidget {
+  const _MePin();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: _pinHalo,
+          height: _pinHalo,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppPalette.dangerSolid.withValues(alpha: _pinHaloAlpha),
+          ),
+        ),
+        Container(
+          width: _pinDot,
+          height: _pinDot,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppPalette.dangerSolid,
+            border: Border.all(color: AppPalette.bg1, width: _pinBorder),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// `.fab` 「回到我的位置」; disabled without a current place.
+class _LocateFab extends StatelessWidget {
+  const _LocateFab({required this.onPressed});
+
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Material(
+      color: AppPalette.bg1,
+      shape: const CircleBorder(),
+      elevation: 0,
+      shadowColor: AppPalette.transparent,
+      child: DecoratedBox(
+        decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: enabled ? AppShadows.s4 : AppShadows.s2),
+        child: AppIconButton(
+          icon: Icons.my_location,
+          tooltip: enabled ? '回到我的位置' : '回到我的位置（沒有目前地點）',
+          onPressed: onPressed,
+        ),
       ),
     );
   }

@@ -24,17 +24,15 @@ class RadarTick {
 
 /// Next step of the loop after showing frame [index] of [count], or null when
 /// playback ends (last frame shown and repeat is off).
-RadarTick? radarNextTick({
-  required int index,
-  required int count,
-  required int fps,
-  required bool repeat,
-}) {
+RadarTick? radarNextTick({required int index, required int count, required int fps, required bool repeat}) {
   if (index < 0 || index >= count) {
     throw RangeError.range(index, 0, count - 1, 'index');
   }
   if (index < count - 1) {
-    return RadarTick(delay: Duration(microseconds: Duration.microsecondsPerSecond ~/ fps), nextIndex: index + 1);
+    return RadarTick(
+      delay: Duration(microseconds: Duration.microsecondsPerSecond ~/ fps),
+      nextIndex: index + 1,
+    );
   }
   return repeat ? const RadarTick(delay: radarRepeatPause, nextIndex: 0) : null;
 }

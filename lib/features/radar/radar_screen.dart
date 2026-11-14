@@ -15,6 +15,7 @@ import '../../core/widgets/status.dart';
 import '../../data/radar/radar_bounds.dart';
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart';
+import '../location/place_provider.dart';
 import 'radar_playback.dart';
 import 'radar_provider.dart';
 import 'widgets/playback_card.dart';
@@ -34,11 +35,7 @@ const _ringDash = [4.0, 4.0];
 const _stationDotRadius = 3.5;
 const _fullCircleDegrees = 360;
 
-const _stationNames = {
-  AppConstants.radarShulin: '樹林',
-  AppConstants.radarNantun: '南屯',
-  AppConstants.radarLinyuan: '林園',
-};
+const _stationNames = {AppConstants.radarShulin: '樹林', AppConstants.radarNantun: '南屯', AppConstants.radarLinyuan: '林園'};
 
 const _radarSources = [
   (AppConstants.radarTaiwan, '全台合成'),
@@ -68,6 +65,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   /// Shown frame; null = the newest one (follows a reload).
   int? _index;
   Timer? _timer;
+
+  /// Current place as a map point; null while loading, on error or without a place.
+  LatLng? get _me => switch (ref.watch(currentPlaceProvider)) {
+    AsyncData(value: PlaceSelected(:final place)) => LatLng(place.latitude, place.longitude),
+    _ => null,
+  };
 
   bool get _isComposite => _source == AppConstants.radarTaiwan;
 
@@ -194,6 +197,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           hero: _heroCard(
             eyebrow: '全台合成回波',
             map: RadarMapView(
+              me: _me,
               playing: _playing,
               chipIcon: Icons.schedule,
               chipText: formatTaiwanMonthDayClock(frame.time),
@@ -259,6 +263,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             eyebrow: '$name雷達站',
             note: '僅顯示虛線圈內範圍 · 圈外請改看全台合成',
             map: RadarMapView(
+              me: _me,
               chipIcon: Icons.schedule,
               chipText: formatTaiwanMonthDayClock(image.time),
               semanticsLabel: '$name雷達回波地圖，虛線圈為涵蓋範圍',
@@ -270,31 +275,35 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                 ),
               ],
               extraLayers: [
-                PolygonLayer(polygons: [
-                  Polygon(
-                    points: [
-                      for (var i = 0; i < _ringPoints; i++)
-                        const Distance().offset(center, radius, i * _fullCircleDegrees / _ringPoints),
-                    ],
-                    borderColor: AppPalette.brandStroke,
-                    borderStrokeWidth: _ringStrokeWidth,
-                    pattern: StrokePattern.dashed(segments: _ringDash),
-                  ),
-                ]),
-                MarkerLayer(markers: [
-                  Marker(
-                    point: center,
-                    width: _stationDotRadius * 2,
-                    height: _stationDotRadius * 2,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppPalette.brandBg,
-                        border: Border.all(color: AppPalette.bg1, width: _ringStrokeWidth),
+                PolygonLayer(
+                  polygons: [
+                    Polygon(
+                      points: [
+                        for (var i = 0; i < _ringPoints; i++)
+                          const Distance().offset(center, radius, i * _fullCircleDegrees / _ringPoints),
+                      ],
+                      borderColor: AppPalette.brandStroke,
+                      borderStrokeWidth: _ringStrokeWidth,
+                      pattern: StrokePattern.dashed(segments: _ringDash),
+                    ),
+                  ],
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: center,
+                      width: _stationDotRadius * 2,
+                      height: _stationDotRadius * 2,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppPalette.brandBg,
+                          border: Border.all(color: AppPalette.bg1, width: _ringStrokeWidth),
+                        ),
                       ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
               ],
             ),
             legend: const RadarLegend(showWords: false),
@@ -306,29 +315,30 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   _RadarView _loadingView() => _RadarView(
-        subtitle: _loadingSubtitle,
-        loading: true,
-        hero: _heroCard(map: const RadarMapView(loading: true, muted: true)),
-        afterHero: const [PlaybackCard(meta: '等待影格', loading: true)],
-      );
+    subtitle: _loadingSubtitle,
+    loading: true,
+    hero: _heroCard(map: RadarMapView(me: _me, loading: true, muted: true)),
+    afterHero: const [PlaybackCard(meta: '等待影格', loading: true)],
+  );
 
   _RadarView _errorView(Object error) => _RadarView(
-        subtitle: _unreachableSubtitle,
-        hero: _heroCard(
-          banner: StatusBanner(
-            tone: StatusTone.error,
-            title: '無法取得雷達圖',
-            text: '$error。$_noEchoNotice',
-            actions: [RetryButton(onPressed: _refresh)],
-          ),
-          map: RadarMapView(
-            muted: true,
-            chipIcon: Icons.cloud_off_outlined,
-            chipText: '無雷達資料',
-            semanticsLabel: '地圖，無雷達資料',
-          ),
-        ),
-      );
+    subtitle: _unreachableSubtitle,
+    hero: _heroCard(
+      banner: StatusBanner(
+        tone: StatusTone.error,
+        title: '無法取得雷達圖',
+        text: '$error。$_noEchoNotice',
+        actions: [RetryButton(onPressed: _refresh)],
+      ),
+      map: RadarMapView(
+        me: _me,
+        muted: true,
+        chipIcon: Icons.cloud_off_outlined,
+        chipText: '無雷達資料',
+        semanticsLabel: '地圖，無雷達資料',
+      ),
+    ),
+  );
 
   // ---- cards ----
 
@@ -348,12 +358,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: AppSpace.s16,
-        children: [
-          ?titles,
-          ?banner,
-          map,
-          ?legend,
-        ],
+        children: [?titles, ?banner, map, ?legend],
       ),
     );
   }
@@ -393,7 +398,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               Text('疊圖透明度', style: AppType.body1.copyWith(color: AppPalette.fg1)),
               Text(
                 '$_opacityPercent%',
-                style: AppType.body1.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
+                style: AppType.body1.copyWith(
+                  color: AppPalette.fg1,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: AppType.tabular,
+                ),
               ),
             ],
           ),
@@ -445,10 +454,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               spacing: AppSpace.s4,
               children: [
                 Text('涵蓋範圍：臺灣本島及周邊海域', style: AppType.body1Strong.copyWith(color: AppPalette.fg2)),
-                Text(
-                  '全台合成整合各雷達站。單站雷達僅涵蓋該站周邊，距離越遠、山區背面訊號越弱。',
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3),
-                ),
+                Text('全台合成整合各雷達站。單站雷達僅涵蓋該站周邊，距離越遠、山區背面訊號越弱。', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
               ],
             ),
           ),

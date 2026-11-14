@@ -93,7 +93,11 @@ class _TimeRow extends StatelessWidget {
       children: [
         Text(
           formatTaiwanMonthDayClock(f.times[f.index]),
-          style: AppType.subtitle2.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
+          style: AppType.subtitle2.copyWith(
+            color: AppPalette.fg1,
+            fontWeight: FontWeight.w600,
+            fontFeatures: AppType.tabular,
+          ),
         ),
         Text(
           '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : '過去 $hours 小時'}',
@@ -295,7 +299,10 @@ class _SettingsState extends State<_Settings> {
                 spacing: AppSpace.s8,
                 children: [
                   const Icon(Icons.tune, size: AppSize.icon20, color: AppPalette.fg1),
-                  Text('播放設定', style: AppType.body1.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600)),
+                  Text(
+                    '播放設定',
+                    style: AppType.body1.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600),
+                  ),
                   Expanded(
                     child: Text(
                       '$hours 小時 · ${f.fps} fps · ${f.repeat ? '重複' : '不重複'}',
@@ -394,7 +401,10 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpace.s8,
-      children: [Text(label, style: _fieldLabel), child],
+      children: [
+        Text(label, style: _fieldLabel),
+        child,
+      ],
     );
   }
 }
