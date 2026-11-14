@@ -1,0 +1,174 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/api/dio_client.dart';
+import '../../core/constants/app_constants.dart';
+import '../models/hazard_models.dart';
+import 'weather_repository.dart' show Failure, Result, Success;
+
+/// 警特報：各縣市生效特報
+const String warningsByCountyDataset = 'W-C0033-001';
+
+/// 警特報：公告（發布時間、有效期間、內文、影響縣市）
+const String warningBulletinsDataset = 'W-C0033-002';
+
+/// 雨量站今日累積（datastore）
+const String rainObservationDataset = 'O-A0002-001';
+
+/// 日累積雨量圖（fileapi 專屬）
+const String rainfallMapDataset = 'O-A0040-002';
+
+/// 未來 1 小時雨量預測格點（fileapi 專屬）
+const String rainForecast1hDataset = 'F-B0046-001';
+
+const String _missingApiKeyMessage = 'API Key 未設定，請使用 --dart-define=CWA_API_KEY=your_key';
+
+final hazardRepositoryProvider = Provider<HazardRepository>((ref) {
+  return HazardRepository(
+    ref.watch(dioProvider),
+    ref.watch(fileApiDioProvider),
+    apiKey: AppConstants.cwaApiKey,
+  );
+});
+
+/// 警特報與雨量資料倉儲。所有方法回傳 [Result]，失敗訊息含資料集 ID。
+class HazardRepository {
+  final Dio _dio;
+  final Dio _fileApiDio;
+  final String apiKey;
+
+  HazardRepository(this._dio, this._fileApiDio, {required this.apiKey});
+
+  /// 目前生效的縣市層級特報（-001）併公告（-002）。
+  ///
+  /// 「無生效特報」＝ -001 的 `records.location` 存在且每縣市 hazards 皆空，
+  /// -002 的 `records.record` 缺漏／空；回 [Success] 且 `counties` 為空。
+  /// 區分失敗：HTTP 錯誤、`success != "true"`、-001 缺 `records.location`
+  /// 或 `records` 非物件、欄位型別不符，一律 [Failure]。
+  /// -001 有特報但 -002 無任何公告 → [Failure]（兩資料集不一致，不默默丟掉內文）。
+  Future<Result<ActiveWarnings>> getActiveWarnings() async {
+    if (apiKey.isEmpty) return const Failure('[$warningsByCountyDataset/$warningBulletinsDataset] $_missingApiKeyMessage');
+    try {
+      final responses = await Future.wait([
+        _dio.get<Object?>(warningsByCountyDataset),
+        _dio.get<Object?>(warningBulletinsDataset),
+      ]);
+      final w1 = _datastoreRecords(responses[0].data, warningsByCountyDataset);
+      final w2 = _datastoreRecords(responses[1].data, warningBulletinsDataset);
+      final bulletins = _bulletins(w2);
+      final warnings = ActiveWarnings.fromJson(w1, bulletins);
+      if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
+        return const Failure(
+          '[$warningBulletinsDataset] expected bulletins because $warningsByCountyDataset lists active warnings, got none',
+        );
+      }
+      return Success(warnings);
+    } on DioException catch (e) {
+      return _dioFailure('$warningsByCountyDataset/$warningBulletinsDataset', e);
+    } on FormatException catch (e) {
+      return Failure('[$warningsByCountyDataset/$warningBulletinsDataset] 解析失敗：${e.message}');
+    }
+  }
+
+  /// 指定縣市的雨量觀測：該縣市所有測站與離 ([latitude], [longitude]) 最近的有值測站。
+  ///
+  /// [county] 必須與 CWA 縣市名完全相同（用「臺」不用「台」）；
+  /// 無任何測站符合或測站皆缺值 → [Failure]。
+  Future<Result<CountyRainfall>> getRainfall({
+    required String county,
+    required double latitude,
+    required double longitude,
+  }) async {
+    if (apiKey.isEmpty) return const Failure('[$rainObservationDataset] $_missingApiKeyMessage');
+    try {
+      final response = await _dio.get<Object?>(rainObservationDataset);
+      final all = parseRainStations(_datastoreRecords(response.data, rainObservationDataset));
+      final inCounty = all.where((s) => s.county == county).toList();
+      if (inCounty.isEmpty) {
+        return Failure('[$rainObservationDataset] 查無縣市「$county」的雨量站（共 ${all.length} 站，CWA 縣市名須用「臺」）');
+      }
+      final withValue = inCounty.where((s) => s.todayMm != null).toList();
+      if (withValue.isEmpty) {
+        return Failure('[$rainObservationDataset] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
+      }
+      withValue.sort((a, b) => a.distanceSqTo(latitude, longitude).compareTo(b.distanceSqTo(latitude, longitude)));
+      return Success(CountyRainfall(county: county, stations: inCounty, nearest: withValue.first));
+    } on DioException catch (e) {
+      return _dioFailure(rainObservationDataset, e);
+    } on FormatException catch (e) {
+      return Failure('[$rainObservationDataset] 解析失敗：${e.message}');
+    }
+  }
+
+  /// 日累積雨量圖 URL 與經緯度範圍
+  Future<Result<RainfallMap>> getRainfallMap() => _fileApi(rainfallMapDataset, RainfallMap.fromJson);
+
+  /// 使用者位置的 1 小時雨量預測；座標不在格點範圍內 → [Failure]。
+  Future<Result<RainForecast>> getRainForecast({required double latitude, required double longitude}) async {
+    final grid = await _fileApi(rainForecast1hDataset, RainForecastGrid.fromJson);
+    return grid.fold(
+      onSuccess: (g) => g.contains(latitude, longitude)
+          ? Success(RainForecast(grid: g, mmAtLocation: g.valueAt(latitude, longitude)))
+          : Failure<RainForecast>('[$rainForecast1hDataset] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
+      onFailure: (message, statusCode) => Failure<RainForecast>(message, statusCode: statusCode),
+    );
+  }
+
+  // ==========================================================================
+  // 私有輔助
+  // ==========================================================================
+
+  Future<Result<T>> _fileApi<T>(String dataset, T Function(Object? root) parse) async {
+    if (apiKey.isEmpty) return Failure('[$dataset] $_missingApiKeyMessage');
+    try {
+      final response = await _fileApiDio.get<Object?>(AppConstants.radarApiUrl(dataset, apiKey));
+      final body = _jsonMap(response.data, dataset);
+      return Success(parse(body['cwaopendata']));
+    } on DioException catch (e) {
+      return _dioFailure(dataset, e);
+    } on FormatException catch (e) {
+      return Failure('[$dataset] 解析失敗：${e.message}');
+    }
+  }
+
+  /// fileapi 可能回 String 或已解碼的 Map
+  Map<String, dynamic> _jsonMap(Object? data, String dataset) {
+    final decoded = data is String ? jsonDecode(data) : data;
+    if (decoded is Map<String, dynamic>) return decoded;
+    throw FormatException('expected JSON object body, got ${decoded.runtimeType}');
+  }
+
+  /// datastore 回應 → `records`；`success` 必須為 "true"
+  Object? _datastoreRecords(Object? data, String dataset) {
+    final body = _jsonMap(data, dataset);
+    if (body['success'] != 'true') {
+      throw FormatException('expected success "true", got ${body['success']}');
+    }
+    return body['records'];
+  }
+
+  /// -002 的 `records.record`；缺漏或 null 視為無公告
+  List<WarningBulletin> _bulletins(Object? records) {
+    if (records is! Map<String, dynamic>) {
+      throw FormatException('expected object at records, got ${records.runtimeType}');
+    }
+    final record = records['record'];
+    if (record == null) return const [];
+    if (record is! List<dynamic>) {
+      throw FormatException('expected array at records.record, got ${record.runtimeType}');
+    }
+    return [for (var i = 0; i < record.length; i++) WarningBulletin.fromJson(record[i], 'records.record[$i]')];
+  }
+
+  Failure<T> _dioFailure<T>(String dataset, DioException e) {
+    final status = e.response?.statusCode;
+    final detail = switch (status) {
+      401 || 403 => 'API 授權失敗，請確認 API Key（HTTP $status）',
+      null => '${e.type.name}：${e.message}',
+      _ => '伺服器回應 HTTP $status',
+    };
+    return Failure('[$dataset] 請求失敗：$detail', statusCode: status);
+  }
+}
