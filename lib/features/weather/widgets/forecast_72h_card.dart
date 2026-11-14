@@ -255,7 +255,7 @@ class _AxisPainter extends CustomPainter {
       ('時段', _ChartGeometry.slotLabelY),
       ('天氣', _ChartGeometry.iconTop + AppSize.icon24 / 2),
       ('溫度', (_ChartGeometry.tempTop + _ChartGeometry.tempBottom) / 2),
-      ('體感', _ChartGeometry.apparentLabelY - 4),
+      ('體感', _ChartGeometry.apparentLabelY),
       ('降雨', _ChartGeometry.popTop + _ChartGeometry.popHeight / 2),
       ('風', (_ChartGeometry.windDirY + _ChartGeometry.windSpeedY) / 2),
     ]) {
