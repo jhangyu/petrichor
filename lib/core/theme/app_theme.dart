@@ -1,29 +1,64 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-class AppTheme {
-  static ThemeData get lightTheme {
+import 'app_tokens.dart';
+
+/// Light-only Material theme built from [AppPalette] / [AppType] tokens.
+abstract final class AppTheme {
+  /// Token font stack minus the Segoe/Noto web fonts: the base family is the
+  /// platform default (SF on Apple, Segoe on Windows, Roboto on Android);
+  /// these system families supply Traditional Chinese glyphs offline.
+  static const _cjkFallback = ['PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC'];
+
+  static ThemeData get light {
+    final textColor = AppType.body1.copyWith(color: AppPalette.fg1);
     return ThemeData(
       brightness: Brightness.light,
-      primaryColor: Colors.blueAccent,
-      scaffoldBackgroundColor: Colors.transparent, // For dynamic background
-      textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
+      fontFamilyFallback: _cjkFallback,
+      scaffoldBackgroundColor: AppPalette.bg3,
       colorScheme: const ColorScheme.light(
-        primary: Colors.blueAccent,
-        secondary: Colors.cyanAccent,
+        primary: AppPalette.brandBg,
+        onPrimary: AppPalette.fgOnBrand,
+        primaryContainer: AppPalette.brandBgSubtle,
+        onPrimaryContainer: AppPalette.brandFgStrong,
+        secondary: AppPalette.brandBg,
+        onSecondary: AppPalette.fgOnBrand,
+        surface: AppPalette.bg1,
+        onSurface: AppPalette.fg1,
+        onSurfaceVariant: AppPalette.fg2,
+        outline: AppPalette.stroke1,
+        outlineVariant: AppPalette.stroke2,
+        error: AppPalette.dangerFg,
+        onError: AppPalette.fgOnSolid,
+        surfaceTint: AppPalette.bg1,
       ),
-    );
-  }
-
-  static ThemeData get darkTheme {
-    return ThemeData(
-      brightness: Brightness.dark,
-      primaryColor: Colors.indigoAccent,
-      scaffoldBackgroundColor: Colors.transparent, // For dynamic background
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-      colorScheme: const ColorScheme.dark(
-        primary: Colors.indigoAccent,
-        secondary: Colors.tealAccent,
+      textTheme: TextTheme(
+        bodySmall: AppType.caption1.copyWith(color: AppPalette.fg1),
+        bodyMedium: textColor,
+        bodyLarge: AppType.body2.copyWith(color: AppPalette.fg1),
+        labelLarge: AppType.body1Strong.copyWith(color: AppPalette.fg1),
+        titleMedium: AppType.subtitle2.copyWith(color: AppPalette.fg1),
+        titleLarge: AppType.subtitle1.copyWith(color: AppPalette.fg1),
+      ),
+      dividerColor: AppPalette.stroke2,
+      navigationBarTheme: NavigationBarThemeData(
+        height: AppSize.bottomNav,
+        backgroundColor: AppPalette.bg1,
+        surfaceTintColor: AppPalette.bg1,
+        elevation: 0,
+        indicatorColor: AppPalette.brandBgSubtle,
+        indicatorShape: const StadiumBorder(),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600)
+              : AppType.caption1.copyWith(color: AppPalette.fg3),
+        ),
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            size: AppSize.icon24,
+            color: states.contains(WidgetState.selected) ? AppPalette.brandFgStrong : AppPalette.fg3,
+          ),
+        ),
       ),
     );
   }

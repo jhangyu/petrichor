@@ -1,0 +1,262 @@
+import 'package:flutter/material.dart';
+
+/// Fluent 2 light design tokens, mirrored from
+/// `docs/design/tokens-fluent2-light.css` (single source of truth).
+/// This is the only file in `lib/` allowed to contain colour literals.
+
+/// `--color-*` tokens.
+abstract final class AppPalette {
+  // Neutral backgrounds
+  static const bg1 = Color(0xFFFFFFFF);
+  static const bg2 = Color(0xFFFAFAFA);
+  static const bg3 = Color(0xFFF5F5F5);
+  static const bg4 = Color(0xFFF0F0F0);
+  static const bg5 = Color(0xFFEBEBEB);
+  static const bg6 = Color(0xFFE6E6E6);
+  static const bgHover = Color(0xFFF5F5F5);
+  static const bgPressed = Color(0xFFE0E0E0);
+  static const bgDisabled = Color(0xFFF0F0F0);
+  static const bgOverlay = Color(0xEBFFFFFF); // rgba(255,255,255,0.92)
+  static const scrim = Color(0x66000000); // rgba(0,0,0,0.4)
+  static const transparent = Color(0x00000000);
+
+  // Neutral foregrounds
+  static const fg1 = Color(0xFF242424);
+  static const fg2 = Color(0xFF424242);
+  static const fg3 = Color(0xFF616161);
+  static const fg4 = Color(0xFF707070);
+  static const fgDisabled = Color(0xFFBDBDBD);
+  static const fgOnBrand = Color(0xFFFFFFFF);
+  static const fgOnSolid = Color(0xFFFFFFFF);
+
+  // Neutral strokes
+  static const stroke1 = Color(0xFFD1D1D1);
+  static const stroke2 = Color(0xFFE0E0E0);
+  static const stroke3 = Color(0xFFF0F0F0);
+  static const strokeAccessible = Color(0xFF616161);
+  static const strokeDisabled = Color(0xFFE0E0E0);
+  static const strokeFocusOuter = Color(0xFF000000);
+  static const strokeFocusInner = Color(0xFFFFFFFF);
+
+  // Brand ramp (communication blue)
+  static const brand10 = Color(0xFF061724);
+  static const brand20 = Color(0xFF082338);
+  static const brand30 = Color(0xFF0A2E4A);
+  static const brand40 = Color(0xFF0C3B5E);
+  static const brand50 = Color(0xFF0E4775);
+  static const brand60 = Color(0xFF0F548C);
+  static const brand70 = Color(0xFF115EA3);
+  static const brand80 = Color(0xFF0F6CBD);
+  static const brand90 = Color(0xFF2886DE);
+  static const brand100 = Color(0xFF479EF5);
+  static const brand110 = Color(0xFF62ABF5);
+  static const brand120 = Color(0xFF77B7F7);
+  static const brand130 = Color(0xFF96C6FA);
+  static const brand140 = Color(0xFFB4D6FA);
+  static const brand150 = Color(0xFFCFE4FA);
+  static const brand160 = Color(0xFFEBF3FC);
+
+  // Brand semantic aliases
+  static const brandBg = brand80;
+  static const brandBgHover = brand70;
+  static const brandBgPressed = brand40;
+  static const brandBgSubtle = brand160;
+  static const brandFg = brand80;
+  static const brandFgStrong = brand60;
+  static const brandStroke = brand80;
+  static const brandStrokeSubtle = brand140;
+
+  // Status
+  static const successBg = Color(0xFFF1FAF1);
+  static const successFg = Color(0xFF0E700E);
+  static const successStroke = Color(0xFF9FD89F);
+  static const successSolid = Color(0xFF107C10);
+
+  static const warningBg = Color(0xFFFFF9F5);
+  static const warningFg = Color(0xFFBC4B09);
+  static const warningStroke = Color(0xFFFDCFB4);
+  static const warningSolid = Color(0xFFF7630C);
+
+  static const dangerBg = Color(0xFFFDF3F4);
+  static const dangerFg = Color(0xFFB10E1C);
+  static const dangerStroke = Color(0xFFEEACB2);
+  static const dangerSolid = Color(0xFFC50F1F);
+
+  static const infoBg = brand160;
+  static const infoFg = brand60;
+  static const infoStroke = brand140;
+  static const infoSolid = brand80;
+
+  // Weather semantics: temperature
+  static const tempCold = Color(0xFF0F548C);
+  static const tempHot = Color(0xFFC50F1F);
+  static const tempBarCold = Color(0xFF62ABF5); // <= 15°C
+  static const tempBarMild = Color(0xFF5EC75A); // 16–22°C
+  static const tempBarWarm = Color(0xFFF7A33C); // 23–28°C
+  static const tempBarHot = Color(0xFFE8474F); // >= 29°C
+
+  // Rain probability / rainfall amounts
+  static const rainFg = Color(0xFF115EA3);
+  static const rainBg = Color(0xFFEBF3FC);
+  static const rainBar = Color(0xFF479EF5);
+  static const rainBarTrack = Color(0xFFE6EEF7);
+
+  // Weather condition icon tints (icons only, never body text)
+  static const iconSun = Color(0xFFE8A300);
+  static const iconCloud = Color(0xFF8A8A8A);
+  static const iconRain = Color(0xFF2886DE);
+  static const iconThunder = Color(0xFF8764B8);
+  static const iconFog = Color(0xFFA0A0A0);
+
+  // CWA rain-warning levels: 1 大雨, 2 豪雨, 3 大豪雨, 4 超大豪雨
+  static const alert1Bg = Color(0xFFFFFAD6);
+  static const alert1Fg = Color(0xFF6B5D00);
+  static const alert1Stroke = Color(0xFFF2D94E);
+  static const alert1Solid = Color(0xFFFDE300);
+  static const alert2Bg = warningBg;
+  static const alert2Fg = warningFg;
+  static const alert2Stroke = warningStroke;
+  static const alert2Solid = warningSolid;
+  static const alert3Bg = dangerBg;
+  static const alert3Fg = dangerFg;
+  static const alert3Stroke = dangerStroke;
+  static const alert3Solid = dangerSolid;
+  static const alert4Bg = Color(0xFFF7F4FB);
+  static const alert4Fg = Color(0xFF5C2E91);
+  static const alert4Stroke = Color(0xFFC6B1DE);
+  static const alert4Solid = Color(0xFF5C2E91);
+
+  // DATA-VIZ EXCEPTION (contract acceptance 8): CWA radar reflectivity scale.
+  // Each step is a 10 dBZ band starting at the named value; legends must
+  // always label numbers.
+  static const dbz0 = Color(0xFFA6E3FF);
+  static const dbz10 = Color(0xFF2F8FE6);
+  static const dbz20 = Color(0xFF22B14C);
+  static const dbz30 = Color(0xFFF5D100);
+  static const dbz40 = Color(0xFFFF8A00);
+  static const dbz50 = Color(0xFFE81123);
+  static const dbz60 = Color(0xFFA0119E);
+}
+
+/// `--space-*` tokens (4px grid).
+abstract final class AppSpace {
+  static const double s0 = 0;
+  static const double s4 = 4;
+  static const double s8 = 8;
+  static const double s12 = 12;
+  static const double s16 = 16;
+  static const double s20 = 20;
+  static const double s24 = 24;
+  static const double s32 = 32;
+  static const double s40 = 40;
+  static const double s48 = 48;
+  static const double s64 = 64;
+
+  /// `--layout-gutter`.
+  static const double gutter = s16;
+}
+
+/// `--radius-*` tokens.
+abstract final class AppRadius {
+  static const double none = 0;
+  static const double sm = 4;
+  static const double md = 8;
+  static const double lg = 12;
+  static const double circular = 9999;
+}
+
+/// `--stroke-*` widths.
+abstract final class AppStroke {
+  static const double thin = 1;
+  static const double thick = 2;
+  static const double thicker = 3;
+}
+
+/// `--size-*` tokens and `--layout-max-width`.
+abstract final class AppSize {
+  static const double touch = 44;
+  static const double control = 44;
+  static const double controlSm = 32;
+  static const double appBar = 56;
+  static const double bottomNav = 64;
+  static const double icon16 = 16;
+  static const double icon20 = 20;
+  static const double icon24 = 24;
+  static const double icon32 = 32;
+  static const double icon48 = 48;
+  static const double icon64 = 64;
+  static const double sliderTrack = 4;
+  static const double sliderThumb = 20;
+  static const double legendBar = 8;
+  static const double spinner = 20;
+  static const double dot = 8;
+  static const double layoutMaxWidth = 480;
+}
+
+/// `--shadow-*` tokens (Fluent elevation, light theme).
+abstract final class AppShadows {
+  static const _ambient = Color(0x1F000000); // rgba(0,0,0,0.12)
+  static const _key = Color(0x24000000); // rgba(0,0,0,0.14)
+
+  static const s2 = [
+    BoxShadow(color: _ambient, blurRadius: 2),
+    BoxShadow(color: _key, offset: Offset(0, 1), blurRadius: 2),
+  ];
+  static const s4 = [
+    BoxShadow(color: _ambient, blurRadius: 2),
+    BoxShadow(color: _key, offset: Offset(0, 2), blurRadius: 4),
+  ];
+  static const s8 = [
+    BoxShadow(color: _ambient, blurRadius: 2),
+    BoxShadow(color: _key, offset: Offset(0, 4), blurRadius: 8),
+  ];
+  static const s16 = [
+    BoxShadow(color: _ambient, blurRadius: 2),
+    BoxShadow(color: _key, offset: Offset(0, 8), blurRadius: 16),
+  ];
+  static const s28 = [
+    BoxShadow(color: _ambient, blurRadius: 8),
+    BoxShadow(color: _key, offset: Offset(0, 14), blurRadius: 28),
+  ];
+}
+
+/// `--duration-*` and `--curve-*` tokens.
+abstract final class AppMotion {
+  static const ultraFast = Duration(milliseconds: 50);
+  static const faster = Duration(milliseconds: 100);
+  static const fast = Duration(milliseconds: 150);
+  static const normal = Duration(milliseconds: 200);
+  static const gentle = Duration(milliseconds: 250);
+  static const slow = Duration(milliseconds: 300);
+  static const slower = Duration(milliseconds: 400);
+  static const spin = Duration(milliseconds: 1000);
+  static const decelerateMid = Cubic(0, 0, 0, 1);
+  static const accelerateMid = Cubic(1, 0, 1, 1);
+  static const easyEase = Cubic(0.33, 0, 0.67, 1);
+}
+
+/// Fluent type ramp (`--type-*`). Colour is not set; it comes from the
+/// ambient [DefaultTextStyle] / theme (fg1) unless a widget overrides it.
+abstract final class AppType {
+  static const _regular = FontWeight.w400;
+  static const _semibold = FontWeight.w600;
+
+  static const caption2 = TextStyle(fontSize: 10, height: 14 / 10, fontWeight: _regular);
+  static const caption1 = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: _regular);
+  static const body1 = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: _regular);
+  static const body1Strong = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: _semibold);
+  static const body2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _regular);
+  static const subtitle2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _semibold);
+  static const subtitle1 = TextStyle(fontSize: 20, height: 28 / 20, fontWeight: _semibold);
+  static const title3 = TextStyle(fontSize: 24, height: 32 / 24, fontWeight: _semibold);
+  static const title2 = TextStyle(fontSize: 28, height: 36 / 28, fontWeight: _semibold);
+  static const title1 = TextStyle(fontSize: 32, height: 40 / 32, fontWeight: _semibold);
+  static const largeTitle = TextStyle(fontSize: 40, height: 52 / 40, fontWeight: _semibold);
+
+  /// Current temperature. CSS letter-spacing -0.02em at 68px.
+  static const display =
+      TextStyle(fontSize: 68, height: 92 / 68, fontWeight: _semibold, letterSpacing: -1.36);
+
+  /// `font-variant-numeric: tabular-nums`; apply via `style.copyWith(fontFeatures: AppType.tabular)`.
+  static const tabular = [FontFeature.tabularFigures()];
+}
