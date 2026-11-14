@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/radar/radar_bounds.dart';
+import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart';
 
 /// Clock for the frame window; override in tests.
@@ -18,11 +19,27 @@ final radarFrameRepositoryProvider = Provider<RadarFrameRepository>((ref) => Rad
       clock: ref.watch(radarClockProvider),
     ));
 
-/// Website radar loop (last 2 h, oldest first), extent `websiteRadarBounds`,
-/// credit [radarSourceCredit]. Refreshes when first watched (screen open);
-/// a user refresh is `ref.invalidate(radarFramesProvider)`. No timer/polling.
-final radarFramesProvider =
-    FutureProvider.autoDispose<List<RadarFrame>>((ref) => ref.watch(radarFrameRepositoryProvider).refresh());
+/// Look-back window in frames (10 min each); the UI sets it, 1..[radarMaxWindowFrames].
+class RadarWindowFrames extends Notifier<int> {
+  @override
+  int build() => radarDefaultWindowFrames;
+
+  void set(int frames) {
+    if (frames < 1 || frames > radarMaxWindowFrames) {
+      throw RangeError.range(frames, 1, radarMaxWindowFrames, 'frames');
+    }
+    state = frames;
+  }
+}
+
+final radarWindowFramesProvider = NotifierProvider<RadarWindowFrames, int>(RadarWindowFrames.new);
+
+/// Website radar loop (oldest first), extent `websiteRadarBounds`, credit
+/// [radarSourceCredit]. Refreshes when first watched (screen open) or when the
+/// window changes; a user refresh is `ref.invalidate(radarFramesProvider)`.
+/// No timer/polling.
+final radarFramesProvider = FutureProvider.autoDispose<List<RadarFrame>>((ref) =>
+    ref.watch(radarFrameRepositoryProvider).refresh(windowFrames: ref.watch(radarWindowFramesProvider)));
 
 /// Latest open-data radar image with its geographic bounds from the response.
 final openDataRadarProvider = FutureProvider.autoDispose.family<OpenDataRadarImage, String>((ref, datasetId) async {

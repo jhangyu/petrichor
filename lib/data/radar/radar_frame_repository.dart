@@ -39,17 +39,18 @@ class RadarFrameRepository {
 
   RadarFrameRepository(this._dio, {required this.cacheRoot, required this.clock});
 
-  /// Returns the current window, oldest first. Already-cached frames are not
-  /// downloaded again; files outside the window are deleted.
-  Future<List<RadarFrame>> refresh() async {
+  /// Returns the last [windowFrames] frames, oldest first. Already-cached
+  /// frames are not downloaded again; files outside the window are deleted.
+  Future<List<RadarFrame>> refresh({required int windowFrames}) async {
     final listResponse = await _dio.get<String>(
       radarFrameListUrl,
       options: Options(responseType: ResponseType.plain),
     );
     final now = clock();
-    final window = selectRadarFrameWindow(parseRadarFrameList(listResponse.data ?? ''), now: now);
+    final window =
+        selectRadarFrameWindow(parseRadarFrameList(listResponse.data ?? ''), now: now, windowFrames: windowFrames);
     if (window.isEmpty) {
-      throw StateError('radar frames: expected frames newer than ${now.toUtc().subtract(radarFrameWindowDuration)} '
+      throw StateError('radar frames: expected frames newer than ${now.toUtc().subtract(radarFrameStep * windowFrames)} '
           'in $radarFrameListUrl, found none');
     }
 

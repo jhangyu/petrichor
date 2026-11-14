@@ -18,22 +18,31 @@ void main() {
   });
 
   test('window at 20:55 Taiwan time = latest 12 frames 19:00..20:50, oldest first', () {
-    final w = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55));
+    final w = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: 12);
     expect(stamps(w), [
       for (var m = 19 * 60; m <= 20 * 60 + 50; m += 10)
         '20261114${(m ~/ 60).toString().padLeft(2, '0')}${(m % 60).toString().padLeft(2, '0')}',
     ]);
   });
 
+  test('default window = 24 frames (4 h) 17:00..20:50; max 144 = whole list', () {
+    final w = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: radarDefaultWindowFrames);
+    expect((w.length, w.first.stamp, w.last.stamp), (24, '202611141700', '202611142050'));
+    final all = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: radarMaxWindowFrames);
+    expect((all.length, all.first.stamp), (144, '202611132100'));
+    expect(() => selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14), windowFrames: 145), throwsRangeError);
+  });
+
   test('window ends at the newest frame even when the clock is past it; stale list gives nothing', () {
-    expect(stamps(selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 13, 5))).first, '202611141900');
-    expect(selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 14, 50)), hasLength(12));
-    expect(selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 14, 51)), isEmpty);
+    List<RadarFrameRef> at(DateTime now) => selectRadarFrameWindow(frames, now: now, windowFrames: 12);
+    expect(stamps(at(DateTime.utc(2026, 11, 14, 13, 5))).first, '202611141900');
+    expect(at(DateTime.utc(2026, 11, 14, 14, 50)), hasLength(12));
+    expect(at(DateTime.utc(2026, 11, 14, 14, 51)), isEmpty);
   });
 
   test('a missing slot stays missing, not padded with an older frame', () {
     final gap = frames.where((f) => f.stamp != '202611142000').toList();
-    final w = selectRadarFrameWindow(gap, now: DateTime.utc(2026, 11, 14, 12, 55));
+    final w = selectRadarFrameWindow(gap, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: 12);
     expect(w, hasLength(11));
     expect(w.first.stamp, '202611141900');
   });

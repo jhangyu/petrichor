@@ -10,9 +10,13 @@ const radarFrameListUrl = 'https://www.cwa.gov.tw/Data/js/obs_img/Observe_radar.
 const radarFrameBaseUrl = 'https://www.cwa.gov.tw/Data/radar/';
 const radarFrameSetPrefix = 'CV1_3600_';
 
-/// Frames shown in the loop: 2 hours at 10-minute steps.
-const radarFrameWindowCount = 12;
-const radarFrameWindowDuration = Duration(hours: 2);
+/// Website frame cadence.
+const radarFrameStep = Duration(minutes: 10);
+
+/// Look-back window in frames (user setting): default 4 h, max 24 h (all the
+/// site lists).
+const radarDefaultWindowFrames = 24;
+const radarMaxWindowFrames = 144;
 
 /// File names carry Taiwan local time (UTC+8, no DST).
 const _taiwanUtcOffset = Duration(hours: 8);
@@ -61,14 +65,22 @@ List<RadarFrameRef> parseRadarFrameList(String js) {
   return frames;
 }
 
-/// The frames of the 2 h ending at the newest listed frame (at most
-/// [radarFrameWindowCount], oldest first = playback order). Missing slots stay
-/// missing. Returns nothing when the newest frame is older than
-/// [radarFrameWindowDuration] before [now] (stale list).
-List<RadarFrameRef> selectRadarFrameWindow(List<RadarFrameRef> frames, {required DateTime now}) {
+/// The frames of the [windowFrames] x [radarFrameStep] span ending at the
+/// newest listed frame (at most [windowFrames], oldest first = playback order).
+/// Missing slots stay missing. Returns nothing when the newest frame is older
+/// than that span before [now] (stale list).
+List<RadarFrameRef> selectRadarFrameWindow(
+  List<RadarFrameRef> frames, {
+  required DateTime now,
+  required int windowFrames,
+}) {
+  if (windowFrames < 1 || windowFrames > radarMaxWindowFrames) {
+    throw RangeError.range(windowFrames, 1, radarMaxWindowFrames, 'windowFrames');
+  }
+  final span = radarFrameStep * windowFrames;
   final sorted = [...frames]..sort((a, b) => a.time.compareTo(b.time));
-  if (sorted.isEmpty || sorted.last.time.isBefore(now.toUtc().subtract(radarFrameWindowDuration))) return const [];
-  final start = sorted.last.time.subtract(radarFrameWindowDuration);
+  if (sorted.isEmpty || sorted.last.time.isBefore(now.toUtc().subtract(span))) return const [];
+  final start = sorted.last.time.subtract(span);
   final window = sorted.where((f) => f.time.isAfter(start)).toList();
-  return window.length <= radarFrameWindowCount ? window : window.sublist(window.length - radarFrameWindowCount);
+  return window.length <= windowFrames ? window : window.sublist(window.length - windowFrames);
 }
