@@ -129,6 +129,28 @@ class WeatherRepository {
     );
   }
 
+  // ==========================================================================
+  // 日出日沒
+  // ==========================================================================
+
+  /// 取得 [city] 縣市「[now] 所在臺灣曆日」與隔日的日出日沒時刻（[今天, 明天]）。
+  Future<Result<List<SunDay>>> getSunTimes(String city, DateTime now) {
+    final county = normalizeCwaName(city);
+    final today = now.toUtc().add(_taiwanOffset);
+    final days = [for (var i = 0; i < _sunDayCount; i++) _dateKey(today.add(Duration(days: i)))];
+    return _query(
+      dataset: AppConstants.sunTimesDataset,
+      location: county,
+      // timeTo 為不含端點，故取 days.last 的次日
+      query: {
+        'CountyName': county,
+        'timeFrom': days.first,
+        'timeTo': _dateKey(today.add(const Duration(days: _sunDayCount))),
+      },
+      parse: (body) => _parseSunTimes(body, county, days),
+    );
+  }
+
   Future<Result<T>> _townshipForecast<T>(
     String city,
     String district, {
@@ -221,6 +243,9 @@ const Duration _taiwanOffset = Duration(hours: 8);
 
 /// 一週預報顯示天數
 const int _weeklyDayCount = 7;
+
+/// 日出日沒查詢天數（今天＋明天）
+const int _sunDayCount = 2;
 
 /// 12 小時預報中「白天時段」的起始時（臺灣時間）
 const int _daySlotStartHour = 6;
@@ -466,3 +491,46 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
   }
   return days;
 }
+
+/// 日出日沒時刻字串「HH:mm」（臺灣時間）→ 絕對時刻
+DateTime _sunTime(Object? raw, String date, String path) {
+  final text = _text(raw);
+  if (text == null || !RegExp(r'^\d{2}:\d{2}$').hasMatch(text)) {
+    throw FormatException('$path@$date：期望「HH:mm」，實際「$raw」');
+  }
+  return DateTime.parse('${date}T$text:00+08:00');
+}
+
+List<SunDay> _parseSunTimes(Map<String, dynamic> body, String county, List<String> days) {
+  final locations = _list(_dig(body, ['records', 'locations', 'location']), 'records.locations.location');
+  final names = <String>[];
+  for (final item in locations) {
+    final loc = _obj(item, 'location[]');
+    final name = _text(loc['CountyName']) ?? '';
+    names.add(name);
+    if (name != county) continue;
+    final byDate = {
+      for (final t in _list(loc['time'], '$name.time'))
+        _text(_obj(t, '$name.time[]')['Date']): _obj(t, '$name.time[]'),
+    };
+    return [
+      for (final date in days)
+        _sunDay(
+          byDate[date] ??
+              (throw FormatException('期望 $name 有 $date 的資料，實際日期：${byDate.keys.join('、')}')),
+          date,
+        ),
+    ];
+  }
+  throw FormatException(
+    '期望縣市「$county」，實際 ${names.isEmpty ? '無任何縣市（若縣市名含「台」請改「臺」）' : names.join('、')}',
+  );
+}
+
+SunDay _sunDay(Map<String, dynamic> day, String date) => SunDay(
+      date: date,
+      civilDawn: _sunTime(day['BeginCivilTwilightTime'], date, 'BeginCivilTwilightTime'),
+      sunrise: _sunTime(day['SunRiseTime'], date, 'SunRiseTime'),
+      sunset: _sunTime(day['SunSetTime'], date, 'SunSetTime'),
+      civilDusk: _sunTime(day['EndCivilTwilightTime'], date, 'EndCivilTwilightTime'),
+    );

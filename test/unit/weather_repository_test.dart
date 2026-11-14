@@ -196,4 +196,53 @@ void main() {
       expect(f.message, contains('期望地點「中正區」'));
     });
   });
+
+  group('getSunTimes (A-B0062-001)', () {
+    // 2026-11-14 04:00Z = 臺灣 12:00
+    final now = DateTime.utc(2026, 11, 14, 4);
+
+    test('returns today and tomorrow with Taiwan-time instants and a 臺 county query', () async {
+      adapter.serveFixture('A-B0062-001');
+      final r = await repo.getSunTimes('台北市', now);
+
+      final days = r.data;
+      expect(days.map((d) => d.date), ['2026-11-14', '2026-11-15']);
+      expect(days[0].civilDawn.toUtc(), DateTime.utc(2026, 11, 13, 21, 46));
+      expect(days[0].sunrise.toUtc(), DateTime.utc(2026, 11, 13, 22, 10));
+      expect(days[0].sunset.toUtc(), DateTime.utc(2026, 11, 14, 9, 7));
+      expect(days[0].civilDusk.toUtc(), DateTime.utc(2026, 11, 14, 9, 31));
+      expect(days[1].sunset.toUtc(), DateTime.utc(2026, 11, 15, 9, 6));
+      final q = adapter.requests.single.queryParameters;
+      expect(q['CountyName'], '臺北市');
+      expect(q['timeFrom'], '2026-11-14');
+      expect(q['timeTo'], '2026-11-16');
+    });
+
+    test('uses the Taiwan calendar day of now (UTC evening is already tomorrow)', () async {
+      adapter.serveFixture('A-B0062-001');
+      await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 14, 17));
+
+      expect(adapter.requests.single.queryParameters['timeFrom'], '2026-11-15');
+    });
+
+    test('missing day is a Failure naming dataset, county and dates returned', () async {
+      adapter.serveFixture('A-B0062-001');
+      final r = await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 20));
+
+      final f = r as Failure;
+      expect(f.dataset, 'A-B0062-001');
+      expect(f.location, '臺北市');
+      expect(f.message, contains('2026-11-20'));
+    });
+
+    test('county absent from the response is a Failure', () async {
+      adapter.serveFixture('A-B0062-001', (json) {
+        (((json['records'] as Map)['locations'] as Map)['location'] as List).clear();
+        return null;
+      });
+      final r = await repo.getSunTimes('臺北市', now);
+
+      expect((r as Failure).message, contains('期望縣市「臺北市」'));
+    });
+  });
 }

@@ -30,6 +30,9 @@ class AppConstants {
   /// 即時觀測（10 分鐘綜觀氣象，約 363 站）
   static const String observationDataset = 'O-A0003-001';
 
+  /// 各縣市逐日日出日沒時刻（含民用曙暮光）
+  static const String sunTimesDataset = 'A-B0062-001';
+
   /// 單次查詢觀測站數上限（涵蓋全部約 363 站）
   static const int observationStationLimit = 1000;
 

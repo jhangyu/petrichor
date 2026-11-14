@@ -9,6 +9,9 @@ class WeatherState {
   final CurrentWeather? current;
   final List<HourlyForecast> hourly;
   final List<DailyForecast> weekly;
+
+  /// [今天, 明天] 的日出日沒
+  final List<SunDay> sun;
   final bool isLoading;
 
   /// 使用者可讀的中文錯誤訊息
@@ -19,6 +22,7 @@ class WeatherState {
     this.current,
     this.hourly = const [],
     this.weekly = const [],
+    this.sun = const [],
     this.isLoading = true,
     this.error,
   });
@@ -34,6 +38,9 @@ String locationFailureMessage(LocationException e) {
     LocationFailure.addressUnresolved => '無法判斷所在縣市與鄉鎮，請稍後重試',
   };
 }
+
+/// 首頁「今天」的時鐘（測試可覆寫）
+final weatherClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 class WeatherNotifier extends Notifier<WeatherState> {
   @override
@@ -52,13 +59,14 @@ class WeatherNotifier extends Notifier<WeatherState> {
     }
 
     final repo = ref.read(weatherRepositoryProvider);
-    final (current, hourly, weekly) = await (
+    final (current, hourly, weekly, sun) = await (
       repo.getCurrentWeather(location),
       repo.getHourlyForecast(location.city, location.district),
       repo.getWeeklyForecast(location.city, location.district),
+      repo.getSunTimes(location.city, ref.read(weatherClockProvider)()),
     ).wait;
 
-    final failures = [current, hourly, weekly].whereType<Failure>();
+    final failures = [current, hourly, weekly, sun].whereType<Failure>();
     if (failures.isNotEmpty) {
       state = WeatherState(
         location: location,
@@ -72,6 +80,7 @@ class WeatherNotifier extends Notifier<WeatherState> {
       current: current.data,
       hourly: hourly.data,
       weekly: weekly.data,
+      sun: sun.data,
       isLoading: false,
     );
   }

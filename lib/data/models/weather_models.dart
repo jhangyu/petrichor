@@ -53,6 +53,26 @@ class CurrentWeather {
   });
 }
 
+/// 縣市單日日出日沒時刻（A-B0062-001）；時刻為絕對時刻（資料為臺灣時間 UTC+8）。
+class SunDay {
+  /// 臺灣曆日（yyyy-MM-dd）
+  final String date;
+
+  /// 民用曙光始／日出／日沒／民用暮光終
+  final DateTime civilDawn;
+  final DateTime sunrise;
+  final DateTime sunset;
+  final DateTime civilDusk;
+
+  const SunDay({
+    required this.date,
+    required this.civilDawn,
+    required this.sunrise,
+    required this.sunset,
+    required this.civilDusk,
+  });
+}
+
 /// 逐 3 小時預報的一筆（鄉鎮級）
 class HourlyForecast {
   /// 時段起點（絕對時刻）

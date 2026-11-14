@@ -43,6 +43,7 @@ void main() {
     container = ProviderContainer(overrides: [
       locationServiceProvider.overrideWithValue(location),
       weatherRepositoryProvider.overrideWithValue(WeatherRepository(adapter.dio())),
+      weatherClockProvider.overrideWithValue(() => DateTime.utc(2026, 11, 14, 4)),
     ]);
     addTearDown(container.dispose);
   });
@@ -51,6 +52,7 @@ void main() {
     when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
     adapter.serveFixture('O-A0003-001');
     adapter.serveFixture('F-D0047-061');
+    adapter.serveFixture('A-B0062-001');
     adapter.serveFixture('F-D0047-091', _renameToZhongzheng, 'F-D0047-063');
 
     final s = await _settled(container);
@@ -60,6 +62,7 @@ void main() {
     expect(s.current!.temperature, isNotNull);
     expect(s.hourly, hasLength(4));
     expect(s.weekly.first.minTemperature, 21);
+    expect(s.sun, hasLength(2));
   });
 
   test('location failure maps to a Chinese message and never calls the API', () async {
