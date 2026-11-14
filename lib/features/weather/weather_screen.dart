@@ -1,451 +1,274 @@
-/*
----
-file_summary: "天氣主畫面 UI，顯示目前天氣與一週預報"
-functions:
-  - name: "WeatherScreen"
-    description: "天氣主畫面，消費 WeatherState 並渲染 UI"
-    lines: "8-32"
-  - name: "_buildContent"
-    description: "根據 WeatherState 渲染主要內容（目前天氣 + 預報列表）"
-    lines: "34-70"
-  - name: "_buildCurrentWeather"
-    description: "目前天氣 widget（溫度、體感、濕度、風速）"
-    lines: "72-145"
-  - name: "_buildHourlyForecast"
-    description: "24小時橫向滾動預報列表"
-    lines: "147-195"
-  - name: "_buildWeeklyForecast"
-    description: "一週預報縱向列表（每日最高/最低溫、天氣圖示）"
-    lines: "197-260"
-  - name: "_buildLoadingState"
-    description: "Loading 狀態顯示"
-    lines: "262-270"
-  - name: "_buildErrorState"
-    description: "Error 狀態顯示"
-    lines: "272-285"
-  - name: "_buildEmptyState"
-    description: "Empty 狀態顯示"
-    lines: "287-300"
----
-*/
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../../core/theme/glass_morphism.dart';
-import '../../data/models/weather_models.dart';
-import '../../data/repositories/weather_repository.dart';
-import '../radar/radar_screen.dart';
-import 'weather_provider.dart';
+import 'package:geolocator/geolocator.dart';
 
+import '../../app_shell.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/location/location_service.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/buttons.dart';
+import '../../core/widgets/page_scaffold.dart';
+import '../../core/widgets/status.dart';
+import '../../data/models/hazard_models.dart';
+import '../../data/models/place.dart';
+import '../../data/models/weather_models.dart';
+import '../../data/repositories/hazard_repository.dart';
+import '../../data/repositories/weather_repository.dart';
+import '../hazard/hazard_provider.dart';
+import '../hazard/warnings/warning_groups.dart';
+import '../location/place_provider.dart';
+import 'weather_provider.dart';
+import 'widgets/forecast_72h_card.dart';
+import 'widgets/hero_card.dart';
+import 'widgets/home_logic.dart';
+import 'widgets/sun_card.dart';
+import 'widgets/weekly_card.dart';
+
+/// 天氣 tab (`team-a/home.html`): current observation hero, active-warning entry,
+/// 日出日落, 未來 72 小時預報 and 7 日預報 for the current place. Each card shows
+/// its own loading / error / data state from [WeatherState]'s per-dataset Result.
 class WeatherScreen extends ConsumerWidget {
   const WeatherScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final weatherState = ref.watch(weatherNotifierProvider);
+    final place = ref.watch(currentPlaceProvider);
+    final weather = ref.watch(weatherNotifierProvider);
+    void openLocationTab() => ref.read(appTabProvider.notifier).select(AppTab.location);
+    void refresh() {
+      ref.invalidate(weatherNotifierProvider);
+      ref.invalidate(activeWarningsProvider);
+    }
 
-    // Dynamic background based on time/weather
-    final bgGradient = const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [Color(0xFF2C3E50), Color(0xFF3498DB)],
-    );
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: bgGradient),
-        child: SafeArea(
-          child: _buildStateUI(context, weatherState),
+    final selected = switch (place) {
+      AsyncData(value: PlaceSelected(:final place, :final source)) => (place, source),
+      _ => null,
+    };
+    final header = AppPageHeader(
+      title: selected?.$1.name ?? (place.isLoading ? '定位中…' : '尚未選擇地點'),
+      subtitle: _subtitle(place, weather.isLoading),
+      subtitleIcon: selected?.$2 == PlaceSource.gps ? Icons.near_me_outlined : Icons.location_on_outlined,
+      subtitleIconColor: selected == null ? AppPalette.warningFg : AppPalette.brandFg,
+      onTitleTap: openLocationTab,
+      actions: [
+        AppIconButton(
+          icon: Icons.refresh,
+          tooltip: '重新整理',
+          onPressed: selected == null || weather.isLoading ? null : refresh,
         ),
+        AppIconButton(icon: Icons.location_on_outlined, tooltip: '切換地點', onPressed: openLocationTab),
+      ],
+    );
+
+    return switch (place) {
+      AsyncData(value: NoPlace() && final noPlace) => AppPageScaffold(
+        header: header,
+        children: [_NoPlaceGuide(noPlace: noPlace, onManual: openLocationTab)],
       ),
-    );
-  }
-
-  Widget _buildStateUI(BuildContext context, WeatherState state) {
-    if (state.isLoading) {
-      return _buildLoadingState();
-    }
-    if (state.error != null) {
-      return _buildErrorState(context, state.error!);
-    }
-    // 暫時轉接：UI 改版前整頁仍以逐時預報為準，改版後各卡片各自呈現成敗
-    final hourly = state.hourly!;
-    if (hourly is Failure<List<HourlyForecast>>) {
-      return _buildErrorState(context, hourly.message);
-    }
-    if (hourly.data.isEmpty) {
-      return _buildEmptyState(context);
-    }
-    return _buildContent(context, state);
-  }
-
-  Widget _buildContent(BuildContext context, WeatherState state) {
-    final loc = state.location;
-    // 暫時轉接：UI 改版前沿用 WeatherCondition 版面（缺值顯示以 0／'--' 代替僅限此轉接）
-    final currentTemperature = state.current?.fold(
-      onSuccess: (c) => c.temperature,
-      onFailure: (_, _) => null,
-    );
-    final forecast = state.hourly!.data
-        .map((h) => WeatherCondition(
-              wx: h.weather ?? '--',
-              pop: h.pop ?? 0,
-              t: (h.temperature ?? currentTemperature ?? 0).round(),
-              startTime: h.startTime.toIso8601String(),
-              endTime: h.startTime.toIso8601String(),
-            ))
-        .toList();
-    final current = forecast.isNotEmpty ? forecast.first : null;
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        // Trigger refresh via provider if needed
-      },
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      AsyncError(:final error) => AppPageScaffold(
+        header: header,
         children: [
-          // Location Header
-          _buildLocationHeader(context, loc),
-          const SizedBox(height: 40),
-          // Current Weather Display
-          if (current != null) _buildCurrentWeather(current),
-          const SizedBox(height: 40),
-          // 24 Hour Forecast
-          _buildHourlyForecast(forecast),
-          const SizedBox(height: 40),
-          // Weekly Forecast
-          _buildWeeklyForecast(forecast),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLocationHeader(BuildContext context, location) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${location?.county ?? ''} ${location?.town ?? ''}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '當前天氣預報',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-        IconButton(
-          icon: const Icon(Icons.map, color: Colors.white, size: 30),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const RadarScreen()),
-            );
-          },
-        )
-      ].animate(interval: 100.ms).fade(duration: 500.ms).slideX(begin: -0.2),
-    );
-  }
-
-  Widget _buildCurrentWeather(WeatherCondition current) {
-    return GlassContainer(
-      padding: const EdgeInsets.all(24),
-      borderRadius: BorderRadius.circular(20),
-      child: Column(
-        children: [
-          // Main temperature and weather icon
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${current.t}°C',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 64,
-                      fontWeight: FontWeight.w200,
-                    ),
-                  ),
-                  Text(
-                    current.wx,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const Icon(Icons.wb_sunny, color: Colors.amber, size: 80)
-                  .animate()
-                  .shimmer(duration: 2000.ms),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Weather details row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildWeatherDetailItem(Icons.thermostat_outlined, '體感', '${current.t}°'),
-              _buildWeatherDetailItem(Icons.water_drop_outlined, '降雨機率', '${current.pop}%'),
-              _buildWeatherDetailItem(Icons.air, '風速', '--m/s'),
-              _buildWeatherDetailItem(Icons.opacity, '濕度', '--%'),
-            ],
+          EmptyState(
+            title: '無法讀取已選地點',
+            text: '$error',
+            error: true,
+            actions: [AppButton(label: '重新選擇地點', variant: AppButtonVariant.primary, onPressed: openLocationTab)],
           ),
         ],
       ),
-    ).animate().fade(delay: 300.ms).scale();
+      _ when selected == null => AppPageScaffold(header: header, children: const [_PullHint(loading: true)]),
+      _ => _content(ref, header, selected.$1, weather, refresh),
+    };
   }
 
-  Widget _buildWeatherDetailItem(IconData icon, String label, String value) {
-    return Column(
+  String _subtitle(AsyncValue<CurrentPlace> place, bool loading) {
+    final source = switch (place) {
+      AsyncData(value: PlaceSelected(source: PlaceSource.gps)) => '目前位置',
+      AsyncData(value: PlaceSelected(source: PlaceSource.manual)) => '已選地點',
+      AsyncData(value: NoPlace()) || AsyncError() => '請選擇地點',
+      _ => '定位中…',
+    };
+    return place is AsyncData && place.value is PlaceSelected && loading ? '$source · 更新中…' : source;
+  }
+
+  Widget _content(WidgetRef ref, AppPageHeader header, Place place, WeatherState weather, VoidCallback refresh) {
+    final now = ref.read(weatherClockProvider)();
+    final hourly = weather.hourly;
+    final current = weather.current;
+    final warnings = ref.watch(activeWarningsProvider);
+    final datasets = AppConstants.townshipForecastDatasets[place.county];
+    final groups = switch (warnings) {
+      AsyncData(value: Success(:final data)) => groupsForCounty(groupWarnings(data), place.county),
+      _ => const <WarningGroup>[],
+    };
+    // Credit only datasets whose data is on screen; none while loading.
+    final sources = weather.isLoading
+        ? const <String>[]
+        : [
+            if (current is Success) AppConstants.observationDataset,
+            if (hourly is Success && datasets != null) datasets.threeDay,
+            if (weather.weekly is Success && datasets != null) datasets.oneWeek,
+            if (weather.sun is Success) AppConstants.sunTimesDataset,
+            if (groups.isNotEmpty) ...[warningsByCountyDataset, warningBulletinsDataset],
+          ];
+    return AppPageScaffold(
+      header: header,
+      onRefresh: () async => refresh(),
+      source: sources.isEmpty ? null : SourceLine(datasetIds: sources),
       children: [
-        Icon(icon, color: Colors.white70, size: 24),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+        _PullHint(loading: weather.isLoading),
+        HeroCard(
+          current: current,
+          slot: hourly is Success<List<HourlyForecast>> ? currentSlot(hourly.data, now) : null,
+          onRetry: refresh,
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 12,
-          ),
+        ?_warningEntry(ref, warnings, groups, now),
+        SunCard(days: weather.sun, now: now, onRetry: refresh),
+        Forecast72hCard(hourly: hourly, now: now, onRetry: refresh),
+        WeeklyCard(
+          weekly: weather.weekly,
+          currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,
+          now: now,
+          onRetry: refresh,
         ),
       ],
     );
   }
 
-  Widget _buildHourlyForecast(List<WeatherCondition> forecast) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '未來24小時預報',
-          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-        ).animate().fade(delay: 600.ms),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 160,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: forecast.length,
-            itemBuilder: (context, index) {
-              final item = forecast[index];
-              return Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: GlassContainer(
-                  width: 120,
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Text(
-                        item.startTime == 'now' ? '現在' : item.startTime,
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      const Icon(Icons.cloud, color: Colors.white),
-                      Text(
-                        '${item.t}°C',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '降雨 ${item.pop}%',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ).animate().fade(delay: (700 + (index * 100)).ms).slideY(begin: 0.2),
-              );
-            },
-          ),
+  /// `.warn-entry`: highest active warning for the county → 警特報 tab.
+  /// Loading and 「無特報」 show nothing; a failed fetch shows its error.
+  Widget? _warningEntry(
+    WidgetRef ref,
+    AsyncValue<Result<ActiveWarnings>> warnings,
+    List<WarningGroup> groups,
+    DateTime now,
+  ) {
+    return switch (warnings) {
+      AsyncData(value: Failure(:final message)) => _warningError(ref, message),
+      AsyncError(:final error) => _warningError(ref, '$error'),
+      AsyncData(value: Success()) => _activeEntry(ref, groups, now),
+      _ => null,
+    };
+  }
+
+  Widget _warningError(WidgetRef ref, String message) => StatusBanner(
+    tone: StatusTone.error,
+    title: '無法取得警特報',
+    text: message,
+    actions: [RetryButton(onPressed: () => ref.invalidate(activeWarningsProvider))],
+  );
+
+  Widget? _activeEntry(WidgetRef ref, List<WarningGroup> groups, DateTime now) {
+    if (groups.isEmpty) return null;
+    final top = groups.first;
+    final more = groups.length > 1 ? ' · 另有 ${groups.length - 1} 則' : '';
+    return Semantics(
+      button: true,
+      label: '${top.name}，查看詳情',
+      child: InkWell(
+        onTap: () => ref.read(appTabProvider.notifier).select(AppTab.warnings),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: StatusBanner(
+          tone: top.level == null || top.level == 1 ? StatusTone.alert1 : StatusTone.alert3,
+          title: '${top.name} · ${top.isUpcoming(now) ? '即將生效' : '生效中'}',
+          text: '${_range(top.start, top.end)}$more',
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildWeeklyForecast(List<WeatherCondition> forecast) {
-    // Group forecast by day (simplified - take first item of each day pattern)
-    final dailyForecasts = <WeatherCondition>[];
-    for (var i = 0; i < forecast.length && dailyForecasts.length < 7; i += 4) {
-      if (i < forecast.length) {
-        dailyForecasts.add(forecast[i]);
-      }
-    }
+  String _range(DateTime start, DateTime end) =>
+      '${monthDay(taiwanWall(start))} ${clockText(start)} – ${monthDay(taiwanWall(end))} ${clockText(end)}';
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '一週預報',
-          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-        ).animate().fade(delay: 800.ms),
-        const SizedBox(height: 16),
-        ...dailyForecasts.asMap().entries.map((entry) {
-          final index = entry.key;
-          final item = entry.value;
-          final dayNames = ['今天', '明天', '週二', '週三', '週四', '週五', '週六'];
-          final dayLabel = index < dayNames.length ? dayNames[index] : '第${index + 1}天';
+/// `.ptr`: pull-to-refresh hint; while loading, the spinner pill 「載入天氣資料…」.
+class _PullHint extends StatelessWidget {
+  const _PullHint({required this.loading});
 
-          return GlassContainer(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            borderRadius: BorderRadius.circular(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  dayLabel,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppType.caption1.copyWith(color: loading ? AppPalette.brandFgStrong : AppPalette.fg3);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+      child: Center(
+        child: loading
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s4),
+                decoration: BoxDecoration(
+                  color: AppPalette.bg1,
+                  borderRadius: BorderRadius.circular(AppRadius.circular),
+                  boxShadow: AppShadows.s4,
                 ),
-                const Icon(Icons.wb_cloudy, color: Colors.white70, size: 28),
-                Row(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: AppSpace.s8,
                   children: [
-                    Text(
-                      '${item.t - 2}°',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${item.t}°',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    const AppSpinner(),
+                    Text('載入天氣資料…', style: style),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${item.pop}%',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ).animate().fade(delay: (900 + (index * 100)).ms).slideX(begin: 0.1);
-        }),
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: AppSpace.s8,
+                children: [
+                  const Icon(Icons.expand_more, size: AppSize.icon16, color: AppPalette.fg3),
+                  Text('下拉即可重新整理', style: style),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// No current place: why, and the next steps (permission / settings, 手動選擇).
+/// No data and no default place are shown.
+class _NoPlaceGuide extends ConsumerWidget {
+  const _NoPlaceGuide({required this.noPlace, required this.onManual});
+
+  final NoPlace noPlace;
+  final VoidCallback onManual;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reason = noPlace.reason;
+    final title = switch (reason) {
+      LocationFailure.permissionDenied || LocationFailure.permissionDeniedForever => '未取得位置權限',
+      LocationFailure.serviceDisabled => '定位服務已關閉',
+      LocationFailure.positionUnavailable || LocationFailure.addressUnresolved => '無法取得目前位置',
+    };
+    final text = locationFailureMessage(reason);
+
+    Future<void> openSettings(Future<bool> Function() open, String what) async {
+      if (await open()) return;
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('無法開啟$what，請手動前往系統設定')));
+    }
+
+    void useGps() => ref.read(currentPlaceProvider.notifier).useGps();
+    // Settings actions lead (mockup 「前往設定」 primary); otherwise 手動選擇 leads.
+    final (locateLabel, VoidCallback locate, settingsFirst) = switch (reason) {
+      LocationFailure.permissionDenied => ('使用目前位置', useGps, false),
+      LocationFailure.permissionDeniedForever => (
+        '前往設定',
+        () => openSettings(Geolocator.openAppSettings, '應用程式設定'),
+        true,
+      ),
+      LocationFailure.serviceDisabled => ('開啟定位服務', () => openSettings(Geolocator.openLocationSettings, '定位設定'), true),
+      _ => ('重試定位', useGps, false),
+    };
+    AppButtonVariant lead(bool first) => first ? AppButtonVariant.primary : AppButtonVariant.secondary;
+
+    return StatusBanner(
+      tone: StatusTone.permission,
+      title: title,
+      text: text,
+      actions: [
+        AppButton(label: locateLabel, small: true, variant: lead(settingsFirst), onPressed: locate),
+        AppButton(label: '手動選擇', small: true, variant: lead(!settingsFirst), onPressed: onManual),
       ],
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(color: Colors.white),
-          SizedBox(height: 16),
-          Text(
-            '載入天氣資料...',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(BuildContext context, String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              '載入失敗',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Error: $error',
-              style: TextStyle(color: Colors.white.withOpacity(0.7)),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                // Could trigger refresh here
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('重試'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.2),
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cloud_off, color: Colors.white54, size: 64),
-            const SizedBox(height: 16),
-            const Text(
-              '暫無天氣資料',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '請稍後再試，或檢查網路連線',
-              style: TextStyle(color: Colors.white.withOpacity(0.7)),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
