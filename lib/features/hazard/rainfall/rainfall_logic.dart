@@ -1,0 +1,75 @@
+import '../../../data/models/hazard_models.dart';
+
+/// CWA rain-warning thresholds (mm of accumulated rain): 大雨, 豪雨, 大豪雨, 超大豪雨.
+const rainWarningThresholds = [80.0, 200.0, 350.0, 500.0];
+
+/// Level names indexed by [rainLevel]; 0 = below every threshold.
+const rainLevelNames = ['未達警戒', '大雨', '豪雨', '大豪雨', '超大豪雨'];
+
+/// Widths (percent of the bar) of the 0–80, 80–200, 200–350, 350–500 segments
+/// in the threshold bar (mockup `.thr__bar`).
+const thresholdSegmentPercents = [16.0, 24.0, 30.0, 30.0];
+
+/// Forecast cells below this are blank on the map (mockup hint).
+const forecastVisibleMinMm = 1.0;
+
+/// Upper bounds of forecast buckets 1–3; bucket 4 is everything above.
+const forecastBucketUpperMm = [5.0, 10.0, 20.0];
+
+/// 0 = below 大雨 … 4 = 超大豪雨.
+int rainLevel(double mm) => rainWarningThresholds.where((t) => mm >= t).length;
+
+/// Marker position on the threshold bar, 0–1 (piecewise linear per segment, clamped).
+double thresholdMarkerFraction(double mm) {
+  var done = 0.0;
+  var lower = 0.0;
+  for (var i = 0; i < rainWarningThresholds.length; i++) {
+    final upper = rainWarningThresholds[i];
+    final segment = thresholdSegmentPercents[i] / 100;
+    if (mm < upper) return done + (mm - lower) / (upper - lower) * segment;
+    done += segment;
+    lower = upper;
+  }
+  return done;
+}
+
+/// Remaining mm to the next warning level and its name; null at the top level.
+({String name, double remainingMm})? nextWarning(double mm) {
+  final level = rainLevel(mm);
+  if (level >= rainWarningThresholds.length) return null;
+  return (name: rainLevelNames[level + 1], remainingMm: rainWarningThresholds[level] - mm);
+}
+
+/// 1 decimal, e.g. `86.5`; null (station reported no value) → `—`.
+String formatMm(double? mm) => mm == null ? '—' : mm.toStringAsFixed(1);
+
+/// Stations sorted high → low (missing values last) or by name.
+enum StationSort { rainfall, name }
+
+List<RainStation> sortStations(List<RainStation> stations, StationSort sort) {
+  final sorted = [...stations];
+  switch (sort) {
+    case StationSort.rainfall:
+      sorted.sort((a, b) {
+        final x = a.todayMm;
+        final y = b.todayMm;
+        if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+        return y.compareTo(x);
+      });
+    case StationSort.name:
+      sorted.sort((a, b) => a.name.compareTo(b.name));
+  }
+  return sorted;
+}
+
+/// Bucket per grid cell, same order as [RainForecastGrid.values]:
+/// 0 = blank (missing or < 1 mm), 1 = 1–5, 2 = 5–10, 3 = 10–20, 4 = ≥ 20 mm.
+List<int> forecastBuckets(RainForecastGrid grid) {
+  return [
+    for (final mm in grid.values)
+      if (mm == null || mm < forecastVisibleMinMm)
+        0
+      else
+        1 + forecastBucketUpperMm.where((upper) => mm >= upper).length,
+  ];
+}
