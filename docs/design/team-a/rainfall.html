@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team A · 雨量 — CWA 天氣 mockup</title>
+<!--
+  Team A「Glanceable dashboard」— 雨量頁 (rainfall)，分頁：雨量觀測／降雨預測
+  Functions covered (page-inventory.md §3.3, §3.4, §0):
+   1. 分頁切換：雨量觀測／降雨預測（頁首分段控制，role=tablist）                       → 框 1、2
+   2. 雨量觀測 O-A0002-001：目前位置最近測站今日累積雨量（英雄卡）、近 1／3 小時、
+      觀測時間、與豪雨門檻距離                                                             → 框 1
+   3. 測站今日累積雨量列表：站名、縣市區、累積 mm、等級徽章、比例條                      → 框 1
+   4. 排序（雨量高→低／站名）與縣市篩選 chip                                             → 框 1、5
+   5. 累積雨量圖 O-A0040-002（臺灣示意圖＋等級色＋測站點＋圖例）                         → 框 1
+   6. 降雨預測：未來 1 小時 F-B0046-001，我的位置預估 mm（英雄卡）                       → 框 2
+   7. 降雨預測：未來 1 小時雨量網格圖 F-B0046-001（臺灣示意圖＋網格色階＋圖例；24 小時預測依使用者裁決移除） → 框 2
+   8. 警戒等級配色：大雨 ≥80／豪雨 ≥200／大豪雨 ≥350／超大豪雨 ≥500 mm（24 小時累積），
+      用 --color-alert-1…4 token；等級一律配文字，不只靠顏色                                → 框 1、6
+   9. 重新整理、更新時間                                                                    → 全部框
+   9a. 資料來源：每框頁面內容最底部單一來源行（列出本頁資料集）                         → 全部框
+  10. 狀態：載入中、錯誤（連線逾時＋重試）、空（篩選後無測站）、未取得位置權限          → 框 3–6
+  11. 底部導覽 5 頁，目前頁＝雨量                                                          → 全部框
+  Colours: tokens only (alert levels, rain, brand ramp). No data-viz literals.
+-->
+<link rel="stylesheet" href="../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+  /* ===== Mockup board (aligned to team-a/home.html) ===== */
+  .board { display: flex; flex-direction: column; align-items: center; gap: var(--space-40); padding: var(--space-32) var(--space-16) var(--space-64); }
+  .board__head { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: var(--space-8); }
+  .board__group { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: var(--space-16); }
+  .board__group-title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .frames { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-40) var(--space-32); }
+  .frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-12); }
+  .frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .frame__note { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .frame .app-shell { min-height: 812px; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-16); }
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  @media (max-width: 420px) {
+    .board { padding-inline: var(--space-0); }
+    .board__head, .board__group { padding-inline: var(--space-16); }
+    .frames { padding-inline: var(--space-0); }
+    .board__group > .frames { margin-inline: calc(-1 * var(--space-16)); }
+    .frame .app-shell { border-radius: var(--radius-none); border-inline: none; }
+    .frame__caption, .frame__note { padding-inline: var(--space-16); }
+  }
+
+  /* ===== Team A shared patterns (app bar subtitle, hero, cards) — same as home.html ===== */
+  .app-bar__subtitle { display: flex; align-items: center; gap: var(--space-4); }
+  .app-bar__subtitle .icon { color: var(--color-brand-fg); }
+  .page--a { gap: var(--space-16); padding-top: var(--space-8); }
+  .hero { background: linear-gradient(180deg, var(--color-brand-160) 0%, var(--color-bg-1) 64%); box-shadow: var(--shadow-8); }
+  .hero__eyebrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+  .page-foot { text-align: center; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .hero .metric { background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-3); }
+  .card--a { border-radius: var(--radius-lg); padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
+  .card--a .card__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .card--a.card--flush { padding: var(--space-0); gap: var(--space-0); }
+  .hero__titles { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+  .hero__value { display: flex; align-items: baseline; gap: var(--space-8); }
+  .hero__unit { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .card__header--top { align-items: flex-start; }
+  .metric__value { white-space: nowrap; } /* keep number + unit together at 320px */
+  .card__title--nowrap { white-space: nowrap; }
+
+  /* View switcher: full-width segmented control (Team A uses segmented, not pivot tabs) */
+  .segmented--block { display: flex; }
+  .segmented--block .segmented__item { flex: 1; }
+  .segmented__item[aria-selected="true"] { background: var(--color-bg-1); color: var(--color-fg-1); font-weight: var(--font-weight-semibold); box-shadow: var(--shadow-2); }
+
+  /* Warning-level threshold scale (0 / 80 / 200 / 350 / 500 mm) */
+  .thr { display: flex; flex-direction: column; gap: var(--space-4); }
+  .thr__track { position: relative; }
+  .thr__bar, .thr__labels { display: grid; grid-template-columns: 16fr 24fr 30fr 30fr; }
+  .thr__bar { height: var(--size-legend-bar); border-radius: var(--radius-circular); overflow: hidden; }
+  .thr__marker { position: absolute; top: calc(-1 * var(--space-4)); width: var(--stroke-thicker); height: var(--space-16); border-radius: var(--radius-circular); background: var(--color-fg-1); box-shadow: 0 0 0 var(--stroke-thin) var(--color-bg-1); transform: translateX(-50%); }
+  .thr__labels { font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+
+  /* Level fills (alert tokens; level 0 = rain without warning) */
+  .lv-0 { background: var(--color-brand-140); }
+  .lv-1 { background: var(--color-alert-1-solid); }
+  .lv-2 { background: var(--color-alert-2-solid); }
+  .lv-3 { background: var(--color-alert-3-solid); }
+  .lv-4 { background: var(--color-alert-4-solid); }
+  .rf-0 { fill: var(--color-brand-140); } .rf-1 { fill: var(--color-alert-1-solid); }
+  .rf-2 { fill: var(--color-alert-2-solid); } .rf-3 { fill: var(--color-alert-3-solid); }
+  .stn { stroke: var(--color-bg-1); stroke-width: 1.5; }
+
+  /* Map */
+  .rain-map { aspect-ratio: 5 / 6; border-radius: var(--radius-md); }
+  .map-svg { width: 100%; height: 100%; }
+  .map-land { fill: var(--color-map-land); stroke: var(--color-map-border); stroke-width: 1.5; stroke-linejoin: round; }
+  .map-cover { stroke: var(--color-map-border); stroke-width: 1.5; stroke-linejoin: round; fill: none; }
+  .me__halo { fill: var(--color-map-pin); opacity: 0.2; }
+  .me__dot { fill: var(--color-map-pin); stroke: var(--color-bg-1); stroke-width: 2; }
+
+  /* Station rows */
+  .stn-row .list-row__content { gap: var(--space-4); }
+  .stn-row__bar { height: var(--size-slider-track); border-radius: var(--radius-circular); background: var(--color-bg-4); overflow: hidden; }
+  .stn-row__fill { display: block; height: 100%; border-radius: var(--radius-circular); }
+  .stn-row__value { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-4); min-width: var(--size-icon-64); }
+  .stn-row__mm { font-size: var(--type-body2-size); line-height: var(--type-body2-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); font-variant-numeric: tabular-nums; }
+  .stn-row__mm small { font-size: var(--type-caption1-size); font-weight: var(--font-weight-regular); color: var(--color-fg-3); }
+  .list-head { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16) var(--space-16) var(--space-12); border-bottom: var(--stroke-thin) solid var(--color-stroke-3); }
+  .card--flush .list-row { background: transparent; }
+  .list-foot { display: flex; justify-content: center; padding: var(--space-8) var(--space-16) var(--space-12); border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+
+  /* 1h rain grid (brand ramp tokens, light → dark = more rain) */
+  .qpf-grid rect { stroke: var(--color-bg-1); stroke-width: 0.5; }
+  .g-1 { fill: var(--color-brand-150); } .g-2 { fill: var(--color-brand-120); } .g-3 { fill: var(--color-brand-90); } .g-4 { fill: var(--color-brand-60); }
+  .sw-1 { background: var(--color-brand-150); } .sw-2 { background: var(--color-brand-120); } .sw-3 { background: var(--color-brand-90); } .sw-4 { background: var(--color-brand-60); }
+  .rain-hint { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .skel-line { height: var(--space-12); min-height: var(--space-12); }
+  .skel-line--title { height: var(--space-48); width: 55%; }
+  .skel-line--short { width: 40%; }
+</style>
+</head>
+<body>
+
+<!-- ===== Icon sprite (copied from components.html) + map shape ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-options" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 7.5 3.5 3.5 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+  <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6a2 2 0 0 0 4 0M12 3v0"/></symbol>
+  <defs>
+    <!-- Stylised Taiwan (x=(lon-119)*80, y=(26-lat)*80) + Penghu; placeholder map -->
+    <polygon id="tw-shape" points="203,56 220,68 240,80 228,100 230,112 210,160 172,260 160,288 148,328 138,324 128,290 102,272 92,240 90,208 112,152 120,140 152,96 164,76 192,66"/>
+    <g id="tw-land"><use href="#tw-shape"/><ellipse cx="48" cy="194" rx="5" ry="7"/></g>
+    <clipPath id="tw-clip"><use href="#tw-shape"/></clipPath>
+  </defs>
+</svg>
+
+<main class="board">
+
+<header class="board__head">
+  <h1 class="text-title2">Team A · 雨量（觀測／預測）</h1>
+  <p class="text-secondary">頁首分段控制切換「雨量觀測」與「降雨預測」，其下英雄卡顯示你所在地的關鍵數字，再往下是地圖與列表。警戒等級色：黃＝大雨、橙＝豪雨、紅＝大豪雨、紫＝超大豪雨，皆附文字。</p>
+</header>
+
+<section class="board__group" aria-labelledby="g-default">
+  <h2 class="board__group-title" id="g-default">預設狀態與其他狀態</h2>
+  <div class="frames">
+
+  <!-- ================= Frame 1: observation (default) ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">① 雨量觀測<span class="badge badge--brand">預設</span></figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雨量</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>臺北市 信義區 · 觀測 14:10</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <div class="segmented segmented--block" role="tablist" aria-label="雨量檢視">
+          <button class="segmented__item" role="tab" aria-selected="true">雨量觀測</button>
+          <button class="segmented__item" role="tab" aria-selected="false">降雨預測</button>
+        </div>
+
+        <article class="card card--hero hero" aria-label="目前位置今日累積雨量">
+          <div class="card__header card__header--top">
+            <div class="hero__titles">
+              <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">最近測站 · 信義</span></p>
+              <p class="hero__value"><span class="text-display num">86.5</span><span class="hero__unit">mm</span></p>
+              <p class="card__meta num">今日累積 · 00:00 – 14:10</p>
+            </div>
+            <span class="badge badge--alert-1"><span class="level-dot level-dot--1"></span>大雨</span>
+          </div>
+          <div class="thr" aria-label="警戒門檻：已達大雨 80 毫米，距豪雨 200 毫米尚差 113.5 毫米">
+            <div class="thr__track">
+              <div class="thr__bar" aria-hidden="true"><span class="lv-0"></span><span class="lv-1"></span><span class="lv-2"></span><span class="lv-3"></span></div>
+              <span class="thr__marker" style="left:17.3%" aria-hidden="true"></span>
+            </div>
+            <div class="thr__labels" aria-hidden="true"><span>0</span><span>大雨 80</span><span>豪雨 200</span><span>大豪雨 350</span></div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-clock"/></svg><div><p class="metric__label">近 1 小時</p><p class="metric__value text-rain">12.0 mm</p></div></div>
+            <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-clock"/></svg><div><p class="metric__label">近 3 小時</p><p class="metric__value text-rain">28.5 mm</p></div></div>
+            <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-warning"/></svg><div><p class="metric__label">距豪雨門檻</p><p class="metric__value">113.5 mm</p></div></div>
+            <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-rain"/></svg><div><p class="metric__label">目前</p><p class="metric__value">持續降雨</p></div></div>
+          </div>
+        </article>
+
+        <article class="card card--a" aria-label="累積雨量圖">
+          <div class="card__header"><h2 class="card__title">累積雨量圖</h2><span class="card__meta num">今日 · 14:10</span></div>
+          <div class="map rain-map" role="img" aria-label="今日累積雨量圖：新北市平溪、汐止一帶達大豪雨與豪雨，臺北、基隆達大雨">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <g clip-path="url(#tw-clip)">
+                <ellipse class="rf-0" cx="196" cy="108" rx="62" ry="58"/>
+                <ellipse class="rf-1" cx="210" cy="82" rx="30" ry="24"/>
+                <ellipse class="rf-2" cx="215" cy="77" rx="13" ry="10"/>
+                <ellipse class="rf-3" cx="219" cy="80" rx="5" ry="4"/>
+              </g>
+              <use href="#tw-shape" class="map-cover"/>
+              <circle class="stn rf-3" cx="219" cy="80" r="3"/>
+              <circle class="stn rf-2" cx="213" cy="74" r="3"/>
+              <circle class="stn rf-1" cx="203" cy="67" r="3"/>
+              <circle class="stn rf-1" cx="219" cy="70" r="3"/>
+              <circle class="stn rf-0" cx="197" cy="79" r="3"/>
+              <circle class="stn rf-0" cx="220" cy="99" r="3"/>
+              <circle class="me__halo" cx="205" cy="77" r="9"/>
+              <circle class="me__dot" cx="205" cy="77" r="4"/>
+            </svg>
+          </div>
+          <div class="legend__list" aria-label="累積雨量等級圖例">
+            <span class="legend__item"><span class="legend__swatch lv-0"></span>&lt; 80 mm</span>
+            <span class="legend__item"><span class="legend__swatch lv-1"></span>大雨 ≥ 80</span>
+            <span class="legend__item"><span class="legend__swatch lv-2"></span>豪雨 ≥ 200</span>
+            <span class="legend__item"><span class="legend__swatch lv-3"></span>大豪雨 ≥ 350</span>
+            <span class="legend__item"><span class="legend__swatch lv-4"></span>超大豪雨 ≥ 500</span>
+          </div>
+        </article>
+
+        <article class="card card--a card--flush" aria-label="測站今日累積雨量">
+          <div class="list-head">
+            <div class="card__header">
+              <div class="hero__titles"><h2 class="card__title">測站今日累積雨量</h2><span class="card__meta">418 站 · 依雨量高到低</span></div>
+              <button class="btn btn--subtle btn--sm" aria-label="排序方式：雨量高到低"><svg class="icon icon--16" aria-hidden="true"><use href="#i-options"/></svg>排序</button>
+            </div>
+            <div class="chip-group chip-group--scroll" role="radiogroup" aria-label="依縣市篩選">
+              <button class="chip" role="radio" aria-checked="true">全部縣市</button>
+              <button class="chip" role="radio" aria-checked="false">臺北市</button>
+              <button class="chip" role="radio" aria-checked="false">新北市</button>
+              <button class="chip" role="radio" aria-checked="false">基隆市</button>
+              <button class="chip" role="radio" aria-checked="false">宜蘭縣</button>
+              <button class="chip" role="radio" aria-checked="false">桃園市</button>
+              <button class="chip" role="radio" aria-checked="false">臺中市</button>
+              <button class="chip" role="radio" aria-checked="false">高雄市</button>
+            </div>
+          </div>
+          <div class="list-row stn-row">
+            <span class="list-row__content"><span class="list-row__primary">火燒寮</span><span class="list-row__secondary">新北市 平溪區</span><span class="stn-row__bar"><span class="stn-row__fill lv-3" style="width:77.6%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">388.0 <small>mm</small></span><span class="badge badge--alert-3"><span class="level-dot level-dot--3"></span>大豪雨</span></span>
+          </div>
+          <div class="list-row stn-row">
+            <span class="list-row__content"><span class="list-row__primary">五堵</span><span class="list-row__secondary">新北市 汐止區</span><span class="stn-row__bar"><span class="stn-row__fill lv-2" style="width:47.2%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">236.0 <small>mm</small></span><span class="badge badge--alert-2"><span class="level-dot level-dot--2"></span>豪雨</span></span>
+          </div>
+          <div class="list-row stn-row">
+            <span class="list-row__content"><span class="list-row__primary">竹子湖</span><span class="list-row__secondary">臺北市 北投區</span><span class="stn-row__bar"><span class="stn-row__fill lv-1" style="width:36.5%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">182.5 <small>mm</small></span><span class="badge badge--alert-1"><span class="level-dot level-dot--1"></span>大雨</span></span>
+          </div>
+          <div class="list-row stn-row">
+            <span class="list-row__content"><span class="list-row__primary">基隆</span><span class="list-row__secondary">基隆市 仁愛區</span><span class="stn-row__bar"><span class="stn-row__fill lv-1" style="width:31.2%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">156.0 <small>mm</small></span><span class="badge badge--alert-1"><span class="level-dot level-dot--1"></span>大雨</span></span>
+          </div>
+          <div class="list-row stn-row list-row--selected">
+            <span class="list-row__content"><span class="list-row__primary">信義</span><span class="list-row__secondary">臺北市 信義區 · 目前位置</span><span class="stn-row__bar"><span class="stn-row__fill lv-1" style="width:17.3%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">86.5 <small>mm</small></span><span class="badge badge--alert-1"><span class="level-dot level-dot--1"></span>大雨</span></span>
+          </div>
+          <div class="list-row stn-row">
+            <span class="list-row__content"><span class="list-row__primary">板橋</span><span class="list-row__secondary">新北市 板橋區</span><span class="stn-row__bar"><span class="stn-row__fill lv-0" style="width:12.8%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">64.0 <small>mm</small></span><span class="badge">未達警戒</span></span>
+          </div>
+          <div class="list-row stn-row">
+            <span class="list-row__content"><span class="list-row__primary">宜蘭</span><span class="list-row__secondary">宜蘭縣 宜蘭市</span><span class="stn-row__bar"><span class="stn-row__fill lv-0" style="width:8.3%"></span></span></span>
+            <span class="stn-row__value"><span class="stn-row__mm">41.5 <small>mm</small></span><span class="badge">未達警戒</span></span>
+          </div>
+          <div class="list-foot"><button class="btn btn--subtle btn--sm">顯示全部 418 站<svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></button></div>
+        </article>
+        <p class="rain-hint">警戒等級依 24 小時累積雨量：大雨 80、豪雨 200、大豪雨 350、超大豪雨 500 mm。</p>
+        <p class="page-foot">資料來源：中央氣象署 開放資料（O-A0002-001、O-A0040-002、F-B0046-001）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+    <p class="frame__note">英雄卡顯示所在地最近測站今日累積雨量與警戒門檻位置；等級色一律搭配「大雨／豪雨…」文字；列表可依縣市篩選、切換排序。</p>
+  </figure>
+
+  <!-- ================= Frame 2: forecast ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">② 降雨預測：未來 1 小時</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雨量</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>臺北市 信義區 · 預測發布 14:00</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <div class="segmented segmented--block" role="tablist" aria-label="雨量檢視">
+          <button class="segmented__item" role="tab" aria-selected="false">雨量觀測</button>
+          <button class="segmented__item" role="tab" aria-selected="true">降雨預測</button>
+        </div>
+
+        <article class="card card--hero hero" aria-label="未來 1 小時降雨預測">
+          <div class="card__header card__header--top">
+            <div class="hero__titles">
+              <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">未來 1 小時 · 14:00 – 15:00</span></p>
+              <p class="hero__value"><span class="text-display num">6.0</span><span class="hero__unit">mm</span></p>
+              <p class="card__meta">臺北市 信義區預估雨量 · 出門請帶傘</p>
+            </div>
+            <svg class="icon icon--64 icon--rain" aria-hidden="true"><use href="#i-umbrella"/></svg>
+          </div>
+        </article>
+
+        <article class="card card--a" aria-label="未來 1 小時雨量網格圖">
+          <div class="card__header"><h2 class="card__title card__title--nowrap">未來 1 小時雨量</h2><span class="card__meta num">14:00 – 15:00</span></div>
+          <div class="map rain-map" role="img" aria-label="未來 1 小時雨量網格圖：臺北、新北、基隆一帶 5 至 20 毫米以上，其他地區無明顯降雨">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <g clip-path="url(#tw-clip)" class="qpf-grid">
+                <rect class="g-1" x="150" y="70" width="10" height="10"/>
+                <rect class="g-1" x="150" y="80" width="10" height="10"/>
+                <rect class="g-1" x="150" y="90" width="10" height="10"/>
+                <rect class="g-1" x="160" y="50" width="10" height="10"/>
+                <rect class="g-1" x="160" y="60" width="10" height="10"/>
+                <rect class="g-1" x="160" y="70" width="10" height="10"/>
+                <rect class="g-1" x="160" y="80" width="10" height="10"/>
+                <rect class="g-1" x="160" y="90" width="10" height="10"/>
+                <rect class="g-1" x="160" y="100" width="10" height="10"/>
+                <rect class="g-1" x="160" y="110" width="10" height="10"/>
+                <rect class="g-1" x="160" y="120" width="10" height="10"/>
+                <rect class="g-1" x="170" y="50" width="10" height="10"/>
+                <rect class="g-1" x="170" y="60" width="10" height="10"/>
+                <rect class="g-1" x="170" y="70" width="10" height="10"/>
+                <rect class="g-1" x="170" y="80" width="10" height="10"/>
+                <rect class="g-1" x="170" y="90" width="10" height="10"/>
+                <rect class="g-1" x="170" y="100" width="10" height="10"/>
+                <rect class="g-1" x="170" y="110" width="10" height="10"/>
+                <rect class="g-1" x="170" y="120" width="10" height="10"/>
+                <rect class="g-1" x="170" y="130" width="10" height="10"/>
+                <rect class="g-1" x="170" y="140" width="10" height="10"/>
+                <rect class="g-2" x="180" y="50" width="10" height="10"/>
+                <rect class="g-2" x="180" y="60" width="10" height="10"/>
+                <rect class="g-2" x="180" y="70" width="10" height="10"/>
+                <rect class="g-2" x="180" y="80" width="10" height="10"/>
+                <rect class="g-2" x="180" y="90" width="10" height="10"/>
+                <rect class="g-2" x="180" y="100" width="10" height="10"/>
+                <rect class="g-2" x="180" y="110" width="10" height="10"/>
+                <rect class="g-1" x="180" y="120" width="10" height="10"/>
+                <rect class="g-1" x="180" y="130" width="10" height="10"/>
+                <rect class="g-1" x="180" y="140" width="10" height="10"/>
+                <rect class="g-2" x="190" y="50" width="10" height="10"/>
+                <rect class="g-2" x="190" y="60" width="10" height="10"/>
+                <rect class="g-3" x="190" y="70" width="10" height="10"/>
+                <rect class="g-3" x="190" y="80" width="10" height="10"/>
+                <rect class="g-3" x="190" y="90" width="10" height="10"/>
+                <rect class="g-2" x="190" y="100" width="10" height="10"/>
+                <rect class="g-2" x="190" y="110" width="10" height="10"/>
+                <rect class="g-2" x="190" y="120" width="10" height="10"/>
+                <rect class="g-1" x="190" y="130" width="10" height="10"/>
+                <rect class="g-1" x="190" y="140" width="10" height="10"/>
+                <rect class="g-1" x="190" y="150" width="10" height="10"/>
+                <rect class="g-2" x="200" y="50" width="10" height="10"/>
+                <rect class="g-3" x="200" y="60" width="10" height="10"/>
+                <rect class="g-3" x="200" y="70" width="10" height="10"/>
+                <rect class="g-4" x="200" y="80" width="10" height="10"/>
+                <rect class="g-3" x="200" y="90" width="10" height="10"/>
+                <rect class="g-3" x="200" y="100" width="10" height="10"/>
+                <rect class="g-2" x="200" y="110" width="10" height="10"/>
+                <rect class="g-2" x="200" y="120" width="10" height="10"/>
+                <rect class="g-1" x="200" y="130" width="10" height="10"/>
+                <rect class="g-1" x="200" y="140" width="10" height="10"/>
+                <rect class="g-1" x="200" y="150" width="10" height="10"/>
+                <rect class="g-2" x="210" y="50" width="10" height="10"/>
+                <rect class="g-3" x="210" y="60" width="10" height="10"/>
+                <rect class="g-4" x="210" y="70" width="10" height="10"/>
+                <rect class="g-4" x="210" y="80" width="10" height="10"/>
+                <rect class="g-4" x="210" y="90" width="10" height="10"/>
+                <rect class="g-3" x="210" y="100" width="10" height="10"/>
+                <rect class="g-2" x="210" y="110" width="10" height="10"/>
+                <rect class="g-2" x="210" y="120" width="10" height="10"/>
+                <rect class="g-2" x="210" y="130" width="10" height="10"/>
+                <rect class="g-1" x="210" y="140" width="10" height="10"/>
+                <rect class="g-1" x="210" y="150" width="10" height="10"/>
+                <rect class="g-2" x="220" y="50" width="10" height="10"/>
+                <rect class="g-3" x="220" y="60" width="10" height="10"/>
+                <rect class="g-3" x="220" y="70" width="10" height="10"/>
+                <rect class="g-3" x="220" y="80" width="10" height="10"/>
+                <rect class="g-3" x="220" y="90" width="10" height="10"/>
+                <rect class="g-3" x="220" y="100" width="10" height="10"/>
+                <rect class="g-2" x="220" y="110" width="10" height="10"/>
+                <rect class="g-2" x="220" y="120" width="10" height="10"/>
+                <rect class="g-1" x="220" y="130" width="10" height="10"/>
+                <rect class="g-1" x="220" y="140" width="10" height="10"/>
+                <rect class="g-1" x="220" y="150" width="10" height="10"/>
+                <rect class="g-2" x="230" y="50" width="10" height="10"/>
+                <rect class="g-2" x="230" y="60" width="10" height="10"/>
+                <rect class="g-2" x="230" y="70" width="10" height="10"/>
+                <rect class="g-3" x="230" y="80" width="10" height="10"/>
+                <rect class="g-2" x="230" y="90" width="10" height="10"/>
+                <rect class="g-2" x="230" y="100" width="10" height="10"/>
+                <rect class="g-2" x="230" y="110" width="10" height="10"/>
+                <rect class="g-2" x="230" y="120" width="10" height="10"/>
+                <rect class="g-1" x="230" y="130" width="10" height="10"/>
+                <rect class="g-1" x="230" y="140" width="10" height="10"/>
+                <rect class="g-1" x="230" y="150" width="10" height="10"/>
+                <rect class="g-1" x="240" y="50" width="10" height="10"/>
+                <rect class="g-2" x="240" y="60" width="10" height="10"/>
+                <rect class="g-2" x="240" y="70" width="10" height="10"/>
+                <rect class="g-2" x="240" y="80" width="10" height="10"/>
+                <rect class="g-2" x="240" y="90" width="10" height="10"/>
+                <rect class="g-2" x="240" y="100" width="10" height="10"/>
+                <rect class="g-1" x="240" y="110" width="10" height="10"/>
+                <rect class="g-1" x="240" y="120" width="10" height="10"/>
+                <rect class="g-1" x="240" y="130" width="10" height="10"/>
+                <rect class="g-1" x="240" y="140" width="10" height="10"/>
+              </g>
+              <use href="#tw-shape" class="map-cover"/>
+              <circle class="me__halo" cx="205" cy="77" r="9"/>
+              <circle class="me__dot" cx="205" cy="77" r="4"/>
+            </svg>
+          </div>
+          <div class="legend__list" aria-label="1 小時雨量圖例（毫米）">
+            <span class="legend__item"><span class="legend__swatch sw-1"></span>1–5 mm</span>
+            <span class="legend__item"><span class="legend__swatch sw-2"></span>5–10</span>
+            <span class="legend__item"><span class="legend__swatch sw-3"></span>10–20</span>
+            <span class="legend__item"><span class="legend__swatch sw-4"></span>≥ 20</span>
+          </div>
+          <p class="rain-hint">每格約 5 公里；空白格表示預估雨量小於 1 mm。</p>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署 開放資料（O-A0002-001、O-A0040-002、F-B0046-001）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 3: loading ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">③ 載入中</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雨量</p>
+          <p class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>正在取得測站資料…</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理" disabled><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a" aria-busy="true">
+        <div class="segmented segmented--block" role="tablist" aria-label="雨量檢視">
+          <button class="segmented__item" role="tab" aria-selected="true">雨量觀測</button>
+          <button class="segmented__item" role="tab" aria-selected="false">降雨預測</button>
+        </div>
+        <div class="status-banner status-banner--loading" role="status">
+          <span class="status-banner__icon"><span class="spinner" aria-hidden="true"></span></span>
+          <div class="status-banner__body"><p class="status-banner__title">載入雨量資料…</p></div>
+        </div>
+        <article class="card card--hero hero" aria-label="今日累積雨量（載入中）">
+          <div class="hero__titles">
+            <div class="skeleton skel-line skel-line--short"></div>
+            <div class="skeleton skel-line skel-line--title"></div>
+            <div class="skeleton skel-line skel-line--short"></div>
+          </div>
+          <div class="metric-grid">
+            <div class="skeleton" style="min-height:var(--size-touch)"></div>
+            <div class="skeleton" style="min-height:var(--size-touch)"></div>
+          </div>
+        </article>
+        <article class="card card--a" aria-label="測站列表（載入中）">
+          <div class="skeleton skel-line skel-line--short"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署 開放資料（O-A0002-001、O-A0040-002、F-B0046-001）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 4: error ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">④ 錯誤：連線逾時</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雨量</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>最後成功 11/14 13:40</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <div class="segmented segmented--block" role="tablist" aria-label="雨量檢視">
+          <button class="segmented__item" role="tab" aria-selected="true">雨量觀測</button>
+          <button class="segmented__item" role="tab" aria-selected="false">降雨預測</button>
+        </div>
+        <article class="card card--hero hero" aria-label="雨量資料無法取得">
+          <div class="status-banner status-banner--error" role="alert">
+            <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span>
+            <div class="status-banner__body">
+              <p class="status-banner__title">無法取得雨量資料</p>
+              <p class="status-banner__text">連線逾時，請檢查網路。</p>
+              <div class="status-banner__actions"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div>
+            </div>
+          </div>
+          <p class="rain-hint">目前沒有可顯示的觀測值。請勿以空白判斷「沒有下雨」，可改看雷達回波。</p>
+          <a class="btn btn--subtle btn--sm" href="radar.html" style="align-self:flex-start"><svg class="icon icon--16" aria-hidden="true"><use href="#i-radar"/></svg>查看雷達回波</a>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署 開放資料（O-A0002-001、O-A0040-002、F-B0046-001）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 5: empty (filter has no stations) ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">⑤ 空：篩選縣市無測站資料</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雨量</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>臺北市 信義區 · 觀測 14:10</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <div class="segmented segmented--block" role="tablist" aria-label="雨量檢視">
+          <button class="segmented__item" role="tab" aria-selected="true">雨量觀測</button>
+          <button class="segmented__item" role="tab" aria-selected="false">降雨預測</button>
+        </div>
+        <article class="card card--a card--flush" aria-label="測站今日累積雨量">
+          <div class="list-head">
+            <div class="card__header">
+              <div class="hero__titles"><h2 class="card__title">測站今日累積雨量</h2><span class="card__meta">連江縣 · 0 站</span></div>
+              <button class="btn btn--subtle btn--sm" aria-label="排序方式：雨量高到低"><svg class="icon icon--16" aria-hidden="true"><use href="#i-options"/></svg>排序</button>
+            </div>
+            <div class="chip-group chip-group--scroll" role="radiogroup" aria-label="依縣市篩選">
+              <button class="chip" role="radio" aria-checked="false">全部縣市</button>
+              <button class="chip" role="radio" aria-checked="true">連江縣</button>
+              <button class="chip" role="radio" aria-checked="false">臺北市</button>
+              <button class="chip" role="radio" aria-checked="false">新北市</button>
+            </div>
+          </div>
+          <div class="empty-state">
+            <svg class="icon icon--48 empty-state__icon" aria-hidden="true"><use href="#i-cloud-off"/></svg>
+            <p class="empty-state__title">連江縣目前沒有測站資料</p>
+            <p>測站可能暫停回報。可改選其他縣市，或查看全部測站。</p>
+            <button class="btn btn--secondary btn--sm">顯示全部縣市</button>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署 開放資料（O-A0002-001、O-A0040-002、F-B0046-001）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 6: permission denied ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">⑥ 未取得位置權限</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雨量</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>臺北市 信義區（預設）· 觀測 14:10</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <div class="segmented segmented--block" role="tablist" aria-label="雨量檢視">
+          <button class="segmented__item" role="tab" aria-selected="true">雨量觀測</button>
+          <button class="segmented__item" role="tab" aria-selected="false">降雨預測</button>
+        </div>
+        <div class="status-banner status-banner--permission" role="status">
+          <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>
+          <div class="status-banner__body">
+            <p class="status-banner__title">未取得位置權限</p>
+            <p class="status-banner__text">目前顯示臺北市 信義區附近測站，不一定是你所在地。</p>
+            <div class="status-banner__actions"><button class="btn btn--primary btn--sm">允許定位</button><a class="btn btn--subtle btn--sm" href="location.html">選擇地點</a></div>
+          </div>
+        </div>
+        <article class="card card--hero hero" aria-label="預設地點今日累積雨量">
+          <div class="card__header card__header--top">
+            <div class="hero__titles">
+              <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">預設地點測站 · 信義</span></p>
+              <p class="hero__value"><span class="text-display num">86.5</span><span class="hero__unit">mm</span></p>
+              <p class="card__meta num">今日累積 · 00:00 – 14:10</p>
+            </div>
+            <span class="badge badge--alert-1"><span class="level-dot level-dot--1"></span>大雨</span>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署 開放資料（O-A0002-001、O-A0040-002、F-B0046-001）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  </div>
+</section>
+</main>
+</body>
+</html>

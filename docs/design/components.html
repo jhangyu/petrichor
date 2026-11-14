@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CWA 天氣 — Fluent 2 共用元件</title>
+<!--
+  Shared component sheet for team-a / team-b mockups.
+  Load order in every page:  tokens-fluent2-light.css  →  components.css  (both relative, ../ from team-x/).
+  Icons: copy the <svg> sprite below (symbols id="i-*") into each page, then
+         <svg class="icon" aria-hidden="true"><use href="#i-home"/></svg>
+  Icon-only buttons need aria-label. Colours/spacing only via tokens.
+-->
+<link rel="stylesheet" href="tokens-fluent2-light.css">
+<link rel="stylesheet" href="components.css">
+<style>
+  /* Showcase-only layout (tokens only) */
+  .doc { width: 100%; max-width: 760px; margin-inline: auto; padding: var(--space-24) var(--layout-gutter) var(--space-64); display: flex; flex-direction: column; gap: var(--space-40); }
+  .doc-head { display: flex; flex-direction: column; gap: var(--space-8); }
+  .doc-section { display: flex; flex-direction: column; gap: var(--space-16); }
+  .doc-section > h2 { font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--type-title3-weight); }
+  .doc-note { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .doc-note code, .doc code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: var(--type-caption1-size); color: var(--color-brand-fg-strong); background: var(--color-brand-bg-subtle); padding: var(--space-0) var(--space-4); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
+  .doc-stage { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); background: var(--color-bg-3); border: var(--stroke-thin) dashed var(--color-stroke-1); border-radius: var(--radius-md); min-width: 0; }
+  .doc-stage--white { background: var(--color-bg-1); }
+  .doc-wrap { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-8); }
+  .swatch { display: flex; flex-direction: column; gap: var(--space-4); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); overflow-wrap: anywhere; }
+  .swatch__chip { height: var(--size-touch); border-radius: var(--radius-sm); border: var(--stroke-thin) solid var(--color-stroke-2); }
+  .phone { display: flex; justify-content: center; }
+  .phone .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-16); }
+  .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--space-8); }
+  .icon-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-12) var(--space-4); background: var(--color-bg-1); border-radius: var(--radius-md); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); }
+  .map-demo { height: 280px; }
+  .map-demo__land { position: absolute; left: 30%; top: 8%; width: 36%; height: 84%; background: var(--color-map-land); border: var(--stroke-thin) solid var(--color-map-border); border-radius: 48% 52% 40% 60% / 30% 35% 65% 70%; transform: rotate(14deg); }
+  .map-demo__echo { position: absolute; border-radius: var(--radius-circular); opacity: 0.6; }
+  .map-demo__fab { position: absolute; top: var(--space-12); right: var(--space-12); }
+  .hour { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); width: 72px; padding: var(--space-12) var(--space-8); background: var(--color-bg-1); border-radius: var(--radius-md); box-shadow: var(--shadow-2); }
+  .hour[aria-current="true"] { background: var(--color-brand-bg-subtle); box-shadow: none; }
+</style>
+</head>
+<body>
+
+<!-- ===== Icon sprite (Fluent-style 24px outline, 1.5 stroke, currentColor) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
+  <symbol id="i-options" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M17 6l-8 6 8 6zM7 6v12"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M7 6l8 6-8 6zM17 6v12"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4 3 9l9 5 9-5z"/><path d="M3 14l9 5 9-5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-partly" viewBox="0 0 24 24"><path d="M8.5 3v1.2M3.6 8.5h1.2M5 5l.9.9M12 5l-.9.9"/><path d="M5.6 11.2a3.5 3.5 0 0 1 6-3.6"/><path d="M9 20h8a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 14 3 3 0 0 0 9 20z"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 7.5 3.5 3.5 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/></symbol>
+  <symbol id="i-thunder" viewBox="0 0 24 24"><path d="M7 14.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 7.5 3.5 3.5 0 0 0 7 14.5z"/><path d="M12.5 14.5l-2 3.5h3l-2 3.5"/></symbol>
+  <symbol id="i-fog" viewBox="0 0 24 24"><path d="M4 8h16M4 12h16M6 16h12M9 20h6"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h14a3 3 0 1 1-3 3M3 12h7"/></symbol>
+  <symbol id="i-humidity" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M10 15.5l4-4M10 11.6v.1M14 15.4v.1"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 9v7"/></symbol>
+  <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6a2 2 0 0 0 4 0M12 3v0"/></symbol>
+</svg>
+
+<main class="doc">
+
+  <header class="doc-head">
+    <h1 class="text-title2">CWA 天氣 · Fluent 2 共用元件</h1>
+    <p class="text-secondary">亮色主題唯一。所有頁面先載入 <code>tokens-fluent2-light.css</code> 再載入 <code>components.css</code>；色彩、間距、圓角、陰影只能引用 token。手機欄寬 <code>--layout-max-width</code> 480px，頁緣 <code>--layout-gutter</code> 16px。</p>
+  </header>
+
+  <!-- ============ Tokens preview ============ -->
+  <section class="doc-section" aria-labelledby="s-tokens">
+    <h2 id="s-tokens">Tokens 速覽</h2>
+    <div class="swatches">
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-bg-1)"></div>--color-bg-1</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-bg-3)"></div>--color-bg-3 頁面底</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-fg-1)"></div>--color-fg-1</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-fg-3)"></div>--color-fg-3</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-brand-80)"></div>--color-brand-80</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-brand-160)"></div>--color-brand-160</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-success-solid)"></div>--color-success-solid</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-warning-solid)"></div>--color-warning-solid</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-danger-solid)"></div>--color-danger-solid</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-rain-bar)"></div>--color-rain-bar</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-temp-bar-cold)"></div>--color-temp-bar-cold</div>
+      <div class="swatch"><div class="swatch__chip" style="background:var(--color-temp-bar-hot)"></div>--color-temp-bar-hot</div>
+    </div>
+    <div class="doc-stage doc-stage--white">
+      <p class="text-display num">28°</p>
+      <p class="text-large-title">Large title 40</p>
+      <p class="text-title1">Title 1 · 32</p>
+      <p class="text-title2">Title 2 · 28</p>
+      <p class="text-title3">Title 3 · 24 臺北市 信義區</p>
+      <p class="text-subtitle1">Subtitle 1 · 20 一週預報</p>
+      <p class="text-subtitle2">Subtitle 2 · 16 未來 24 小時</p>
+      <p class="text-body2">Body 2 · 16 多雲時晴，午後山區有局部陣雨</p>
+      <p class="text-body1">Body 1 · 14 更新於 14:10</p>
+      <p class="text-caption1 text-tertiary">Caption 1 · 12 資料來源：中央氣象署</p>
+      <p class="text-caption2 text-tertiary">Caption 2 · 10 dBZ</p>
+    </div>
+    <p class="doc-note">類別：<code>.text-display</code> <code>.text-large-title</code> <code>.text-title1–3</code> <code>.text-subtitle1–2</code> <code>.text-body1/2</code> <code>.text-body1-strong</code> <code>.text-caption1/2</code>；數字加 <code>.num</code>（等寬數字）。陰影 <code>--shadow-2/4/8/16/28</code>，圓角 <code>--radius-sm 4 / md 8 / lg 12 / circular</code>。</p>
+  </section>
+
+  <!-- ============ App shell: app bar + bottom nav ============ -->
+  <section class="doc-section" aria-labelledby="s-shell">
+    <h2 id="s-shell">App bar ＋ 底部導覽（5 頁）</h2>
+    <p class="doc-note"><code>.app-shell-wrap &gt; .app-shell</code> 置中手機欄；<code>.app-bar</code>（sticky，<code>--elevated</code> 捲動後、<code>--has-back</code> 次頁、<code>--overlay</code> 疊地圖）；<code>.page</code> 內容區；<code>.bottom-nav</code> 五項，目前頁用 <code>aria-current="page"</code>。</p>
+    <div class="phone app-shell-wrap">
+      <div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles">
+            <h1 class="app-bar__title">臺北市 信義區</h1>
+            <p class="app-bar__subtitle">更新於 14:10</p>
+          </div>
+          <div class="app-bar__actions">
+            <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+            <button class="btn btn--subtle btn--icon" aria-label="搜尋地點"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></button>
+          </div>
+        </header>
+        <div class="page">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="#home" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="#radar"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="#rainfall"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="#warnings"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="#location"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div>
+    </div>
+    <div class="doc-stage">
+      <header class="app-bar app-bar--has-back app-bar--elevated">
+        <button class="btn btn--subtle btn--icon" aria-label="返回"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button>
+        <div class="app-bar__titles">
+          <h1 class="app-bar__title">雷達回波</h1>
+          <p class="app-bar__subtitle">觀測 2026-11-14 14:00</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="圖層"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg></button>
+        </div>
+      </header>
+    </div>
+  </section>
+
+  <!-- ============ Cards ============ -->
+  <section class="doc-section" aria-labelledby="s-card">
+    <h2 id="s-card">Card</h2>
+    <p class="doc-note"><code>.card</code>（shadow-4）／<code>.card--hero</code>（目前天氣，radius-lg）／<code>.card--outline</code>／<code>.card--flush</code>（內含 list）／<code>.card--interactive</code>；內部 <code>.card__header .card__title .card__meta .card__footer</code>；細項 <code>.metric-grid &gt; .metric</code>。</p>
+    <div class="doc-stage">
+      <article class="card card--hero" aria-label="目前天氣">
+        <div class="card__header">
+          <div>
+            <p class="text-display num">28°</p>
+            <p class="text-subtitle2">多雲時晴</p>
+            <p class="card__meta num">今日 24° / 29°</p>
+          </div>
+          <svg class="icon icon--64 icon--sun" aria-hidden="true"><use href="#i-partly"/></svg>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-thermo"/></svg><div><p class="metric__label">體感</p><p class="metric__value">31°</p></div></div>
+          <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-humidity"/></svg><div><p class="metric__label">濕度</p><p class="metric__value">74%</p></div></div>
+          <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-wind"/></svg><div><p class="metric__label">風速</p><p class="metric__value">3.2 m/s 東北</p></div></div>
+          <div class="metric"><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-umbrella"/></svg><div><p class="metric__label">降雨機率</p><p class="metric__value text-rain">20%</p></div></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__header"><h3 class="card__title">逐 3 小時</h3><span class="card__meta">11/14</span></div>
+        <div class="scroller">
+          <div class="hour" aria-current="true"><span class="text-caption1">現在</span><svg class="icon icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span class="text-body1-strong num">28°</span><span class="badge badge--rain">20%</span></div>
+          <div class="hour"><span class="text-caption1 num">15:00</span><svg class="icon icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg><span class="text-body1-strong num">28°</span><span class="badge badge--rain">20%</span></div>
+          <div class="hour"><span class="text-caption1 num">18:00</span><svg class="icon icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg><span class="text-body1-strong num">26°</span><span class="badge badge--rain">40%</span></div>
+          <div class="hour"><span class="text-caption1 num">21:00</span><svg class="icon icon--rain" aria-hidden="true"><use href="#i-rain"/></svg><span class="text-body1-strong num">24°</span><span class="badge badge--rain">60%</span></div>
+          <div class="hour"><span class="text-caption1 num">00:00</span><svg class="icon icon--rain" aria-hidden="true"><use href="#i-rain"/></svg><span class="text-body1-strong num">23°</span><span class="badge badge--rain">70%</span></div>
+          <div class="hour"><span class="text-caption1 num">03:00</span><svg class="icon icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg><span class="text-body1-strong num">22°</span><span class="badge badge--rain">30%</span></div>
+        </div>
+        <p class="doc-note"><code>.scroller</code> 橫向捲動列（內部捲動，不造成頁面水平捲動）。</p>
+      </article>
+      <article class="card card--outline"><p>Outline card：次要資訊、說明文字。</p></article>
+    </div>
+  </section>
+
+  <!-- ============ List rows ============ -->
+  <section class="doc-section" aria-labelledby="s-list">
+    <h2 id="s-list">List row</h2>
+    <p class="doc-note"><code>.list &gt; .list-row</code>（a / button / div）；<code>.list-row__leading / __content (__primary, __secondary) / __trailing</code>；選取 <code>.list-row--selected</code>；溫度區間 <code>.temp-range &gt; .temp-range__fill</code>（用 inline <code>left/right</code> 百分比定位）。</p>
+    <div class="list">
+      <div class="list-row">
+        <span class="list-row__leading"><svg class="icon icon--sun" aria-hidden="true"><use href="#i-partly"/></svg></span>
+        <span class="list-row__content"><span class="list-row__primary">今天 週六</span><span class="list-row__secondary">多雲時晴</span></span>
+        <span class="list-row__trailing"><span class="badge badge--rain">20%</span><span class="text-tertiary num">24°</span><span class="temp-range" style="width:64px"><span class="temp-range__fill" style="left:40%;right:10%"></span></span><span class="num">29°</span></span>
+      </div>
+      <div class="list-row">
+        <span class="list-row__leading"><svg class="icon icon--thunder" aria-hidden="true"><use href="#i-thunder"/></svg></span>
+        <span class="list-row__content"><span class="list-row__primary">週一 11/16</span><span class="list-row__secondary">雷陣雨</span></span>
+        <span class="list-row__trailing"><span class="badge badge--rain">70%</span><span class="text-tertiary num">21°</span><span class="temp-range" style="width:64px"><span class="temp-range__fill" style="left:10%;right:40%"></span></span><span class="num">25°</span></span>
+      </div>
+      <a class="list-row list-row--selected" href="#location">
+        <span class="list-row__leading"><svg class="icon icon--brand" aria-hidden="true"><use href="#i-location"/></svg></span>
+        <span class="list-row__content"><span class="list-row__primary">臺北市 信義區</span><span class="list-row__secondary">目前位置</span></span>
+        <span class="list-row__trailing num">28°</span>
+      </a>
+      <a class="list-row" href="#location">
+        <span class="list-row__leading"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>
+        <span class="list-row__content"><span class="list-row__primary">高雄市 苓雅區</span><span class="list-row__secondary">晴時多雲</span></span>
+        <span class="list-row__trailing"><span class="num">31°</span><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ============ Chips, tabs, badges ============ -->
+  <section class="doc-section" aria-labelledby="s-chip">
+    <h2 id="s-chip">Chip ／ Tab ／ Badge</h2>
+    <p class="doc-note">單選 chip：<code>.chip-group[role=radiogroup] &gt; .chip[role=radio][aria-checked]</code>；篩選 chip：<code>aria-pressed</code>；橫向不換行加 <code>.chip-group--scroll</code>。分頁：<code>.tab-list[role=tablist] &gt; .tab[aria-selected]</code>，平均分 <code>.tab-list--stretch</code>；分段 <code>.segmented &gt; .segmented__item[aria-checked]</code>。徽章 <code>.badge</code> <code>--rain</code> <code>--brand</code> <code>--alert-1…4</code>，等級點 <code>.level-dot--1…4</code>。</p>
+    <div class="doc-stage doc-stage--white">
+      <div class="chip-group" role="radiogroup" aria-label="雷達來源">
+        <button class="chip" role="radio" aria-checked="true">全台</button>
+        <button class="chip" role="radio" aria-checked="false">樹林</button>
+        <button class="chip" role="radio" aria-checked="false">南屯</button>
+        <button class="chip" role="radio" aria-checked="false">林園</button>
+      </div>
+      <div class="tab-list tab-list--stretch" role="tablist" aria-label="雨量">
+        <button class="tab" role="tab" aria-selected="true">雨量觀測</button>
+        <button class="tab" role="tab" aria-selected="false">降雨預測</button>
+      </div>
+      <div class="segmented" role="radiogroup" aria-label="預測區間">
+        <button class="segmented__item" role="radio" aria-checked="true">未來 1 小時</button>
+        <button class="segmented__item" role="radio" aria-checked="false">未來 24 小時</button>
+      </div>
+      <div class="doc-wrap">
+        <span class="badge badge--rain">降雨 60%</span>
+        <span class="badge badge--brand">目前位置</span>
+        <span class="badge">已過期</span>
+      </div>
+      <div class="doc-wrap">
+        <span class="badge badge--alert-1"><span class="level-dot level-dot--1"></span>大雨</span>
+        <span class="badge badge--alert-2"><span class="level-dot level-dot--2"></span>豪雨</span>
+        <span class="badge badge--alert-3"><span class="level-dot level-dot--3"></span>大豪雨</span>
+        <span class="badge badge--alert-4"><span class="level-dot level-dot--4"></span>超大豪雨</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Buttons ============ -->
+  <section class="doc-section" aria-labelledby="s-btn">
+    <h2 id="s-btn">Buttons</h2>
+    <p class="doc-note"><code>.btn</code> + <code>--primary</code> / <code>--secondary</code> / <code>--subtle</code>；尺寸 <code>--sm</code>（32px，非主要觸控）、預設 44px；<code>--icon</code>（圓形，必加 aria-label）、<code>--block</code>；地圖浮動鈕 <code>.fab</code>。</p>
+    <div class="doc-stage doc-stage--white">
+      <div class="doc-wrap">
+        <button class="btn btn--primary">允許定位</button>
+        <button class="btn btn--secondary">手動選擇地點</button>
+        <button class="btn btn--subtle">稍後再說</button>
+        <button class="btn btn--primary" disabled>停用</button>
+      </div>
+      <div class="doc-wrap">
+        <button class="btn btn--primary"><svg class="icon icon--20" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button>
+        <button class="btn btn--secondary btn--sm">查看全部</button>
+        <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        <button class="fab" aria-label="回到我的位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+      </div>
+      <button class="btn btn--primary btn--block">前往設定開啟權限</button>
+    </div>
+  </section>
+
+  <!-- ============ Slider + playback ============ -->
+  <section class="doc-section" aria-labelledby="s-slider">
+    <h2 id="s-slider">Slider ／ Playback control</h2>
+    <p class="doc-note"><code>.slider &gt; .slider__header (.slider__label, .slider__value) + input.slider__input[type=range]</code>，已填滿比例以 inline <code>--fill</code> 設定（Chromium/WebKit）。播放：<code>.playback</code>（<code>__time</code> <code>__timestamp</code> <code>__frame</code> <code>__controls</code> <code>__play</code> <code>__ticks</code>）。</p>
+    <div class="doc-stage">
+      <div class="card">
+        <div class="slider">
+          <div class="slider__header"><label class="slider__label" for="op">雷達透明度</label><output class="slider__value" for="op">60%</output></div>
+          <input class="slider__input" id="op" type="range" min="10" max="100" value="60" style="--fill:55.6%">
+          <div class="slider__scale"><span>10%</span><span>100%</span></div>
+        </div>
+      </div>
+      <div class="playback" role="group" aria-label="雷達動畫播放">
+        <div class="playback__time">
+          <span class="playback__timestamp">11/14 14:00</span>
+          <span class="playback__frame">第 12 / 12 張 · 每 10 分鐘</span>
+        </div>
+        <div class="playback__controls">
+          <button class="btn btn--subtle btn--icon" aria-label="上一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-prev"/></svg></button>
+          <button class="btn btn--icon playback__play" aria-label="播放"><svg class="icon icon--20" aria-hidden="true"><use href="#i-play"/></svg></button>
+          <button class="btn btn--subtle btn--icon" aria-label="下一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-next"/></svg></button>
+          <input class="slider__input" type="range" min="1" max="12" value="12" aria-label="影格時間" style="--fill:100%">
+        </div>
+        <div class="playback__ticks"><span>12:10</span><span>12:40</span><span>13:10</span><span>13:40</span><span>14:00</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Status banners ============ -->
+  <section class="doc-section" aria-labelledby="s-status">
+    <h2 id="s-status">Status banner（載入／錯誤／空／權限）</h2>
+    <p class="doc-note"><code>.status-banner</code> + <code>--loading</code> / <code>--error</code> / <code>--empty</code> / <code>--permission</code>（亦有 <code>--alert-1</code>、<code>--alert-3</code> 供警特報）；結構 <code>__icon __body (__title __text __actions)</code>。整區無內容時用 <code>.empty-state</code>；載入用 <code>.spinner</code>、<code>.skeleton</code>。錯誤要給可讀原因，不顯示原始例外字串。</p>
+    <div class="doc-stage">
+      <div class="status-banner status-banner--loading" role="status">
+        <span class="status-banner__icon"><span class="spinner" aria-hidden="true"></span></span>
+        <div class="status-banner__body"><p class="status-banner__title">載入天氣資料…</p></div>
+      </div>
+      <div class="status-banner status-banner--error" role="alert">
+        <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">無法取得天氣資料</p>
+          <p class="status-banner__text">連線逾時，請檢查網路</p>
+          <div class="status-banner__actions"><button class="btn btn--secondary btn--sm">重試</button></div>
+        </div>
+      </div>
+      <div class="status-banner status-banner--empty">
+        <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-cloud-off"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">暫無天氣資料</p>
+          <p class="status-banner__text">尚未設定 API 金鑰</p>
+        </div>
+      </div>
+      <div class="status-banner status-banner--permission">
+        <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">未取得位置權限</p>
+          <p class="status-banner__text">目前顯示臺北市 信義區</p>
+          <div class="status-banner__actions"><button class="btn btn--primary btn--sm">允許定位</button><button class="btn btn--subtle btn--sm">選擇地點</button></div>
+        </div>
+      </div>
+      <div class="status-banner status-banner--alert-1">
+        <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">大雨特報</p>
+          <p class="status-banner__text">臺北市、新北市、基隆市｜11/14 18:00 – 11/15 06:00</p>
+        </div>
+      </div>
+      <div class="card card--outline">
+        <div class="empty-state">
+          <svg class="icon icon--48 empty-state__icon" aria-hidden="true"><use href="#i-warning"/></svg>
+          <p class="empty-state__title">目前沒有生效中的警特報</p>
+          <p>有新的特報時會在這裡顯示。</p>
+          <button class="btn btn--secondary btn--sm">重新整理</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Legend + map ============ -->
+  <section class="doc-section" aria-labelledby="s-legend">
+    <h2 id="s-legend">Legend（雷達 dBZ）／ 地圖疊加面板</h2>
+    <p class="doc-note">色階 <code>.legend__bar</code> 七格用 <code>.dbz-0 … .dbz-60</code>（token <code>--dbz-*</code>，資料視覺化例外，見 tokens 檔註解），下方 <code>.legend__labels</code> 必標數字。離散圖例 <code>.legend__list &gt; .legend__item &gt; .legend__swatch</code>。地圖 <code>.map</code>，浮動面板 <code>.map__overlay-panel</code>（shadow-16）。</p>
+    <div class="doc-stage doc-stage--white">
+      <div class="legend" aria-label="雷達回波強度圖例">
+        <div class="row" style="justify-content:space-between"><span class="legend__title">回波強度</span><span class="legend__unit">dBZ</span></div>
+        <div class="legend__bar" aria-hidden="true"><span class="dbz-0"></span><span class="dbz-10"></span><span class="dbz-20"></span><span class="dbz-30"></span><span class="dbz-40"></span><span class="dbz-50"></span><span class="dbz-60"></span></div>
+        <div class="legend__labels num"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
+      </div>
+      <div class="legend__list">
+        <span class="legend__item"><span class="legend__swatch dbz-10"></span>小雨</span>
+        <span class="legend__item"><span class="legend__swatch dbz-30"></span>大雨</span>
+        <span class="legend__item"><span class="legend__swatch dbz-50"></span>豪雨／冰雹</span>
+      </div>
+    </div>
+    <div class="map map-demo" role="img" aria-label="雷達地圖示意">
+      <div class="map-demo__land"></div>
+      <div class="map-demo__echo dbz-20" style="left:46%;top:22%;width:20%;height:18%"></div>
+      <div class="map-demo__echo dbz-40" style="left:52%;top:26%;width:8%;height:8%"></div>
+      <button class="fab map-demo__fab" aria-label="回到我的位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+      <div class="map__overlay-panel">
+        <div class="row" style="justify-content:space-between"><span class="text-body1-strong">全台 · 11/14 14:00</span><span class="text-caption1 text-tertiary">臺灣本島及周邊海域</span></div>
+        <div class="legend__bar" aria-hidden="true"><span class="dbz-0"></span><span class="dbz-10"></span><span class="dbz-20"></span><span class="dbz-30"></span><span class="dbz-40"></span><span class="dbz-50"></span><span class="dbz-60"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Icons ============ -->
+  <section class="doc-section" aria-labelledby="s-icon">
+    <h2 id="s-icon">Icons</h2>
+    <p class="doc-note">內嵌 SVG sprite，24×24、1.5 線寬、<code>stroke: currentColor</code>，不用外部 icon font。<code>.icon</code>（24）、<code>--16 --20 --32 --48 --64</code>；天氣色 <code>.icon--sun --cloud --rain --thunder --fog</code>，品牌 <code>.icon--brand</code>。天氣圖示必須隨天氣現象切換：晴 <code>i-sun</code>／晴時多雲、多雲時晴 <code>i-partly</code>／多雲、陰 <code>i-cloud</code>／陣雨、雨、毛毛雨 <code>i-rain</code>／雷陣雨 <code>i-thunder</code>／霧 <code>i-fog</code>／未知 <code>i-cloud-off</code>。</p>
+    <div class="icon-grid">
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg>i-home</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg>i-radar</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg>i-warning</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg>i-rainfall</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg>i-location</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg>i-back</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg>i-chevron</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>i-refresh</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>i-search</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-options"/></svg>i-options</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>i-play</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-pause"/></svg>i-pause</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-prev"/></svg>i-prev</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-next"/></svg>i-next</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg>i-locate</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg>i-layers</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>i-info</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg>i-error</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>i-clock</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-thermo"/></svg>i-thermo</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-humidity"/></svg>i-humidity</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg>i-wind</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg>i-umbrella</div>
+      <div class="icon-cell"><svg class="icon icon--sun" aria-hidden="true"><use href="#i-sun"/></svg>i-sun</div>
+      <div class="icon-cell"><svg class="icon icon--sun" aria-hidden="true"><use href="#i-partly"/></svg>i-partly</div>
+      <div class="icon-cell"><svg class="icon icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg>i-cloud</div>
+      <div class="icon-cell"><svg class="icon icon--rain" aria-hidden="true"><use href="#i-rain"/></svg>i-rain</div>
+      <div class="icon-cell"><svg class="icon icon--thunder" aria-hidden="true"><use href="#i-thunder"/></svg>i-thunder</div>
+      <div class="icon-cell"><svg class="icon icon--fog" aria-hidden="true"><use href="#i-fog"/></svg>i-fog</div>
+      <div class="icon-cell"><svg class="icon" aria-hidden="true"><use href="#i-cloud-off"/></svg>i-cloud-off</div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

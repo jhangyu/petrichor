@@ -1,0 +1,331 @@
+/* ==========================================================================
+   CWA Weather — Fluent 2 LIGHT design tokens (single source of truth)
+   Shared by team-a and team-b mockups. Light theme only.
+   Rules for consumers:
+     - Colors: only var(--color-*) / var(--dbz-*). No literal colors outside this file.
+     - Spacing (padding/margin/gap/inset): only var(--space-*), 4px grid.
+     - Radii: var(--radius-*). Shadows: var(--shadow-*). Sizes: var(--size-*).
+   Values follow Microsoft Fluent 2 web light theme (neutral, brand "communication blue",
+   shared status palettes, type ramp, shadow2–28, motion curves).
+   ========================================================================== */
+
+/* Noto Sans TC: Chinese glyphs on every OS (Segoe UI has no CJK). */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* ---------- Neutral backgrounds (Fluent neutralBackground1–6) ---------- */
+  --color-bg-1: #ffffff;          /* cards, sheets, app bar */
+  --color-bg-2: #fafafa;          /* subtle raised areas */
+  --color-bg-3: #f5f5f5;          /* page canvas */
+  --color-bg-4: #f0f0f0;          /* hover on bg-3 / tracks */
+  --color-bg-5: #ebebeb;          /* pressed */
+  --color-bg-6: #e6e6e6;          /* skeleton */
+  --color-bg-hover: #f5f5f5;      /* hover on bg-1 */
+  --color-bg-pressed: #e0e0e0;    /* pressed on bg-1 */
+  --color-bg-disabled: #f0f0f0;
+  --color-bg-overlay: rgba(255, 255, 255, 0.92); /* panels floating over the map */
+  --color-scrim: rgba(0, 0, 0, 0.4);
+
+  /* ---------- Neutral foregrounds (text/icons) ---------- */
+  --color-fg-1: #242424;          /* primary text  (15.9:1 on white) */
+  --color-fg-2: #424242;          /* secondary text (10.4:1) */
+  --color-fg-3: #616161;          /* tertiary/meta  (6.2:1) */
+  --color-fg-4: #707070;          /* placeholder    (4.9:1) */
+  --color-fg-disabled: #bdbdbd;
+  --color-fg-on-brand: #ffffff;
+  --color-fg-on-solid: #ffffff;   /* text on solid status fills */
+
+  /* ---------- Neutral strokes ---------- */
+  --color-stroke-1: #d1d1d1;      /* control borders */
+  --color-stroke-2: #e0e0e0;      /* dividers, card outlines */
+  --color-stroke-3: #f0f0f0;      /* faint row separators */
+  --color-stroke-accessible: #616161; /* 3:1 control borders (slider track edge, inputs) */
+  --color-stroke-disabled: #e0e0e0;
+  --color-stroke-focus-outer: #000000;
+  --color-stroke-focus-inner: #ffffff;
+
+  /* ---------- Brand ramp (Fluent communication blue 10–160) ---------- */
+  --color-brand-10: #061724;
+  --color-brand-20: #082338;
+  --color-brand-30: #0a2e4a;
+  --color-brand-40: #0c3b5e;
+  --color-brand-50: #0e4775;
+  --color-brand-60: #0f548c;
+  --color-brand-70: #115ea3;
+  --color-brand-80: #0f6cbd;      /* primary brand */
+  --color-brand-90: #2886de;
+  --color-brand-100: #479ef5;
+  --color-brand-110: #62abf5;
+  --color-brand-120: #77b7f7;
+  --color-brand-130: #96c6fa;
+  --color-brand-140: #b4d6fa;
+  --color-brand-150: #cfe4fa;
+  --color-brand-160: #ebf3fc;
+
+  /* Brand semantic aliases */
+  --color-brand-bg: var(--color-brand-80);
+  --color-brand-bg-hover: var(--color-brand-70);
+  --color-brand-bg-pressed: var(--color-brand-40);
+  --color-brand-bg-subtle: var(--color-brand-160);  /* selected chip, active nav pill */
+  --color-brand-fg: var(--color-brand-80);          /* links, active icons (5.2:1) */
+  --color-brand-fg-strong: var(--color-brand-60);   /* text on brand-bg-subtle (7:1) */
+  --color-brand-stroke: var(--color-brand-80);
+  --color-brand-stroke-subtle: var(--color-brand-140);
+
+  /* ---------- Status (Fluent shared palettes) ---------- */
+  --color-success-bg: #f1faf1;
+  --color-success-fg: #0e700e;
+  --color-success-stroke: #9fd89f;
+  --color-success-solid: #107c10;
+
+  --color-warning-bg: #fff9f5;
+  --color-warning-fg: #bc4b09;
+  --color-warning-stroke: #fdcfb4;
+  --color-warning-solid: #f7630c;
+
+  --color-danger-bg: #fdf3f4;
+  --color-danger-fg: #b10e1c;
+  --color-danger-stroke: #eeacb2;
+  --color-danger-solid: #c50f1f;
+
+  --color-info-bg: var(--color-brand-160);
+  --color-info-fg: var(--color-brand-60);
+  --color-info-stroke: var(--color-brand-140);
+  --color-info-solid: var(--color-brand-80);
+
+  /* ---------- Weather semantics ---------- */
+  /* Temperature: text-safe ends (≥4.5:1 on white) + range-bar stops (graphics only, ≥3:1 not required) */
+  --color-temp-cold: #0f548c;     /* text: today's low, cold readings */
+  --color-temp-hot: #c50f1f;      /* text: today's high when emphasised, heat */
+  --color-temp-bar-cold: #62abf5; /* ≤ 15°C */
+  --color-temp-bar-mild: #5ec75a; /* 16–22°C */
+  --color-temp-bar-warm: #f7a33c; /* 23–28°C */
+  --color-temp-bar-hot: #e8474f;  /* ≥ 29°C */
+
+  /* Rain probability / rainfall amounts */
+  --color-rain-fg: #115ea3;       /* "降雨 60%" text (6.2:1) */
+  --color-rain-bg: #ebf3fc;       /* rain pill background */
+  --color-rain-bar: #479ef5;      /* precipitation bars */
+  --color-rain-bar-track: #e6eef7;
+
+  /* Weather condition icon tints (icons only, never body text) */
+  --color-icon-sun: #e8a300;
+  --color-icon-cloud: #8a8a8a;
+  --color-icon-rain: #2886de;
+  --color-icon-thunder: #8764b8;
+  --color-icon-fog: #a0a0a0;
+
+  /* CWA rain-warning levels (大雨 → 超大豪雨) — fg text-safe on own bg */
+  --color-alert-1-bg: #fffad6;    /* 大雨 heavy rain (yellow) */
+  --color-alert-1-fg: #6b5d00;
+  --color-alert-1-stroke: #f2d94e;
+  --color-alert-1-solid: #fde300;
+  --color-alert-2-bg: var(--color-warning-bg);   /* 豪雨 extremely heavy (orange) */
+  --color-alert-2-fg: var(--color-warning-fg);
+  --color-alert-2-stroke: var(--color-warning-stroke);
+  --color-alert-2-solid: var(--color-warning-solid);
+  --color-alert-3-bg: var(--color-danger-bg);    /* 大豪雨 torrential (red) */
+  --color-alert-3-fg: var(--color-danger-fg);
+  --color-alert-3-stroke: var(--color-danger-stroke);
+  --color-alert-3-solid: var(--color-danger-solid);
+  --color-alert-4-bg: #f7f4fb;    /* 超大豪雨 extremely torrential (purple) */
+  --color-alert-4-fg: #5c2e91;
+  --color-alert-4-stroke: #c6b1de;
+  --color-alert-4-solid: #5c2e91;
+
+  /* Map placeholder (mockups only; real app uses OSM tiles) */
+  --color-map-land: #eef1ea;
+  --color-map-water: #d6e6f2;
+  --color-map-road: #ffffff;
+  --color-map-border: #c8cfc2;
+  --color-map-pin: var(--color-danger-solid);
+
+  /* ---------- Data-visualization scale: radar reflectivity (dBZ) ----------
+     DATA-VIZ EXCEPTION (contract §1): CWA-style radar palette, light-blue → purple.
+     Used only for radar overlay mock + legend swatches. Each step is a 10 dBZ band;
+     legend must always label numbers (never rely on colour alone). */
+  --dbz-0: #a6e3ff;   /*  0–10 dBZ  淡藍 drizzle / clutter */
+  --dbz-10: #2f8fe6;  /* 10–20 dBZ  藍   light rain        */
+  --dbz-20: #22b14c;  /* 20–30 dBZ  綠   moderate rain     */
+  --dbz-30: #f5d100;  /* 30–40 dBZ  黃   heavy rain        */
+  --dbz-40: #ff8a00;  /* 40–50 dBZ  橙   very heavy rain   */
+  --dbz-50: #e81123;  /* 50–60 dBZ  紅   torrential / hail */
+  --dbz-60: #a0119e;  /* 60+  dBZ   紫   extreme           */
+
+  /* ---------- Typography ---------- */
+  --font-family-base: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "Noto Sans TC",
+    -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-family-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", "Noto Sans TC",
+    -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --font-family-numeric: var(--font-family-base); /* pair with font-variant-numeric: tabular-nums */
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Fluent type ramp: size / line-height / weight */
+  --type-caption2-size: 10px;  --type-caption2-lh: 14px;  --type-caption2-weight: 400;
+  --type-caption1-size: 12px;  --type-caption1-lh: 16px;  --type-caption1-weight: 400;
+  --type-body1-size: 14px;     --type-body1-lh: 20px;     --type-body1-weight: 400;
+  --type-body1-strong-weight: 600;
+  --type-body2-size: 16px;     --type-body2-lh: 22px;     --type-body2-weight: 400;
+  --type-subtitle2-size: 16px; --type-subtitle2-lh: 22px; --type-subtitle2-weight: 600;
+  --type-subtitle1-size: 20px; --type-subtitle1-lh: 28px; --type-subtitle1-weight: 600;
+  --type-title3-size: 24px;    --type-title3-lh: 32px;    --type-title3-weight: 600;
+  --type-title2-size: 28px;    --type-title2-lh: 36px;    --type-title2-weight: 600;
+  --type-title1-size: 32px;    --type-title1-lh: 40px;    --type-title1-weight: 600;
+  --type-large-title-size: 40px; --type-large-title-lh: 52px; --type-large-title-weight: 600;
+  --type-display-size: 68px;   --type-display-lh: 92px;   --type-display-weight: 600; /* current temperature */
+
+  /* ---------- Spacing (4px grid, multiples of 4 only) ---------- */
+  --space-0: 0px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+
+  /* ---------- Radii ---------- */
+  --radius-none: 0px;
+  --radius-sm: 4px;      /* buttons, inputs, badges */
+  --radius-md: 8px;      /* cards, banners, list groups */
+  --radius-lg: 12px;     /* sheets, hero card, map panels */
+  --radius-circular: 9999px; /* chips, pills, avatars, icon buttons */
+
+  /* ---------- Stroke widths ---------- */
+  --stroke-thin: 1px;
+  --stroke-thick: 2px;
+  --stroke-thicker: 3px; /* selected tab indicator */
+
+  /* ---------- Elevation (Fluent shadow2–28, light theme) ---------- */
+  --shadow-2: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+  --shadow-4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  --shadow-8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
+  --shadow-16: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
+  --shadow-28: 0 0 8px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.14);
+  /* usage: 2 = list group/card resting, 4 = card, 8 = app bar on scroll / bottom nav,
+     16 = floating map panel, 28 = dialog / bottom sheet */
+
+  /* ---------- Sizes (non-spacing dimensions) ---------- */
+  --size-touch: 44px;          /* minimum hit target */
+  --size-control: 44px;        /* button height */
+  --size-control-sm: 32px;     /* compact button / chip */
+  --size-appbar: 56px;
+  --size-bottomnav: 64px;
+  --size-icon-16: 16px;
+  --size-icon-20: 20px;
+  --size-icon-24: 24px;
+  --size-icon-32: 32px;
+  --size-icon-48: 48px;
+  --size-icon-64: 64px;
+  --size-slider-track: 4px;
+  --size-slider-thumb: 20px;
+  --size-legend-bar: 8px;
+  --size-spinner: 20px;
+  --size-dot: 8px;
+
+  /* ---------- Motion (Fluent durations + curves) ---------- */
+  --duration-ultra-fast: 50ms;
+  --duration-faster: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-gentle: 250ms;
+  --duration-slow: 300ms;
+  --duration-slower: 400ms;
+  --duration-spin: 1000ms;      /* loading spinner rotation */
+  --curve-decelerate-mid: cubic-bezier(0, 0, 0, 1);   /* enter */
+  --curve-accelerate-mid: cubic-bezier(1, 0, 1, 1);   /* exit */
+  --curve-easy-ease: cubic-bezier(0.33, 0, 0.67, 1);  /* state change */
+  --curve-linear: linear;
+
+  /* ---------- Layout ---------- */
+  --layout-max-width: 480px;      /* mobile column, centred on desktop */
+  --layout-gutter: var(--space-16);
+  --z-appbar: 10;
+  --z-bottomnav: 10;
+  --z-overlay: 20;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-ultra-fast: 0ms;
+    --duration-faster: 0ms;
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-gentle: 0ms;
+    --duration-slow: 0ms;
+    --duration-slower: 0ms;
+  }
+}
+
+/* ---------- Base reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: var(--space-0);
+  min-height: 100vh;
+  background: var(--color-bg-3);
+  color: var(--color-fg-1);
+  font-family: var(--font-family-base);
+  font-size: var(--type-body1-size);
+  line-height: var(--type-body1-lh);
+  font-weight: var(--type-body1-weight);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, figure, dl, dd {
+  margin: var(--space-0);
+}
+
+ul, ol {
+  padding: var(--space-0);
+  list-style: none;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--color-brand-fg);
+}
+
+:focus-visible {
+  outline: var(--stroke-thick) solid var(--color-stroke-focus-outer);
+  outline-offset: var(--stroke-thick);
+}
+
+/* ---------- Container: mobile column centred at any width ---------- */
+.container {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+}

@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>地點與定位 — Team A</title>
+<!--
+  Team A "Glanceable dashboard" — 地點 (location) page mockup.
+  Functions covered (docs/design/preflight/page-inventory.md §3.2 定位權限流程 + §3.7 地點管理 + §0 定位 + §1.2A):
+   1. 首次說明頁：為何需要位置、三項好處、「允許使用位置」、「手動選擇地點」、隱私說明
+   2. 定位被拒橫幅：「未取得位置權限，目前顯示臺北市 信義區」+「前往設定」+「手動選擇」
+   3. 永久拒絕（deniedForever）狀態：開啟系統設定的步驟 + 「前往設定」+ 手動選擇
+   4. 手動選擇：縣市（橫向捲動）+ 鄉鎮市區清單 + 搜尋 + 設為目前地點 / 儲存
+   5. 已儲存地點清單（臺中市西屯區…澎湖縣馬公市）：選取、移除、各地現況溫度
+   6. 目前位置列（GPS 自動定位、使用中標示、不可用時停用）
+   7. 目前地點 hero：地名、定位來源（GPS / 預設地點）、現況溫度與天氣
+   8. 載入中（定位中）、錯誤（定位服務未開啟 / 無法解析所在地 + 重試）
+   9. 底部導覽（5 頁，目前＝地點）
+  Frames: 首次說明 / 已授權 / 手動選擇 / 被拒橫幅 / 永久拒絕 / 載入中 / 錯誤。Light theme only; tokens only.
+-->
+<link rel="stylesheet" href="../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+  /* ---------- Page-specific (tokens only) ---------- */
+  .doc { width: 100%; max-width: 1280px; margin-inline: auto; padding: var(--space-32) var(--layout-gutter) var(--space-64); display: flex; flex-direction: column; gap: var(--space-32); }
+  .doc-head { display: flex; flex-direction: column; gap: var(--space-4); text-align: center; align-items: center; }
+  .doc-head p { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .stage { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .frame-col { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; max-width: 375px; min-width: 0; }
+  .frame-cap { display: flex; align-items: center; gap: var(--space-8); color: var(--color-fg-2); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); padding-inline: var(--space-4); }
+  .frame .app-shell { min-height: 812px; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-16); }
+  .section__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .card--a { border-radius: var(--radius-lg); padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
+  .card--a .card__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); } /* iPhone-class height, same as home */
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  @media (max-width: 420px) {
+    .doc { padding-inline: var(--space-0); }
+    .doc-head { padding-inline: var(--layout-gutter); }
+    .stage { gap: var(--space-32) var(--space-0); }
+    .frame .app-shell { border-radius: var(--radius-none); border-inline: none; }
+    .frame-cap { padding-inline: var(--layout-gutter); }
+  }
+  .frame .page { gap: var(--space-16); padding-top: var(--space-8); }
+
+  /* Hero (Team A): current location */
+  .loc-hero { background: linear-gradient(180deg, var(--color-brand-160) 0%, var(--color-bg-1) 64%); border: var(--stroke-thin) solid var(--color-brand-stroke-subtle); box-shadow: var(--shadow-8); }
+  .loc-hero--muted { background: var(--color-bg-1); border-color: var(--color-stroke-2); }
+  .loc-hero__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
+  .loc-hero__where { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+  .loc-hero__label { display: flex; align-items: center; gap: var(--space-4); color: var(--color-brand-fg-strong); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); }
+  .loc-hero--muted .loc-hero__label { color: var(--color-fg-2); }
+  .loc-hero__name { font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--type-title3-weight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 340px) { .loc-hero__temp .icon { display: none; } .loc-hero__name { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); } }
+  .loc-hero__temp { display: flex; align-items: center; gap: var(--space-8); flex: none; }
+  .loc-hero__temp .text-large-title { color: var(--color-fg-1); }
+  .loc-hero__foot { display: flex; align-items: center; gap: var(--space-8); color: var(--color-fg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+
+  /* Intro hero (first run) */
+  .intro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-12); background: var(--color-brand-bg-subtle); border: var(--stroke-thin) solid var(--color-brand-stroke-subtle); box-shadow: var(--shadow-4); }
+  .intro__circle { display: flex; align-items: center; justify-content: center; width: var(--size-icon-64); height: var(--size-icon-64); border-radius: var(--radius-circular); background: var(--color-brand-bg); color: var(--color-fg-on-brand); box-shadow: var(--shadow-8); }
+  .intro__circle .icon { width: var(--size-icon-32); height: var(--size-icon-32); }
+  .intro__text { color: var(--color-fg-2); }
+  .privacy { display: flex; align-items: flex-start; justify-content: center; gap: var(--space-8); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); text-align: left; }
+
+  /* Rows */
+  .list-row__leading--tint { width: var(--size-control-sm); height: var(--size-control-sm); border-radius: var(--radius-circular); background: var(--color-bg-4); }
+  .list-row__leading--brand { background: var(--color-brand-bg-subtle); color: var(--color-brand-fg); }
+  .list-row--selected .list-row__leading--tint { background: var(--color-bg-1); }
+  .list-row--disabled { color: var(--color-fg-disabled); }
+  .list-row--disabled .list-row__secondary, .list-row--disabled .list-row__leading { color: var(--color-fg-disabled); }
+  .list-row__temp { font-weight: var(--font-weight-semibold); color: var(--color-fg-1); min-width: var(--size-icon-32); text-align: right; }
+
+  /* Search field */
+  .field { display: flex; align-items: center; gap: var(--space-8); min-height: var(--size-control); padding: var(--space-0) var(--space-12); background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-1); border-bottom-color: var(--color-stroke-accessible); border-radius: var(--radius-sm); color: var(--color-fg-3); }
+  .field:focus-within { border-bottom: var(--stroke-thick) solid var(--color-brand-stroke); }
+  .field input { padding: var(--space-0); flex: 1; min-width: 0; border: none; background: transparent; outline: none; color: var(--color-fg-1); }
+  .field input::placeholder { color: var(--color-fg-3); }
+
+  /* Picker */
+  .picker-footer { display: flex; gap: var(--space-8); }
+  .picker-footer .btn { flex: 1; }
+  .town-grid { display: flex; flex-direction: column; }
+
+  /* Steps (denied forever) */
+  .steps { display: flex; flex-direction: column; gap: var(--space-12); width: 100%; text-align: left; }
+  .step { display: flex; align-items: center; gap: var(--space-12); }
+  .step__no { flex: none; display: flex; align-items: center; justify-content: center; width: var(--size-icon-24); height: var(--size-icon-24); border-radius: var(--radius-circular); background: var(--color-brand-bg-subtle); color: var(--color-brand-fg-strong); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); }
+  .actions-col { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; }
+
+  /* Loading skeleton */
+  .sk { display: flex; flex-direction: column; background: var(--color-bg-1); border-radius: var(--radius-md); box-shadow: var(--shadow-2); overflow: hidden; }
+  .sk__row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-16); min-height: var(--size-touch); }
+  .sk__row + .sk__row { border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+  .sk__circle { flex: none; width: var(--size-control-sm); height: var(--size-control-sm); border-radius: var(--radius-circular); }
+  .sk__lines { flex: 1; display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
+  .sk__line { height: var(--space-12); }
+  .sk__line--w60 { width: 60%; }
+  .sk__line--w40 { width: 40%; }
+  .sk__line--w90 { width: 90%; }
+  .sk__hero { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-24) var(--space-20); background: var(--color-bg-1); border-radius: var(--radius-lg); box-shadow: var(--shadow-4); }
+  .sk__block { height: var(--size-icon-64); border-radius: var(--radius-lg); background: var(--color-bg-6); }
+  .page-source { margin-top: auto; text-align: center; color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-partly" viewBox="0 0 24 24"><path d="M8.5 3v1.2M3.6 8.5h1.2M5 5l.9.9M12 5l-.9.9"/><path d="M5.6 11.2a3.5 3.5 0 0 1 6-3.6"/><path d="M9 20h8a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 14 3 3 0 0 0 9 20z"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l.8 12.5h8.4L17 7M10.5 11v5M13.5 11v5"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.5L7 20z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+</svg>
+
+<main class="doc">
+  <header class="doc-head">
+    <h1 class="text-title2">地點與定位 · Team A</h1>
+    <p>Glanceable dashboard — 目前地點 hero 先行，其後堆疊地點清單。375px 為主，下列為各狀態。</p>
+  </header>
+
+  <div class="stage">
+
+    <!-- ========== Frame 1: first-run explainer ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">首次說明：為何需要位置</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles"><h2 class="app-bar__title">地點</h2><p class="app-bar__subtitle">首次使用</p></div>
+        </header>
+        <div class="page">
+          <section class="card card--hero intro" aria-label="位置權限說明">
+            <span class="intro__circle"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></span>
+            <h3 class="text-title3">讓天氣跟著你</h3>
+            <p class="text-body1 intro__text">允許使用位置後，App 會自動顯示你所在鄉鎮的天氣與警特報，不必每次手動選擇。</p>
+          </section>
+          <div class="list" role="list">
+            <div class="list-row" role="listitem">
+              <span class="list-row__leading list-row__leading--tint list-row__leading--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-partly"/></svg></span>
+              <div class="list-row__content"><span class="list-row__primary">所在地的即時天氣</span><span class="list-row__secondary">溫度、降雨機率、一週預報</span></div>
+            </div>
+            <div class="list-row" role="listitem">
+              <span class="list-row__leading list-row__leading--tint list-row__leading--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-warning"/></svg></span>
+              <div class="list-row__content"><span class="list-row__primary">你所在縣市的警特報</span><span class="list-row__secondary">大雨、豪雨、低溫等即時提醒</span></div>
+            </div>
+            <div class="list-row" role="listitem">
+              <span class="list-row__leading list-row__leading--tint list-row__leading--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-radar"/></svg></span>
+              <div class="list-row__content"><span class="list-row__primary">雷達圖以你為中心</span><span class="list-row__secondary">一眼看雨雲是否靠近</span></div>
+            </div>
+          </div>
+          <div class="actions-col">
+            <button class="btn btn--primary btn--block"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg>允許使用位置</button>
+            <button class="btn btn--secondary btn--block">手動選擇地點</button>
+          </div>
+          <p class="privacy"><svg class="icon icon--16" aria-hidden="true"><use href="#i-lock"/></svg><span>位置僅在你的裝置上用來查詢天氣，不會上傳或分享。</span></p>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+    <!-- ========== Frame 2: granted / default ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">預設：已授權，目前位置 + 已儲存地點</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles"><h2 class="app-bar__title">地點</h2><p class="app-bar__subtitle">定位於 14:10</p></div>
+          <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新定位"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+        </header>
+        <div class="page">
+          <section class="card card--hero loc-hero" aria-label="目前地點">
+            <div class="loc-hero__top">
+              <div class="loc-hero__where">
+                <span class="loc-hero__label"><svg class="icon icon--16" aria-hidden="true"><use href="#i-locate"/></svg>GPS 定位</span>
+                <h3 class="loc-hero__name">臺北市 信義區</h3>
+              </div>
+              <div class="loc-hero__temp"><svg class="icon icon--48 icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span class="text-large-title num">28°</span></div>
+            </div>
+            <div class="loc-hero__foot"><span>多雲時晴</span><span aria-hidden="true">·</span><span>降雨 20%</span><span aria-hidden="true">·</span><span class="num">更新於 14:10</span></div>
+          </section>
+
+          <section class="section">
+            <div class="field" role="search">
+              <svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg>
+              <input type="search" placeholder="搜尋縣市或鄉鎮市區" aria-label="搜尋地點">
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section__header"><h3 class="section__title">我的地點</h3><button class="btn btn--subtle btn--sm" type="button">手動選擇<svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></button></div>
+            <div class="list">
+              <a class="list-row list-row--selected" href="location.html">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-locate"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">目前位置</span><span class="list-row__secondary">臺北市 信義區 · 自動定位</span></div>
+                <div class="list-row__trailing"><span class="badge badge--brand">使用中</span></div>
+              </a>
+              <div class="list-row">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">臺中市 西屯區</span><span class="list-row__secondary">晴</span></div>
+                <div class="list-row__trailing"><span class="list-row__temp num">26°</span><button class="btn btn--subtle btn--icon" aria-label="移除臺中市 西屯區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+              </div>
+              <div class="list-row">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">高雄市 苓雅區</span><span class="list-row__secondary">晴時多雲</span></div>
+                <div class="list-row__trailing"><span class="list-row__temp num">31°</span><button class="btn btn--subtle btn--icon" aria-label="移除高雄市 苓雅區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+              </div>
+              <div class="list-row">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">花蓮縣 花蓮市</span><span class="list-row__secondary">陣雨</span></div>
+                <div class="list-row__trailing"><span class="list-row__temp num">25°</span><button class="btn btn--subtle btn--icon" aria-label="移除花蓮縣 花蓮市"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+              </div>
+              <div class="list-row">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">新北市 板橋區</span><span class="list-row__secondary">多雲</span></div>
+                <div class="list-row__trailing"><span class="list-row__temp num">27°</span><button class="btn btn--subtle btn--icon" aria-label="移除新北市 板橋區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+              </div>
+              <div class="list-row">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">澎湖縣 馬公市</span><span class="list-row__secondary">風大 · 強風 9.5 m/s</span></div>
+                <div class="list-row__trailing"><span class="list-row__temp num">24°</span><button class="btn btn--subtle btn--icon" aria-label="移除澎湖縣 馬公市"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+              </div>
+            </div>
+          </section>
+          <p class="page-source">資料來源：中央氣象署 開放資料（O-A0003-001）</p>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+    <!-- ========== Frame 3: manual picker ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">手動選擇：縣市 + 鄉鎮市區 + 搜尋</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar app-bar--has-back">
+          <a class="btn btn--subtle btn--icon" href="location.html" aria-label="返回"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></a>
+          <div class="app-bar__titles"><h2 class="app-bar__title">選擇地點</h2><p class="app-bar__subtitle">22 個縣市</p></div>
+        </header>
+        <div class="page">
+          <div class="field" role="search">
+            <svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" placeholder="搜尋縣市或鄉鎮市區" aria-label="搜尋地點">
+          </div>
+          <section class="section">
+            <div class="section__header"><h3 class="section__title">縣市</h3><span class="card__meta">左右滑動</span></div>
+            <div class="chip-group chip-group--scroll" role="group" aria-label="縣市">
+              <button class="chip" aria-pressed="true">臺北市</button>
+              <button class="chip" aria-pressed="false">新北市</button>
+              <button class="chip" aria-pressed="false">基隆市</button>
+              <button class="chip" aria-pressed="false">桃園市</button>
+              <button class="chip" aria-pressed="false">新竹縣</button>
+              <button class="chip" aria-pressed="false">臺中市</button>
+              <button class="chip" aria-pressed="false">高雄市</button>
+              <button class="chip" aria-pressed="false">花蓮縣</button>
+              <button class="chip" aria-pressed="false">澎湖縣</button>
+            </div>
+          </section>
+          <section class="section">
+            <div class="section__header"><h3 class="section__title">臺北市 · 鄉鎮市區</h3><span class="card__meta">12 區</span></div>
+            <div class="list town-grid">
+              <button class="list-row list-row--selected" type="button" aria-pressed="true">
+                <div class="list-row__content"><span class="list-row__primary">信義區</span></div>
+                <div class="list-row__trailing"><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-tick"/></svg></div>
+              </button>
+              <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary">大安區</span></div></button>
+              <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary">中山區</span></div></button>
+              <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary">松山區</span></div></button>
+              <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary">內湖區</span></div></button>
+              <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary">士林區</span></div></button>
+            </div>
+          </section>
+          <div class="picker-footer">
+            <button class="btn btn--secondary"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg>儲存</button>
+            <button class="btn btn--primary">設為目前地點</button>
+          </div>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+    <!-- ========== Frame 4: permission denied banner ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">權限被拒：橫幅 + 預設地點</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles"><h2 class="app-bar__title">地點</h2><p class="app-bar__subtitle">使用預設地點</p></div>
+        </header>
+        <div class="page">
+          <div class="status-banner status-banner--permission" role="alert">
+            <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>
+            <div class="status-banner__body">
+              <p class="status-banner__title">未取得位置權限</p>
+              <p class="status-banner__text">未取得位置權限，目前顯示臺北市 信義區</p>
+              <div class="status-banner__actions">
+                <button class="btn btn--primary btn--sm">前往設定</button>
+                <button class="btn btn--secondary btn--sm">手動選擇</button>
+              </div>
+            </div>
+          </div>
+          <section class="card card--hero loc-hero loc-hero--muted" aria-label="目前地點">
+            <div class="loc-hero__top">
+              <div class="loc-hero__where">
+                <span class="loc-hero__label"><svg class="icon icon--16" aria-hidden="true"><use href="#i-location"/></svg>預設地點</span>
+                <h3 class="loc-hero__name">臺北市 信義區</h3>
+              </div>
+              <div class="loc-hero__temp"><svg class="icon icon--48 icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span class="text-large-title num">28°</span></div>
+            </div>
+            <div class="loc-hero__foot"><span>多雲時晴</span><span aria-hidden="true">·</span><span>降雨 20%</span><span aria-hidden="true">·</span><span class="num">更新於 14:10</span></div>
+          </section>
+          <section class="section">
+            <div class="section__header"><h3 class="section__title">我的地點</h3></div>
+            <div class="list">
+              <div class="list-row list-row--disabled" aria-disabled="true">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">目前位置</span><span class="list-row__secondary">定位不可用 · 未授權</span></div>
+                <div class="list-row__trailing"><span class="badge">已停用</span></div>
+              </div>
+              <a class="list-row list-row--selected" href="location.html">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-location"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">臺北市 信義區</span><span class="list-row__secondary">預設地點</span></div>
+                <div class="list-row__trailing"><span class="badge badge--brand">使用中</span></div>
+              </a>
+              <a class="list-row" href="location.html">
+                <span class="list-row__leading list-row__leading--tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></span>
+                <div class="list-row__content"><span class="list-row__primary">臺中市 西屯區</span><span class="list-row__secondary">晴</span></div>
+                <div class="list-row__trailing"><span class="list-row__temp num">26°</span><svg class="icon icon--20 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+              </a>
+            </div>
+          </section>
+          <p class="page-source">資料來源：中央氣象署 開放資料（O-A0003-001）</p>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+    <!-- ========== Frame 5: denied forever ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">永久拒絕：需到系統設定開啟</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles"><h2 class="app-bar__title">地點</h2><p class="app-bar__subtitle">位置權限已關閉</p></div>
+        </header>
+        <div class="page">
+          <section class="card card--hero intro" aria-label="位置權限已關閉" style="background: var(--color-warning-bg); border-color: var(--color-warning-stroke)">
+            <span class="intro__circle" style="background: var(--color-warning-solid)"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg></span>
+            <h3 class="text-title3">位置權限已關閉</h3>
+            <p class="text-body1 intro__text">系統不再詢問位置權限。要使用自動定位，請在系統設定中手動開啟。</p>
+          </section>
+          <section class="card card--a" aria-label="開啟步驟">
+            <h3 class="card__title">開啟步驟</h3>
+            <div class="steps">
+              <div class="step"><span class="step__no">1</span><span class="text-body1">點下「前往設定」，開啟本 App 的設定頁</span></div>
+              <div class="step"><span class="step__no">2</span><span class="text-body1">選擇「位置」</span></div>
+              <div class="step"><span class="step__no">3</span><span class="text-body1">改為「使用 App 時允許」，再返回本 App</span></div>
+            </div>
+          </section>
+          <div class="actions-col">
+            <button class="btn btn--primary btn--block">前往設定</button>
+            <button class="btn btn--secondary btn--block">手動選擇地點</button>
+          </div>
+          <p class="privacy"><svg class="icon icon--16" aria-hidden="true"><use href="#i-info"/></svg><span>目前顯示預設地點：臺北市 信義區</span></p>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+    <!-- ========== Frame 6: loading ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">載入中：定位中</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles"><h2 class="app-bar__title">地點</h2><p class="app-bar__subtitle">定位中…</p></div>
+          <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新定位" disabled><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+        </header>
+        <div class="page" aria-busy="true">
+          <div class="status-banner status-banner--loading" role="status">
+            <span class="status-banner__icon"><span class="spinner" aria-hidden="true"></span></span>
+            <div class="status-banner__body"><p class="status-banner__title">正在取得你的位置…</p><p class="status-banner__text">通常需要數秒</p></div>
+          </div>
+          <div class="sk__hero">
+            <div class="sk__lines"><div class="skeleton sk__line sk__line--w40"></div><div class="skeleton sk__block"></div><div class="skeleton sk__line sk__line--w90"></div></div>
+          </div>
+          <div class="sk">
+            <div class="sk__row"><div class="skeleton sk__circle"></div><div class="sk__lines"><div class="skeleton sk__line sk__line--w60"></div><div class="skeleton sk__line sk__line--w40"></div></div></div>
+            <div class="sk__row"><div class="skeleton sk__circle"></div><div class="sk__lines"><div class="skeleton sk__line sk__line--w60"></div><div class="skeleton sk__line sk__line--w40"></div></div></div>
+            <div class="sk__row"><div class="skeleton sk__circle"></div><div class="sk__lines"><div class="skeleton sk__line sk__line--w60"></div><div class="skeleton sk__line sk__line--w40"></div></div></div>
+          </div>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+    <!-- ========== Frame 7: error ========== -->
+    <div class="frame-col">
+      <div class="frame-cap">錯誤：定位失敗</div>
+      <div class="frame"><div class="app-shell">
+        <header class="app-bar">
+          <div class="app-bar__titles"><h2 class="app-bar__title">地點</h2><p class="app-bar__subtitle">定位失敗</p></div>
+          <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新定位"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+        </header>
+        <div class="page">
+          <div class="status-banner status-banner--error" role="alert">
+            <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span>
+            <div class="status-banner__body">
+              <p class="status-banner__title">無法取得目前位置</p>
+              <p class="status-banner__text">定位服務未開啟，或無法解析所在地名稱。請開啟定位服務後重試，或手動選擇地點。</p>
+              <div class="status-banner__actions">
+                <button class="btn btn--primary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button>
+                <button class="btn btn--secondary btn--sm">手動選擇</button>
+              </div>
+            </div>
+          </div>
+          <div class="empty-state">
+            <svg class="icon icon--48 empty-state__icon" aria-hidden="true"><use href="#i-cloud-off"/></svg>
+            <h3 class="empty-state__title">尚未設定地點</h3>
+            <p class="text-body1">選擇一個縣市與鄉鎮後，即可查看當地天氣與警特報。</p>
+            <button class="btn btn--primary">手動選擇地點</button>
+          </div>
+        </div>
+        <nav class="bottom-nav" aria-label="主要導覽">
+          <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+        </nav>
+      </div></div>
+    </div>
+
+  </div>
+</main>
+</body>
+</html>

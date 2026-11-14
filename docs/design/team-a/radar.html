@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team A · 雷達回波 — CWA 天氣 mockup</title>
+<!--
+  Team A「Glanceable dashboard」— 雷達回波頁 (radar)
+  Functions covered (page-inventory.md §2, §2.3, §3.1, §0):
+   1. 雷達回波疊圖於地圖（全台合成 O-A0058-001、單站 O-A0084-001/002/003）          → 框 1、2
+   2. 雷達來源切換：全台合成／樹林／南屯／林園（標籤統一用「樹林」）                → 框 1、2「雷達來源」
+   3. 透明度滑桿 10–100%，預設 60%，即時顯示數值                                     → 框 1「疊圖透明度」
+   4. 使用者位置標記（地圖上的藍點以外改用 pin 色 token）                              → 框 1、2、6
+   5. 回到我的位置（地圖右上浮動鈕）                                                   → 框 1–6（框 7 停用）
+   6. 影格時間戳（app bar 副標＋地圖左上「11/14 14:00」標籤＋播放卡）                → 全部框
+   6a. 資料來源：每框頁面內容最底部單一來源行（列出本頁資料集）                         → 全部框
+   7. dBZ 色階圖例（0–60+，每格標數字與強度文字）                                      → 框 1、2
+   8. 動畫播放：影格來自中央氣象署網站帶時間戳雷達圖（每 10 分鐘一張）；上一張／播放暫停／下一張、
+      影格滑桿、影格時間軸（預設 24 張 10:10–14:00）                                     → 框 1、2
+   8a. 播放設定（可展開）：回看範圍 1／2／4／6／12／24 小時，預設 4 小時＝24 張；播放速度 2／4／8 fps，
+      預設 4 fps；重複播放開關（預設開），說明「播放結束後等待 3 秒再重播」              → 框 1（框 2 狀態列同步）
+   9. 重新整理（app bar）                                                              → 全部框
+  10. 雷達涵蓋範圍說明（全台：臺灣本島及周邊海域；單站範圍虛線圈）                   → 框 1、2
+  11. 地圖平移縮放（真實 App 為 flutter_map；mockup 為靜態示意）                      → 框 1
+  12. 狀態：雷達圖載入中、連線失敗（含「沒有回波不代表沒下雨」提示）、
+      未設定 API 金鑰、無明顯回波（空）、未取得位置權限                               → 框 3–7
+  13. 底部導覽 5 頁，目前頁＝雷達                                                      → 全部框
+  Data-viz colours: only --dbz-* tokens (tokens-fluent2-light.css, contract §1 exception).
+-->
+<link rel="stylesheet" href="../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+  /* ===== Mockup board (aligned to team-a/home.html) ===== */
+  .board { display: flex; flex-direction: column; align-items: center; gap: var(--space-40); padding: var(--space-32) var(--space-16) var(--space-64); }
+  .board__head { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: var(--space-8); }
+  .board__group { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: var(--space-16); }
+  .board__group-title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .frames { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-40) var(--space-32); }
+  .frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-12); }
+  .frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .frame__note { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .frame .app-shell { min-height: 812px; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-16); }
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  @media (max-width: 420px) {
+    .board { padding-inline: var(--space-0); }
+    .board__head, .board__group { padding-inline: var(--space-16); }
+    .frames { padding-inline: var(--space-0); }
+    .board__group > .frames { margin-inline: calc(-1 * var(--space-16)); }
+    .frame .app-shell { border-radius: var(--radius-none); border-inline: none; }
+    .frame__caption, .frame__note { padding-inline: var(--space-16); }
+  }
+
+  /* ===== Team A shared patterns (app bar subtitle, hero, cards) — same as home.html ===== */
+  .app-bar__subtitle { display: flex; align-items: center; gap: var(--space-4); }
+  .app-bar__subtitle .icon { color: var(--color-brand-fg); }
+  .page--a { gap: var(--space-16); padding-top: var(--space-8); }
+  .hero { background: linear-gradient(180deg, var(--color-brand-160) 0%, var(--color-bg-1) 64%); box-shadow: var(--shadow-8); }
+  .hero__eyebrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+  .page-foot { text-align: center; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .hero .metric { background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-3); }
+  .card--a { border-radius: var(--radius-lg); padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
+  .card--a .card__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .card--a.card--flush { padding: var(--space-0); gap: var(--space-0); }
+  .hero__titles { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+  /* ---- Map (stylised Taiwan placeholder) ---- */
+  .radar-map { aspect-ratio: 5 / 6; border-radius: var(--radius-md); }
+  .map-svg { width: 100%; height: 100%; }
+  .map-land { fill: var(--color-map-land); stroke: var(--color-map-border); stroke-width: 1.5; stroke-linejoin: round; }
+  .map-range { fill: none; stroke: var(--color-brand-stroke); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .map-station { fill: var(--color-brand-bg); stroke: var(--color-bg-1); stroke-width: 1.5; }
+  .me__halo { fill: var(--color-map-pin); opacity: 0.2; }
+  .me__dot { fill: var(--color-map-pin); stroke: var(--color-bg-1); stroke-width: 2; }
+  .echo-0 { fill: var(--dbz-0); } .echo-10 { fill: var(--dbz-10); } .echo-20 { fill: var(--dbz-20); }
+  .echo-30 { fill: var(--dbz-30); } .echo-40 { fill: var(--dbz-40); } .echo-50 { fill: var(--dbz-50); }
+  .map-chip { position: absolute; top: var(--space-12); left: var(--space-12); display: inline-flex; align-items: center; gap: var(--space-4); min-height: var(--size-control-sm); padding: var(--space-4) var(--space-12); border-radius: var(--radius-circular); background: var(--color-bg-overlay); box-shadow: var(--shadow-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+  .map-fabs { position: absolute; top: var(--space-12); right: var(--space-12); display: flex; flex-direction: column; gap: var(--space-8); }
+  .fab[aria-disabled="true"] { color: var(--color-fg-disabled); box-shadow: var(--shadow-2); cursor: not-allowed; }
+  .map-center { position: absolute; inset: var(--space-0); display: flex; align-items: center; justify-content: center; padding: var(--space-16); }
+  .map-center .map-chip { position: static; gap: var(--space-8); min-height: var(--size-touch); padding: var(--space-8) var(--space-16); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); }
+  /* Playback settings (expandable, Team A card-in-card on bg-2) */
+  .pb-settings { border-radius: var(--radius-md); background: var(--color-bg-2); border: var(--stroke-thin) solid var(--color-stroke-3); }
+  .pb-settings__summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: var(--size-touch); padding: var(--space-0) var(--space-12); cursor: pointer; list-style: none; }
+  .pb-settings__summary::-webkit-details-marker { display: none; }
+  .pb-settings__title { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); flex: none; white-space: nowrap; }
+  .pb-settings__state { display: flex; align-items: center; gap: var(--space-4); min-width: 0; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .pb-settings__state-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pb-settings__chev { flex: none; transition: transform var(--duration-normal) var(--curve-easy-ease); }
+  .pb-settings[open] .pb-settings__chev { transform: rotate(90deg); }
+  .pb-settings__body { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-4) var(--space-12) var(--space-16); }
+  .pb-field { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
+  .pb-field__label { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .segmented--block { display: flex; }
+  .segmented--block .segmented__item { flex: 1; }
+  .pb-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); min-height: var(--size-touch); }
+  .pb-toggle__text { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+  .switch { position: relative; flex: none; width: var(--space-40); height: var(--space-24); padding: var(--space-0); border: none; border-radius: var(--radius-circular); background: var(--color-stroke-accessible); transition: background-color var(--duration-fast) var(--curve-easy-ease); }
+  .switch[aria-checked="true"] { background: var(--color-brand-bg); }
+  .switch__thumb { position: absolute; top: var(--space-4); left: var(--space-4); width: var(--space-16); height: var(--space-16); border-radius: var(--radius-circular); background: var(--color-bg-1); box-shadow: var(--shadow-2); transition: transform var(--duration-fast) var(--curve-easy-ease); }
+  .switch[aria-checked="true"] .switch__thumb { transform: translateX(var(--space-16)); }
+  .map-hint { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .radar-map--muted .map-svg { opacity: 0.6; }
+
+  /* ---- Legend with intensity words under each number ---- */
+  .legend__words { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); }
+
+  /* ---- Playback: past-frame timeline scroller ---- */
+  .timeline { gap: var(--space-8); }
+  .tl-frame { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); min-width: var(--size-icon-48); min-height: var(--size-touch); padding: var(--space-8) var(--space-8); border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-md); background: var(--color-bg-1); color: var(--color-fg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .tl-frame__bar { width: var(--size-icon-24); height: var(--size-slider-track); border-radius: var(--radius-circular); }
+  .tl-frame[aria-current="true"] { background: var(--color-brand-bg-subtle); border-color: var(--color-brand-stroke); color: var(--color-brand-fg-strong); font-weight: var(--font-weight-semibold); }
+  .playback__controls .btn:disabled { background: transparent; }
+  .playback__play:disabled { background: var(--color-bg-disabled); }
+
+  /* ---- Note row (coverage) ---- */
+  .note { display: flex; align-items: flex-start; gap: var(--space-12); color: var(--color-fg-2); }
+  .note .icon { color: var(--color-brand-fg); }
+  .note__body { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+  .skel-line { height: var(--space-12); min-height: var(--space-12); }
+  .skel-line--title { height: var(--space-24); width: 70%; }
+  .skel-line--short { width: 45%; }
+</style>
+</head>
+<body>
+
+<!-- ===== Icon sprite (copied from components.html) + map shape ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-options" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M17 6l-8 6 8 6zM7 6v12"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M7 6l8 6-8 6zM17 6v12"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4 3 9l9 5 9-5z"/><path d="M3 14l9 5 9-5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+  <defs>
+    <!-- Stylised Taiwan (x=(lon-119)*80, y=(26-lat)*80) + Penghu; placeholder for OSM tiles -->
+    <g id="tw-land">
+      <polygon points="203,56 220,68 240,80 228,100 230,112 210,160 172,260 160,288 148,328 138,324 128,290 102,272 92,240 90,208 112,152 120,140 152,96 164,76 192,66"/>
+      <ellipse cx="48" cy="194" rx="5" ry="7"/>
+    </g>
+  </defs>
+</svg>
+
+<main class="board">
+
+<header class="board__head">
+  <h1 class="text-title2">Team A · 雷達回波</h1>
+  <p class="text-secondary">英雄卡＝目前回波摘要＋地圖；下方依序為播放、來源、透明度、涵蓋範圍卡。後續各框為切換來源與各種狀態。</p>
+</header>
+
+<section class="board__group" aria-labelledby="g-default">
+  <h2 class="board__group-title" id="g-default">預設狀態與其他狀態</h2>
+  <div class="frames">
+
+  <!-- ================= Frame 1: default ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">① 全台合成 · 最新影格（暫停）<span class="badge badge--brand">預設</span></figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>觀測 2026-11-14 14:00 · 每 10 分鐘更新</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <article class="card card--hero hero" aria-label="目前雷達回波">
+          <div class="hero__titles">
+            <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">全台合成回波</span></p>
+            <p class="text-subtitle1">北部、東北部有強回波</p>
+            <p class="card__meta">最強約 45 dBZ（橙）· 臺北市 信義區附近 30–40 dBZ</p>
+          </div>
+          <div class="map radar-map" role="img" aria-label="雷達回波地圖：北部及東北部有 20 至 50 dBZ 回波，目前位置在臺北市信義區">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <g class="echoes" style="opacity:0.6">
+                <ellipse class="echo-0" cx="262" cy="150" rx="20" ry="32"/>
+                <ellipse class="echo-10" cx="262" cy="150" rx="11" ry="20"/>
+                <ellipse class="echo-0" cx="160" cy="182" rx="20" ry="30"/>
+                <ellipse class="echo-10" cx="162" cy="186" rx="9" ry="14"/>
+                <g transform="rotate(-25 218 90)">
+                  <ellipse class="echo-0" cx="220" cy="92" rx="48" ry="32"/>
+                  <ellipse class="echo-10" cx="218" cy="90" rx="36" ry="22"/>
+                  <ellipse class="echo-20" cx="214" cy="88" rx="25" ry="15"/>
+                  <ellipse class="echo-30" cx="217" cy="90" rx="14" ry="8"/>
+                  <ellipse class="echo-40" cx="221" cy="93" rx="7" ry="4.5"/>
+                  <ellipse class="echo-50" cx="223" cy="94" rx="2.5" ry="2"/>
+                </g>
+              </g>
+              <circle class="me__halo" cx="205" cy="77" r="10"/>
+              <circle class="me__dot" cx="205" cy="77" r="4.5"/>
+            </svg>
+            <span class="map-chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 14:00</span>
+            <div class="map-fabs">
+              <button class="fab" aria-label="回到我的位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            </div>
+          </div>
+          <div class="legend" aria-label="雷達回波強度圖例">
+            <div class="row" style="justify-content:space-between"><span class="legend__title">回波強度</span><span class="legend__unit">dBZ</span></div>
+            <div class="legend__bar" aria-hidden="true"><span class="dbz-0"></span><span class="dbz-10"></span><span class="dbz-20"></span><span class="dbz-30"></span><span class="dbz-40"></span><span class="dbz-50"></span><span class="dbz-60"></span></div>
+            <div class="legend__labels num"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
+            <div class="legend__words"><span>微弱</span><span>小雨</span><span>中雨</span><span>大雨</span><span>豪雨</span><span>強降雨</span><span>冰雹</span></div>
+          </div>
+        </article>
+
+        <article class="card card--a" aria-label="雷達動畫播放">
+          <div class="card__header"><h2 class="card__title">動畫播放</h2><span class="card__meta">過去 4 小時 · 24 張</span></div>
+          <div class="playback__time">
+            <span class="playback__timestamp">11/14 14:00</span>
+            <span class="playback__frame">第 24 / 24 張 · 最新</span>
+          </div>
+          <div class="playback__controls">
+            <button class="btn btn--subtle btn--icon" aria-label="上一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-prev"/></svg></button>
+            <button class="btn btn--icon playback__play" aria-label="播放"><svg class="icon icon--20" aria-hidden="true"><use href="#i-play"/></svg></button>
+            <button class="btn btn--subtle btn--icon" aria-label="下一張" disabled><svg class="icon icon--20" aria-hidden="true"><use href="#i-next"/></svg></button>
+            <input class="slider__input" type="range" min="1" max="24" value="24" aria-label="影格時間" style="--fill:100%">
+          </div>
+          <div class="scroller timeline" role="list" aria-label="過去影格">
+            <button class="tl-frame" role="listitem"><span>10:10</span><span class="tl-frame__bar dbz-10"></span></button>
+            <button class="tl-frame" role="listitem"><span>10:20</span><span class="tl-frame__bar dbz-10"></span></button>
+            <button class="tl-frame" role="listitem"><span>10:30</span><span class="tl-frame__bar dbz-20"></span></button>
+            <button class="tl-frame" role="listitem"><span>10:40</span><span class="tl-frame__bar dbz-20"></span></button>
+            <button class="tl-frame" role="listitem"><span>10:50</span><span class="tl-frame__bar dbz-20"></span></button>
+            <button class="tl-frame" role="listitem"><span>11:00</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>11:10</span><span class="tl-frame__bar dbz-20"></span></button>
+            <button class="tl-frame" role="listitem"><span>11:20</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>11:30</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>11:40</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>11:50</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem"><span>12:00</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>12:10</span><span class="tl-frame__bar dbz-20"></span></button>
+            <button class="tl-frame" role="listitem"><span>12:20</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>12:30</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>12:40</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem"><span>12:50</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem"><span>13:00</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem"><span>13:10</span><span class="tl-frame__bar dbz-30"></span></button>
+            <button class="tl-frame" role="listitem"><span>13:20</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem"><span>13:30</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem"><span>13:40</span><span class="tl-frame__bar dbz-50"></span></button>
+            <button class="tl-frame" role="listitem"><span>13:50</span><span class="tl-frame__bar dbz-40"></span></button>
+            <button class="tl-frame" role="listitem" aria-current="true"><span>14:00</span><span class="tl-frame__bar dbz-40"></span></button>
+          </div>
+          <details class="pb-settings" open>
+            <summary class="pb-settings__summary">
+              <span class="pb-settings__title"><svg class="icon icon--20" aria-hidden="true"><use href="#i-options"/></svg>播放設定</span>
+              <span class="pb-settings__state"><span class="pb-settings__state-text">4 小時 · 4 fps · 重複</span><svg class="icon icon--16 pb-settings__chev" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+            </summary>
+            <div class="pb-settings__body">
+              <div class="pb-field">
+                <span class="pb-field__label" id="lbl-range">回看範圍</span>
+                <div class="chip-group" role="radiogroup" aria-labelledby="lbl-range">
+                  <button class="chip" role="radio" aria-checked="false">1 小時</button>
+                  <button class="chip" role="radio" aria-checked="false">2 小時</button>
+                  <button class="chip" role="radio" aria-checked="true">4 小時</button>
+                  <button class="chip" role="radio" aria-checked="false">6 小時</button>
+                  <button class="chip" role="radio" aria-checked="false">12 小時</button>
+                  <button class="chip" role="radio" aria-checked="false">24 小時</button>
+                </div>
+              </div>
+              <div class="pb-field">
+                <span class="pb-field__label" id="lbl-fps">播放速度</span>
+                <div class="segmented segmented--block" role="radiogroup" aria-labelledby="lbl-fps">
+                  <button class="segmented__item" role="radio" aria-checked="false">2 fps</button>
+                  <button class="segmented__item" role="radio" aria-checked="true">4 fps</button>
+                  <button class="segmented__item" role="radio" aria-checked="false">8 fps</button>
+                </div>
+              </div>
+              <div class="pb-toggle">
+                <div class="pb-toggle__text">
+                  <span class="pb-field__label" id="lbl-loop">重複播放</span>
+                  <span class="map-hint">播放結束後等待 3 秒再重播</span>
+                </div>
+                <button class="switch" role="switch" aria-checked="true" aria-labelledby="lbl-loop"><span class="switch__thumb"></span></button>
+              </div>
+            </div>
+          </details>
+          <p class="map-hint">影格為中央氣象署網站帶時間戳的雷達圖，每 10 分鐘一張，最多可回看 24 小時（144 張）。每格下方色條為該影格最強回波。</p>
+        </article>
+
+        <article class="card card--a" aria-label="雷達來源">
+          <div class="card__header"><h2 class="card__title">雷達來源</h2><span class="card__meta">4 個</span></div>
+          <div class="chip-group" role="radiogroup" aria-label="雷達來源">
+            <button class="chip" role="radio" aria-checked="true">全台合成</button>
+            <button class="chip" role="radio" aria-checked="false">樹林</button>
+            <button class="chip" role="radio" aria-checked="false">南屯</button>
+            <button class="chip" role="radio" aria-checked="false">林園</button>
+          </div>
+        </article>
+
+        <article class="card card--a" aria-label="疊圖透明度">
+          <div class="slider">
+            <div class="slider__header"><label class="slider__label" for="op1">疊圖透明度</label><output class="slider__value" for="op1" data-opacity-out>60%</output></div>
+            <input class="slider__input" id="op1" type="range" min="10" max="100" value="60" step="10" style="--fill:55.6%" data-opacity>
+            <div class="slider__scale"><span>10%</span><span>100%</span></div>
+          </div>
+        </article>
+
+        <article class="card card--a card--outline" aria-label="涵蓋範圍">
+          <div class="note">
+            <svg class="icon icon--20" aria-hidden="true"><use href="#i-info"/></svg>
+            <div class="note__body">
+              <p class="text-body1-strong">涵蓋範圍：臺灣本島及周邊海域</p>
+              <p class="text-caption1 text-tertiary">全台合成整合各雷達站。單站雷達僅涵蓋該站周邊，距離越遠、山區背面訊號越弱。</p>
+            </div>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+    <p class="frame__note">英雄卡同時給出「一句話摘要＋地圖＋圖例」，一眼判讀；來源、透明度、播放都是獨立卡片，觀測時間在 app bar、地圖與播放卡三處一致。</p>
+  </figure>
+
+  <!-- ================= Frame 2: station radar, playing ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">② 切換單站「樹林」· 播放中</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>樹林站 · 觀測 2026-11-14 13:10</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <article class="card card--hero hero" aria-label="目前雷達回波">
+          <div class="hero__titles">
+            <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">樹林雷達站</span></p>
+            <p class="text-subtitle1">北部回波增強中</p>
+            <p class="card__meta">僅顯示虛線圈內範圍 · 圈外請改看全台合成</p>
+          </div>
+          <div class="map radar-map" role="img" aria-label="樹林雷達回波地圖，虛線圈為涵蓋範圍">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <g class="echoes" style="opacity:0.6">
+                <g transform="rotate(-25 214 86)">
+                  <ellipse class="echo-0" cx="214" cy="86" rx="38" ry="26"/>
+                  <ellipse class="echo-10" cx="212" cy="85" rx="28" ry="18"/>
+                  <ellipse class="echo-20" cx="210" cy="84" rx="18" ry="11"/>
+                  <ellipse class="echo-30" cx="213" cy="86" rx="9" ry="6"/>
+                  <ellipse class="echo-40" cx="215" cy="87" rx="4" ry="3"/>
+                </g>
+              </g>
+              <circle class="map-range" cx="192" cy="81" r="72"/>
+              <circle class="map-station" cx="192" cy="81" r="3.5"/>
+              <circle class="me__halo" cx="205" cy="77" r="10"/>
+              <circle class="me__dot" cx="205" cy="77" r="4.5"/>
+            </svg>
+            <span class="map-chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 13:10</span>
+            <div class="map-fabs">
+              <button class="fab" aria-label="回到我的位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            </div>
+          </div>
+          <div class="legend" aria-label="雷達回波強度圖例">
+            <div class="legend__bar" aria-hidden="true"><span class="dbz-0"></span><span class="dbz-10"></span><span class="dbz-20"></span><span class="dbz-30"></span><span class="dbz-40"></span><span class="dbz-50"></span><span class="dbz-60"></span></div>
+            <div class="legend__labels num"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60+</span></div>
+          </div>
+        </article>
+        <article class="card card--a" aria-label="雷達動畫播放">
+          <div class="card__header"><h2 class="card__title">動畫播放</h2><span class="card__meta">播放中 · 4 fps · 重複</span></div>
+          <div class="playback__time">
+            <span class="playback__timestamp">11/14 13:10</span>
+            <span class="playback__frame">第 19 / 24 張 · 過去 4 小時</span>
+          </div>
+          <div class="playback__controls">
+            <button class="btn btn--subtle btn--icon" aria-label="上一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-prev"/></svg></button>
+            <button class="btn btn--icon playback__play" aria-label="暫停"><svg class="icon icon--20" aria-hidden="true"><use href="#i-pause"/></svg></button>
+            <button class="btn btn--subtle btn--icon" aria-label="下一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-next"/></svg></button>
+            <input class="slider__input" type="range" min="1" max="24" value="19" aria-label="影格時間" style="--fill:78.3%">
+          </div>
+        </article>
+        <article class="card card--a" aria-label="雷達來源">
+          <div class="card__header"><h2 class="card__title">雷達來源</h2><span class="card__meta">4 個</span></div>
+          <div class="chip-group" role="radiogroup" aria-label="雷達來源">
+            <button class="chip" role="radio" aria-checked="false">全台合成</button>
+            <button class="chip" role="radio" aria-checked="true">樹林</button>
+            <button class="chip" role="radio" aria-checked="false">南屯</button>
+            <button class="chip" role="radio" aria-checked="false">林園</button>
+          </div>
+          <p class="map-hint">單站雷達：涵蓋範圍以虛線圈表示，越接近圈邊訊號越弱。</p>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 3: loading ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">③ 載入中：雷達圖下載</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>正在取得最新觀測…</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理" disabled><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a" aria-busy="true">
+        <article class="card card--hero hero" aria-label="目前雷達回波（載入中）">
+          <div class="hero__titles">
+            <div class="skeleton skel-line skel-line--short"></div>
+            <div class="skeleton skel-line skel-line--title"></div>
+          </div>
+          <div class="map radar-map radar-map--muted">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#tw-land" class="map-land"/></svg>
+            <div class="map-center"><span class="map-chip" role="status"><span class="spinner" aria-hidden="true"></span>載入雷達圖…</span></div>
+          </div>
+        </article>
+        <article class="card card--a" aria-label="雷達動畫播放（停用）">
+          <div class="card__header"><h2 class="card__title">動畫播放</h2><span class="card__meta">等待影格</span></div>
+          <div class="playback__controls">
+            <button class="btn btn--subtle btn--icon" aria-label="上一張" disabled><svg class="icon icon--20" aria-hidden="true"><use href="#i-prev"/></svg></button>
+            <button class="btn btn--icon playback__play" aria-label="播放" disabled><svg class="icon icon--20" aria-hidden="true"><use href="#i-play"/></svg></button>
+            <button class="btn btn--subtle btn--icon" aria-label="下一張" disabled><svg class="icon icon--20" aria-hidden="true"><use href="#i-next"/></svg></button>
+            <div class="skeleton" style="flex:1"></div>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 4: error ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">④ 錯誤：連線逾時</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>最後成功 11/14 13:20</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <article class="card card--hero hero" aria-label="目前雷達回波（失敗）">
+          <div class="status-banner status-banner--error" role="alert">
+            <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span>
+            <div class="status-banner__body">
+              <p class="status-banner__title">無法取得雷達圖</p>
+              <p class="status-banner__text">連線逾時，請檢查網路。地圖上沒有回波，不代表沒有下雨。</p>
+              <div class="status-banner__actions"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div>
+            </div>
+          </div>
+          <div class="map radar-map radar-map--muted" role="img" aria-label="地圖，無雷達資料">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <circle class="me__halo" cx="205" cy="77" r="10"/>
+              <circle class="me__dot" cx="205" cy="77" r="4.5"/>
+            </svg>
+            <span class="map-chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-cloud-off"/></svg>無雷達資料</span>
+            <div class="map-fabs">
+              <button class="fab" aria-label="回到我的位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            </div>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 5: no API key ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">⑤ 錯誤：尚未設定 API 金鑰</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>無法連線中央氣象署</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <article class="card card--hero hero" aria-label="雷達無法使用">
+          <div class="empty-state">
+            <svg class="icon icon--48 empty-state__icon" aria-hidden="true"><use href="#i-cloud-off"/></svg>
+            <p class="empty-state__title">尚未設定 API 金鑰</p>
+            <p>雷達圖需要中央氣象署開放資料金鑰。設定後即可顯示回波。</p>
+            <button class="btn btn--primary">前往設定</button>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 6: empty (no echo) ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">⑥ 空：目前無明顯回波</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>觀測 2026-11-14 14:00 · 每 10 分鐘更新</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <article class="card card--hero hero" aria-label="目前雷達回波">
+          <div class="hero__titles">
+            <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">全台合成回波</span></p>
+            <p class="text-subtitle1">目前無明顯回波</p>
+            <p class="card__meta">資料正常更新；臺灣本島及周邊海域未偵測到降雨訊號</p>
+          </div>
+          <div class="map radar-map" role="img" aria-label="雷達地圖，無回波">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <circle class="me__halo" cx="205" cy="77" r="10"/>
+              <circle class="me__dot" cx="205" cy="77" r="4.5"/>
+            </svg>
+            <span class="map-chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 14:00</span>
+            <div class="map-fabs">
+              <button class="fab" aria-label="回到我的位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            </div>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  <!-- ================= Frame 7: location permission denied ================= -->
+  <figure class="frame">
+    <figcaption class="frame__caption">⑦ 未取得位置權限</figcaption>
+    <div class="app-shell">
+      <header class="app-bar">
+        <div class="app-bar__titles">
+          <p class="app-bar__title">雷達回波</p>
+          <p class="app-bar__subtitle num"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>觀測 2026-11-14 14:00 · 每 10 分鐘更新</p>
+        </div>
+        <div class="app-bar__actions">
+          <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+        </div>
+      </header>
+      <div class="page page--a">
+        <div class="status-banner status-banner--permission" role="status">
+          <span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>
+          <div class="status-banner__body">
+            <p class="status-banner__title">未取得位置權限</p>
+            <p class="status-banner__text">地圖中心為臺北市 信義區，無法標示你的位置。</p>
+            <div class="status-banner__actions"><button class="btn btn--primary btn--sm">允許定位</button><a class="btn btn--subtle btn--sm" href="location.html">選擇地點</a></div>
+          </div>
+        </div>
+        <article class="card card--hero hero" aria-label="目前雷達回波">
+          <div class="hero__titles">
+            <p class="hero__eyebrow"><span class="text-caption1 text-tertiary">全台合成回波</span></p>
+            <p class="text-subtitle1">北部、東北部有強回波</p>
+          </div>
+          <div class="map radar-map" role="img" aria-label="雷達回波地圖，未標示目前位置">
+            <svg class="map-svg" viewBox="30 40 250 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <use href="#tw-land" class="map-land"/>
+              <g class="echoes" style="opacity:0.6">
+                <g transform="rotate(-25 218 90)">
+                  <ellipse class="echo-0" cx="220" cy="92" rx="48" ry="32"/>
+                  <ellipse class="echo-10" cx="218" cy="90" rx="36" ry="22"/>
+                  <ellipse class="echo-20" cx="214" cy="88" rx="25" ry="15"/>
+                  <ellipse class="echo-30" cx="217" cy="90" rx="14" ry="8"/>
+                  <ellipse class="echo-40" cx="221" cy="93" rx="7" ry="4.5"/>
+                </g>
+              </g>
+            </svg>
+            <span class="map-chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 14:00</span>
+            <div class="map-fabs">
+              <button class="fab" aria-label="回到我的位置（需要位置權限）" aria-disabled="true"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            </div>
+          </div>
+        </article>
+        <p class="page-foot">資料來源：中央氣象署（雷達回波：官網時間戳記圖、O-A0058-001、O-A0084-001/002/003）</p>
+      </div>
+      <nav class="bottom-nav" aria-label="主要導覽">
+        <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+        <a class="bottom-nav__item" href="radar.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+        <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+        <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+        <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+      </nav>
+    </div>
+  </figure>
+
+  </div>
+</section>
+</main>
+
+<script>
+  // Timeline opens on the newest frame (aria-current), matching the default "第 24 / 24 張"
+  document.querySelectorAll('.timeline').forEach(function (t) { t.scrollLeft = t.scrollWidth; });
+  // Opacity slider: live value + overlay opacity (mockup interaction only)
+  document.querySelectorAll('[data-opacity]').forEach(function (input) {
+    var shell = input.closest('.app-shell');
+    input.addEventListener('input', function () {
+      var v = Number(input.value);
+      shell.querySelector('[data-opacity-out]').textContent = v + '%';
+      input.style.setProperty('--fill', ((v - 10) / 90 * 100) + '%');
+      shell.querySelectorAll('.echoes').forEach(function (g) { g.style.opacity = v / 100; });
+    });
+  });
+</script>
+</body>
+</html>
