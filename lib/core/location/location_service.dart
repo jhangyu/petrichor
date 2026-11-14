@@ -1,8 +1,10 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/models/place.dart';
+import '../../data/repositories/weather_repository.dart';
 
-final locationServiceProvider = Provider((ref) => LocationService());
+final locationServiceProvider =
+    Provider((ref) => LocationService(ref.watch(weatherRepositoryProvider).nearestTown));
 
 class LocationData {
   final double latitude;
@@ -39,6 +41,10 @@ class LocationException implements Exception {
 }
 
 class LocationService {
+  final Future<Result<Place>> Function(double latitude, double longitude) _nearestTown;
+
+  LocationService(this._nearestTown);
+
   static const _positionSettings = LocationSettings(
     accuracy: LocationAccuracy.high,
   );
@@ -84,40 +90,25 @@ class LocationService {
     } on Exception catch (e) {
       throw LocationException(
         LocationFailure.positionUnavailable,
-        'Failed to read current position: $e',
+        'Step getCurrentPosition failed after permission was granted ($permission); expected a position, got: $e',
         cause: e,
       );
     }
 
-    final List<Placemark> placemarks;
-    try {
-      placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
-    } on Exception catch (e) {
+    final town = await _nearestTown(position.latitude, position.longitude);
+    if (town is Failure<Place>) {
       throw LocationException(
         LocationFailure.addressUnresolved,
-        'Reverse geocoding failed for (${position.latitude}, ${position.longitude}): $e',
-        cause: e,
+        'Cannot resolve county/town for (${position.latitude}, ${position.longitude}): ${town.message}',
       );
     }
-
-    final place = placemarks.isEmpty ? null : placemarks.first;
-    final city = place?.administrativeArea ?? '';
-    final district = place?.locality ?? place?.subLocality ?? '';
-    if (city.isEmpty || district.isEmpty) {
-      throw LocationException(
-        LocationFailure.addressUnresolved,
-        'Reverse geocoding returned no city/district for (${position.latitude}, ${position.longitude}); got city="$city", district="$district".',
-      );
-    }
+    final place = town.data;
 
     return LocationData(
       latitude: position.latitude,
       longitude: position.longitude,
-      city: city,
-      district: district,
+      city: place.county,
+      district: place.town,
     );
   }
 }

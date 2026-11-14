@@ -175,6 +175,35 @@ class WeatherRepository {
     );
   }
 
+  List<Place>? _nationwideTowns;
+
+  /// 取得離 ([latitude], [longitude]) 最近的鄉鎮（全臺 22 縣市鄉鎮清單，每個 session 只抓一次）。
+  /// 任一縣市清單取不到即失敗（不用殘缺清單挑最近，避免挑錯縣市）。
+  Future<Result<Place>> nearestTown(double latitude, double longitude) async {
+    var towns = _nationwideTowns;
+    if (towns == null) {
+      final counties = AppConstants.townshipForecastDatasets.keys.toList();
+      final results = await Future.wait(counties.map(getTowns));
+      for (var i = 0; i < results.length; i++) {
+        final r = results[i];
+        if (r is Failure<List<Place>>) {
+          return Failure(
+            '全臺鄉鎮清單不完整：期望 ${counties.length} 縣市皆可取得，實際「${counties[i]}」失敗（${r.message}）',
+            statusCode: r.statusCode,
+            dataset: r.dataset,
+            location: counties[i],
+          );
+        }
+      }
+      towns = _nationwideTowns = [for (final r in results) ...r.data];
+    }
+    return Success(towns.reduce((a, b) =>
+        _distanceKm(latitude, longitude, a.latitude, a.longitude) <=
+                _distanceKm(latitude, longitude, b.latitude, b.longitude)
+            ? a
+            : b));
+  }
+
   Future<Result<T>> _townshipForecast<T>(
     String city,
     String district, {
