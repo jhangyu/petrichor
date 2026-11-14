@@ -126,16 +126,27 @@ abstract final class AppPalette {
   static const alert4Stroke = Color(0xFFC6B1DE);
   static const alert4Solid = Color(0xFF5C2E91);
 
-  // DATA-VIZ EXCEPTION (contract acceptance 8): CWA radar reflectivity scale.
-  // Each step is a 10 dBZ band starting at the named value; legends must
-  // always label numbers.
-  static const dbz0 = Color(0xFFA6E3FF);
-  static const dbz10 = Color(0xFF2F8FE6);
-  static const dbz20 = Color(0xFF22B14C);
-  static const dbz30 = Color(0xFFF5D100);
-  static const dbz40 = Color(0xFFFF8A00);
-  static const dbz50 = Color(0xFFE81123);
-  static const dbz60 = Color(0xFFA0119E);
+  // DATA-VIZ EXCEPTION (contract acceptance 8): CWA radar reflectivity scale,
+  // exactly the colours CWA draws, so legend, timeline bars and the radar
+  // overlay agree. Index = dBZ (0–65). Source: legend bar of the website frame
+  // CV1_3600_202611142230 (column 3453, rows 2507–3571): 66 equal 16-row
+  // steps, 65 dBZ at the top down to 0 at the bottom; the O-A0084 station
+  // images use the same 66 colours. The radar processor keys echo pixels by
+  // these colours (radarEchoPalette), so they must stay CWA's values.
+  // Legends must always label numbers.
+  static const dbzScale = <Color>[
+    Color(0xFF00FFFF), Color(0xFF00ECFF), Color(0xFF00DAFF), Color(0xFF00C8FF), Color(0xFF00B6FF), Color(0xFF00A3FF), // 0–5 dBZ
+    Color(0xFF0091FF), Color(0xFF007FFF), Color(0xFF006DFF), Color(0xFF005BFF), Color(0xFF0048FF), Color(0xFF0036FF), // 6–11 dBZ
+    Color(0xFF0024FF), Color(0xFF0012FF), Color(0xFF0000FF), Color(0xFF00FF00), Color(0xFF00F400), Color(0xFF00E900), // 12–17 dBZ
+    Color(0xFF00DE00), Color(0xFF00D300), Color(0xFF00C800), Color(0xFF00BE00), Color(0xFF00B400), Color(0xFF00AA00), // 18–23 dBZ
+    Color(0xFF00A000), Color(0xFF009600), Color(0xFF33AB00), Color(0xFF66C000), Color(0xFF99D500), Color(0xFFCCEA00), // 24–29 dBZ
+    Color(0xFFFFFF00), Color(0xFFFFF400), Color(0xFFFFE900), Color(0xFFFFDE00), Color(0xFFFFD300), Color(0xFFFFC800), // 30–35 dBZ
+    Color(0xFFFFB800), Color(0xFFFFA800), Color(0xFFFF9800), Color(0xFFFF8800), Color(0xFFFF7800), Color(0xFFFF6000), // 36–41 dBZ
+    Color(0xFFFF4800), Color(0xFFFF3000), Color(0xFFFF1800), Color(0xFFFF0000), Color(0xFFF40000), Color(0xFFE90000), // 42–47 dBZ
+    Color(0xFFDE0000), Color(0xFFD30000), Color(0xFFC80000), Color(0xFFBE0000), Color(0xFFB40000), Color(0xFFAA0000), // 48–53 dBZ
+    Color(0xFFA00000), Color(0xFF960000), Color(0xFFAB0033), Color(0xFFC00066), Color(0xFFD50099), Color(0xFFEA00CC), // 54–59 dBZ
+    Color(0xFFFF00FF), Color(0xFFEA00FF), Color(0xFFD500FF), Color(0xFFC000FF), Color(0xFFAB00FF), Color(0xFF9600FF), // 60–65 dBZ
+  ];
 
   // DATA-VIZ EXCEPTION: CWA daily accumulated rainfall map (O-A0040-002) scale,
   // sampled from the legend bar of the CWA image. Low → high, 17 bands:

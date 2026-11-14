@@ -5,6 +5,7 @@ import 'package:cwb_flutter/data/radar/radar_bounds.dart';
 import 'package:cwb_flutter/data/radar/radar_echo_stats.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:cwb_flutter/features/radar/radar_summary.dart';
+import 'package:cwb_flutter/features/radar/widgets/radar_legend.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -31,6 +32,20 @@ const _taipei = Place(county: '臺北市', town: '中正區', latitude: 25.04605
 const _coverage = '臺灣本島及周邊海域';
 
 void main() {
+  test('colour names follow the CWA scale hue families', () {
+    final names = {for (var d = 0; d <= 65; d++) d: radarDbzColourName(d)};
+    expect([names[5], names[6], names[14], names[15], names[25], names[26], names[30], names[36]],
+        ['淺藍', '藍', '藍', '綠', '綠', '黃綠', '黃', '橙']);
+    expect([names[44], names[45], names[55], names[56], names[59], names[60], names[65]],
+        ['橙', '紅', '紅', '紫紅', '紫紅', '紫', '紫']);
+  });
+
+  test('keying palette is the CWA scale sampled from the frame legend bar', () {
+    expect(radarEchoPalette.length, 66);
+    expect([radarEchoPalette[0], radarEchoPalette[15], radarEchoPalette[30], radarEchoPalette[45], radarEchoPalette[65]],
+        [0x00ffff, 0x00ff00, 0xffff00, 0xff0000, 0x9600ff]);
+  });
+
   test('below the significant level: 無明顯回波 with the coverage name', () {
     final s = radarEchoSummary(_frame(strongest: radarSignificantEchoDbz - 1), coverage: _coverage);
     expect(s, (title: '目前無明顯回波', meta: '資料正常更新；臺灣本島及周邊海域未偵測到降雨訊號'));
@@ -43,7 +58,7 @@ void main() {
       place: _taipei,
     );
     expect(s.title, '南部有強回波');
-    expect(s.meta, '最強約 45 dBZ（橙） · 臺北市 中正區附近30–40 dBZ');
+    expect(s.meta, '最強約 45 dBZ（紅） · 臺北市 中正區附近30–40 dBZ');
   });
 
   test('no strong region: regions with rain echo in order; weak echo near the place', () {
@@ -53,10 +68,10 @@ void main() {
       place: _taipei,
     );
     expect(s.title, '北部、外海有降雨回波');
-    expect(s.meta, '最強約 39 dBZ（黃） · 臺北市 中正區附近30–40 dBZ');
+    expect(s.meta, '最強約 39 dBZ（橙） · 臺北市 中正區附近30–40 dBZ');
     final weak = radarEchoSummary(_frame(strongest: 39, cells: {(113, 73, 1): 500}), coverage: _coverage, place: _taipei);
     expect(weak.title, '目前有零星回波');
-    expect(weak.meta, '最強約 39 dBZ（黃） · 臺北市 中正區附近無明顯回波');
+    expect(weak.meta, '最強約 39 dBZ（橙） · 臺北市 中正區附近無明顯回波');
   });
 
   test('station geometry: cells map through the station bounds; top band label', () {

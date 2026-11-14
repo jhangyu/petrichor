@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:image/image.dart' as img;
 
+import '../../core/theme/app_tokens.dart';
 import 'radar_bounds.dart';
 import 'radar_echo_stats.dart';
 
@@ -18,18 +19,11 @@ import 'radar_echo_stats.dart';
 
 const radarFrameSize = 3600;
 
-/// dBZ legend colours (0xRRGGBB), read from the legend bar of CV1_3600_202611142050.
-const radarEchoPalette = <int>[
-  0x00ffff, 0x00ecff, 0x00daff, 0x00c8ff, 0x00b6ff, 0x00a3ff, 0x0091ff, 0x007fff, //
-  0x006dff, 0x005bff, 0x0048ff, 0x0036ff, 0x0024ff, 0x0012ff, 0x0000ff, 0x00ff00,
-  0x00f400, 0x00e900, 0x00de00, 0x00d300, 0x00c800, 0x00be00, 0x00b400, 0x00aa00,
-  0x00a000, 0x009600, 0x33ab00, 0x66c000, 0x99d500, 0xccea00, 0xffff00, 0xfff400,
-  0xffe900, 0xffde00, 0xffd300, 0xffc800, 0xffb800, 0xffa800, 0xff9800, 0xff8800,
-  0xff7800, 0xff6000, 0xff4800, 0xff3000, 0xff1800, 0xff0000, 0xf40000, 0xe90000,
-  0xde0000, 0xd30000, 0xc80000, 0xbe0000, 0xb40000, 0xaa0000, 0xa00000, 0x960000,
-  0xab0033, 0xc00066, 0xd50099, 0xea00cc, 0xff00ff, 0xea00ff, 0xd500ff, 0xc000ff,
-  0xab00ff, 0x9600ff,
-];
+/// dBZ legend colours (0xRRGGBB, index = dBZ), from the CWA scale in
+/// [AppPalette.dbzScale] (sampled from the frames' legend bar).
+final radarEchoPalette = [for (final c in AppPalette.dbzScale) c.toARGB32() & _rgbMask];
+
+const _rgbMask = 0xFFFFFF;
 
 /// Pixel rectangle, [left, right) x [top, bottom).
 typedef PixelRect = ({int left, int top, int right, int bottom});

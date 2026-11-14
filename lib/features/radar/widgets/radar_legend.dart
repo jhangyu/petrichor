@@ -3,30 +3,36 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../data/radar/radar_echo_stats.dart';
 
-/// dBZ legend steps: colour (data-vis tokens), tick label, intensity word.
-const _steps = [
-  (AppPalette.dbz0, '0', '微弱'),
-  (AppPalette.dbz10, '10', '小雨'),
-  (AppPalette.dbz20, '20', '中雨'),
-  (AppPalette.dbz30, '30', '大雨'),
-  (AppPalette.dbz40, '40', '豪雨'),
-  (AppPalette.dbz50, '50', '強降雨'),
-  (AppPalette.dbz60, '60+', '冰雹'),
+/// Intensity word under each 10 dBZ tick, lowest band first.
+const _bandWords = ['微弱', '小雨', '中雨', '大雨', '豪雨', '強降雨', '冰雹'];
+
+/// Colour names of the CWA scale ([AppPalette.dbzScale]) by hue family:
+/// (highest dBZ of the family, name). 0–5 cyan, 6–14 blue, 15–25 green,
+/// 26–29 yellow-green, 30–35 yellow, 36–44 orange (ffb800–ff1800),
+/// 45–55 red (ff0000–960000), 56–59 magenta-red, 60–65 purple.
+const _colourNames = [
+  (5, '淺藍'),
+  (14, '藍'),
+  (25, '綠'),
+  (29, '黃綠'),
+  (35, '黃'),
+  (44, '橙'),
+  (55, '紅'),
+  (59, '紫紅'),
+  (65, '紫'),
 ];
 
-/// Colour name of each legend step, as the hero says it (「最強約 45 dBZ（橙）」).
-const _colourNames = ['淺藍', '藍', '綠', '黃', '橙', '紅', '紫'];
+int _clampDbz(int dbz) => dbz.clamp(0, AppPalette.dbzScale.length - 1);
 
-int _stepOf(int dbz) => (dbz ~/ radarDbzBandWidth).clamp(0, _steps.length - 1);
+/// CWA legend colour of [dbz].
+Color radarDbzColour(int dbz) => AppPalette.dbzScale[_clampDbz(dbz)];
 
-/// Legend colour of the step containing [dbz].
-Color radarDbzColour(int dbz) => _steps[_stepOf(dbz)].$1;
-
-/// Legend colour name of the step containing [dbz].
-String radarDbzColourName(int dbz) => _colourNames[_stepOf(dbz)];
+/// Name of the CWA legend colour of [dbz], as the hero says it (「最強約 45 dBZ（紅）」).
+String radarDbzColourName(int dbz) => _colourNames.firstWhere((e) => _clampDbz(dbz) <= e.$1).$2;
 
 /// `.legend`: 回波強度 dBZ bar with numbers; [showWords] adds the intensity
-/// words under each number (full legend on the default frame).
+/// words under each number (full legend on the default frame). The bar draws
+/// every CWA colour (1 dBZ each); ticks and words sit under their 10 dBZ band.
 class RadarLegend extends StatelessWidget {
   const RadarLegend({super.key, required this.showWords});
 
@@ -35,7 +41,17 @@ class RadarLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final caption = AppType.caption2.copyWith(color: AppPalette.fg3);
-    Widget row(List<Widget> cells) => Row(children: [for (final c in cells) Expanded(child: c)]);
+    final scale = AppPalette.dbzScale.length;
+    final bands = [
+      for (var b = 0; b < _bandWords.length; b++)
+        (
+          start: b * radarDbzBandWidth,
+          width: (scale - b * radarDbzBandWidth).clamp(0, radarDbzBandWidth),
+          word: _bandWords[b],
+        ),
+    ];
+    Widget row(List<(int, Widget)> cells) =>
+        Row(children: [for (final (flex, c) in cells) Expanded(flex: flex, child: c)]);
     return Semantics(
       label: '雷達回波強度圖例',
       child: Column(
@@ -59,20 +75,23 @@ class RadarLegend extends StatelessWidget {
               height: AppSize.legendBar,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [for (final (color, _, _) in _steps) Expanded(child: ColoredBox(color: color))],
+                children: [for (final color in AppPalette.dbzScale) Expanded(child: ColoredBox(color: color))],
               ),
             ),
           ),
           row([
-            for (final (_, tick, _) in _steps)
-              Text(
-                tick,
-                textAlign: TextAlign.center,
-                style: caption.copyWith(fontFeatures: AppType.tabular),
+            for (final b in bands)
+              (
+                b.width,
+                Text(
+                  b.width < radarDbzBandWidth ? '${b.start}+' : '${b.start}',
+                  textAlign: TextAlign.center,
+                  style: caption.copyWith(fontFeatures: AppType.tabular),
+                ),
               ),
           ]),
           if (showWords)
-            row([for (final (_, _, word) in _steps) Text(word, textAlign: TextAlign.center, style: caption)]),
+            row([for (final b in bands) (b.width, Text(b.word, textAlign: TextAlign.center, style: caption))]),
         ],
       ),
     );
