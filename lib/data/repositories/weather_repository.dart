@@ -327,10 +327,14 @@ Object? _dig(Map<String, dynamic> m, List<String> path) {
   return cur;
 }
 
-/// 數值字串 → double；缺值（null、-99）→ null；非數字 → FormatException。
+/// CWA 以「-」表示該時間槽無值（例如 12 小時降雨機率）。
+const _noValueMarker = '-';
+
+/// 數值字串 → double；缺值（null、-99、「-」）→ null；其他非數字 → FormatException。
 double? _num(Object? raw, String path) {
   if (raw == null) return null;
   final text = raw.toString().trim();
+  if (text == _noValueMarker) return null;
   final value = double.tryParse(text);
   if (value == null) throw FormatException('$path：期望數字，實際「$text」');
   return value == _missingValue ? null : value;
