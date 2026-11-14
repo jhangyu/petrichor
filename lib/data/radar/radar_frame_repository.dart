@@ -10,9 +10,6 @@ import 'radar_bounds.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
 
-/// Credit required by the CWA licence (「註明出處」).
-const radarSourceCredit = '資料來源：中央氣象署';
-
 /// Cache sub-directory; the suffix changes whenever processing output changes,
 /// so frames made by an older pipeline are never shown.
 const radarFrameCacheDirName = 'radar_cv1_3600_webp_v2';

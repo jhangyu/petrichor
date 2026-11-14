@@ -34,8 +34,8 @@ class RadarWindowFrames extends Notifier<int> {
 
 final radarWindowFramesProvider = NotifierProvider<RadarWindowFrames, int>(RadarWindowFrames.new);
 
-/// Website radar loop (oldest first; each frame = bands with bounds), credit
-/// [radarSourceCredit]. Refreshes when first watched (screen open) or when the
+/// Website radar loop (oldest first; each frame = bands with bounds); the screen
+/// credits the source via SourceLine. Refreshes when first watched (screen open) or when the
 /// window changes; a user refresh is `ref.invalidate(radarFramesProvider)`.
 /// No timer/polling.
 final radarFramesProvider = FutureProvider.autoDispose<List<RadarFrame>>((ref) =>
