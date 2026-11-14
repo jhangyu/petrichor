@@ -57,6 +57,43 @@ void main() {
     verifyNever(() => location.getCurrentLocation());
   });
 
+  test('first run without a stored choice: no place, no location request', () async {
+    final current = await newContainer().read(currentPlaceProvider.future);
+
+    expect(current, isA<NoPlace>().having((p) => p.firstRun, 'firstRun', true));
+    verifyNever(() => location.getCurrentLocation());
+  });
+
+  test('choosing GPS is remembered: next launch locates without asking again for a choice', () async {
+    when(() => location.getCurrentLocation()).thenAnswer(
+      (_) async => LocationData(latitude: 23.565, longitude: 119.586, city: '澎湖縣', district: '馬公市'),
+    );
+    final first = newContainer();
+    await first.read(currentPlaceProvider.future);
+    await first.read(currentPlaceProvider.notifier).useGps();
+
+    final current = await newContainer().read(currentPlaceProvider.future) as PlaceSelected;
+
+    expect((current.place, current.source), (_magong, PlaceSource.gps));
+    verify(() => location.getCurrentLocation()).called(2);
+  });
+
+  test('GPS denied after the user chose it is not a first run and keeps the underlying cause', () async {
+    when(() => location.getCurrentLocation()).thenThrow(LocationException(LocationFailure.permissionDenied, 'denied'));
+    final container = newContainer();
+    await container.read(currentPlaceProvider.future);
+
+    await container.read(currentPlaceProvider.notifier).useGps();
+
+    expect(
+      container.read(currentPlaceProvider).value,
+      isA<NoPlace>()
+          .having((p) => p.firstRun, 'firstRun', false)
+          .having((p) => p.reason, 'reason', LocationFailure.permissionDenied)
+          .having((p) => p.cause, 'cause', 'denied'),
+    );
+  });
+
   test('corrupted stored places surface a typed error', () async {
     SharedPreferences.setMockInitialValues({PlaceStore.savedKey: '[{"county":"新北市"}]'});
 

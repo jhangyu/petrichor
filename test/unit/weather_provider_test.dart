@@ -39,7 +39,7 @@ void main() {
   late ProviderContainer container;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: true});
     location = MockLocationService();
     adapter = FakeCwaAdapter();
     container = ProviderContainer(overrides: [

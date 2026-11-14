@@ -27,12 +27,27 @@ final class PlaceSelected extends CurrentPlace {
   const PlaceSelected(this.place, this.source);
 }
 
-/// 尚無地點：未選手動地點且 GPS 定位失敗。頁面顯示引導（開權限／手動選擇），不顯示資料。
+/// 尚無地點：未選手動地點且 GPS 定位失敗，或首次使用尚未選擇。頁面顯示引導（開權限／手動選擇），不顯示資料。
 final class NoPlace extends CurrentPlace {
   final LocationException error;
-  const NoPlace(this.error);
+
+  /// 首次使用：使用者還沒選 GPS 或手動地點，App 尚未請求定位權限（地點頁顯示首次說明）。
+  final bool firstRun;
+
+  const NoPlace(this.error) : firstRun = false;
+
+  /// 首次使用。原因記為 permissionDenied：權限尚未決定時 geolocator 也回報 denied。
+  NoPlace.firstRun()
+      : error = LocationException(
+          LocationFailure.permissionDenied,
+          'Location permission not requested yet: the user has chosen neither GPS nor a manual place.',
+        ),
+        firstRun = true;
 
   LocationFailure get reason => error.failure;
+
+  /// 底層原因（[LocationException.message]，如 'Failed to read current position: …'）；頁面在引導文字下方原樣顯示。
+  String get cause => error.message;
 }
 
 /// 定位失敗 → 使用者可讀訊息（含下一步）
@@ -78,8 +93,15 @@ class PlaceStore {
   static const currentKey = 'place.current';
   static const savedKey = 'place.saved';
 
+  /// true＝使用者選了 GPS（首次說明按過「允許使用位置」），啟動時才定位
+  static const gpsKey = 'place.gps';
+
   final SharedPreferences _prefs;
   PlaceStore(this._prefs);
+
+  bool loadUseGps() => _prefs.getBool(gpsKey) ?? false;
+
+  Future<void> saveUseGps() => _write(gpsKey, _prefs.setBool(gpsKey, true));
 
   /// 手動選定的地點；null＝使用 GPS
   Place? loadCurrent() {
@@ -120,7 +142,8 @@ class PlaceStore {
 // Providers
 // ============================================================================
 
-/// 目前地點：有手動選定地點就用它，否則用 GPS；GPS 失敗＝[NoPlace]（不給預設地點）。
+/// 目前地點：有手動選定地點就用它；使用者選過 GPS 就定位；都沒有＝[NoPlace.firstRun]（不請求權限）。
+/// GPS 失敗＝[NoPlace]（不給預設地點）。
 /// 儲存資料損毀＝AsyncError(StoredPlaceException)；呼叫 [CurrentPlaceNotifier.select] 會覆寫並恢復。
 final currentPlaceProvider = AsyncNotifierProvider<CurrentPlaceNotifier, CurrentPlace>(
   CurrentPlaceNotifier.new,
@@ -130,8 +153,10 @@ final currentPlaceProvider = AsyncNotifierProvider<CurrentPlaceNotifier, Current
 class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
   @override
   Future<CurrentPlace> build() async {
-    final manual = (await ref.watch(placeStoreProvider.future)).loadCurrent();
+    final store = await ref.watch(placeStoreProvider.future);
+    final manual = store.loadCurrent();
     if (manual != null) return PlaceSelected(manual, PlaceSource.manual);
+    if (!store.loadUseGps()) return NoPlace.firstRun();
     return _locate();
   }
 
@@ -141,9 +166,11 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
     state = AsyncData(PlaceSelected(place, PlaceSource.manual));
   }
 
-  /// 改用 GPS：清除手動選定並重新定位（權限未決時會向系統請求權限）。
+  /// 改用 GPS：清除手動選定、記住「用 GPS」並重新定位（權限未決時會向系統請求權限）。
   Future<void> useGps() async {
-    await (await ref.read(placeStoreProvider.future)).saveCurrent(null);
+    final store = await ref.read(placeStoreProvider.future);
+    await store.saveCurrent(null);
+    await store.saveUseGps();
     state = const AsyncLoading();
     state = AsyncData(await _locate());
   }
