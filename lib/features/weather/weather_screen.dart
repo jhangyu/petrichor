@@ -67,7 +67,7 @@ class WeatherScreen extends ConsumerWidget {
     if (state.error != null) {
       return _buildErrorState(context, state.error!);
     }
-    if (state.forecast.isEmpty) {
+    if (state.hourly.isEmpty) {
       return _buildEmptyState(context);
     }
     return _buildContent(context, state);
@@ -75,7 +75,16 @@ class WeatherScreen extends ConsumerWidget {
 
   Widget _buildContent(BuildContext context, WeatherState state) {
     final loc = state.location;
-    final forecast = state.forecast;
+    // 暫時轉接：UI 改版前沿用 WeatherCondition 版面（缺值顯示以 0／'--' 代替僅限此轉接）
+    final forecast = state.hourly
+        .map((h) => WeatherCondition(
+              wx: h.weather ?? '--',
+              pop: h.pop ?? 0,
+              t: (h.temperature ?? state.current?.temperature ?? 0).round(),
+              startTime: h.startTime.toIso8601String(),
+              endTime: h.startTime.toIso8601String(),
+            ))
+        .toList();
     final current = forecast.isNotEmpty ? forecast.first : null;
 
     return RefreshIndicator(

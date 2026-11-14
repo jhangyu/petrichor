@@ -14,6 +14,8 @@ final dioProvider = Provider<Dio>((ref) {
       baseUrl: AppConstants.cwaApiBaseUrl,
       connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
       receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
+      followRedirects: true,
+      maxRedirects: AppConstants.maxRedirects,
       headers: {
         'Authorization': AppConstants.cwaApiKey,
         'Accept': 'application/json',
@@ -72,6 +74,8 @@ final fileApiDioProvider = Provider<Dio>((ref) {
     BaseOptions(
       connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
       receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
+      followRedirects: true,
+      maxRedirects: AppConstants.maxRedirects,
       headers: {
         'Accept': 'application/json',
       },

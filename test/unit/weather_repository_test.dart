@@ -1,463 +1,199 @@
-import 'package:dio/dio.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:cwb_flutter/data/models/weather_models.dart';
+import 'package:cwb_flutter/core/location/location_service.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-class MockDio extends Mock implements Dio {}
+import '../support/fake_cwa_adapter.dart';
 
-class MockFileApiDio extends Mock implements Dio {}
+LocationData _at(double lat, double lon, String city, String district) =>
+    LocationData(latitude: lat, longitude: lon, city: city, district: district);
 
-class MockResponse<T> extends Mock implements Response<T> {}
+Map<String, dynamic> _station(Map<String, dynamic> json, String name) =>
+    ((json['records'] as Map)['Station'] as List).cast<Map<String, dynamic>>().firstWhere((s) => s['StationName'] == name);
 
-/// Mock data that passes [Contract] verification:
-/// CurrentWeather: 9 fields with correct types.
-const mockCurrentWeather = CurrentWeather(
-  locationName: '信義區',
-  temperature: 28.0,
-  feelsLike: 30.0,
-  humidity: 75,
-  windSpeed: 2.5,
-  weatherDescription: '晴天',
-  weatherCode: '01',
-  pop: 10,
-  observationTime: '2026-06-11T12:00:00Z',
-);
-
-/// Mock data that passes [Contract] verification:
-/// DailyForecast: 6 fields with correct types.
-const mockDailyForecast = DailyForecast(
-  date: '2026-06-11',
-  weatherDescription: '晴天',
-  weatherCode: '01',
-  pop: 10,
-  maxTemperature: 32.0,
-  minTemperature: 24.0,
-);
-
-/// Mock data that passes [Contract] verification:
-/// WeeklyForecast: 2 fields (locationName: String, days: List<DailyForecast>).
-const mockWeeklyForecast = WeeklyForecast(
-  locationName: '信義區',
-  days: [mockDailyForecast],
-);
-
-/// Valid CWA API response structure for weekly forecast (matches actual API format).
-/// Uses Chinese element names and uppercase keys.
-final validWeeklyApiResponse = {
-  'records': {
-    'Locations': [
-      {
-        'Location': [
-          {
-            'LocationName': '臺北市',
-            'WeatherElement': [
-              {
-                'ElementName': '天氣現象',
-                'Time': [
-                  {
-                    'StartTime': '2026-06-11T00:00:00+08:00',
-                    'EndTime': '2026-06-11T03:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '晴天', 'WeatherCode': '01'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T03:00:00+08:00',
-                    'EndTime': '2026-06-11T06:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '多雲', 'WeatherCode': '04'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T06:00:00+08:00',
-                    'EndTime': '2026-06-11T09:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '陰天', 'WeatherCode': '08'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T09:00:00+08:00',
-                    'EndTime': '2026-06-11T12:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '陣雨', 'WeatherCode': '14'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T12:00:00+08:00',
-                    'EndTime': '2026-06-11T15:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '雷陣雨', 'WeatherCode': '15'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T15:00:00+08:00',
-                    'EndTime': '2026-06-11T18:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '雨', 'WeatherCode': '20'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T18:00:00+08:00',
-                    'EndTime': '2026-06-11T21:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '多雲', 'WeatherCode': '04'}
-                    ],
-                  },
-                  {
-                    'StartTime': '2026-06-11T21:00:00+08:00',
-                    'EndTime': '2026-06-12T00:00:00+08:00',
-                    'ElementValue': [
-                      {'Weather': '晴時多雲', 'WeatherCode': '02'}
-                    ],
-                  },
-                ],
-              },
-              {
-                'ElementName': '3小時降雨機率',
-                'Time': [
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '10'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '20'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '30'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '40'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '50'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '60'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '70'}]},
-                  {'ElementValue': [{'ProbabilityOfPrecipitation': '80'}]},
-                ],
-              },
-              {
-                'ElementName': '溫度',
-                'Time': [
-                  {'ElementValue': [{'Temperature': '24'}]},
-                  {'ElementValue': [{'Temperature': '25'}]},
-                  {'ElementValue': [{'Temperature': '28'}]},
-                  {'ElementValue': [{'Temperature': '32'}]},
-                  {'ElementValue': [{'Temperature': '30'}]},
-                  {'ElementValue': [{'Temperature': '26'}]},
-                  {'ElementValue': [{'Temperature': '24'}]},
-                  {'ElementValue': [{'Temperature': '22'}]},
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-};
+/// 取 1 週預報 臺北市 的 WeatherElement 內指定要素的第 [slot] 個時間槽的第一個 ElementValue
+Map<String, dynamic> _weeklyValue(Map<String, dynamic> json, String element, int slot) {
+  final location = (((json['records'] as Map)['Locations'] as List).first as Map)['Location'] as List;
+  final elements = ((location.first as Map)['WeatherElement'] as List).cast<Map<String, dynamic>>();
+  final time = (elements.firstWhere((e) => e['ElementName'] == element)['Time'] as List)[slot] as Map;
+  return ((time['ElementValue'] as List).first as Map).cast<String, dynamic>();
+}
 
 void main() {
-  late MockDio mockDio;
-  late MockFileApiDio mockFileApiDio;
-  late WeatherRepository repository;
-
-  setUpAll(() {
-    registerFallbackValue(Uri());
-    registerFallbackValue(RequestOptions(path: '/'));
-  });
+  late FakeCwaAdapter adapter;
+  late WeatherRepository repo;
 
   setUp(() {
-    mockDio = MockDio();
-    mockFileApiDio = MockFileApiDio();
-    repository = WeatherRepository(mockDio, mockFileApiDio);
+    adapter = FakeCwaAdapter();
+    repo = WeatherRepository(adapter.dio(), adapter.dio());
   });
 
-  group('WeatherRepository', () {
-    // ─────────────────────────────────────────────────────────────────────────
-    // [Contract] PASS — verify mock data matches freezed model invariants
-    // CurrentWeather: 9 fields (locationName: String, temperature: double,
-    //   feelsLike: double, humidity: int, windSpeed: double,
-    //   weatherDescription: String, weatherCode: String, pop: int,
-    //   observationTime: String)
-    // ─────────────────────────────────────────────────────────────────────────
-    test('[Contract] mockCurrentWeather has9 required fields with correct types', () {
-      expect(mockCurrentWeather.locationName, isA<String>());
-      expect(mockCurrentWeather.temperature, isA<double>());
-      expect(mockCurrentWeather.feelsLike, isA<double>());
-      expect(mockCurrentWeather.humidity, isA<int>());
-      expect(mockCurrentWeather.windSpeed, isA<double>());
-      expect(mockCurrentWeather.weatherDescription, isA<String>());
-      expect(mockCurrentWeather.weatherCode, isA<String>());
-      expect(mockCurrentWeather.pop, isA<int>());
-      expect(mockCurrentWeather.observationTime, isA<String>());
-      expect(mockCurrentWeather.temperature, equals(28.0));
-      expect(mockCurrentWeather.weatherCode, equals('01'));
+  group('getCurrentWeather (O-A0003-001)', () {
+    test('picks the nearest station and parses its observation', () async {
+      adapter.serveFixture('O-A0003-001');
+      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+
+      final w = r.data;
+      expect(w.stationName, '淡水');
+      expect(w.temperature, 21.4);
+      expect(w.humidity, 95);
+      expect(w.windSpeed, 0.3);
+      expect(w.weather, '陰');
+      expect(w.dailyHigh, 25.5);
+      expect(w.dailyLow, 21.1);
+      expect(w.observedAt.toUtc(), DateTime.utc(2026, 11, 14, 12, 30));
+      expect(w.distanceKm, lessThan(2));
     });
 
-    test('[Contract] DailyForecast has 6 required fields with correct types', () {
-      expect(mockDailyForecast.date, isA<String>());
-      expect(mockDailyForecast.weatherDescription, isA<String>());
-      expect(mockDailyForecast.weatherCode, isA<String>());
-      expect(mockDailyForecast.pop, isA<int>());
-      expect(mockDailyForecast.maxTemperature, isA<double>());
-      expect(mockDailyForecast.minTemperature, isA<double>());
-      expect(mockDailyForecast.date, equals('2026-06-11'));
-      expect(mockDailyForecast.maxTemperature, equals(32.0));
-    });
-
-    test('[Contract] WeeklyForecast has2 required fields with correct types', () {
-      expect(mockWeeklyForecast.locationName, isA<String>());
-      expect(mockWeeklyForecast.days, isA<List<DailyForecast>>());
-      expect(mockWeeklyForecast.locationName, equals('信義區'));
-      expect(mockWeeklyForecast.days, hasLength(1));
-    });
-
-    test('[Contract] CurrentWeather.fromJson deserializes valid JSON', () {
-      final json = {
-        'locationName': '中正區',
-        'temperature': 25.0,
-        'feelsLike': 27.0,
-        'humidity': 80,
-        'windSpeed': 1.5,
-        'weatherDescription': '多雲',
-        'weatherCode': '04',
-        'pop': 30,
-        'observationTime': '2026-06-11T14:00:00Z',
-      };
-      final instance = CurrentWeather.fromJson(json);
-      expect(instance.locationName, equals('中正區'));
-      expect(instance.temperature, equals(25.0));
-      expect(instance.humidity, equals(80));
-      expect(instance.weatherCode, equals('04'));
-    });
-
-    test('[Contract] CurrentWeather.toJson serializes correctly', () {
-      final json = mockCurrentWeather.toJson();
-      expect(json.keys.length, equals(9));
-      expect(json['locationName'], equals('信義區'));
-      expect(json['temperature'], equals(28.0));
-      expect(json['pop'], equals(10));
-    });
-
-    test('[Contract] DailyForecast.fromJson deserializes valid JSON', () {
-      final json = {
-        'date': '2026-06-12',
-        'weatherDescription': '雨',
-        'weatherCode': '20',
-        'pop': 80,
-        'maxTemperature': 22.0,
-        'minTemperature': 18.0,
-      };
-      final instance = DailyForecast.fromJson(json);
-      expect(instance.date, equals('2026-06-12'));
-      expect(instance.pop, equals(80));
-      expect(instance.maxTemperature, equals(22.0));
-    });
-
-    test('[Contract] DailyForecast.phenomenon maps weatherCode correctly', () {
-      expect(mockDailyForecast.phenomenon, equals(WeatherPhenomenon.sunny));
-      final rainy = DailyForecast.fromJson({
-        'date': '2026-06-12',
-        'weatherDescription': '雨',
-        'weatherCode': '20',
-        'pop': 80,
-        'maxTemperature': 22.0,
-        'minTemperature': 18.0,
+    test('skips stations without temperature and maps -99 to missing', () async {
+      adapter.serveFixture('O-A0003-001', (json) {
+        final tamsui = _station(json, '淡水')['WeatherElement'] as Map<String, dynamic>;
+        tamsui['AirTemperature'] = '-99';
+        final xinbei = _station(json, '新北')['WeatherElement'] as Map<String, dynamic>;
+        xinbei['RelativeHumidity'] = '-99';
+        xinbei['Weather'] = '-99';
+        return null;
       });
-      expect(rainy.phenomenon, equals(WeatherPhenomenon.rain));
+      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+
+      final w = r.data;
+      expect(w.stationName, isNot('淡水'));
+      expect(w.stationName, '新北');
+      expect(w.temperature, 20.6);
+      expect(w.humidity, isNull);
+      expect(w.weather, isNull);
+      expect(w.windSpeed, 1.0);
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Repository behavior tests — getWeeklyForecast
-    // ─────────────────────────────────────────────────────────────────────────
-    test('getWeeklyForecast returns Success with forecast on valid API response', () async {
-      final response = MockResponse<Map<String, dynamic>>();
-      when(() => response.data).thenReturn(validWeeklyApiResponse);
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenAnswer((_) async => response);
-
-      final result = await repository.getWeeklyForecast('臺北市');
-
-      expect(result.isSuccess, isTrue);
-      expect(result.data.locationName, equals('臺北市'));
-      expect(result.data.days, isNotEmpty);
-      verify(() => mockDio.get(
-        any(),
-        queryParameters: {'locationName': '臺北市'},
-      )).called(1);
-    });
-
-    test('getWeeklyForecast returns Failure when API key is missing', () async {
-      // Note: This test requires running without CWA_API_KEY define
-      // When API key is missing, the method returns a Failure immediately
-      // This test verifies the failure path works correctly
-      final result = await repository.getWeeklyForecast('信義區');
-
-      // The result should be either a Failure (no API key) or Success (with API key)
-      // Both are valid outcomes depending on whether CWA_API_KEY is set
-      expect(result.isSuccess || result.isFailure, isTrue);
-    });
-
-    test('getWeeklyForecast returns Failure when locations is empty', () async {
-      final response = MockResponse<Map<String, dynamic>>();
-      when(() => response.data).thenReturn({
-        'records': {'Locations': []},
+    test('fails with dataset and location when every station lacks temperature', () async {
+      adapter.serveFixture('O-A0003-001', (json) {
+        for (final s in (json['records'] as Map)['Station'] as List) {
+          ((s as Map)['WeatherElement'] as Map)['AirTemperature'] = '-99';
+        }
+        return null;
       });
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenAnswer((_) async => response);
+      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
-      final result = await repository.getWeeklyForecast('不存在區');
-
-      expect(result.isFailure, isTrue);
+      final f = r as Failure;
+      expect(f.dataset, 'O-A0003-001');
+      expect(f.location, '新北市淡水區');
     });
 
-    test('getWeeklyForecast returns Failure on DioException (4xx)', () async {
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenThrow(DioException(
-        requestOptions: RequestOptions(path: '/'),
-        response: Response(requestOptions: RequestOptions(path: '/'), statusCode: 401),
-        type: DioExceptionType.badResponse,
-      ));
+    test('HTTP 500 becomes a Failure carrying status, dataset and location', () async {
+      adapter.serveStatus('O-A0003-001', 500);
+      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
-      final result = await repository.getWeeklyForecast('信義區');
+      final f = r as Failure;
+      expect(f.statusCode, 500);
+      expect(f.dataset, 'O-A0003-001');
+      expect(f.location, '新北市淡水區');
+      expect(f.message, contains('O-A0003-001'));
+    });
+  });
 
-      expect(result.isFailure, isTrue);
+  group('getHourlyForecast (3-day township dataset)', () {
+    test('joins hourly and 3-hourly elements per 3-hour slot', () async {
+      adapter.serveFixture('F-D0047-061');
+      final r = await repo.getHourlyForecast('台北市', '中正區');
+
+      expect(adapter.requests.single.path, endsWith('/F-D0047-061'));
+      expect(adapter.requests.single.queryParameters['LocationName'], '中正區');
+      final hours = r.data;
+      expect(hours, hasLength(4));
+      final first = hours.first;
+      expect(first.startTime.toUtc(), DateTime.utc(2026, 11, 14, 10));
+      expect(first.temperature, 24);
+      expect(first.apparentTemperature, 27);
+      expect(first.humidity, 96);
+      expect(first.windSpeed, 2);
+      expect(first.windDirection, '偏北風');
+      expect(first.pop, 50);
+      expect(first.weather, '短暫陣雨');
+      expect(first.weatherCode, '08');
+      expect(hours[1].temperature, 23);
+      expect(hours[2].temperature, isNull, reason: 'fixture has no hourly temperature at 00:00');
+      expect(hours[2].pop, 80);
+      expect(hours[3].weatherCode, '04');
     });
 
-    test('getWeeklyForecast returns Failure on DioException (5xx)', () async {
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenThrow(DioException(
-        requestOptions: RequestOptions(path: '/'),
-        response: Response(requestOptions: RequestOptions(path: '/'), statusCode: 500),
-        type: DioExceptionType.badResponse,
-      ));
-
-      final result = await repository.getWeeklyForecast('信義區');
-
-      expect(result.isFailure, isTrue);
-    });
-
-    test('getWeeklyForecast returns Failure on timeout', () async {
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenThrow(DioException(
-        requestOptions: RequestOptions(path: '/'),
-        type: DioExceptionType.connectionTimeout,
-      ));
-
-      final result = await repository.getWeeklyForecast('信義區');
-
-      expect(result.isFailure, isTrue);
-    });
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Repository behavior tests — getCurrentWeather
-    // ─────────────────────────────────────────────────────────────────────────
-    test('getCurrentWeather returns Success with current weather data', () async {
-      final response = MockResponse<Map<String, dynamic>>();
-      when(() => response.data).thenReturn(validWeeklyApiResponse);
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenAnswer((_) async => response);
-
-      final result = await repository.getCurrentWeather('臺北市');
-
-      expect(result.isSuccess, isTrue);
-      expect(result.data.locationName, equals('臺北市'));
-      expect(result.data.temperature, isA<double>());
-    });
-
-    test('getCurrentWeather returns Failure when API key is missing', () async {
-      final result = await repository.getCurrentWeather('信義區');
-
-      expect(result.isFailure, isTrue);
-    });
-
-    test('getCurrentWeather returns Failure on empty forecast', () async {
-      final response = MockResponse<Map<String, dynamic>>();
-      when(() => response.data).thenReturn({
-        'records': {'Locations': []},
+    test('empty location list is a Failure naming dataset and location', () async {
+      adapter.serveFixture('F-D0047-061', (json) {
+        ((((json['records'] as Map)['Locations'] as List).first as Map))['Location'] = <Object?>[];
+        return null;
       });
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenAnswer((_) async => response);
+      final r = await repo.getHourlyForecast('臺北市', '中正區');
 
-      final result = await repository.getCurrentWeather('信義區');
-
-      expect(result.isFailure, isTrue);
+      final f = r as Failure;
+      expect(f.dataset, 'F-D0047-061');
+      expect(f.location, '臺北市中正區');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Repository behavior tests — getRadarImageUrl
-    // ─────────────────────────────────────────────────────────────────────────
-    test('getRadarImageUrl returns Success with URL on valid response', () async {
-      final response = MockResponse<Map<String, dynamic>>();
-      when(() => response.data).thenReturn({
-        'cwaopendata': {
-          'dataset': {
-            'resource': {
-              'ProductURL': 'https://cwaopendata.s3.amazonaws.com/radar.png',
-            },
-          },
-        },
-      });
-      when(() => mockFileApiDio.get(
-        any(),
-        options: any(named: 'options'),
-      )).thenAnswer((_) async => response);
+    test('unknown county is a Failure without any request', () async {
+      final r = await repo.getHourlyForecast('火星市', '中正區');
 
-      final result = await repository.getRadarImageUrl();
-
-      expect(result.isSuccess, isTrue);
-      expect(result.data, equals('https://cwaopendata.s3.amazonaws.com/radar.png'));
+      expect(r.isFailure, isTrue);
+      expect(adapter.requests, isEmpty);
     });
 
-    test('getRadarImageUrl returns Failure on DioException', () async {
-      when(() => mockFileApiDio.get(any())).thenThrow(DioException(
-        requestOptions: RequestOptions(path: '/'),
-        type: DioExceptionType.unknown,
-      ));
+    test('HTTP 404 is a Failure', () async {
+      adapter.serveStatus('F-D0047-061', 404);
+      final r = await repo.getHourlyForecast('臺北市', '中正區');
 
-      final result = await repository.getRadarImageUrl();
+      expect((r as Failure).statusCode, 404);
+    });
+  });
 
-      expect(result.isFailure, isTrue);
+  group('getWeeklyForecast (1-week township dataset)', () {
+    test('computes real daily high and low over the Taiwan calendar day', () async {
+      adapter.serveFixture('F-D0047-091', (json) {
+        _weeklyValue(json, '最低溫度', 2)['MinTemperature'] = '19';
+        return null;
+      }, 'F-D0047-063');
+      final r = await repo.getWeeklyForecast('臺北市', '臺北市');
+
+      expect(adapter.requests.single.path, endsWith('/F-D0047-063'));
+      final days = r.data;
+      expect(days.map((d) => d.date), ['2026-11-14', '2026-11-15', '2026-11-16']);
+      expect(days[0].maxTemperature, 24);
+      expect(days[0].minTemperature, 21);
+      // 11-15 spans slots 0,1,2 → max(24,24,22), min(21,21,19)
+      expect(days[1].maxTemperature, 24);
+      expect(days[1].minTemperature, 19);
+      expect(days[1].maxApparentTemperature, 27);
+      expect(days[1].minApparentTemperature, 22);
+      // day fields come from the 06:00–18:00 slot
+      expect(days[1].pop, 50);
+      expect(days[1].humidity, 92);
+      expect(days[1].windSpeed, 3);
+      expect(days[1].weather, '陰短暫陣雨');
+      expect(days[1].weatherCode, '11');
+      expect(days[2].maxTemperature, 23);
+      expect(days[2].minTemperature, 19);
+      expect(days[2].pop, 30);
+      expect(days[1].weekdayName, '週日');
     });
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Repository behavior tests — backward-compatible get24hForecast
-    // ─────────────────────────────────────────────────────────────────────────
-    test('get24hForecast returns list of WeatherCondition on success', () async {
-      final response = MockResponse<Map<String, dynamic>>();
-      when(() => response.data).thenReturn(validWeeklyApiResponse);
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenAnswer((_) async => response);
+    test('-99 temperature is missing, never a fabricated number', () async {
+      adapter.serveFixture('F-D0047-091', (json) {
+        _weeklyValue(json, '最低溫度', 0)['MinTemperature'] = '-99';
+        _weeklyValue(json, '最高溫度', 0)['MaxTemperature'] = '-99';
+        return null;
+      }, 'F-D0047-063');
+      final r = await repo.getWeeklyForecast('臺北市', '臺北市');
 
-      final result = await repository.get24hForecast('台北市', '信義區');
-
-      expect(result, isA<List<WeatherCondition>>());
-      expect(result, isNotEmpty); // has days from forecast
-      verify(() => mockDio.get(
-        any(),
-        queryParameters: {'locationName': '臺北市'},
-      )).called(1);
+      final today = r.data.first;
+      expect(today.date, '2026-11-14');
+      expect(today.minTemperature, isNull);
+      expect(today.maxTemperature, isNull);
+      expect(r.data[1].minTemperature, 21);
     });
 
-    test('get24hForecast returns empty list on failure', () async {
-      when(() => mockDio.get(
-        any(),
-        queryParameters: any(named: 'queryParameters'),
-      )).thenThrow(DioException(
-        requestOptions: RequestOptions(path: '/'),
-        type: DioExceptionType.connectionTimeout,
-      ));
+    test('township absent from the response is a Failure listing what was returned', () async {
+      adapter.serveFixture('F-D0047-091', null, 'F-D0047-063');
+      final r = await repo.getWeeklyForecast('臺北市', '中正區');
 
-      final result = await repository.get24hForecast('臺北市', '信義區');
-
-      expect(result, isEmpty);
+      final f = r as Failure;
+      expect(f.dataset, 'F-D0047-063');
+      expect(f.message, contains('期望地點「中正區」'));
     });
   });
 }

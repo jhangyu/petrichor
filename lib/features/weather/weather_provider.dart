@@ -3,58 +3,77 @@ import '../../core/location/location_service.dart';
 import '../../data/models/weather_models.dart';
 import '../../data/repositories/weather_repository.dart';
 
-// State to hold both location and forecast
+/// 首頁狀態。載入完成後 [error] 非空代表失敗（資料欄位維持空），否則三組資料皆為真實來源。
 class WeatherState {
   final LocationData? location;
-  final List<WeatherCondition> forecast;
+  final CurrentWeather? current;
+  final List<HourlyForecast> hourly;
+  final List<DailyForecast> weekly;
   final bool isLoading;
+
+  /// 使用者可讀的中文錯誤訊息
   final String? error;
 
-  WeatherState({
+  const WeatherState({
     this.location,
-    this.forecast = const [],
+    this.current,
+    this.hourly = const [],
+    this.weekly = const [],
     this.isLoading = true,
     this.error,
   });
+}
 
-  WeatherState copyWith({
-    LocationData? location,
-    List<WeatherCondition>? forecast,
-    bool? isLoading,
-    String? error,
-  }) {
-    return WeatherState(
-      location: location ?? this.location,
-      forecast: forecast ?? this.forecast,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-    );
-  }
+/// 定位失敗 → 使用者可讀訊息（含下一步）
+String locationFailureMessage(LocationException e) {
+  return switch (e.failure) {
+    LocationFailure.serviceDisabled => '裝置的定位服務已關閉，請開啟後重試',
+    LocationFailure.permissionDenied => '尚未允許定位權限，請允許後重試',
+    LocationFailure.permissionDeniedForever => '定位權限已被永久拒絕，請到系統設定開啟',
+    LocationFailure.positionUnavailable => '無法取得目前位置，請稍後重試',
+    LocationFailure.addressUnresolved => '無法判斷所在縣市與鄉鎮，請稍後重試',
+  };
 }
 
 class WeatherNotifier extends Notifier<WeatherState> {
   @override
   WeatherState build() {
-    // We can't await in build directly without AsyncNotifier, so we call _init async.
-    // However, it's safer to just start it.
-    Future.microtask(() => _init());
-    return WeatherState();
+    Future.microtask(_init);
+    return const WeatherState();
   }
 
   Future<void> _init() async {
+    final LocationData location;
     try {
-      final locService = ref.read(locationServiceProvider);
-      final location = await locService.getCurrentLocation();
-      
-      state = state.copyWith(location: location);
-
-      final repo = ref.read(weatherRepositoryProvider);
-      final forecast = await repo.get24hForecast(location.city, location.district);
-
-      state = state.copyWith(forecast: forecast, isLoading: false);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      location = await ref.read(locationServiceProvider).getCurrentLocation();
+    } on LocationException catch (e) {
+      state = WeatherState(isLoading: false, error: locationFailureMessage(e));
+      return;
     }
+
+    final repo = ref.read(weatherRepositoryProvider);
+    final (current, hourly, weekly) = await (
+      repo.getCurrentWeather(location),
+      repo.getHourlyForecast(location.city, location.district),
+      repo.getWeeklyForecast(location.city, location.district),
+    ).wait;
+
+    final failures = [current, hourly, weekly].whereType<Failure>();
+    if (failures.isNotEmpty) {
+      state = WeatherState(
+        location: location,
+        isLoading: false,
+        error: failures.map((f) => f.message).join('\n'),
+      );
+      return;
+    }
+    state = WeatherState(
+      location: location,
+      current: current.data,
+      hourly: hourly.data,
+      weekly: weekly.data,
+      isLoading: false,
+    );
   }
 }
 

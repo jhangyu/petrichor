@@ -6,66 +6,6 @@ part of 'weather_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CurrentWeather _$CurrentWeatherFromJson(Map<String, dynamic> json) =>
-    _CurrentWeather(
-      locationName: json['locationName'] as String,
-      temperature: (json['temperature'] as num).toDouble(),
-      feelsLike: (json['feelsLike'] as num).toDouble(),
-      humidity: (json['humidity'] as num).toInt(),
-      windSpeed: (json['windSpeed'] as num).toDouble(),
-      weatherDescription: json['weatherDescription'] as String,
-      weatherCode: json['weatherCode'] as String,
-      pop: (json['pop'] as num).toInt(),
-      observationTime: json['observationTime'] as String,
-    );
-
-Map<String, dynamic> _$CurrentWeatherToJson(_CurrentWeather instance) =>
-    <String, dynamic>{
-      'locationName': instance.locationName,
-      'temperature': instance.temperature,
-      'feelsLike': instance.feelsLike,
-      'humidity': instance.humidity,
-      'windSpeed': instance.windSpeed,
-      'weatherDescription': instance.weatherDescription,
-      'weatherCode': instance.weatherCode,
-      'pop': instance.pop,
-      'observationTime': instance.observationTime,
-    };
-
-_WeeklyForecast _$WeeklyForecastFromJson(Map<String, dynamic> json) =>
-    _WeeklyForecast(
-      locationName: json['locationName'] as String,
-      days: (json['days'] as List<dynamic>)
-          .map((e) => DailyForecast.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-
-Map<String, dynamic> _$WeeklyForecastToJson(_WeeklyForecast instance) =>
-    <String, dynamic>{
-      'locationName': instance.locationName,
-      'days': instance.days,
-    };
-
-_DailyForecast _$DailyForecastFromJson(Map<String, dynamic> json) =>
-    _DailyForecast(
-      date: json['date'] as String,
-      weatherDescription: json['weatherDescription'] as String,
-      weatherCode: json['weatherCode'] as String,
-      pop: (json['pop'] as num).toInt(),
-      maxTemperature: (json['maxTemperature'] as num).toDouble(),
-      minTemperature: (json['minTemperature'] as num).toDouble(),
-    );
-
-Map<String, dynamic> _$DailyForecastToJson(_DailyForecast instance) =>
-    <String, dynamic>{
-      'date': instance.date,
-      'weatherDescription': instance.weatherDescription,
-      'weatherCode': instance.weatherCode,
-      'pop': instance.pop,
-      'maxTemperature': instance.maxTemperature,
-      'minTemperature': instance.minTemperature,
-    };
-
 _WeatherCondition _$WeatherConditionFromJson(Map<String, dynamic> json) =>
     _WeatherCondition(
       wx: json['wx'] as String,
