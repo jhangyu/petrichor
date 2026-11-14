@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CWA 天氣 · Team B · 警特報</title>
+<!--
+  Team B「Dense information list」— 警特報頁 (warnings)
+  Functions covered (page-inventory §3.5 天氣警特報 [規劃], dataset W-C0033-001; §0 狀態文案):
+   1. 生效中警特報列表：類型（大雨/豪雨/低溫/強風）＋警戒等級顏色與圖示＋等級文字（不單靠顏色）
+   2. 每則顯示：影響縣市、生效期間、摘要說明
+   3. 詳情展開（說明全文、類別、有效期間、發布單位、更新時間、前往雨量頁）
+   4. 依「我的縣市」篩選（pivot 分頁籤「我的縣市」＋縣市 chip；我的縣市在列表內強調）。資料源僅提供生效中警特報、縣市層級，故 pivot 只有 生效中／我的縣市，無鄉鎮層級
+   5. 空狀態「目前無警特報」
+   6. 載入中骨架 / 失敗（連線逾時，請檢查網路）＋重試
+   7. 底部導覽 5 頁（目前頁＝警特報），頁面間可點擊
+  Frames: 1 預設 / 2 詳情展開 / 3 我的縣市篩選 / 4 空狀態 / 5 載入中 / 6 失敗
+-->
+<link rel="stylesheet" href="../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+  /* ================= TEAM B SHARED PATTERN (copy to every team-b page) ================= */
+  /* Mockup canvas: frames side by side, centred, wrap on narrow screens */
+  .tb-doc { display: flex; flex-direction: column; align-items: center; gap: var(--space-24); padding: var(--space-24) var(--space-16) var(--space-64); background: var(--color-bg-4); min-height: 100vh; }
+  .tb-doc__head { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: var(--space-4); }
+  .tb-doc__title { font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
+  .tb-doc__note { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); color: var(--color-fg-3); }
+  .tb-frames { width: 100%; max-width: 1200px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .tb-frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-8); margin: var(--space-0); }
+  .tb-frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
+  .tb-frame__no { display: inline-flex; align-items: center; justify-content: center; min-width: var(--size-icon-20); height: var(--size-icon-20); border-radius: var(--radius-sm); background: var(--color-fg-1); color: var(--color-fg-on-solid); font-variant-numeric: tabular-nums; }
+  .tb-frame .app-shell { max-width: none; min-height: 0; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-1); border-radius: var(--radius-lg); overflow: hidden; }
+
+  /* Header = compact app bar + pivot tabs, one sticky block */
+  .tb-header { position: sticky; top: var(--space-0); z-index: var(--z-appbar); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .tb-header .app-bar { position: static; border-bottom: none; }
+  .tb-header .tab-list { border-bottom: none; padding: var(--space-0) var(--space-4); }
+  .tb-header .tab { text-decoration: none; }
+  /* Location switcher inside app bar titles */
+  .tb-loc { display: flex; flex-direction: column; min-width: 0; flex: 1; color: inherit; text-decoration: none; border-radius: var(--radius-sm); }
+  .tb-loc__name { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+  .tb-loc__chev { transform: rotate(90deg); color: var(--color-fg-3); }
+  .tb-loc:hover .app-bar__title { color: var(--color-brand-fg); }
+  .tb-loc__meta { display: flex; align-items: center; gap: var(--space-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .tb-loc__meta .icon { color: var(--color-brand-fg); }
+  .tb-loc__meta--warn .icon { color: var(--color-warning-fg); }
+
+  /* Page body: full-bleed groups, 16px gutter only for text/banners */
+  .tb-page { flex: 1; display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-8) var(--space-0) var(--space-24); }
+  .tb-inset { padding: var(--space-0) var(--space-16); display: flex; flex-direction: column; gap: var(--space-8); }
+  .tb-section { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: calc(var(--size-appbar) + var(--size-touch) + var(--space-4)); }
+  .tb-section__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: var(--size-control-sm); padding: var(--space-0) var(--space-16); }
+  .tb-section__title { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
+  .tb-section__meta { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .tb-group { display: flex; flex-direction: column; background: var(--color-bg-1); border-top: var(--stroke-thin) solid var(--color-stroke-2); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .tb-group > * + * { border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+  .tb-group .list-row + .list-row { border-top-color: var(--color-stroke-3); }
+  .tb-group__foot { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-16); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  /* Table row: grid columns, every cell vertically centred */
+  .tb-trow { display: grid; align-items: center; column-gap: var(--space-8); min-height: var(--size-touch); padding: var(--space-8) var(--space-16); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); color: var(--color-fg-1); font-variant-numeric: tabular-nums; }
+  .tb-trow--head { min-height: var(--size-control-sm); padding-top: var(--space-4); padding-bottom: var(--space-4); background: var(--color-bg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .tb-trow--now { background: var(--color-brand-bg-subtle); }
+  .tb-cell-wx { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
+  .tb-cell-wx span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tb-end { text-align: right; }
+  /* ================= /TEAM B SHARED PATTERN ================= */
+  .tb-frame .app-shell { min-height: 720px; }
+  .tb-page > .notice { margin: var(--space-0) var(--space-16); }
+  .toolbar { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-8) var(--space-16); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .toolbar .chip-group { flex: 1; min-width: 0; }
+  .tab__count { min-width: var(--size-icon-20); }
+  .stateful { flex: 1; display: flex; flex-direction: column; justify-content: center; background: var(--color-bg-1); }
+  .skel-row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
+  .skel-row__main { flex: 1; display: flex; flex-direction: column; gap: var(--space-8); }
+  .skel-box { width: var(--size-control-sm); height: var(--size-control-sm); flex: none; }
+  .skel-line--w60 { width: 60%; } .skel-line--w90 { width: 90%; } .skel-line--w40 { width: 40%; }
+
+  /* ---- Warnings-specific ---- */
+  .wrow__head { display: flex; align-items: flex-start; gap: var(--space-12); width: 100%; padding: var(--space-12) var(--space-16); background: transparent; border: none; text-align: left; }
+  .wrow__head:hover { background: var(--color-bg-hover); }
+  .wicon { flex: none; display: flex; align-items: center; justify-content: center; width: var(--size-control-sm); height: var(--size-control-sm); border-radius: var(--radius-sm); border: var(--stroke-thin) solid var(--color-stroke-2); background: var(--color-bg-4); color: var(--color-fg-2); }
+  .wicon--1 { background: var(--color-alert-1-bg); border-color: var(--color-alert-1-stroke); color: var(--color-alert-1-fg); }
+  .wicon--2 { background: var(--color-alert-2-bg); border-color: var(--color-alert-2-stroke); color: var(--color-alert-2-fg); }
+  .wicon--info { background: var(--color-info-bg); border-color: var(--color-info-stroke); color: var(--color-info-fg); }
+  .badge--info { background: var(--color-info-bg); color: var(--color-info-fg); border-color: var(--color-info-stroke); }
+  .wrow__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+  .wrow__title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-8); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); }
+  .wrow__counties { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); color: var(--color-fg-2); overflow-wrap: anywhere; }
+  .wrow__counties .mine { color: var(--color-brand-fg-strong); font-weight: var(--font-weight-semibold); }
+  .wrow__period { display: flex; align-items: center; gap: var(--space-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .wrow__desc { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); overflow-wrap: anywhere; }
+  .wrow__chev { flex: none; height: var(--size-control-sm); display: flex; align-items: center; color: var(--color-fg-3); }
+  .wicon, .wrow__chev { margin-top: calc((var(--type-body1-lh) - var(--size-control-sm)) / 2); } /* centre on the title's first line */
+  .wrow__head[aria-expanded="true"] .wrow__chev { transform: rotate(90deg); }
+  .wrow__head[aria-expanded="true"] { background: var(--color-bg-2); }
+  .wrow__body { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-4) var(--space-16) var(--space-16) calc(var(--space-16) + var(--size-control-sm) + var(--space-12)); background: var(--color-bg-2); }
+  .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-4) var(--space-12); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .kv dt { color: var(--color-fg-3); }
+  .kv dd { color: var(--color-fg-1); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-options" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 7.5 3.5 3.5 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h14a3 3 0 1 1-3 3M3 12h7"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 1 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 9v7"/></symbol>
+  <symbol id="i-shield-ok" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.2 2.9 7.4 7 9 4.1-1.6 7-4.8 7-9V6z"/><path d="M8.8 12l2.4 2.4 4-4.4"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+</svg>
+
+<main class="tb-doc">
+  <header class="tb-doc__head">
+    <h1 class="tb-doc__title">Team B · 警特報</h1>
+    <p class="tb-doc__note">密集清單版：以等級分組的滿版清單，等級以色塊圖示＋文字徽章雙重標示，點列展開詳情。</p>
+  </header>
+  <div class="tb-frames">
+
+<!-- ===================== 1 預設 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">1</span>預設：生效中（3 則）</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">警特報</h1><p class="app-bar__subtitle">更新於 14:10 · 中央氣象署</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">生效中<span class="badge badge--alert-2 tab__count">4</span></button>
+      <button class="tab" role="tab" aria-selected="false">我的縣市<span class="badge tab__count">1</span></button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">豪雨等級 · 2 則</h3><span class="tb-section__meta">依等級排序</span></div>
+      <ul class="tb-group">
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--2"><svg class="icon icon--20" aria-hidden="true"><use href="#i-rain"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">豪雨特報<span class="badge badge--alert-2">豪雨</span></span>
+            <span class="wrow__counties">宜蘭縣、花蓮縣</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 20:00 – 11/15 08:00</span>
+            <span class="wrow__desc">東半部地區及山區有局部豪雨發生機率</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--2"><svg class="icon icon--20" aria-hidden="true"><use href="#i-wind"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">強風特報<span class="badge badge--alert-2">強風</span></span>
+            <span class="wrow__counties">澎湖縣</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 16:00 – 11/15 12:00</span>
+            <span class="wrow__desc">平均風 9.5 m/s，陣風可達 12 級</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">大雨等級 · 1 則</h3></div>
+      <ul class="tb-group">
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--1"><svg class="icon icon--20" aria-hidden="true"><use href="#i-rain"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">大雨特報<span class="badge badge--alert-1">大雨</span></span>
+            <span class="wrow__counties"><span class="mine">臺北市</span>、新北市、基隆市</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 18:00 – 11/15 06:00</span>
+            <span class="wrow__desc">山區及東北部地區有局部大雨發生機率</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">其他 · 1 則</h3></div>
+      <ul class="tb-group">
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--info"><svg class="icon icon--20" aria-hidden="true"><use href="#i-thermo"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">低溫特報<span class="badge badge--info">低溫</span></span>
+            <span class="wrow__counties">苗栗縣、南投縣山區</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 00:00 – 11/15 09:00</span>
+            <span class="wrow__desc">局部地區氣溫 10 度以下</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 2 詳情展開 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">2</span>詳情展開（大雨特報）</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">警特報</h1><p class="app-bar__subtitle">更新於 14:10 · 中央氣象署</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">生效中<span class="badge badge--alert-2 tab__count">4</span></button>
+      <button class="tab" role="tab" aria-selected="false">我的縣市<span class="badge tab__count">1</span></button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">大雨等級 · 1 則</h3></div>
+      <ul class="tb-group">
+        <li class="wrow">
+          <button class="wrow__head" aria-expanded="true">
+            <span class="wicon wicon--1"><svg class="icon icon--20" aria-hidden="true"><use href="#i-rain"/></svg></span>
+            <span class="wrow__main">
+              <span class="wrow__title">大雨特報<span class="badge badge--alert-1">大雨</span></span>
+              <span class="wrow__counties"><span class="mine">臺北市</span>、新北市、基隆市</span>
+              <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 18:00 – 11/15 06:00</span>
+            </span>
+            <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+          </button>
+          <div class="wrow__body">
+            <p class="text-body1">山區及東北部地區有局部大雨發生機率，請注意瞬間大雨造成的溪水暴漲、低窪地區積水及坍方、落石。外出請攜帶雨具並避免進入山區溪邊。</p>
+            <dl class="kv">
+              <dt>類別</dt><dd>大雨特報（24 小時累積雨量達 80 mm）</dd>
+              <dt>影響縣市</dt><dd>臺北市、新北市、基隆市</dd>
+              <dt>生效</dt><dd>2026-11-14 18:00</dd>
+              <dt>有效至</dt><dd>2026-11-15 06:00</dd>
+              <dt>發布</dt><dd>14:05 · 中央氣象署</dd>
+            </dl>
+            <a class="btn btn--secondary btn--sm" href="rainfall.html">查看雨量觀測<svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+          </div>
+        </li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">豪雨等級 · 2 則</h3></div>
+      <ul class="tb-group">
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--2"><svg class="icon icon--20" aria-hidden="true"><use href="#i-rain"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">豪雨特報<span class="badge badge--alert-2">豪雨</span></span>
+            <span class="wrow__counties">宜蘭縣、花蓮縣</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 20:00 – 11/15 08:00</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 3 我的縣市篩選 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">3</span>篩選：我的縣市（臺北市）</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">警特報</h1><p class="app-bar__subtitle">更新於 14:10 · 中央氣象署</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="false">生效中<span class="badge badge--alert-2 tab__count">4</span></button>
+      <button class="tab" role="tab" aria-selected="true">我的縣市<span class="badge tab__count">1</span></button>
+    </nav>
+    </div>
+    <div class="toolbar">
+      <div class="chip-group chip-group--scroll" role="group" aria-label="篩選縣市">
+        <button class="chip" aria-pressed="true"><svg class="icon icon--16" aria-hidden="true"><use href="#i-location"/></svg>臺北市</button>
+        <button class="chip" aria-pressed="false">新北市</button>
+        <button class="chip" aria-pressed="false">基隆市</button>
+      </div>
+      <a class="btn btn--subtle btn--icon" href="location.html" aria-label="更換地點"><svg class="icon" aria-hidden="true"><use href="#i-options"/></svg></a>
+    </div>
+    <div class="tb-page">
+      <div class="status-banner status-banner--alert-1 notice" role="status">
+        <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-warning"/></svg></span>
+        <div class="status-banner__body"><p class="status-banner__title">臺北市 目前有 1 則警特報</p><p class="status-banner__text">未涉及你所在縣市的 3 則已隱藏</p></div>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">大雨等級 · 1 則</h3></div>
+      <ul class="tb-group">
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--1"><svg class="icon icon--20" aria-hidden="true"><use href="#i-rain"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">大雨特報<span class="badge badge--alert-1">大雨</span></span>
+            <span class="wrow__counties"><span class="mine">臺北市</span>、新北市、基隆市</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 18:00 – 11/15 06:00</span>
+            <span class="wrow__desc">山區及東北部地區有局部大雨發生機率</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 4 空狀態 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">4</span>空狀態：目前無警特報</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">警特報</h1><p class="app-bar__subtitle">更新於 14:10 · 中央氣象署</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">生效中<span class="badge tab__count">0</span></button>
+      <button class="tab" role="tab" aria-selected="false">我的縣市<span class="badge tab__count">0</span></button>
+    </nav>
+    </div>
+    <div class="stateful">
+      <div class="empty-state">
+        <svg class="icon icon--48 empty-state__icon" aria-hidden="true"><use href="#i-shield-ok"/></svg>
+        <p class="empty-state__title">目前無警特報</p>
+        <p class="text-body1 text-secondary">全臺目前沒有生效中的警特報。</p>
+        <button class="btn btn--secondary"><svg class="icon icon--20" aria-hidden="true"><use href="#i-refresh"/></svg>重新整理</button>
+      </div>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 5 載入中 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">5</span>載入中</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">警特報</h1><p class="app-bar__subtitle">更新中…</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理" disabled><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">生效中</button>
+      <button class="tab" role="tab" aria-selected="false">我的縣市</button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <div class="status-banner status-banner--loading notice" role="status">
+        <span class="status-banner__icon"><div class="spinner"></div></span>
+        <div class="status-banner__body"><p class="status-banner__title">載入警特報…</p></div>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title"></h3></div>
+      <ul class="tb-group" aria-hidden="true">
+        <li class="skel-row"><div class="skeleton skel-box"></div><div class="skel-row__main"><div class="skeleton skel-line--w60"></div><div class="skeleton skel-line--w90"></div><div class="skeleton skel-line--w40"></div></div></li>
+        <li class="skel-row"><div class="skeleton skel-box"></div><div class="skel-row__main"><div class="skeleton skel-line--w60"></div><div class="skeleton skel-line--w90"></div><div class="skeleton skel-line--w40"></div></div></li>
+        <li class="skel-row"><div class="skeleton skel-box"></div><div class="skel-row__main"><div class="skeleton skel-line--w60"></div><div class="skeleton skel-line--w90"></div><div class="skeleton skel-line--w40"></div></div></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 6 失敗 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">6</span>失敗：連線逾時</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">警特報</h1><p class="app-bar__subtitle">上次更新 13:40</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">生效中</button>
+      <button class="tab" role="tab" aria-selected="false">我的縣市</button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <div class="status-banner status-banner--error notice" role="alert">
+        <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">無法取得警特報</p>
+          <p class="status-banner__text">連線逾時，請檢查網路。以下為 13:40 的舊資料，可能已過期。</p>
+          <div class="status-banner__actions"><button class="btn btn--primary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div>
+        </div>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">舊資料 · 1 則</h3><span class="tb-section__meta">13:40</span></div>
+      <ul class="tb-group">
+        <li class="wrow"><button class="wrow__head" aria-expanded="false">
+          <span class="wicon wicon--1"><svg class="icon icon--20" aria-hidden="true"><use href="#i-rain"/></svg></span>
+          <span class="wrow__main">
+            <span class="wrow__title">大雨特報<span class="badge badge--alert-1">大雨</span></span>
+            <span class="wrow__counties"><span class="mine">臺北市</span>、新北市、基隆市</span>
+            <span class="wrow__period"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/14 18:00 – 11/15 06:00</span>
+          </span>
+          <span class="wrow__chev"><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+        </button></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+  </div>
+</main>
+</body>
+</html>

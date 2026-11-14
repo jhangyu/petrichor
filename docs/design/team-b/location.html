@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CWA 天氣 · Team B · 地點</title>
+<!--
+  Team B「Dense information list」— 定位權限引導＋地點選擇 (location)
+  Functions covered (page-inventory §3.2 定位權限流程, §3.7 地點管理, §0 定位, §1.4 定位狀態與手動選地點):
+   1. 首次使用說明頁（為何需要位置、隱私說明、允許使用位置／手動選擇）
+   2. 權限被拒絕橫幅「未取得位置權限，目前顯示臺北市 信義區」＋「前往設定」＋手動選擇入口
+   3. 永久拒絕（deniedForever）狀態：說明系統設定步驟＋「前往設定」＋改用手動
+   4. 手動選縣市（22 縣市分區列表，目前選取標示）＋搜尋
+   5. 手動選鄉鎮市區（含搜尋過濾、選取後套用）
+   6. 已存地點列表（各地點即時溫度/天氣、目前選取標示、新增/移除）
+   7. 目前位置列（GPS 定位來源、重新定位）
+   8. 載入中（定位中骨架）／失敗（定位逾時、地理編碼失敗）＋重試／手動選擇
+   9. 底部導覽 5 頁（目前頁＝地點），頁面間可點擊
+  Frames: 1 首次說明 / 2 已存地點（預設）/ 3 權限被拒 / 4 永久拒絕 / 5 選縣市 / 6 選鄉鎮＋搜尋 / 7 定位中 / 8 定位失敗
+-->
+<link rel="stylesheet" href="../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../components.css">
+<style>
+  /* ================= TEAM B SHARED PATTERN (copy to every team-b page) ================= */
+  /* Mockup canvas: frames side by side, centred, wrap on narrow screens */
+  .tb-doc { display: flex; flex-direction: column; align-items: center; gap: var(--space-24); padding: var(--space-24) var(--space-16) var(--space-64); background: var(--color-bg-4); min-height: 100vh; }
+  .tb-doc__head { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: var(--space-4); }
+  .tb-doc__title { font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
+  .tb-doc__note { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); color: var(--color-fg-3); }
+  .tb-frames { width: 100%; max-width: 1200px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .tb-frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-8); margin: var(--space-0); }
+  .tb-frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
+  .tb-frame__no { display: inline-flex; align-items: center; justify-content: center; min-width: var(--size-icon-20); height: var(--size-icon-20); border-radius: var(--radius-sm); background: var(--color-fg-1); color: var(--color-fg-on-solid); font-variant-numeric: tabular-nums; }
+  .tb-frame .app-shell { max-width: none; min-height: 0; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-1); border-radius: var(--radius-lg); overflow: hidden; }
+
+  /* Header = compact app bar + pivot tabs, one sticky block */
+  .tb-header { position: sticky; top: var(--space-0); z-index: var(--z-appbar); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .tb-header .app-bar { position: static; border-bottom: none; }
+  .tb-header .tab-list { border-bottom: none; padding: var(--space-0) var(--space-4); }
+  .tb-header .tab { text-decoration: none; }
+  /* Location switcher inside app bar titles */
+  .tb-loc { display: flex; flex-direction: column; min-width: 0; flex: 1; color: inherit; text-decoration: none; border-radius: var(--radius-sm); }
+  .tb-loc__name { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+  .tb-loc__chev { transform: rotate(90deg); color: var(--color-fg-3); }
+  .tb-loc:hover .app-bar__title { color: var(--color-brand-fg); }
+  .tb-loc__meta { display: flex; align-items: center; gap: var(--space-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .tb-loc__meta .icon { color: var(--color-brand-fg); }
+  .tb-loc__meta--warn .icon { color: var(--color-warning-fg); }
+
+  /* Page body: full-bleed groups, 16px gutter only for text/banners */
+  .tb-page { flex: 1; display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-8) var(--space-0) var(--space-24); }
+  .tb-inset { padding: var(--space-0) var(--space-16); display: flex; flex-direction: column; gap: var(--space-8); }
+  .tb-section { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: calc(var(--size-appbar) + var(--size-touch) + var(--space-4)); }
+  .tb-section__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: var(--size-control-sm); padding: var(--space-0) var(--space-16); }
+  .tb-section__title { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
+  .tb-section__meta { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .tb-group { display: flex; flex-direction: column; background: var(--color-bg-1); border-top: var(--stroke-thin) solid var(--color-stroke-2); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .tb-group > * + * { border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+  .tb-group .list-row + .list-row { border-top-color: var(--color-stroke-3); }
+  .tb-group__foot { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-16); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  /* Table row: grid columns, every cell vertically centred */
+  .tb-trow { display: grid; align-items: center; column-gap: var(--space-8); min-height: var(--size-touch); padding: var(--space-8) var(--space-16); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); color: var(--color-fg-1); font-variant-numeric: tabular-nums; }
+  .tb-trow--head { min-height: var(--size-control-sm); padding-top: var(--space-4); padding-bottom: var(--space-4); background: var(--color-bg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .tb-trow--now { background: var(--color-brand-bg-subtle); }
+  .tb-cell-wx { display: flex; align-items: center; gap: var(--space-8); min-width: 0; }
+  .tb-cell-wx span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tb-end { text-align: right; }
+  /* ================= /TEAM B SHARED PATTERN ================= */
+  .tb-frame .app-shell { min-height: 720px; }
+  .tb-page > .notice { margin: var(--space-0) var(--space-16); }
+  .toolbar { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-8) var(--space-16); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .toolbar .chip-group { flex: 1; min-width: 0; }
+  .tab__count { min-width: var(--size-icon-20); }
+  .stateful { flex: 1; display: flex; flex-direction: column; justify-content: center; background: var(--color-bg-1); }
+  .skel-row { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-16); }
+  .skel-row__main { flex: 1; display: flex; flex-direction: column; gap: var(--space-8); }
+  .skel-box { width: var(--size-control-sm); height: var(--size-control-sm); flex: none; }
+  .skel-line--w60 { width: 60%; } .skel-line--w90 { width: 90%; } .skel-line--w40 { width: 40%; }
+
+  /* ---- Location-specific ---- */
+  .lrow { display: flex; align-items: center; gap: var(--space-12); width: 100%; min-height: var(--size-touch); padding: var(--space-8) var(--space-16); background: transparent; border: none; text-align: left; color: var(--color-fg-1); text-decoration: none; }
+  .lrow:hover { background: var(--color-bg-hover); }
+  .lrow--selected { background: var(--color-brand-bg-subtle); }
+  .lrow--selected .lrow__primary { color: var(--color-brand-fg-strong); }
+  .lrow__lead { flex: none; display: flex; align-items: center; justify-content: center; width: var(--size-control-sm); height: var(--size-control-sm); color: var(--color-fg-2); }
+  .lrow__lead--brand { color: var(--color-brand-fg); }
+  .lrow__content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .lrow__primary { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); }
+  .lrow__secondary { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); overflow-wrap: anywhere; }
+  .lrow__trail { flex: none; display: flex; align-items: center; gap: var(--space-8); color: var(--color-fg-2); font-variant-numeric: tabular-nums; }
+  .lrow__temp { min-width: var(--size-icon-48); text-align: right; font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
+  .lrow mark { background: var(--color-brand-bg-subtle); color: var(--color-brand-fg-strong); font-weight: var(--font-weight-semibold); }
+  .field { display: flex; align-items: center; gap: var(--space-8); min-height: var(--size-control); padding: var(--space-0) var(--space-12); background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-1); border-bottom-color: var(--color-stroke-accessible); border-radius: var(--radius-sm); color: var(--color-fg-3); }
+  .field:focus-within { border-bottom: var(--stroke-thick) solid var(--color-brand-stroke); }
+  .field input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--color-fg-1); }
+  .field input::placeholder { color: var(--color-fg-4); }
+  .searchbar { padding: var(--space-8) var(--space-16); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .crumb { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-8) var(--space-16); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .crumb b { color: var(--color-fg-1); }
+  .intro { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-8); padding: var(--space-32) var(--space-24) var(--space-16); background: var(--color-bg-1); }
+  .intro__badge { display: flex; align-items: center; justify-content: center; width: var(--size-icon-64); height: var(--size-icon-64); border-radius: var(--radius-circular); background: var(--color-brand-bg-subtle); color: var(--color-brand-fg); }
+  .actions { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-16); background: var(--color-bg-1); }
+  .steps { counter-reset: step; }
+  .step { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-12) var(--space-16); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); }
+  .step::before { counter-increment: step; content: counter(step); flex: none; display: flex; align-items: center; justify-content: center; width: var(--size-icon-24); height: var(--size-icon-24); border-radius: var(--radius-circular); background: var(--color-bg-4); color: var(--color-fg-2); font-size: var(--type-caption1-size); font-weight: var(--font-weight-semibold); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-partly" viewBox="0 0 24 24"><path d="M8.5 3v1.2M3.6 8.5h1.2M5 5l.9.9M12 5l-.9.9"/><path d="M5.6 11.2a3.5 3.5 0 0 1 6-3.6"/><path d="M9 20h8a3.5 3.5 0 0 0 .4-6.97A5 5 0 0 0 8.2 14 3 3 0 0 0 9 20z"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 7.5 3.5 3.5 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h14a3 3 0 1 1-3 3M3 12h7"/></symbol>
+</svg>
+
+<main class="tb-doc">
+  <header class="tb-doc__head">
+    <h1 class="tb-doc__title">Team B · 地點</h1>
+    <p class="tb-doc__note">密集清單版：目前位置、已存地點與縣市／鄉鎮選擇皆為滿版分組清單，權限與失敗狀態以橫幅明示。</p>
+  </header>
+  <div class="tb-frames">
+
+<!-- ===================== 1 首次說明 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">1</span>首次使用：定位權限說明</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">設定你的所在位置</p></div>
+    </header>
+    </div>
+    <div class="tb-page">
+      <div class="intro">
+        <span class="intro__badge"><svg class="icon icon--32" aria-hidden="true"><use href="#i-locate"/></svg></span>
+        <h2 class="text-title3">讓天氣跟著你走</h2>
+        <p class="text-body1 text-secondary">允許使用位置後，App 會自動顯示你所在鄉鎮的預報、雨量與警特報。</p>
+      </div>
+      <ul class="tb-group">
+        <li><div class="lrow"><span class="lrow__lead lrow__lead--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">自動顯示所在地</span><span class="lrow__secondary">開啟 App 即看到你的鄉鎮市區天氣</span></span></div></li>
+        <li><div class="lrow"><span class="lrow__lead lrow__lead--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-warning"/></svg></span><span class="lrow__content"><span class="lrow__primary">在地警特報</span><span class="lrow__secondary">只提醒影響你所在縣市的警報</span></span></div></li>
+        <li><div class="lrow"><span class="lrow__lead lrow__lead--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-lock"/></svg></span><span class="lrow__content"><span class="lrow__primary">位置只在裝置上使用</span><span class="lrow__secondary">僅用於查詢所在縣市，可隨時在系統設定關閉</span></span></div></li>
+      </ul>
+      <div class="actions">
+        <button class="btn btn--primary btn--block"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg>允許使用位置</button>
+        <button class="btn btn--secondary btn--block">手動選擇縣市</button>
+      </div>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 2 已存地點（預設） ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">2</span>預設：目前位置＋已存地點</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">目前顯示：臺北市 信義區</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="新增地點"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">已存地點</button>
+      <button class="tab" role="tab" aria-selected="false">選擇地點</button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">目前位置</h3></div>
+      <ul class="tb-group">
+        <li><a class="lrow lrow--selected" href="home.html">
+          <span class="lrow__lead lrow__lead--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg></span>
+          <span class="lrow__content"><span class="lrow__primary">臺北市 信義區</span><span class="lrow__secondary">GPS 定位 · 多雲時晴 · 更新於 14:10</span></span>
+          <span class="lrow__trail"><svg class="icon icon--20 icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span class="lrow__temp">28°C</span><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </a></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">已存地點 · 5</h3><span class="tb-section__meta">編輯</span></div>
+      <ul class="tb-group">
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">臺中市 西屯區</span><span class="lrow__secondary">晴</span></span><span class="lrow__trail"><svg class="icon icon--20 icon--sun" aria-hidden="true"><use href="#i-sun"/></svg><span class="lrow__temp">26°C</span></span></a></li>
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">高雄市 苓雅區</span><span class="lrow__secondary">晴時多雲</span></span><span class="lrow__trail"><svg class="icon icon--20 icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span class="lrow__temp">31°C</span></span></a></li>
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">花蓮縣 花蓮市</span><span class="lrow__secondary">陣雨</span></span><span class="lrow__trail"><svg class="icon icon--20 icon--rain" aria-hidden="true"><use href="#i-rain"/></svg><span class="lrow__temp">25°C</span></span></a></li>
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">新北市 板橋區</span><span class="lrow__secondary">多雲</span></span><span class="lrow__trail"><svg class="icon icon--20 icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg><span class="lrow__temp">27°C</span></span></a></li>
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">澎湖縣 馬公市</span><span class="lrow__secondary">風大 · 強風 9.5 m/s</span></span><span class="lrow__trail"><svg class="icon icon--20 icon--cloud" aria-hidden="true"><use href="#i-wind"/></svg><span class="lrow__temp">24°C</span></span></a></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 3 權限被拒 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">3</span>權限被拒絕（可再次詢問）</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">目前顯示：臺北市 信義區（預設）</p></div>
+      <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="新增地點"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">已存地點</button>
+      <button class="tab" role="tab" aria-selected="false">選擇地點</button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <div class="status-banner status-banner--permission notice" role="alert">
+        <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-warning"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">未取得位置權限</p>
+          <p class="status-banner__text">目前顯示臺北市 信義區，不是你的實際位置。</p>
+          <div class="status-banner__actions">
+            <button class="btn btn--primary btn--sm">前往設定</button>
+            <button class="btn btn--secondary btn--sm">手動選擇</button>
+          </div>
+        </div>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">目前顯示</h3></div>
+      <ul class="tb-group">
+        <li><a class="lrow lrow--selected" href="home.html">
+          <span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span>
+          <span class="lrow__content"><span class="lrow__primary">臺北市 信義區</span><span class="lrow__secondary">預設地點 · 非 GPS 定位</span></span>
+          <span class="lrow__trail"><span class="lrow__temp">28°C</span><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-check"/></svg></span>
+        </a></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">已存地點 · 2</h3></div>
+      <ul class="tb-group">
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">臺中市 西屯區</span><span class="lrow__secondary">晴</span></span><span class="lrow__trail"><span class="lrow__temp">26°C</span></span></a></li>
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">高雄市 苓雅區</span><span class="lrow__secondary">晴時多雲</span></span><span class="lrow__trail"><span class="lrow__temp">31°C</span></span></a></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 4 永久拒絕 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">4</span>權限被永久拒絕（deniedForever）</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">目前顯示：臺北市 信義區（預設）</p></div>
+    </header>
+    </div>
+    <div class="tb-page">
+      <div class="intro">
+        <span class="intro__badge"><svg class="icon icon--32" aria-hidden="true"><use href="#i-lock"/></svg></span>
+        <h2 class="text-title3">位置權限已關閉</h2>
+        <p class="text-body1 text-secondary">系統不再詢問位置權限。請到系統設定開啟，或改用手動選擇地點。</p>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">開啟方式</h3></div>
+      <ol class="tb-group steps">
+        <li class="step">點「前往設定」開啟系統設定</li>
+        <li class="step">進入「權限」→「位置」</li>
+        <li class="step">選擇「使用 App 時允許」後返回</li>
+      </ol>
+      </section>
+      <div class="actions">
+        <button class="btn btn--primary btn--block">前往設定</button>
+        <button class="btn btn--secondary btn--block">改用手動選擇</button>
+      </div>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 5 選縣市 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">5</span>手動選擇：縣市</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">步驟 1／2 · 選擇縣市</p></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="false">已存地點</button>
+      <button class="tab" role="tab" aria-selected="true">選擇地點</button>
+    </nav>
+    </div>
+    <div class="searchbar"><label class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg><input type="search" placeholder="搜尋縣市或鄉鎮" aria-label="搜尋縣市或鄉鎮"></label></div>
+    <div class="tb-page">
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">北部</h3></div>
+      <ul class="tb-group">
+        <li><button class="lrow lrow--selected"><span class="lrow__content"><span class="lrow__primary">臺北市</span><span class="lrow__secondary">12 個行政區</span></span><span class="lrow__trail"><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-check"/></svg></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">新北市</span><span class="lrow__secondary">29 個行政區</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">基隆市</span><span class="lrow__secondary">7 個行政區</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">桃園市</span><span class="lrow__secondary">13 個行政區</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">中部</h3></div>
+      <ul class="tb-group">
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">臺中市</span><span class="lrow__secondary">29 個行政區</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">彰化縣</span><span class="lrow__secondary">26 個鄉鎮市</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">南部・東部・離島</h3></div>
+      <ul class="tb-group">
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">高雄市</span><span class="lrow__secondary">38 個行政區</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">花蓮縣</span><span class="lrow__secondary">13 個鄉鎮市</span></span><span class="lrow__trail"><svg class="icon icon--16 text-tertiary" aria-hidden="true"><use href="#i-chevron"/></svg></span></button></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 6 選鄉鎮＋搜尋 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">6</span>手動選擇：鄉鎮市區（搜尋「信」）</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar app-bar--has-back">
+      <button class="btn btn--subtle btn--icon" aria-label="返回縣市"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button>
+      <div class="app-bar__titles"><h1 class="app-bar__title">臺北市</h1><p class="app-bar__subtitle">步驟 2／2 · 選擇行政區</p></div>
+    </header>
+    </div>
+    <div class="searchbar"><label class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg><input type="search" value="信" aria-label="搜尋行政區"></label></div>
+    <div class="crumb"><span>選擇地點</span><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg><span>臺北市</span><svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg><b>行政區</b></div>
+    <div class="tb-page">
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">符合「信」· 1 個</h3></div>
+      <ul class="tb-group">
+        <li><button class="lrow lrow--selected"><span class="lrow__lead lrow__lead--brand"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary"><mark>信</mark>義區</span><span class="lrow__secondary">臺北市 · 目前選取</span></span><span class="lrow__trail"><span class="lrow__temp">28°C</span><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-check"/></svg></span></button></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">其他行政區 · 11</h3></div>
+      <ul class="tb-group">
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">中正區</span></span><span class="lrow__trail"><span class="lrow__temp">27°C</span></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">大安區</span></span><span class="lrow__trail"><span class="lrow__temp">28°C</span></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">松山區</span></span><span class="lrow__trail"><span class="lrow__temp">28°C</span></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">士林區</span></span><span class="lrow__trail"><span class="lrow__temp">26°C</span></span></button></li>
+        <li><button class="lrow"><span class="lrow__content"><span class="lrow__primary">內湖區</span></span><span class="lrow__trail"><span class="lrow__temp">27°C</span></span></button></li>
+      </ul>
+      </section>
+      <div class="actions"><button class="btn btn--primary btn--block">套用 臺北市 信義區</button></div>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 7 定位中 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">7</span>載入中：定位中</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">定位中…</p></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">已存地點</button>
+      <button class="tab" role="tab" aria-selected="false">選擇地點</button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <div class="status-banner status-banner--loading notice" role="status">
+        <span class="status-banner__icon"><div class="spinner"></div></span>
+        <div class="status-banner__body"><p class="status-banner__title">正在取得你的位置…</p><p class="status-banner__text">通常需要數秒，完成後自動更新天氣。</p></div>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">目前位置</h3></div>
+      <ul class="tb-group" aria-hidden="true">
+        <li class="skel-row"><div class="skeleton skel-box"></div><div class="skel-row__main"><div class="skeleton skel-line--w60"></div><div class="skeleton skel-line--w40"></div></div></li>
+      </ul>
+      </section>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">已存地點</h3></div>
+      <ul class="tb-group" aria-hidden="true">
+        <li class="skel-row"><div class="skeleton skel-box"></div><div class="skel-row__main"><div class="skeleton skel-line--w60"></div><div class="skeleton skel-line--w40"></div></div></li>
+        <li class="skel-row"><div class="skeleton skel-box"></div><div class="skel-row__main"><div class="skeleton skel-line--w60"></div><div class="skeleton skel-line--w40"></div></div></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+<!-- ===================== 8 定位失敗 ===================== -->
+<figure class="tb-frame">
+  <figcaption class="tb-frame__caption"><span class="tb-frame__no">8</span>失敗：定位逾時／地理編碼失敗</figcaption>
+  <div class="app-shell">
+    <div class="tb-header">
+      <header class="app-bar">
+      <div class="app-bar__titles"><h1 class="app-bar__title">地點</h1><p class="app-bar__subtitle">目前顯示：臺北市 信義區（預設）</p></div>
+    </header>
+      <nav class="tab-list tab-list--stretch" role="tablist">
+      <button class="tab" role="tab" aria-selected="true">已存地點</button>
+      <button class="tab" role="tab" aria-selected="false">選擇地點</button>
+    </nav>
+    </div>
+    <div class="tb-page">
+      <div class="status-banner status-banner--error notice" role="alert">
+        <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span>
+        <div class="status-banner__body">
+          <p class="status-banner__title">無法取得位置</p>
+          <p class="status-banner__text">定位逾時，請確認已開啟定位服務並在室外重試。座標已取得但無法對應縣市時，請手動選擇。</p>
+          <div class="status-banner__actions">
+            <button class="btn btn--primary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button>
+            <button class="btn btn--secondary btn--sm">手動選擇</button>
+          </div>
+        </div>
+      </div>
+      <section class="tb-section">
+      <div class="tb-section__head"><h3 class="tb-section__title">已存地點 · 2</h3></div>
+      <ul class="tb-group">
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">臺中市 西屯區</span><span class="lrow__secondary">晴</span></span><span class="lrow__trail"><span class="lrow__temp">26°C</span></span></a></li>
+        <li><a class="lrow" href="home.html"><span class="lrow__lead"><svg class="icon icon--20" aria-hidden="true"><use href="#i-location"/></svg></span><span class="lrow__content"><span class="lrow__primary">高雄市 苓雅區</span><span class="lrow__secondary">晴時多雲</span></span><span class="lrow__trail"><span class="lrow__temp">31°C</span></span></a></li>
+      </ul>
+      </section>
+    </div>
+    <nav class="bottom-nav" aria-label="主要導覽">
+      <a class="bottom-nav__item" href="home.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+      <a class="bottom-nav__item" href="radar.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+      <a class="bottom-nav__item" href="rainfall.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+      <a class="bottom-nav__item" href="warnings.html"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+      <a class="bottom-nav__item" href="location.html" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-location"/></svg></span>地點</a>
+    </nav>
+  </div>
+</figure>
+
+  </div>
+</main>
+</body>
+</html>
