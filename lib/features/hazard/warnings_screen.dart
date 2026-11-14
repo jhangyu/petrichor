@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_shell.dart' show AppTab, appTabProvider;
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/buttons.dart';
@@ -30,6 +31,8 @@ class WarningsScreen extends ConsumerStatefulWidget {
 class _WarningsScreenState extends ConsumerState<WarningsScreen> {
   bool _mineOnly = false;
 
+  void _openTab(AppTab tab) => ref.read(appTabProvider.notifier).select(tab);
+
   void _retry() => ref.invalidate(activeWarningsProvider);
 
   Future<void> _refresh() async {
@@ -49,7 +52,14 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
           ],
         ),
       AsyncData(value: NoPlace(:final reason)) => _page(
-          children: [StatusBanner(tone: StatusTone.permission, title: '尚未選定地點', text: locationFailureMessage(reason))],
+          children: [
+            StatusBanner(
+              tone: StatusTone.permission,
+              title: '尚未選定地點',
+              text: locationFailureMessage(reason),
+              actions: [AppButton(label: '手動選擇', small: true, onPressed: () => _openTab(AppTab.location))],
+            ),
+          ],
         ),
       AsyncData(value: PlaceSelected(:final place)) => _forPlace(place.county),
     };
@@ -129,6 +139,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
               key: ValueKey((shown[i].name, shown[i].start, shown[i].end)),
               group: shown[i],
               now: now,
+              onViewRainfall: () => _openTab(AppTab.rainfall),
               initiallyOpen: i == 0,
             ),
         ],
@@ -172,10 +183,11 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
       subtitle: '更新失敗',
       children: [
         StatusBanner(tone: StatusTone.error, title: '無法取得警特報', text: message, actions: [RetryButton(onPressed: _retry)]),
-        const EmptyState(
+        EmptyState(
           error: true,
           title: '暫時無法顯示警特報',
-          text: '這不代表目前沒有警特報。請稍後重試。',
+          text: '這不代表目前沒有警特報。請稍後重試，或改看天氣主頁。',
+          actions: [AppButton(label: '回天氣主頁', onPressed: () => _openTab(AppTab.weather))],
         ),
       ],
     );

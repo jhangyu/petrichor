@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../radar/radar_playback.dart';
 import 'warning_groups.dart';
@@ -12,11 +13,20 @@ const _activeLabel = '生效中';
 /// `.warn`: expandable warning card. Header = icon, name, status badge, counties and validity;
 /// body = bulletin text, county badges and issue time (only what the bulletin provides).
 class WarningCard extends StatefulWidget {
-  const WarningCard({super.key, required this.group, required this.now, this.initiallyOpen = false});
+  const WarningCard({
+    super.key,
+    required this.group,
+    required this.now,
+    required this.onViewRainfall,
+    this.initiallyOpen = false,
+  });
 
   final WarningGroup group;
   final DateTime now;
   final bool initiallyOpen;
+
+  /// Opens the 雨量 tab; the button is shown on rain warnings (level 1–4) only.
+  final VoidCallback onViewRainfall;
 
   @override
   State<WarningCard> createState() => _WarningCardState();
@@ -52,6 +62,16 @@ class _WarningCardState extends State<WarningCard> {
                   children: [
                     if (bulletin != null) _description(bulletin.description),
                     _facts(group, style),
+                    if (group.level != null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: AppButton(
+                          label: '查看雨量',
+                          icon: Icons.chevron_right,
+                          small: true,
+                          onPressed: widget.onViewRainfall,
+                        ),
+                      ),
                   ],
                 ),
               ),
