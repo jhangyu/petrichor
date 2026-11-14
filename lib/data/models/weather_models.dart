@@ -26,6 +26,9 @@ class CurrentWeather {
   /// 風速（m/s）
   final double? windSpeed;
 
+  /// 風向（O-A0003-001 WindDirection）
+  final ObservedWind? windDirection;
+
   /// 天氣現象文字（如「陰」）
   final String? weather;
 
@@ -42,10 +45,33 @@ class CurrentWeather {
     required this.temperature,
     required this.humidity,
     required this.windSpeed,
+    required this.windDirection,
     required this.weather,
     required this.dailyHigh,
     required this.dailyLow,
   });
+}
+
+/// 觀測風向：靜風、風向不定、或風的來向方位角
+sealed class ObservedWind {
+  const ObservedWind();
+  const factory ObservedWind.calm() = CalmWind;
+  const factory ObservedWind.variable() = VariableWind;
+  const factory ObservedWind.degrees(double degrees) = WindFrom;
+}
+
+final class CalmWind extends ObservedWind {
+  const CalmWind();
+}
+
+final class VariableWind extends ObservedWind {
+  const VariableWind();
+}
+
+/// 風的來向（度，1–360，360＝北）
+final class WindFrom extends ObservedWind {
+  final double degrees;
+  const WindFrom(this.degrees);
 }
 
 /// 太陽過中天時位於天頂的哪一側（資料以 N／S 後綴表示）
@@ -98,6 +124,9 @@ class HourlyForecast {
   final String? weather;
   final String? weatherCode;
 
+  /// 天氣預報綜合描述（CWA 原文，如「短暫陣雨。降雨機率50%。…」）
+  final String? description;
+
   const HourlyForecast({
     required this.startTime,
     required this.temperature,
@@ -108,6 +137,7 @@ class HourlyForecast {
     required this.pop,
     required this.weather,
     required this.weatherCode,
+    required this.description,
   });
 }
 

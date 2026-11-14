@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cwb_flutter/data/models/weather_models.dart';
 import 'package:cwb_flutter/core/location/location_service.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
@@ -39,10 +41,28 @@ void main() {
       expect(w.humidity, 95);
       expect(w.windSpeed, 0.3);
       expect(w.weather, '陰');
+      expect((w.windDirection as WindFrom).degrees, 70);
       expect(w.dailyHigh, 25.5);
       expect(w.dailyLow, 21.1);
       expect(w.observedAt.toUtc(), DateTime.utc(2026, 11, 14, 12, 30));
       expect(w.distanceKm, lessThan(2));
+    });
+
+    test('wind direction: 0 is calm, 990 is variable, -99 is missing, out of range is a Failure', () async {
+      Future<Result<CurrentWeather>> withWind(String raw) {
+        adapter.serveFixture('O-A0003-001', (json) {
+          (_station(json, '淡水')['WeatherElement'] as Map<String, dynamic>)['WindDirection'] = raw;
+          return null;
+        });
+        return repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+      }
+
+      expect((await withWind('0.0')).data.windDirection, isA<CalmWind>());
+      expect((await withWind('990.0')).data.windDirection, isA<VariableWind>());
+      expect((await withWind('-99')).data.windDirection, isNull);
+      final bad = await withWind('500.0') as Failure;
+      expect(bad.message, contains('500.0'));
+      expect(bad.dataset, 'O-A0003-001');
     });
 
     test('skips stations without temperature and maps -99 to missing', () async {
@@ -110,6 +130,7 @@ void main() {
       expect(first.pop, 50);
       expect(first.weather, '短暫陣雨');
       expect(first.weatherCode, '08');
+      expect(first.description, startsWith('短暫陣雨。降雨機率50%。'));
       expect(hours[1].temperature, 23);
       expect(hours[2].temperature, isNull, reason: 'fixture has no hourly temperature at 00:00');
       expect(hours[2].pop, 80);
@@ -140,6 +161,26 @@ void main() {
       final r = await repo.getHourlyForecast('臺北市', '中正區');
 
       expect((r as Failure).statusCode, 404);
+    });
+  });
+
+  group('getForecastIssueTime (file API head of the 3-day dataset)', () {
+    test('reads DatasetInfo.IssueTime from the first bytes only', () async {
+      adapter.routes['F-D0047-061'] = (206, File('test/fixtures/cwa/F-D0047-061-head.txt').readAsStringSync());
+      final r = await repo.getForecastIssueTime('台北市');
+
+      final request = adapter.requests.single;
+      expect(request.path, '/fileapi/v1/opendataapi/F-D0047-061');
+      expect(r.data, DateTime.parse('2026-11-14T17:00:00+08:00'));
+    });
+
+    test('a head without IssueTime is a Failure naming the dataset', () async {
+      adapter.routes['F-D0047-061'] = (206, '{"cwaopendata": {"Sent": "2026-11-14T19:18:40+08:00"');
+      final r = await repo.getForecastIssueTime('臺北市');
+
+      final f = r as Failure;
+      expect(f.dataset, 'F-D0047-061');
+      expect(f.message, contains('IssueTime'));
     });
   });
 

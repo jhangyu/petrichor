@@ -13,6 +13,9 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/repositories/weather_repository.dart';
+import '../weather/weather_provider.dart';
+import '../weather/widgets/home_logic.dart';
+import '../weather/widgets/weather_glyph_icon.dart';
 import 'place_provider.dart';
 
 /// 已儲存地點與目前地點 hero 的現況溫度來源
@@ -63,8 +66,8 @@ class _LocationScreenState extends ConsumerState<LocationScreen> {
     }
     final manual = _openPicker;
     return switch (current) {
-      AsyncData(value: PlaceSelected(:final place, :final source)) =>
-        _SelectedView(place: place, source: source, onManual: manual),
+      AsyncData(value: PlaceSelected(:final place, :final source, :final fixedAt)) =>
+        _SelectedView(place: place, source: source, fixedAt: fixedAt, onManual: manual),
       AsyncData(value: final NoPlace none) when none.firstRun => _ExplainerView(onManual: manual),
       AsyncData(value: final NoPlace none) when none.reason == LocationFailure.permissionDeniedForever =>
         _DeniedForeverView(none: none, onManual: manual),
@@ -89,11 +92,6 @@ Future<void> _openSettings(BuildContext context, Future<bool> Function() open) a
   if (!await open()) {
     messenger.showSnackBar(const SnackBar(content: Text('無法開啟系統設定，請手動到系統設定開啟本 App 的位置權限')));
   }
-}
-
-String _hm(DateTime t) {
-  final local = t.toLocal();
-  return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 }
 
 /// Guidance for the reason, then the underlying cause line as-is.
@@ -159,23 +157,30 @@ class _ExplainerView extends ConsumerWidget {
 
 /// 已有目前地點（GPS 或手動）：hero + 搜尋 + 我的地點。
 class _SelectedView extends ConsumerWidget {
-  const _SelectedView({required this.place, required this.source, required this.onManual});
+  const _SelectedView({required this.place, required this.source, required this.fixedAt, required this.onManual});
 
   final Place place;
   final PlaceSource source;
+
+  /// GPS 定位時刻；手動地點為 null
+  final DateTime? fixedAt;
   final void Function({bool focusSearch}) onManual;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gps = source == PlaceSource.gps;
+    final fix = fixedAt;
     return AppPageScaffold(
       header: AppPageHeader(
         title: '地點',
-        subtitle: gps ? 'GPS 定位' : '手動選擇',
+        subtitle: fix != null ? '定位於 ${clockText(fix)}' : (gps ? 'GPS 定位' : '手動選擇'),
         subtitleIcon: gps ? Icons.my_location : Icons.place_outlined,
         actions: [AppIconButton(icon: Icons.refresh, tooltip: '重新定位', onPressed: () => _useGps(ref))],
       ),
-      source: const SourceLine(datasetIds: [_observationDataset]),
+      source: SourceLine(datasetIds: [
+        _observationDataset,
+        ?AppConstants.townshipForecastDatasets[place.county]?.threeDay,
+      ]),
       children: [
         _PlaceHero(place: place, gps: gps),
         _SearchField(readOnly: true, onTap: () => onManual(focusSearch: true)),
@@ -622,7 +627,9 @@ class _MyPlaces extends ConsumerWidget {
 // Page-local parts (.loc-hero, .intro, .field, .step, .privacy)
 // ============================================================================
 
-/// `.loc-hero`: source label, place name, current temperature and weather.
+/// `.loc-hero`: source label, place name, current temperature with weather icon,
+/// and 「天氣 · 降雨 20% · 更新於 14:10」. Shares the home page's data for the current place
+/// ([weatherNotifierProvider]); 降雨 is the township forecast slot covering now.
 class _PlaceHero extends ConsumerWidget {
   const _PlaceHero({required this.place, required this.gps});
 
@@ -631,27 +638,33 @@ class _PlaceHero extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final observation = ref.watch(placeObservationProvider(place));
-    final (Widget temp, Widget foot) = switch (observation) {
-      AsyncData(value: Success(:final data)) => (
-          Text(
-            '${data.temperature.round()}°',
-            style: AppType.largeTitle.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+    final weather = ref.watch(weatherNotifierProvider);
+    final now = ref.read(weatherClockProvider)();
+    void retry() => ref.invalidate(weatherNotifierProvider);
+    final current = weather.location == place && !weather.isLoading ? weather.current : null;
+    final pop = switch (weather.hourly) {
+      Success(:final data) => currentSlot(data, now)?.pop,
+      _ => null,
+    };
+    final (Widget temp, Widget foot) = switch (current) {
+      Success(:final data) => (
+          Row(
+            spacing: AppSpace.s8,
+            children: [
+              WeatherGlyphIcon(text: data.weather, size: AppSize.icon48),
+              Text(
+                tempText(data.temperature),
+                style: AppType.largeTitle.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+              ),
+            ],
           ),
           Text(
-            [?data.weather, '更新於 ${_hm(data.observedAt)}'].join(' · '),
+            [?data.weather, '降雨 ${percentText(pop)}', '更新於 ${clockText(data.observedAt)}'].join(' · '),
             style: AppType.caption1.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular),
           ),
         ),
-      AsyncData(value: Failure(:final message)) => (
-          const SizedBox.shrink(),
-          _HeroError(message: message, onRetry: () => ref.invalidate(placeObservationProvider(place))),
-        ),
-      AsyncError(:final error) => (
-          const SizedBox.shrink(),
-          _HeroError(message: '$error', onRetry: () => ref.invalidate(placeObservationProvider(place))),
-        ),
-      _ => (
+      Failure(:final message) => (const SizedBox.shrink(), _HeroError(message: message, onRetry: retry)),
+      null => (
           const Skeleton(height: AppSpace.s40, width: AppSpace.s64),
           const Skeleton(height: AppSpace.s12),
         ),

@@ -30,6 +30,9 @@ class AppConstants {
   /// 即時觀測（10 分鐘綜觀氣象，約 363 站）
   static const String observationDataset = 'O-A0003-001';
 
+  /// GPS 判定所在縣市用的測站清單（自動氣象站，約 870 站，比 [observationDataset] 密）
+  static const String countyLookupDataset = 'O-A0001-001';
+
   /// 各縣市逐日日出日沒時刻（含民用曙暮光）
   static const String sunTimesDataset = 'A-B0062-001';
 

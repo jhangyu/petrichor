@@ -14,6 +14,9 @@ class WeatherState {
 
   /// [今天, 明天] 的日出日沒
   final Result<List<SunDay>>? sun;
+
+  /// 72 小時預報（[hourly] 同一資料集）的發布時間
+  final Result<DateTime>? hourlyIssuedAt;
   final bool isLoading;
 
   /// 使用者可讀的中文錯誤訊息（整頁級）
@@ -25,6 +28,7 @@ class WeatherState {
     this.hourly,
     this.weekly,
     this.sun,
+    this.hourlyIssuedAt,
     this.isLoading = true,
     this.error,
   });
@@ -54,11 +58,12 @@ class WeatherNotifier extends Notifier<WeatherState> {
 
   Future<void> _load(Place place, Ref buildRef) async {
     final repo = ref.read(weatherRepositoryProvider);
-    final (current, hourly, weekly, sun) = await (
+    final (current, hourly, weekly, sun, hourlyIssuedAt) = await (
       repo.getCurrentWeather(place.toLocationData()),
       repo.getHourlyForecast(place.county, place.town),
       repo.getWeeklyForecast(place.county, place.town),
       repo.getSunTimes(place.county, ref.read(weatherClockProvider)()),
+      repo.getForecastIssueTime(place.county),
     ).wait;
     // 地點已變更（重新 build）則丟棄舊結果
     if (!buildRef.mounted) return;
@@ -69,6 +74,7 @@ class WeatherNotifier extends Notifier<WeatherState> {
       hourly: hourly,
       weekly: weekly,
       sun: sun,
+      hourlyIssuedAt: hourlyIssuedAt,
       isLoading: false,
     );
   }

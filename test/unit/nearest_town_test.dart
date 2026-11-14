@@ -5,52 +5,77 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_cwa_adapter.dart';
 
-/// 22 縣市各借用臺北市樣本（單一鄉鎮），只改縣市名與座標；座標 [coords] 以縣市名索引。
-FakeCwaAdapter _serveAllCounties(Map<String, (String, double, double)> townByCounty) {
-  final adapter = FakeCwaAdapter();
-  for (final entry in AppConstants.townshipForecastDatasets.entries) {
-    final (town, lat, lon) = townByCounty[entry.key] ?? ('某區', 0.0, 0.0);
+/// 測站清單用 O-A0001-001 樣本（臺北、三重〔新北市〕、澎湖、新興〔高雄市〕、臺中）；
+/// 各縣市鄉鎮清單借臺北市 3 天預報樣本，只留一個鄉鎮並改縣市名、鄉鎮名與座標。
+FakeCwaAdapter _serve(Map<String, (String, double, double)> townByCounty) {
+  final adapter = FakeCwaAdapter()..serveFixture(AppConstants.countyLookupDataset);
+  for (final MapEntry(key: county, value: (town, lat, lon)) in townByCounty.entries) {
     adapter.serveFixture('F-D0047-061', (json) {
       final group = ((json['records'] as Map)['Locations'] as List).first as Map;
-      group['LocationsName'] = entry.key;
+      group['LocationsName'] = county;
       final loc = (group['Location'] as List).first as Map;
       loc['LocationName'] = town;
       loc['Latitude'] = '$lat';
       loc['Longitude'] = '$lon';
       return null;
-    }, entry.value.threeDay);
+    }, AppConstants.townshipForecastDatasets[county]!.threeDay);
   }
   return adapter;
 }
 
+List<String> _datasets(FakeCwaAdapter adapter) => [for (final r in adapter.requests) r.pathSegments.last];
+
 void main() {
-  const towns = {
-    '臺北市': ('中正區', 25.046, 121.516),
-    '澎湖縣': ('馬公市', 23.566, 119.566),
-    '花蓮縣': ('花蓮市', 23.977, 121.604),
-  };
+  test('county from the nearest station, then only that county list (far from any other county)', () async {
+    final adapter = _serve({'澎湖縣': ('馬公市', 23.566, 119.566)});
 
-  test('nearestTown returns the county and town closest to the coordinates, fetching the list once', () async {
-    final adapter = _serveAllCounties(towns);
-    final repo = WeatherRepository(adapter.dio());
+    final r = await WeatherRepository(adapter.dio()).nearestTown(23.57, 119.57);
 
-    final taipei = (await repo.nearestTown(25.04, 121.52)).data;
-    final penghu = (await repo.nearestTown(23.57, 119.57)).data;
-
-    expect((taipei.county, taipei.town), ('臺北市', '中正區'));
-    expect((penghu.county, penghu.town), ('澎湖縣', '馬公市'));
-    expect(adapter.requests.length, AppConstants.townshipForecastDatasets.length);
+    expect((r.data.county, r.data.town), ('澎湖縣', '馬公市'));
+    expect(_datasets(adapter), ['O-A0001-001', 'F-D0047-045']);
+    expect(adapter.requests.first.queryParameters['GeoInfo'], 'Coordinates,CountyName');
   });
 
-  test('nearestTown fails naming the county when any county list cannot be fetched', () async {
-    final adapter = _serveAllCounties(towns);
-    adapter.serveStatus('F-D0047-041', 500);
-    final repo = WeatherRepository(adapter.dio());
+  test('another county station farther than the nearest town plus slack is not fetched', () async {
+    // 中正區 ≈ 0.9 km, 三重 station (新北市) ≈ 2.2 km > 0.9 + 1
+    final adapter = _serve({'臺北市': ('中正區', 25.046058, 121.516565)});
 
-    final r = await repo.nearestTown(25.04, 121.52);
+    final r = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51);
 
-    final failure = r as Failure<Place>;
-    expect(failure.location, '花蓮縣');
-    expect(failure.message, contains('花蓮縣'));
+    expect((r.data.county, r.data.town), ('臺北市', '中正區'));
+    expect(_datasets(adapter), ['O-A0001-001', 'F-D0047-061']);
+  });
+
+  test('border: a nearer other-county station also fetches that county and picks the nearer town', () async {
+    // 士林區 ≈ 5.6 km; 三重 station (新北市) ≈ 2.2 km ≤ 5.6 + 1 → 新北市 list, 板橋區 ≈ 1.5 km wins
+    final adapter = _serve({
+      '臺北市': ('士林區', 25.09, 121.52),
+      '新北市': ('板橋區', 25.03, 121.50),
+    });
+
+    final r = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51);
+
+    expect((r.data.county, r.data.town), ('新北市', '板橋區'));
+    expect(_datasets(adapter), ['O-A0001-001', 'F-D0047-061', 'F-D0047-069']);
+  });
+
+  test('a county list failure names the county and dataset', () async {
+    final adapter = _serve({})..serveStatus('F-D0047-061', 500);
+
+    final failure = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51) as Failure<Place>;
+
+    expect(failure.location, '臺北市');
+    expect(failure.dataset, 'F-D0047-061');
+    expect(failure.statusCode, 500);
+  });
+
+  test('a station list failure names the station dataset and coordinates', () async {
+    final adapter = FakeCwaAdapter()..serveStatus(AppConstants.countyLookupDataset, 500);
+
+    final failure = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51) as Failure<Place>;
+
+    expect(failure.dataset, 'O-A0001-001');
+    expect(failure.location, '(25.04, 121.51)');
+    expect(adapter.requests, hasLength(1));
   });
 }

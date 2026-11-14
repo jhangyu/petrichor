@@ -175,34 +175,71 @@ class WeatherRepository {
     );
   }
 
-  List<Place>? _nationwideTowns;
-
-  /// 取得離 ([latitude], [longitude]) 最近的鄉鎮（全臺 22 縣市鄉鎮清單，每個 session 只抓一次）。
-  /// 任一縣市清單取不到即失敗（不用殘缺清單挑最近，避免挑錯縣市）。
+  /// 取得離 ([latitude], [longitude]) 最近的鄉鎮。
+  /// 先以最近的自動氣象站（[AppConstants.countyLookupDataset]）判定縣市，只抓該縣市鄉鎮清單；
+  /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[countyBorderSlackKm]」遠（疑似縣市交界），
+  /// 再抓該縣市清單一併比較。最多 3 次請求（測站＋2 縣市）。任一請求失敗即失敗。
   Future<Result<Place>> nearestTown(double latitude, double longitude) async {
-    var towns = _nationwideTowns;
-    if (towns == null) {
-      final counties = AppConstants.townshipForecastDatasets.keys.toList();
-      final results = await Future.wait(counties.map(getTowns));
-      for (var i = 0; i < results.length; i++) {
-        final r = results[i];
-        if (r is Failure<List<Place>>) {
-          return Failure(
-            '全臺鄉鎮清單不完整：期望 ${counties.length} 縣市皆可取得，實際「${counties[i]}」失敗（${r.message}）',
-            statusCode: r.statusCode,
-            dataset: r.dataset,
-            location: counties[i],
-          );
-        }
-      }
-      towns = _nationwideTowns = [for (final r in results) ...r.data];
+    final where = '($latitude, $longitude)';
+    final stations = await _query(
+      dataset: AppConstants.countyLookupDataset,
+      location: where,
+      // 只取一個要素與縣市／座標，縮小回應
+      query: {'WeatherElement': _countyLookupElement, 'GeoInfo': 'Coordinates,CountyName'},
+      parse: (body) => _parseStationCounties(body, latitude, longitude),
+    );
+    if (stations is Failure<List<_StationCounty>>) return _retype(stations);
+    final nearest = stations.data.first;
+    final other = stations.data.where((s) => s.county != nearest.county).firstOrNull;
+
+    final home = await getTowns(nearest.county);
+    if (home is Failure<List<Place>>) return _retype(home);
+    var best = _nearestPlace(home.data, latitude, longitude);
+    if (other != null &&
+        other.km <= _distanceKm(latitude, longitude, best.latitude, best.longitude) + countyBorderSlackKm) {
+      final neighbour = await getTowns(other.county);
+      if (neighbour is Failure<List<Place>>) return _retype(neighbour);
+      best = _nearestPlace([best, ...neighbour.data], latitude, longitude);
     }
-    return Success(towns.reduce((a, b) =>
-        _distanceKm(latitude, longitude, a.latitude, a.longitude) <=
-                _distanceKm(latitude, longitude, b.latitude, b.longitude)
-            ? a
-            : b));
+    return Success(best);
   }
+
+  /// 縣市交界判定的寬容距離（公里）：另一縣市測站距離 ≤ 本縣市最近鄉鎮距離＋此值，即同時比較該縣市。
+  // ponytail: 鄉鎮以中心點代表，交界處仍可能挑到鄰鄉鎮；要精確改用鄉鎮界多邊形。
+  static const double countyBorderSlackKm = 1.0;
+
+  /// 取得 [city] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
+  /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
+  Future<Result<DateTime>> getForecastIssueTime(String city) async {
+    final county = normalizeCwaName(city);
+    final ids = AppConstants.townshipForecastDatasets[county];
+    if (ids == null) {
+      return Failure(
+        '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$city」',
+        location: city,
+      );
+    }
+    final dataset = ids.threeDay;
+    try {
+      // ponytail: 整份 file API 約 1 MB；IssueTime 位於開頭 DatasetInfo（實測位移約 1.7 KB），只取前 [_issueTimeHeadBytes]。
+      final response = await _dio.get<String>(
+        '${AppConstants.cwaFileApiBaseUrl}$dataset',
+        options: Options(
+          headers: {'Range': 'bytes=0-${_issueTimeHeadBytes - 1}'},
+          responseType: ResponseType.plain,
+        ),
+      );
+      return Success(_parseIssueTime(response.data ?? '', dataset));
+    } on DioException catch (e) {
+      return _handleDioError(e, dataset: dataset, location: county);
+    } on FormatException catch (e) {
+      return Failure('解析 $dataset 發布時間失敗（地點 $county）：${e.message}', dataset: dataset, location: county);
+    }
+  }
+
+  /// 同一失敗換成另一結果型別（訊息、資料集、地點原樣保留）。
+  Failure<T> _retype<T>(Failure<Object?> f) =>
+      Failure(f.message, statusCode: f.statusCode, dataset: f.dataset, location: f.location);
 
   Future<Result<T>> _townshipForecast<T>(
     String city,
@@ -374,18 +411,8 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
     final station = _obj(stations[i], path);
     final temp = _num(_dig(station, ['WeatherElement', 'AirTemperature']), '$path.AirTemperature');
     if (temp == null) continue;
-    final coords = _list(_dig(station, ['GeoInfo', 'Coordinates']), '$path.GeoInfo.Coordinates')
-        .map((c) => _obj(c, '$path.GeoInfo.Coordinates[]'))
-        .firstWhere(
-          (c) => c['CoordinateName'] == _wgs84,
-          orElse: () => throw FormatException('$path：缺少 $_wgs84 座標'),
-        );
-    final km = _distanceKm(
-      lat,
-      lon,
-      _num(coords['StationLatitude'], '$path.StationLatitude')!,
-      _num(coords['StationLongitude'], '$path.StationLongitude')!,
-    );
+    final (sLat, sLon) = _wgs84Of(station, path);
+    final km = _distanceKm(lat, lon, sLat, sLon);
     if (km < bestKm) {
       bestKm = km;
       best = station;
@@ -405,6 +432,7 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
     temperature: _num(we['AirTemperature'], 'AirTemperature')!,
     humidity: _int(we['RelativeHumidity'], 'RelativeHumidity'),
     windSpeed: _num(we['WindSpeed'], 'WindSpeed'),
+    windDirection: _observedWind(we['WindDirection']),
     weather: _text(we['Weather']),
     dailyHigh: _num(
       _dig(we, ['DailyExtreme', 'DailyHigh', 'TemperatureInfo', 'AirTemperature']),
@@ -415,6 +443,86 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
       'DailyLow',
     ),
   );
+}
+
+/// 縣市判定查詢只帶的觀測要素（任一皆可，取其一縮小回應）
+const String _countyLookupElement = 'Weather';
+
+/// 發布時間只讀 file API 回應的前幾個位元組（DatasetInfo 在 Locations 之前）
+const int _issueTimeHeadBytes = 4096;
+
+/// 測站所屬縣市與到使用者的距離
+class _StationCounty {
+  final String county;
+  final double km;
+  const _StationCounty(this.county, this.km);
+}
+
+/// 全部測站依距離由近到遠排序；縣市名正規化成「臺」。
+List<_StationCounty> _parseStationCounties(Map<String, dynamic> body, double lat, double lon) {
+  final stations = _list(_dig(body, ['records', 'Station']), 'records.Station');
+  if (stations.isEmpty) throw const FormatException('records.Station：期望至少 1 站，實際 0 站');
+  return [
+    for (var i = 0; i < stations.length; i++)
+      _stationCounty(_obj(stations[i], 'records.Station[$i]'), lat, lon, 'records.Station[$i]'),
+  ]..sort((a, b) => a.km.compareTo(b.km));
+}
+
+_StationCounty _stationCounty(Map<String, dynamic> station, double lat, double lon, String path) {
+  final county = _text(_dig(station, ['GeoInfo', 'CountyName'])) ??
+      (throw FormatException('$path.GeoInfo.CountyName：期望縣市名，實際缺值'));
+  final (sLat, sLon) = _wgs84Of(station, path);
+  return _StationCounty(normalizeCwaName(county), _distanceKm(lat, lon, sLat, sLon));
+}
+
+(double, double) _wgs84Of(Map<String, dynamic> station, String path) {
+  final coords = _list(_dig(station, ['GeoInfo', 'Coordinates']), '$path.GeoInfo.Coordinates')
+      .map((c) => _obj(c, '$path.GeoInfo.Coordinates[]'))
+      .firstWhere(
+        (c) => c['CoordinateName'] == _wgs84,
+        orElse: () => throw FormatException('$path：缺少 $_wgs84 座標'),
+      );
+  return (
+    _num(coords['StationLatitude'], '$path.StationLatitude') ??
+        (throw FormatException('$path.StationLatitude：期望緯度，實際缺值')),
+    _num(coords['StationLongitude'], '$path.StationLongitude') ??
+        (throw FormatException('$path.StationLongitude：期望經度，實際缺值')),
+  );
+}
+
+Place _nearestPlace(List<Place> places, double lat, double lon) => places.reduce((a, b) =>
+    _distanceKm(lat, lon, a.latitude, a.longitude) <= _distanceKm(lat, lon, b.latitude, b.longitude) ? a : b);
+
+final _issueTimePattern = RegExp(r'"IssueTime"\s*:\s*"([^"]+)"');
+
+/// file API 回應開頭（非完整 JSON）→ DatasetInfo.IssueTime。
+DateTime _parseIssueTime(String head, String dataset) {
+  final match = _issueTimePattern.firstMatch(head);
+  if (match == null) {
+    throw FormatException(
+      '$dataset 前 ${head.length} 位元組：期望含 DatasetInfo.IssueTime，實際開頭「${head.substring(0, math.min(head.length, 80))}」',
+    );
+  }
+  return _time(match.group(1), 'DatasetInfo.IssueTime');
+}
+
+/// 觀測風向的特殊值（度）：0＝靜風，990＝風向不定；其餘 1–360 為方位角（360＝北）。
+const double _calmWindDegrees = 0;
+const double _variableWindDegrees = 990;
+const double _fullCircleDegrees = 360;
+
+/// 觀測風向（度，字串）→ [ObservedWind]；缺值 → null；範圍外 → FormatException。
+ObservedWind? _observedWind(Object? raw) {
+  final deg = _num(raw, 'WindDirection');
+  if (deg == null) return null;
+  if (deg == _calmWindDegrees) return const ObservedWind.calm();
+  if (deg == _variableWindDegrees) return const ObservedWind.variable();
+  if (deg < 0 || deg > _fullCircleDegrees) {
+    throw FormatException(
+      'WindDirection：期望 0（靜風）、1–360 度或 990（風向不定），實際「$raw」',
+    );
+  }
+  return ObservedWind.degrees(deg);
 }
 
 List<Place> _parseTowns(Map<String, dynamic> body, String county) {
@@ -500,6 +608,7 @@ List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
   final windSpeed = _element(els, '風速');
   final windDirection = _element(els, '風向');
   final pop = _element(els, '3小時降雨機率');
+  final description = _element(els, '天氣預報綜合描述');
   return [
     for (final start in weather.keys)
       HourlyForecast(
@@ -512,6 +621,7 @@ List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
         pop: _int(pop[start]?.value['ProbabilityOfPrecipitation'], '3小時降雨機率@$start'),
         weather: _text(weather[start]!.value['Weather']),
         weatherCode: _text(weather[start]!.value['WeatherCode']),
+        description: _text(description[start]?.value['WeatherDescription']),
       ),
   ];
 }

@@ -26,6 +26,7 @@ HourlyForecast slot(DateTime start, {double? t, int? pop}) => HourlyForecast(
   pop: pop,
   weather: null,
   weatherCode: null,
+  description: null,
 );
 
 void main() {
@@ -112,5 +113,20 @@ void main() {
     expect(speedText(null), '—');
     expect(windDirectionLabel('偏北風'), '偏北');
     expect(durationText(const Duration(hours: 10, minutes: 57)), '10 小時 57 分');
+  });
+
+  test('observed wind maps degrees to the nearest of 8 points, plus calm and variable', () {
+    expect(observedWindLabel(const WindFrom(360)), '北');
+    expect(observedWindLabel(const WindFrom(22)), '北');
+    expect(observedWindLabel(const WindFrom(23)), '東北');
+    expect(observedWindLabel(const WindFrom(260)), '西');
+    expect(observedWindLabel(const WindFrom(338)), '北');
+    expect(observedWindLabel(const CalmWind()), '靜風');
+    expect(observedWindLabel(const VariableWind()), '風向不定');
+  });
+
+  test('issue time is shown in Taiwan time', () {
+    expect(issuedText(DateTime.utc(2026, 11, 14, 9)), '發布 11/14 17:00');
+    expect(issuedText(DateTime.utc(2026, 11, 14, 17)), '發布 11/15 01:00');
   });
 }

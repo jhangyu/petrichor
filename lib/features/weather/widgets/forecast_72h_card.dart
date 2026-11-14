@@ -15,10 +15,19 @@ const _forecastSkeletonHeight = 456.0;
 /// horizontally scrolling chart (temperature line, 體感 dashed line, weather
 /// icons, 3-hour 降雨機率 bars, wind), placed by time.
 class Forecast72hCard extends StatelessWidget {
-  const Forecast72hCard({super.key, required this.hourly, required this.now, required this.onRetry});
+  const Forecast72hCard({
+    super.key,
+    required this.hourly,
+    required this.issuedAt,
+    required this.now,
+    required this.onRetry,
+  });
 
   /// null = still loading.
   final Result<List<HourlyForecast>>? hourly;
+
+  /// 發布時間 (card meta); null = still loading.
+  final Result<DateTime>? issuedAt;
   final DateTime now;
   final VoidCallback onRetry;
 
@@ -32,6 +41,11 @@ class Forecast72hCard extends StatelessWidget {
       Success(:final data) when data.isEmpty => const AppCard.empty(title: '暫無 72 小時預報'),
       Success(:final data) => AppCard(
         title: _title,
+        meta: switch (issuedAt) {
+          Success(:final data) => issuedText(data),
+          Failure() => '發布時間無法取得',
+          null => null,
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppSpace.s16,

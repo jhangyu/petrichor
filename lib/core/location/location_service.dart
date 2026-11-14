@@ -12,11 +12,15 @@ class LocationData {
   final String city;
   final String district;
 
+  /// GPS 定位時刻（定位結果的時間戳）；非 GPS 來源（手動地點查詢）為 null
+  final DateTime? fixedAt;
+
   LocationData({
     required this.latitude,
     required this.longitude,
     required this.city,
     required this.district,
+    this.fixedAt,
   });
 }
 
@@ -109,6 +113,7 @@ class LocationService {
       longitude: position.longitude,
       city: place.county,
       district: place.town,
+      fixedAt: position.timestamp,
     );
   }
 }

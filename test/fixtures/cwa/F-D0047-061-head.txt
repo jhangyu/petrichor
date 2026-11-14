@@ -1,0 +1,164 @@
+{
+ "cwaopendata": {
+  "@xmlns": "urn:cwa:gov:tw:cwacommon:0.1",
+  "Identifier": "75b8c678-d555-4a4c-a28c-c1de62015b7a",
+  "Sender": "weather@cwa.gov.tw",
+  "Sent": "2026-11-14T19:18:40+08:00",
+  "Status": "Actual",
+  "Scope": "Public",
+  "MsgType": "Issue",
+  "Dataid": "D0047-061",
+  "Source": "MFC",
+  "Dataset": {
+   "DatasetInfo": {
+    "DatasetDescription": "臺灣各縣市鄉鎮未來3天天氣預報",
+    "DatasetLanguage": "zh-TW",
+    "DataValueInfo": {
+     "Temperature": {
+      "@description": "溫度",
+      "@unit": "攝氏度"
+     },
+     "DewPoint": {
+      "@description": "露點溫度",
+      "@unit": "攝氏度"
+     },
+     "ApparentTemperature": {
+      "@description": "體感溫度",
+      "@unit": "攝氏度"
+     },
+     "ComfortIndex": {
+      "@description": "舒適度指數",
+      "@unit": "NA"
+     },
+     "ComfortIndexDescription": {
+      "@description": "舒適度指數描述",
+      "@unit": "NA"
+     },
+     "RelativeHumidity": {
+      "@description": "相對濕度",
+      "@unit": "百分比"
+     },
+     "WindDirection": {
+      "@description": "風向",
+      "@unit": "8方位"
+     },
+     "WindSpeed": {
+      "@description": "風速",
+      "@unit": "公尺/秒"
+     },
+     "BeaufortScale": {
+      "@description": "蒲福風級",
+      "@unit": "蒲福風級"
+     },
+     "ProbabilityOfPrecipitation": {
+      "@description": "3小時降雨機率",
+      "@unit": "百分比"
+     },
+     "Weather": {
+      "@description": "天氣現象",
+      "@unit": "NA"
+     },
+     "WeatherCode": {
+      "@description": "天氣現象代碼",
+      "@unit": "NA"
+     },
+     "WeatherDescription": {
+      "@description": "天氣預報綜合描述",
+      "@unit": "NA"
+     }
+    },
+    "IssueTime": "2026-11-14T17:00:00+08:00",
+    "ValidTime": {
+     "StartTime": "2026-11-14T18:00:00+08:00",
+     "EndTime": "2026-11-18T18:00:00+08:00"
+    },
+    "Update": "2026-11-14T19:18:40+08:00"
+   },
+   "Locations": {
+    "LocationsName": "臺北市",
+    "Location": [
+     {
+      "LocationName": "松山區",
+      "Geocode": "63000010",
+      "Latitude": "25.051608",
+      "Longitude": "121.568983",
+      "WeatherElement": [
+       {
+        "ElementName": "溫度",
+        "Time": [
+         {
+          "DataTime": "2026-11-14T18:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "24"
+          }
+         },
+         {
+          "DataTime": "2026-11-14T19:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "23"
+          }
+         },
+         {
+          "DataTime": "2026-11-14T20:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "23"
+          }
+         },
+         {
+          "DataTime": "2026-11-14T21:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "23"
+          }
+         },
+         {
+          "DataTime": "2026-11-14T22:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "23"
+          }
+         },
+         {
+          "DataTime": "2026-11-14T23:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "23"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T00:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "23"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T01:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "22"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T02:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "22"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T03:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "22"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T04:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "22"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T05:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "21"
+          }
+         },
+         {
+          "DataTime": "2026-11-15T06:00:00+08:00",
+          "ElementValue": {
+           "Temperature": "21

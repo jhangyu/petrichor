@@ -46,7 +46,7 @@ class WeatherScreen extends ConsumerWidget {
     };
     final header = AppPageHeader(
       title: selected?.$1.name ?? (place.isLoading ? '定位中…' : '尚未選擇地點'),
-      subtitle: _subtitle(place, weather.isLoading),
+      subtitle: _subtitle(place, weather),
       subtitleIcon: selected?.$2 == PlaceSource.gps ? Icons.near_me_outlined : Icons.location_on_outlined,
       subtitleIconColor: selected == null ? AppPalette.warningFg : AppPalette.brandFg,
       onTitleTap: openLocationTab,
@@ -81,14 +81,20 @@ class WeatherScreen extends ConsumerWidget {
     };
   }
 
-  String _subtitle(AsyncValue<CurrentPlace> place, bool loading) {
+  /// 「目前位置 · 更新於 14:00」: the observation time of the current data (O-A0003-001 ObsTime).
+  String _subtitle(AsyncValue<CurrentPlace> place, WeatherState weather) {
     final source = switch (place) {
       AsyncData(value: PlaceSelected(source: PlaceSource.gps)) => '目前位置',
       AsyncData(value: PlaceSelected(source: PlaceSource.manual)) => '已選地點',
       AsyncData(value: NoPlace()) || AsyncError() => '請選擇地點',
       _ => '定位中…',
     };
-    return place is AsyncData && place.value is PlaceSelected && loading ? '$source · 更新中…' : source;
+    if (!(place is AsyncData && place.value is PlaceSelected)) return source;
+    if (weather.isLoading) return '$source · 更新中…';
+    return switch (weather.current) {
+      Success(:final data) => '$source · 更新於 ${clockText(data.observedAt)}',
+      _ => source,
+    };
   }
 
   Widget _content(WidgetRef ref, AppPageHeader header, Place place, WeatherState weather, VoidCallback refresh) {
@@ -124,7 +130,7 @@ class WeatherScreen extends ConsumerWidget {
         ),
         ?_warningEntry(ref, warnings, groups, now),
         SunCard(days: weather.sun, now: now, onRetry: refresh),
-        Forecast72hCard(hourly: hourly, now: now, onRetry: refresh),
+        Forecast72hCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
         WeeklyCard(
           weekly: weather.weekly,
           currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,

@@ -92,11 +92,37 @@ class HeroCard extends StatelessWidget {
               value: c.humidity == null ? '—' : '${c.humidity}%',
               onHero: true,
             ),
-            MetricTile(icon: Icons.air, label: '風', value: speedText(c.windSpeed), onHero: true),
+            MetricTile(
+              icon: Icons.air,
+              label: switch (c.windDirection) {
+                null => '風',
+                final wind => '風 · ${observedWindLabel(wind)}',
+              },
+              value: speedText(c.windSpeed),
+              onHero: true,
+            ),
             MetricTile(icon: Icons.umbrella_outlined, label: '降雨機率', value: percentText(pop), onHero: true),
           ],
         ),
+        ?_summary(slot?.description),
       ],
+    );
+  }
+
+  /// `.hero__summary`: the forecast slot's 天氣預報綜合描述, verbatim.
+  Widget? _summary(String? text) {
+    if (text == null) return null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
+      decoration: BoxDecoration(color: AppPalette.rainBg, borderRadius: BorderRadius.circular(AppRadius.md)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpace.s8,
+        children: [
+          const Icon(Icons.umbrella_outlined, size: AppSize.icon20, color: AppPalette.rainFg),
+          Expanded(child: Text(text, style: AppType.body1.copyWith(color: AppPalette.rainFg))),
+        ],
+      ),
     );
   }
 

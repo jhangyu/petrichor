@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cwb_flutter/core/location/location_service.dart';
 import 'package:cwb_flutter/data/models/place.dart';
@@ -6,6 +8,7 @@ import 'package:cwb_flutter/data/models/weather_models.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
 import 'package:cwb_flutter/features/location/place_provider.dart';
 import 'package:cwb_flutter/features/weather/weather_provider.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -15,7 +18,25 @@ import '../support/fake_cwa_adapter.dart';
 
 class MockLocationService extends Mock implements LocationService {}
 
-final _taipei = LocationData(latitude: 25.046, longitude: 121.5166, city: '臺北市', district: '中正區');
+/// file API 請求（72 小時預報發布時間）一律回臺北市 3 天預報的開頭樣本；其餘照 [FakeCwaAdapter] 路由。
+class _FileApiAdapter extends FakeCwaAdapter {
+  final List<Uri> fileRequests = [];
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) {
+    if (!options.uri.path.startsWith('/fileapi/')) return super.fetch(options, requestStream, cancelFuture);
+    fileRequests.add(options.uri);
+    return Future.value(ResponseBody.fromString(File('test/fixtures/cwa/F-D0047-061-head.txt').readAsStringSync(), 206));
+  }
+}
+
+final _taipei = LocationData(
+  latitude: 25.046,
+  longitude: 121.5166,
+  city: '臺北市',
+  district: '中正區',
+  fixedAt: DateTime.utc(2026, 11, 14, 4),
+);
 const _banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01154, longitude: 121.450888);
 
 /// 臺北市樣本借作其他鄉鎮資料集：改名成查詢的鄉鎮
@@ -35,13 +56,13 @@ Future<WeatherState> _settled(ProviderContainer container) {
 
 void main() {
   late MockLocationService location;
-  late FakeCwaAdapter adapter;
+  late _FileApiAdapter adapter;
   late ProviderContainer container;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: true});
     location = MockLocationService();
-    adapter = FakeCwaAdapter();
+    adapter = _FileApiAdapter();
     container = ProviderContainer(overrides: [
       locationServiceProvider.overrideWithValue(location),
       weatherRepositoryProvider.overrideWithValue(WeatherRepository(adapter.dio())),
@@ -69,6 +90,8 @@ void main() {
     expect(s.hourly!.data, hasLength(4));
     expect(s.weekly!.data.first.minTemperature, 21);
     expect(s.sun!.data, hasLength(2));
+    expect(s.hourlyIssuedAt!.data, DateTime.parse('2026-11-14T17:00:00+08:00'));
+    expect(adapter.fileRequests.single.pathSegments.last, 'F-D0047-061');
   });
 
   test('permission denied with no saved choice: no place, denial reason, API never called', () async {
@@ -105,6 +128,7 @@ void main() {
     expect(byDataset['F-D0047-069']!['LocationName'], '板橋區');
     expect(byDataset['F-D0047-071']!['LocationName'], '板橋區');
     expect(byDataset['A-B0062-001']!['CountyName'], '新北市');
+    expect(adapter.fileRequests.last.pathSegments.last, 'F-D0047-069');
   });
 
   test('failing sun times keep observation and both forecasts', () async {

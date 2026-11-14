@@ -24,7 +24,11 @@ sealed class CurrentPlace {
 final class PlaceSelected extends CurrentPlace {
   final Place place;
   final PlaceSource source;
-  const PlaceSelected(this.place, this.source);
+
+  /// GPS 定位時刻（地點頁「定位於」）；手動地點為 null
+  final DateTime? fixedAt;
+
+  const PlaceSelected(this.place, this.source, {this.fixedAt});
 }
 
 /// 尚無地點：未選手動地點且 GPS 定位失敗，或首次使用尚未選擇。頁面顯示引導（開權限／手動選擇），不顯示資料。
@@ -178,7 +182,9 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
   Future<CurrentPlace> _locate() async {
     try {
       final location = await ref.read(locationServiceProvider).getCurrentLocation();
-      return PlaceSelected(Place.fromLocation(location), PlaceSource.gps);
+      final fixedAt = location.fixedAt ??
+          (throw StateError('GPS location for ${location.city}${location.district}: expected a fix time, got null'));
+      return PlaceSelected(Place.fromLocation(location), PlaceSource.gps, fixedAt: fixedAt);
     } on LocationException catch (e) {
       return NoPlace(e);
     }

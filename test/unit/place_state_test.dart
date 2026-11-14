@@ -66,7 +66,13 @@ void main() {
 
   test('choosing GPS is remembered: next launch locates without asking again for a choice', () async {
     when(() => location.getCurrentLocation()).thenAnswer(
-      (_) async => LocationData(latitude: 23.565, longitude: 119.586, city: '澎湖縣', district: '馬公市'),
+      (_) async => LocationData(
+        latitude: 23.565,
+        longitude: 119.586,
+        city: '澎湖縣',
+        district: '馬公市',
+        fixedAt: DateTime.utc(2026, 11, 14, 6, 10),
+      ),
     );
     final first = newContainer();
     await first.read(currentPlaceProvider.future);
@@ -75,6 +81,7 @@ void main() {
     final current = await newContainer().read(currentPlaceProvider.future) as PlaceSelected;
 
     expect((current.place, current.source), (_magong, PlaceSource.gps));
+    expect(current.fixedAt, DateTime.utc(2026, 11, 14, 6, 10));
     verify(() => location.getCurrentLocation()).called(2);
   });
 
