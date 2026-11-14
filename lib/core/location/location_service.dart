@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/place.dart';
@@ -44,10 +46,14 @@ class LocationException implements Exception {
   String toString() => 'LocationException(${failure.name}): $message';
 }
 
+/// 使用者決定：10 秒內沒有定位結果就視為失敗並返回，讓使用者手動選地點（macOS 定位可能永不回應）。
+const locationTimeout = Duration(seconds: 10);
+
 class LocationService {
   final Future<Result<Place>> Function(double latitude, double longitude) _nearestTown;
+  final Duration timeout;
 
-  LocationService(this._nearestTown);
+  LocationService(this._nearestTown, {this.timeout = locationTimeout});
 
   static const _positionSettings = LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -90,6 +96,13 @@ class LocationService {
     try {
       position = await Geolocator.getCurrentPosition(
         locationSettings: _positionSettings,
+      ).timeout(timeout);
+    } on TimeoutException catch (e) {
+      // 逾時只計「取得座標」這一步；權限詢問是使用者在回答的系統對話框，不計時。
+      throw LocationException(
+        LocationFailure.positionUnavailable,
+        '${timeout.inSeconds} 秒內未取得位置（getCurrentPosition 無回應，權限狀態 $permission）',
+        cause: e,
       );
     } on Exception catch (e) {
       throw LocationException(

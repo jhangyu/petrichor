@@ -161,11 +161,15 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
     final manual = store.loadCurrent();
     if (manual != null) return PlaceSelected(manual, PlaceSource.manual);
     if (!store.loadUseGps()) return NoPlace.firstRun();
-    return _locate();
+    return await _locate() ?? state.requireValue;
   }
+
+  /// 每次定位或手動選擇就加一；定位回來時 epoch 已變＝期間有人改了地點，結果作廢。
+  int _epoch = 0;
 
   /// 設為目前地點（手動），並存到本機。
   Future<void> select(Place place) async {
+    _epoch++;
     await (await ref.read(placeStoreProvider.future)).saveCurrent(place);
     state = AsyncData(PlaceSelected(place, PlaceSource.manual));
   }
@@ -176,17 +180,21 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
     await store.saveCurrent(null);
     await store.saveUseGps();
     state = const AsyncLoading();
-    state = AsyncData(await _locate());
+    final located = await _locate();
+    if (located != null) state = AsyncData(located);
   }
 
-  Future<CurrentPlace> _locate() async {
+  /// 定位；回傳 null＝等待期間已被更新的定位或手動選擇取代，結果作廢。
+  Future<CurrentPlace?> _locate() async {
+    final epoch = ++_epoch;
     try {
       final location = await ref.read(locationServiceProvider).getCurrentLocation();
+      if (epoch != _epoch) return null;
       final fixedAt = location.fixedAt ??
           (throw StateError('GPS location for ${location.city}${location.district}: expected a fix time, got null'));
       return PlaceSelected(Place.fromLocation(location), PlaceSource.gps, fixedAt: fixedAt);
     } on LocationException catch (e) {
-      return NoPlace(e);
+      return epoch == _epoch ? NoPlace(e) : null;
     }
   }
 }

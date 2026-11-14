@@ -45,6 +45,8 @@ switch (ref.watch(currentPlaceProvider)) {
 2. 使用者選過 GPS（本機 `place.gps`）→ 啟動就定位。定位失敗就是 `NoPlace`。
 3. 兩者都沒有（首次使用）→ `NoPlace.firstRun()`，**不請求權限、不跳系統詢問**；地點頁先顯示首次說明。
 
+定位有時限：取得座標（`getCurrentPosition`）超過 `locationTimeout`（10 秒，使用者決定）沒有結果，就當失敗：`NoPlace(positionUnavailable)`，`cause` 寫明「10 秒內未取得位置」，頁面顯示引導與「手動選擇」。權限詢問是系統對話框，不計時。逾時或晚到的定位結果，若期間使用者已手動選地點或重新定位，一律作廢，不覆蓋。
+
 `NoPlace` 時任何天氣 API 都不會被呼叫。
 
 ## 測試
