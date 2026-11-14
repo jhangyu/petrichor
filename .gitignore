@@ -48,3 +48,6 @@ app.*.map.json
 /.env
 token.txt
 *.local
+
+# agent scratch
+.claude/tmp/
