@@ -64,12 +64,6 @@ class AppConstants {
     '金門縣': (threeDay: 'F-D0047-085', oneWeek: 'F-D0047-087'),
   };
 
-  /// 雨量觀測資料
-  static const String dailyRainfallDataset = 'O-A0002-001';
-
-  /// 累積雨量圖
-  static const String dailyAccumulatedRainfallMap = 'O-A0040-002';
-
   // -------------------------------------------------------------------------
   // 雷達資料集（fileapi/v1/opendataapi）
   // -------------------------------------------------------------------------
@@ -97,23 +91,6 @@ class AppConstants {
   /// 完整雷達 API URL
   static String radarApiUrl(String datasetId, String apiKey) =>
       '$cwaFileApiBaseUrl$datasetId?${radarApiQueryParams(apiKey)}';
-
-  // -------------------------------------------------------------------------
-  // 預報資料集
-  // -------------------------------------------------------------------------
-
-  /// 降雨預測（1小時）
-  static const String rainPredict1hr = 'F-B0046-001';
-
-  /// 降雨預測（24小時）
-  static const String rainPredict24hr = 'F-C0034-006';
-
-  // -------------------------------------------------------------------------
-  //警特報資料集
-  // -------------------------------------------------------------------------
-
-  /// 天氣警特報
-  static const String warningsDataset = 'W-C0033-001';
 
   // -------------------------------------------------------------------------
   //網路請求設定

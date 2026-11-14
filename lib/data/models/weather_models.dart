@@ -1,8 +1,3 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
-
-part 'weather_models.freezed.dart';
-part 'weather_models.g.dart';
-
 // ============================================================================
 // 觀測 / 預報模型（缺值一律為 null，不用假數字）
 // ============================================================================
@@ -150,24 +145,5 @@ class DailyForecast {
     const names = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
     return names[DateTime.parse(date).weekday - 1];
   }
-}
-
-// ============================================================================
-// 既有 freezed 模型（UI 仍在使用，隨 UI 改版移除）
-// ============================================================================
-
-/// 天氣狀況
-@freezed
-sealed class WeatherCondition with _$WeatherCondition {
-  const factory WeatherCondition({
-    required String wx, // Weather description
-    required int pop, // Probability of precipitation (%)
-    required int t, // Temperature
-    required String startTime,
-    required String endTime,
-  }) = _WeatherCondition;
-
-  factory WeatherCondition.fromJson(Map<String, dynamic> json) =>
-      _$WeatherConditionFromJson(json);
 }
 

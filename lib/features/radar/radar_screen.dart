@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../app_shell.dart' show AppTab, appTabProvider;
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
@@ -173,6 +174,19 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       ),
       source: view.sourceIds == null ? null : SourceLine(datasetIds: view.sourceIds!),
       children: [
+        if (ref.watch(currentPlaceProvider) case AsyncData(value: NoPlace(:final reason)))
+          StatusBanner(
+            tone: StatusTone.permission,
+            title: '尚未選定地點',
+            text: '${locationFailureMessage(reason)}。雷達圖仍可查看，但地圖上不會標示你的位置。',
+            actions: [
+              AppButton(
+                label: '選擇地點',
+                small: true,
+                onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
+              ),
+            ],
+          ),
         view.hero,
         ...view.afterHero,
         _sourceCard(),
