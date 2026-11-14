@@ -71,6 +71,15 @@ List<String> countyChipOrder(List<RainStation> stations, String current) {
   return [current, ...others];
 }
 
+/// Past-10-minute rain above this counts as currently raining.
+const rainingMinPast10MinMm = 0.0;
+
+/// Hero 「目前」 tile text; null (no value) → `—`.
+String currentRainText(double? past10MinMm) {
+  if (past10MinMm == null) return '—';
+  return past10MinMm > rainingMinPast10MinMm ? '持續降雨' : '無降雨';
+}
+
 /// Stations sorted high → low (missing values last) or by name.
 enum StationSort { rainfall, name }
 

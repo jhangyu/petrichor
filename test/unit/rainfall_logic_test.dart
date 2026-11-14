@@ -38,6 +38,10 @@ void main() {
     expect(sortStations(list, StationSort.name).map((s) => s.name), ['a', 'b', 'c']);
   });
 
+  test('current rain tile: >0 in the past 10 min is raining, 0 is not, null is a dash', () {
+    expect([0.5, 0.0, null].map(currentRainText), ['持續降雨', '無降雨', '—']);
+  });
+
   test('map legend has one label per colour', () {
     expect(rainfallMapScaleLabels.length, AppPalette.rainfallMapScale.length);
   });

@@ -72,6 +72,12 @@ class ObservationHeroCard extends StatelessWidget {
                 value: _mmText(next.remainingMm),
                 onHero: true,
               ),
+            MetricTile(
+              icon: Icons.water_drop_outlined,
+              label: '目前',
+              value: currentRainText(station.past10MinMm),
+              onHero: true,
+            ),
           ]),
         ],
       ),

@@ -214,6 +214,9 @@ class RainStation {
   final double? todayMm;
   final double? past1hrMm;
   final double? past3hrMm;
+
+  /// 近 10 分鐘雨量（`Past10Min`）
+  final double? past10MinMm;
   final DateTime obsTime;
 
   const RainStation({
@@ -226,6 +229,7 @@ class RainStation {
     required this.todayMm,
     this.past1hrMm,
     this.past3hrMm,
+    this.past10MinMm,
     required this.obsTime,
   });
 
@@ -252,6 +256,7 @@ class RainStation {
       todayMm: precipitation('Now'),
       past1hrMm: precipitation('Past1hr'),
       past3hrMm: precipitation('Past3hr'),
+      past10MinMm: precipitation('Past10Min'),
       obsTime: _time(_map(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
     );
   }

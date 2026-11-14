@@ -200,6 +200,7 @@ void main() {
       final r = (await _repo(routes).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9)).data;
       expect(r.nearest.past1hrMm, 0.5);
       expect(r.nearest.past3hrMm, 11.0);
+      expect(r.nearest.past10MinMm, 0.5);
       expect(r.counties, ['南投縣', '基隆市', '新北市']);
     });
   });
