@@ -4,17 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/location/location_service.dart';
 import '../../core/theme/glass_morphism.dart';
-import '../../data/repositories/weather_repository.dart';
 import '../../core/constants/app_constants.dart';
-
-final radarImageProvider = FutureProvider.family<String?, String>((ref, datasetId) async {
-  final repo = ref.watch(weatherRepositoryProvider);
-  final result = await repo.getRadarImageUrl(datasetId: datasetId);
-  return result.fold(
-    onSuccess: (url) => url,
-    onFailure: (_, __) => null,
-  );
-});
+import 'radar_provider.dart';
 
 class RadarScreen extends ConsumerStatefulWidget {
   const RadarScreen({super.key});
@@ -26,10 +17,16 @@ class RadarScreen extends ConsumerStatefulWidget {
 class _RadarScreenState extends ConsumerState<RadarScreen> {
   String selectedRadar = AppConstants.radarTaiwan;
   double opacity = 0.6;
+  late Future<LocationData> _location;
+
+  @override
+  void initState() {
+    super.initState();
+    _location = ref.read(locationServiceProvider).getCurrentLocation();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final locationAsync = ref.watch(locationServiceProvider).getCurrentLocation();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -43,8 +40,28 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         children: [
           // Base Map
           FutureBuilder<LocationData>(
-            future: locationAsync,
+            future: _location,
             builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '無法取得位置：${snapshot.error}',
+                        style: const TextStyle(color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() {
+                          _location = ref.read(locationServiceProvider).getCurrentLocation();
+                        }),
+                        child: const Text('重試'),
+                      ),
+                    ],
+                  ),
+                );
+              }
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -141,32 +158,20 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   Widget _buildRadarOverlay() {
-    final radarAsync = ref.watch(radarImageProvider(selectedRadar));
-    
-    return radarAsync.when(
-      data: (url) {
-        if (url == null) return const SizedBox.shrink();
-        
-        // Note: The exact bounds (south, west, north, east) depend heavily on the specific CWA radar.
-        // For demonstration, we assume a bounding box covering Taiwan roughly.
-        // In real app, we extract bounds from CWA metadata or hardcode per radar.
-        final bounds = LatLngBounds(
-          const LatLng(21.0, 119.0), // SouthWest
-          const LatLng(26.0, 123.0), // NorthEast
-        );
+    final radarAsync = ref.watch(openDataRadarProvider(selectedRadar));
 
-        return OverlayImageLayer(
-          overlayImages: [
-            OverlayImage(
-              bounds: bounds,
-              opacity: opacity,
-              imageProvider: NetworkImage(url),
-            ),
-          ],
-        );
-      },
-      loading: () => const SizedBox.shrink(), // Or show a small indicator in corner
-      error: (_, __) => const SizedBox.shrink(),
+    return radarAsync.when(
+      data: (radar) => OverlayImageLayer(
+        overlayImages: [
+          OverlayImage(
+            bounds: radar.bounds,
+            opacity: opacity,
+            imageProvider: NetworkImage(radar.imageUrl),
+          ),
+        ],
+      ),
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }
