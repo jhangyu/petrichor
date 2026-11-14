@@ -3,26 +3,27 @@ import '../../core/location/location_service.dart';
 import '../../data/models/weather_models.dart';
 import '../../data/repositories/weather_repository.dart';
 
-/// 首頁狀態。載入完成後 [error] 非空代表失敗（資料欄位維持空），否則三組資料皆為真實來源。
+/// 首頁狀態。四組資料各自成敗（null＝尚未載入或定位失敗），單一資料集失敗不影響其他。
+/// [error] 僅用於整頁級錯誤（定位失敗）。
 class WeatherState {
   final LocationData? location;
-  final CurrentWeather? current;
-  final List<HourlyForecast> hourly;
-  final List<DailyForecast> weekly;
+  final Result<CurrentWeather>? current;
+  final Result<List<HourlyForecast>>? hourly;
+  final Result<List<DailyForecast>>? weekly;
 
   /// [今天, 明天] 的日出日沒
-  final List<SunDay> sun;
+  final Result<List<SunDay>>? sun;
   final bool isLoading;
 
-  /// 使用者可讀的中文錯誤訊息
+  /// 使用者可讀的中文錯誤訊息（整頁級）
   final String? error;
 
   const WeatherState({
     this.location,
     this.current,
-    this.hourly = const [],
-    this.weekly = const [],
-    this.sun = const [],
+    this.hourly,
+    this.weekly,
+    this.sun,
     this.isLoading = true,
     this.error,
   });
@@ -66,21 +67,12 @@ class WeatherNotifier extends Notifier<WeatherState> {
       repo.getSunTimes(location.city, ref.read(weatherClockProvider)()),
     ).wait;
 
-    final failures = [current, hourly, weekly, sun].whereType<Failure>();
-    if (failures.isNotEmpty) {
-      state = WeatherState(
-        location: location,
-        isLoading: false,
-        error: failures.map((f) => f.message).join('\n'),
-      );
-      return;
-    }
     state = WeatherState(
       location: location,
-      current: current.data,
-      hourly: hourly.data,
-      weekly: weekly.data,
-      sun: sun.data,
+      current: current,
+      hourly: hourly,
+      weekly: weekly,
+      sun: sun,
       isLoading: false,
     );
   }

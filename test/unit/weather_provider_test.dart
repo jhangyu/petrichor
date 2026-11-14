@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cwb_flutter/core/location/location_service.dart';
+import 'package:cwb_flutter/data/models/weather_models.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
 import 'package:cwb_flutter/features/weather/weather_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,10 +60,10 @@ void main() {
 
     expect(s.error, isNull);
     expect(s.location, _taipei);
-    expect(s.current!.temperature, isNotNull);
-    expect(s.hourly, hasLength(4));
-    expect(s.weekly.first.minTemperature, 21);
-    expect(s.sun, hasLength(2));
+    expect(s.current!.data.temperature, isNotNull);
+    expect(s.hourly!.data, hasLength(4));
+    expect(s.weekly!.data.first.minTemperature, 21);
+    expect(s.sun!.data, hasLength(2));
   });
 
   test('location failure maps to a Chinese message and never calls the API', () async {
@@ -77,16 +78,35 @@ void main() {
     expect(adapter.requests, isEmpty);
   });
 
-  test('a failing dataset surfaces its message instead of empty data', () async {
+  test('failing sun times keep observation and both forecasts', () async {
+    when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
+    adapter.serveFixture('O-A0003-001');
+    adapter.serveFixture('F-D0047-061');
+    adapter.serveFixture('F-D0047-091', _renameToZhongzheng, 'F-D0047-063');
+    adapter.serveStatus('A-B0062-001', 500);
+
+    final s = await _settled(container);
+
+    expect((s.sun as Failure).message, contains('A-B0062-001'));
+    expect(s.current!.isSuccess, isTrue);
+    expect(s.hourly!.data, hasLength(4));
+    expect(s.weekly!.isSuccess, isTrue);
+  });
+
+  test('one failing dataset keeps the other three and exposes its own message', () async {
     when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
     adapter.serveFixture('O-A0003-001');
     adapter.serveStatus('F-D0047-061', 500);
     adapter.serveFixture('F-D0047-091', _renameToZhongzheng, 'F-D0047-063');
+    adapter.serveFixture('A-B0062-001');
 
     final s = await _settled(container);
 
-    expect(s.error, contains('F-D0047-061'));
-    expect(s.hourly, isEmpty);
-    expect(s.current, isNull);
+    expect(s.error, isNull);
+    expect(s.hourly, isA<Failure<List<HourlyForecast>>>());
+    expect((s.hourly as Failure).message, contains('F-D0047-061'));
+    expect(s.current!.isSuccess, isTrue);
+    expect(s.weekly!.data.first.minTemperature, 21);
+    expect(s.sun!.data, hasLength(2));
   });
 }

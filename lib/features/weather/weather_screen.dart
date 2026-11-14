@@ -33,6 +33,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/glass_morphism.dart';
 import '../../data/models/weather_models.dart';
+import '../../data/repositories/weather_repository.dart';
 import '../radar/radar_screen.dart';
 import 'weather_provider.dart';
 
@@ -67,7 +68,12 @@ class WeatherScreen extends ConsumerWidget {
     if (state.error != null) {
       return _buildErrorState(context, state.error!);
     }
-    if (state.hourly.isEmpty) {
+    // 暫時轉接：UI 改版前整頁仍以逐時預報為準，改版後各卡片各自呈現成敗
+    final hourly = state.hourly!;
+    if (hourly is Failure<List<HourlyForecast>>) {
+      return _buildErrorState(context, hourly.message);
+    }
+    if (hourly.data.isEmpty) {
       return _buildEmptyState(context);
     }
     return _buildContent(context, state);
@@ -76,11 +82,15 @@ class WeatherScreen extends ConsumerWidget {
   Widget _buildContent(BuildContext context, WeatherState state) {
     final loc = state.location;
     // 暫時轉接：UI 改版前沿用 WeatherCondition 版面（缺值顯示以 0／'--' 代替僅限此轉接）
-    final forecast = state.hourly
+    final currentTemperature = state.current?.fold(
+      onSuccess: (c) => c.temperature,
+      onFailure: (_, _) => null,
+    );
+    final forecast = state.hourly!.data
         .map((h) => WeatherCondition(
               wx: h.weather ?? '--',
               pop: h.pop ?? 0,
-              t: (h.temperature ?? state.current?.temperature ?? 0).round(),
+              t: (h.temperature ?? currentTemperature ?? 0).round(),
               startTime: h.startTime.toIso8601String(),
               endTime: h.startTime.toIso8601String(),
             ))
