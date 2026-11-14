@@ -13,12 +13,14 @@ import '../../core/widgets/buttons.dart';
 import '../../core/widgets/choices.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
+import '../../data/models/place.dart';
 import '../../data/radar/radar_bounds.dart';
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart';
 import '../location/place_provider.dart';
 import 'radar_playback.dart';
 import 'radar_provider.dart';
+import 'radar_summary.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';
@@ -67,10 +69,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   int? _index;
   Timer? _timer;
 
-  /// Current place as a map point; null while loading, on error or without a place.
-  LatLng? get _me => switch (ref.watch(currentPlaceProvider)) {
-    AsyncData(value: PlaceSelected(:final place)) => LatLng(place.latitude, place.longitude),
+  /// Current place; null while loading, on error or without a place.
+  Place? get _place => switch (ref.watch(currentPlaceProvider)) {
+    AsyncData(value: PlaceSelected(:final place)) => place,
     _ => null,
+  };
+
+  /// Current place as a map point.
+  LatLng? get _me => switch (_place) {
+    final place? => LatLng(place.latitude, place.longitude),
+    null => null,
   };
 
   bool get _isComposite => _source == AppConstants.radarTaiwan;
@@ -205,11 +213,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       data: (frames) {
         final index = _currentIndex(frames.length);
         final frame = frames[index];
+        final summary = radarEchoSummary(frames.last.stats, place: _place);
         return _RadarView(
           subtitle: '觀測 ${formatTaiwanFull(frames.last.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新',
           sourceIds: const ['雷達回波：官網時間戳記圖', AppConstants.radarTaiwan],
           hero: _heroCard(
             eyebrow: '全台合成回波',
+            title: summary.title,
+            note: summary.meta,
             map: RadarMapView(
               me: _me,
               playing: _playing,
@@ -235,6 +246,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                   : '過去 ${windowFrames ~/ radarFramesPerHour} 小時 · ${frames.length} 張',
               frames: PlaybackFrames(
                 times: [for (final f in frames) f.time],
+                strongestDbz: [for (final f in frames) f.stats.hasSignificantEcho ? f.stats.strongestDbz : null],
                 index: index,
                 playing: _playing,
                 fps: _fps,
@@ -356,7 +368,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   // ---- cards ----
 
-  AppCard _heroCard({String? eyebrow, String? note, StatusBanner? banner, required RadarMapView map, Widget? legend}) {
+  AppCard _heroCard({
+    String? eyebrow,
+    String? title,
+    String? note,
+    StatusBanner? banner,
+    required RadarMapView map,
+    Widget? legend,
+  }) {
     final titles = eyebrow == null
         ? null
         : Column(
@@ -364,6 +383,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             spacing: AppSpace.s4,
             children: [
               Text(eyebrow, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+              if (title != null) Text(title, style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
               if (note != null) Text(note, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
             ],
           );

@@ -7,12 +7,13 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 import 'radar_bounds.dart';
+import 'radar_echo_stats.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
 
 /// Cache sub-directory; the suffix changes whenever processing output changes,
 /// so frames made by an older pipeline are never shown.
-const radarFrameCacheDirName = 'radar_cv1_3600_webp_v2';
+const radarFrameCacheDirName = 'radar_cv1_3600_webp_v3';
 
 /// Radar data could not be obtained or did not have the expected shape.
 class RadarDataException implements Exception {
@@ -45,8 +46,9 @@ class RadarFrameBand {
 class RadarFrame {
   final DateTime time;
   final List<RadarFrameBand> bands;
+  final RadarEchoStats stats;
 
-  const RadarFrame({required this.time, required this.bands});
+  const RadarFrame({required this.time, required this.bands, required this.stats});
 }
 
 /// Downloads the website frame window, processes new frames off the UI
@@ -78,6 +80,7 @@ class RadarFrameRepository {
     await dir.create(recursive: true);
     Directory frameDir(RadarFrameRef f) => Directory('${dir.path}/${f.stamp}');
     File bandFile(Directory d, int band) => File('${d.path}/$band.webp');
+    File statsFile(Directory d) => File('${d.path}/$_statsFileName');
 
     final keep = {for (final f in window) frameDir(f).path};
     await for (final entity in dir.list()) {
@@ -92,24 +95,33 @@ class RadarFrameRepository {
       final png = await _dio.get<List<int>>(f.url, options: Options(responseType: ResponseType.bytes));
       final body = png.data ??
           (throw RadarDataException(f.url, expected: 'PNG body', actual: 'HTTP ${png.statusCode} without body'));
-      final bands = await _processOffUiIsolate(Uint8List.fromList(body));
+      final processed = await _processOffUiIsolate(Uint8List.fromList(body));
       final tmp = Directory('${target.path}.tmp');
       if (await tmp.exists()) await tmp.delete(recursive: true);
       await tmp.create();
-      for (var i = 0; i < bands.length; i++) {
-        await bandFile(tmp, i).writeAsBytes(bands[i], flush: true);
+      for (var i = 0; i < processed.bands.length; i++) {
+        await bandFile(tmp, i).writeAsBytes(processed.bands[i], flush: true);
       }
+      await statsFile(tmp).writeAsBytes(processed.stats.toBytes(), flush: true);
       await tmp.rename(target.path);
     }
     return [
       for (final f in window)
-        RadarFrame(time: f.time, bands: [
-          for (var i = 0; i < websiteRadarBandBounds.length; i++)
-            RadarFrameBand(file: bandFile(frameDir(f), i), bounds: websiteRadarBandBounds[i]),
-        ]),
+        RadarFrame(
+          time: f.time,
+          bands: [
+            for (var i = 0; i < websiteRadarBandBounds.length; i++)
+              RadarFrameBand(file: bandFile(frameDir(f), i), bounds: websiteRadarBandBounds[i]),
+          ],
+          stats: RadarEchoStats.fromBytes(await statsFile(frameDir(f)).readAsBytes(), source: statsFile(frameDir(f)).path),
+        ),
     ];
   }
 }
 
+/// Per-frame echo statistics file (see [RadarEchoStats.toBytes]).
+const _statsFileName = 'echo_stats.bin';
+
 /// Top-level so the isolate closure captures only [png].
-Future<List<Uint8List>> _processOffUiIsolate(Uint8List png) => Isolate.run(() => processRadarFrame(png));
+Future<({List<Uint8List> bands, RadarEchoStats stats})> _processOffUiIsolate(Uint8List png) =>
+    Isolate.run(() => processRadarFrame(png));

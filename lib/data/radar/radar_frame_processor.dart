@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:image/image.dart' as img;
 
+import 'radar_echo_stats.dart';
+
 /// Post-processing of a website `CV1_3600_` frame: background → transparent,
 /// rows reprojected to Web Mercator, lossless WebP.
 ///
@@ -36,9 +38,11 @@ const websiteFrameDecorations = <PixelRect>[
   (left: 97, top: 223, right: 146, bottom: 718), // radar station status dots
 ];
 
-/// Latitude extent of the 3600 frame (see radar_bounds.dart).
+/// Extent of the 3600 frame (see radar_bounds.dart).
 const radarFrameSouth = 17.75;
 const radarFrameNorth = 29.25;
+const radarFrameWest = 115.0;
+const radarFrameEast = 126.5;
 
 /// The processed frame is stored as this many horizontal bands, each its own
 /// lossless WebP: the `image` VP8L encoder allocates ~28 bytes per pixel, so
@@ -56,19 +60,43 @@ List<(int, int)> radarBandRows({int bands = radarFrameBands}) {
 }
 
 /// Full pipeline for one downloaded frame: one lossless WebP per band (see
-/// [radarBandRows]). Pure and synchronous: run it in a background isolate.
-List<Uint8List> processRadarFrame(Uint8List png, {int bands = radarFrameBands}) {
+/// [radarBandRows]) and the frame's echo statistics. Pure and synchronous: run
+/// it in a background isolate.
+({List<Uint8List> bands, RadarEchoStats stats}) processRadarFrame(Uint8List png, {int bands = radarFrameBands}) {
   final src = img.decodePng(png) ?? (throw const FormatException('radar frame: expected PNG bytes, decode failed'));
   if (src.width != radarFrameSize || src.height != radarFrameSize) {
     throw FormatException('radar frame: expected ${radarFrameSize}x$radarFrameSize, got ${src.width}x${src.height}');
   }
-  return [
-    for (final (top, end) in radarBandRows(bands: bands))
-      img.encodeWebP(
-        keyRadarEcho(src, rowMap: radarFrameRowMap.sublist(top, end), decorations: websiteFrameDecorations),
-        lossless: true,
-      ),
-  ];
+  return (
+    bands: [
+      for (final (top, end) in radarBandRows(bands: bands))
+        img.encodeWebP(
+          keyRadarEcho(src, rowMap: radarFrameRowMap.sublist(top, end), decorations: websiteFrameDecorations),
+          lossless: true,
+        ),
+    ],
+    stats: radarEchoStats(src, decorations: websiteFrameDecorations),
+  );
+}
+
+/// One bit per 24-bit colour, set for the [radarEchoPalette] colours (2 MB):
+/// test `bits[c >> 5] & (1 << (c & 31))`.
+Uint32List radarEchoColourBits() {
+  final bits = Uint32List(1 << 19);
+  for (final c in radarEchoPalette) {
+    bits[c >> 5] |= 1 << (c & 31);
+  }
+  return bits;
+}
+
+/// Throws unless [src] is 8-bit RGB without palette (the website frame format).
+void requireRgb8(img.Image src) {
+  if (src.numChannels != 3 || src.format != img.Format.uint8 || src.hasPalette) {
+    throw FormatException(
+      'radar frame: expected 8-bit RGB without palette, got ${src.numChannels} channels, '
+      '${src.format}, palette=${src.hasPalette}',
+    );
+  }
 }
 
 /// Builds an RGBA image whose row `j` is source row `rowMap[j]` with every
@@ -76,16 +104,8 @@ List<Uint8List> processRadarFrame(Uint8List png, {int bands = radarFrameBands}) 
 /// rectangle given in source coordinates) set to transparent black. Echo pixels
 /// keep their RGB exactly, alpha 255.
 img.Image keyRadarEcho(img.Image src, {required List<int> rowMap, List<PixelRect> decorations = const []}) {
-  if (src.numChannels != 3 || src.format != img.Format.uint8 || src.hasPalette) {
-    throw FormatException(
-      'radar frame: expected 8-bit RGB without palette, got ${src.numChannels} channels, '
-      '${src.format}, palette=${src.hasPalette}',
-    );
-  }
-  final echoBits = Uint32List(1 << 19); // one bit per 24-bit colour
-  for (final c in radarEchoPalette) {
-    echoBits[c >> 5] |= 1 << (c & 31);
-  }
+  requireRgb8(src);
+  final echoBits = radarEchoColourBits();
   final width = src.width;
   final out = img.Image(width: width, height: rowMap.length, numChannels: 4);
   final s = src.toUint8List();

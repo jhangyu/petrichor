@@ -5,20 +5,17 @@ import 'package:latlong2/latlong.dart';
 
 import 'radar_frame_processor.dart';
 
-/// Extent of the website `CV1_3600_` frames. Same grid as open-data O-A0058-001
+/// Extent of the website `CV1_3600_` frames ([radarFrameWest] etc.). Same grid as open-data O-A0058-001
 /// (pixel-identical image; graticule lines verified at whole degrees), see
 /// docs/logs/2026-11-14/radar-impl-notes.md. The source image is linear in
 /// latitude; the processor reprojects rows to Web Mercator so these boxes can
 /// be used directly by flutter_map's `OverlayImage` (Mercator-linear stretch).
-const _frameWest = 115.0;
-const _frameEast = 126.5;
-
 /// Bounds of each processed band, top band first (see `radarBandRows`).
 final websiteRadarBandBounds = [
   for (final (top, end) in radarBandRows())
     LatLngBounds(
-      LatLng(_edgeLat(end), _frameWest),
-      LatLng(_edgeLat(top), _frameEast),
+      LatLng(_edgeLat(end), radarFrameWest),
+      LatLng(_edgeLat(top), radarFrameEast),
     ),
 ];
 

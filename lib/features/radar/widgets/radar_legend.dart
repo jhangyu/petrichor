@@ -13,6 +13,20 @@ const _steps = [
   (AppPalette.dbz60, '60+', '冰雹'),
 ];
 
+/// Colour name of each legend step, as the hero says it (「最強約 45 dBZ（橙）」).
+const _colourNames = ['淺藍', '藍', '綠', '黃', '橙', '紅', '紫'];
+
+/// Each legend step spans this many dBZ.
+const _dbzPerStep = 10;
+
+int _stepOf(int dbz) => (dbz ~/ _dbzPerStep).clamp(0, _steps.length - 1);
+
+/// Legend colour of the step containing [dbz].
+Color radarDbzColour(int dbz) => _steps[_stepOf(dbz)].$1;
+
+/// Legend colour name of the step containing [dbz].
+String radarDbzColourName(int dbz) => _colourNames[_stepOf(dbz)];
+
 /// `.legend`: 回波強度 dBZ bar with numbers; [showWords] adds the intensity
 /// words under each number (full legend on the default frame).
 class RadarLegend extends StatelessWidget {

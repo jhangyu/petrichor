@@ -6,11 +6,13 @@ import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
 import '../radar_playback.dart';
+import 'radar_legend.dart';
 
 /// What the playback card shows once frames exist.
 class PlaybackFrames {
   const PlaybackFrames({
     required this.times,
+    required this.strongestDbz,
     required this.index,
     required this.playing,
     required this.fps,
@@ -25,6 +27,10 @@ class PlaybackFrames {
 
   /// Observation time of every frame, oldest first.
   final List<DateTime> times;
+
+  /// Strongest echo of every frame (timeline colour bar); null = no
+  /// significant echo.
+  final List<int?> strongestDbz;
   final int index;
   final bool playing;
   final int fps;
@@ -65,7 +71,7 @@ class PlaybackCard extends StatelessWidget {
               _Timeline(f),
               _Settings(f),
               Text(
-                '影格為中央氣象署網站帶時間戳的雷達圖，每 10 分鐘一張，最多可回看 24 小時（144 張）。',
+                '影格為中央氣象署網站帶時間戳的雷達圖，每 10 分鐘一張，最多可回看 24 小時（144 張）。每格下方色條為該影格最強回波。',
                 style: AppType.caption1.copyWith(color: AppPalette.fg3),
               ),
             ],
@@ -218,6 +224,7 @@ class _TimelineState extends State<_Timeline> {
             _TimelineFrame(
               key: i == f.index ? _currentKey : null,
               label: formatTaiwanClock(f.times[i]),
+              strongestDbz: f.strongestDbz[i],
               current: i == f.index,
               onTap: () => f.onSeek(i),
             ),
@@ -228,9 +235,16 @@ class _TimelineState extends State<_Timeline> {
 }
 
 class _TimelineFrame extends StatelessWidget {
-  const _TimelineFrame({super.key, required this.label, required this.current, required this.onTap});
+  const _TimelineFrame({
+    super.key,
+    required this.label,
+    required this.strongestDbz,
+    required this.current,
+    required this.onTap,
+  });
 
   final String label;
+  final int? strongestDbz;
   final bool current;
   final VoidCallback onTap;
 
@@ -249,13 +263,27 @@ class _TimelineFrame extends StatelessWidget {
           constraints: const BoxConstraints(minWidth: AppSize.icon48, minHeight: AppSize.touch),
           padding: const EdgeInsets.all(AppSpace.s8),
           alignment: Alignment.center,
-          child: Text(
-            label,
-            style: AppType.caption1.copyWith(
-              color: current ? AppPalette.brandFgStrong : AppPalette.fg2,
-              fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-              fontFeatures: AppType.tabular,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpace.s4,
+            children: [
+              Text(
+                label,
+                style: AppType.caption1.copyWith(
+                  color: current ? AppPalette.brandFgStrong : AppPalette.fg2,
+                  fontWeight: current ? FontWeight.w600 : FontWeight.w400,
+                  fontFeatures: AppType.tabular,
+                ),
+              ),
+              Container(
+                width: AppSize.icon24,
+                height: AppSize.sliderTrack,
+                decoration: BoxDecoration(
+                  color: strongestDbz == null ? AppPalette.stroke2 : radarDbzColour(strongestDbz!),
+                  borderRadius: BorderRadius.circular(AppRadius.circular),
+                ),
+              ),
+            ],
           ),
         ),
       ),
