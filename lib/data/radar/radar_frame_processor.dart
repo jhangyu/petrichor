@@ -37,22 +37,38 @@ const websiteFrameDecorations = <PixelRect>[
 ];
 
 /// Latitude extent of the 3600 frame (see radar_bounds.dart).
-const _frameSouth = 17.75;
-const _frameNorth = 29.25;
+const radarFrameSouth = 17.75;
+const radarFrameNorth = 29.25;
 
-/// Full pipeline for one downloaded frame. Pure and synchronous: run it in a
-/// background isolate (`Isolate.run`).
-Uint8List processRadarFrame(Uint8List png) {
+/// The processed frame is stored as this many horizontal bands, each its own
+/// lossless WebP: the `image` VP8L encoder allocates ~28 bytes per pixel, so
+/// one 3600x3748 encode peaks near 375 MB; bands bound that by the band size.
+const radarFrameBands = 8;
+
+/// Mercator row map of the 3600 frame (3748 output rows).
+final radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: radarFrameSouth, north: radarFrameNorth);
+
+/// Output-row ranges [start, end) of each band, top band first.
+List<(int, int)> radarBandRows({int bands = radarFrameBands}) {
+  final height = radarFrameRowMap.length;
+  final step = (height / bands).ceil();
+  return [for (var top = 0; top < height; top += step) (top, min(top + step, height))];
+}
+
+/// Full pipeline for one downloaded frame: one lossless WebP per band (see
+/// [radarBandRows]). Pure and synchronous: run it in a background isolate.
+List<Uint8List> processRadarFrame(Uint8List png, {int bands = radarFrameBands}) {
   final src = img.decodePng(png) ?? (throw const FormatException('radar frame: expected PNG bytes, decode failed'));
   if (src.width != radarFrameSize || src.height != radarFrameSize) {
     throw FormatException('radar frame: expected ${radarFrameSize}x$radarFrameSize, got ${src.width}x${src.height}');
   }
-  final keyed = keyRadarEcho(
-    src,
-    rowMap: mercatorRowMap(srcHeight: src.height, south: _frameSouth, north: _frameNorth),
-    decorations: websiteFrameDecorations,
-  );
-  return img.encodeWebP(keyed, lossless: true);
+  return [
+    for (final (top, end) in radarBandRows(bands: bands))
+      img.encodeWebP(
+        keyRadarEcho(src, rowMap: radarFrameRowMap.sublist(top, end), decorations: websiteFrameDecorations),
+        lossless: true,
+      ),
+  ];
 }
 
 /// Builds an RGBA image whose row `j` is source row `rowMap[j]` with every
@@ -66,9 +82,9 @@ img.Image keyRadarEcho(img.Image src, {required List<int> rowMap, List<PixelRect
       '${src.format}, palette=${src.hasPalette}',
     );
   }
-  final isEcho = Uint8List(1 << 24);
+  final echoBits = Uint32List(1 << 19); // one bit per 24-bit colour
   for (final c in radarEchoPalette) {
-    isEcho[c] = 1;
+    echoBits[c >> 5] |= 1 << (c & 31);
   }
   final width = src.width;
   final out = img.Image(width: width, height: rowMap.length, numChannels: 4);
@@ -89,7 +105,8 @@ img.Image keyRadarEcho(img.Image src, {required List<int> rowMap, List<PixelRect
     for (var x = 0; x < width; x++) {
       final si = sRow + x * 3;
       final r = s[si], g = s[si + 1], b = s[si + 2];
-      if (isEcho[(r << 16) | (g << 8) | b] == 1) {
+      final c = (r << 16) | (g << 8) | b;
+      if (echoBits[c >> 5] & (1 << (c & 31)) != 0) {
         final di = dRow + x * 4;
         d[di] = r;
         d[di + 1] = g;
@@ -111,13 +128,21 @@ img.Image keyRadarEcho(img.Image src, {required List<int> rowMap, List<PixelRect
 /// that no source row is dropped (stretch ≥ 1 row at the southern edge, where
 /// Mercator stretches least); northern rows are duplicated.
 List<int> mercatorRowMap({required int srcHeight, required double south, required double north}) {
-  double toRad(double deg) => deg * pi / 180;
-  double mercY(double lat) => log(tan(pi / 4 + toRad(lat) / 2));
-  double latOf(double y) => (2 * atan(exp(y)) - pi / 2) * 180 / pi;
-  final yS = mercY(south), yN = mercY(north);
-  final outHeight = (srcHeight * (yN - yS) * cos(toRad(south)) / toRad(north - south)).ceil();
+  final yS = _mercY(south), yN = _mercY(north);
+  final outHeight = (srcHeight * (yN - yS) * cos(_rad(south)) / _rad(north - south)).ceil();
   return List<int>.generate(outHeight, (j) {
-    final lat = latOf(yN - (j + 0.5) * (yN - yS) / outHeight);
+    final lat = _latOf(yN - (j + 0.5) * (yN - yS) / outHeight);
     return ((north - lat) / (north - south) * srcHeight).floor().clamp(0, srcHeight - 1);
   });
 }
+
+/// Latitude of the edge above output row [row] (0..[height]) of a Mercator
+/// image spanning [south]..[north].
+double mercatorRowEdgeLat(int row, {required int height, required double south, required double north}) {
+  final yS = _mercY(south), yN = _mercY(north);
+  return _latOf(yN - row * (yN - yS) / height);
+}
+
+double _rad(double deg) => deg * pi / 180;
+double _mercY(double lat) => log(tan(pi / 4 + _rad(lat) / 2));
+double _latOf(double y) => (2 * atan(exp(y)) - pi / 2) * 180 / pi;

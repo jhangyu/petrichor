@@ -34,25 +34,27 @@ class RadarWindowFrames extends Notifier<int> {
 
 final radarWindowFramesProvider = NotifierProvider<RadarWindowFrames, int>(RadarWindowFrames.new);
 
-/// Website radar loop (oldest first), extent `websiteRadarBounds`, credit
+/// Website radar loop (oldest first; each frame = bands with bounds), credit
 /// [radarSourceCredit]. Refreshes when first watched (screen open) or when the
 /// window changes; a user refresh is `ref.invalidate(radarFramesProvider)`.
 /// No timer/polling.
 final radarFramesProvider = FutureProvider.autoDispose<List<RadarFrame>>((ref) =>
     ref.watch(radarFrameRepositoryProvider).refresh(windowFrames: ref.watch(radarWindowFramesProvider)));
 
-/// Latest open-data radar image with its geographic bounds from the response.
+/// Latest open-data station radar image (O-A0084-00x) with bounds from the response.
 final openDataRadarProvider = FutureProvider.autoDispose.family<OpenDataRadarImage, String>((ref, datasetId) async {
   if (!AppConstants.hasApiKey) {
-    throw StateError('$datasetId: expected CWA_API_KEY via --dart-define, got none');
+    throw RadarDataException(datasetId, expected: 'CWA_API_KEY via --dart-define', actual: 'none');
   }
   final response = await ref.watch(fileApiDioProvider).get<String>(
         AppConstants.radarApiUrl(datasetId, AppConstants.cwaApiKey),
         options: Options(responseType: ResponseType.plain),
       );
-  final body = jsonDecode(response.data ?? 'null');
+  final text = response.data ??
+      (throw RadarDataException(datasetId, expected: 'JSON body', actual: 'HTTP ${response.statusCode} without body'));
+  final body = jsonDecode(text);
   if (body is! Map<String, dynamic>) {
-    throw FormatException('$datasetId: expected JSON object, got ${body.runtimeType}');
+    throw RadarDataException(datasetId, expected: 'JSON object', actual: body.runtimeType);
   }
   return OpenDataRadarImage.fromJson(datasetId, body);
 });

@@ -25,12 +25,14 @@ void main() {
     ]);
   });
 
-  test('default window = 24 frames (4 h) 17:00..20:50; max 144 = whole list', () {
+  test('default window = 24 frames (4 h) 17:00..20:50; 1 h = 6, max 144 (24 h) = whole list', () {
     final w = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: radarDefaultWindowFrames);
     expect((w.length, w.first.stamp, w.last.stamp), (24, '202611141700', '202611142050'));
     final all = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: radarMaxWindowFrames);
     expect((all.length, all.first.stamp), (144, '202611132100'));
     expect(() => selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14), windowFrames: 145), throwsRangeError);
+    final hour = selectRadarFrameWindow(frames, now: DateTime.utc(2026, 11, 14, 12, 55), windowFrames: 6);
+    expect(stamps(hour), ['202611142000', '202611142010', '202611142020', '202611142030', '202611142040', '202611142050']);
   });
 
   test('window ends at the newest frame even when the clock is past it; stale list gives nothing', () {

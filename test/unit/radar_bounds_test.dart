@@ -2,19 +2,33 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:cwb_flutter/data/radar/radar_bounds.dart';
+import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 OpenDataRadarImage _load(String id) => OpenDataRadarImage.fromJson(
     id, jsonDecode(File('test/fixtures/cwa/$id.json').readAsStringSync()) as Map<String, dynamic>);
 
 void main() {
-  test('composite bounds come from LongitudeRange/LatitudeRange', () {
-    final wide = _load('O-A0058-001');
-    expect([wide.bounds.south, wide.bounds.west, wide.bounds.north, wide.bounds.east], [17.75, 115.0, 29.25, 126.5]);
-    expect(wide.imageUrl, 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-001.png');
-    expect(wide.time, DateTime.utc(2026, 11, 14, 12, 30));
-    final near = _load('O-A0058-003');
-    expect([near.bounds.south, near.bounds.west, near.bounds.north, near.bounds.east], [20.5, 118.0, 26.5, 124.0]);
+  test('website frame bands tile 17.75..29.25 N, 115..126.5 E without gaps', () {
+    final b = websiteRadarBandBounds;
+    expect(b, hasLength(radarFrameBands));
+    expect(b.first.north, closeTo(29.25, 1e-9));
+    expect(b.last.south, closeTo(17.75, 1e-9));
+    for (var i = 0; i < b.length; i++) {
+      expect((b[i].west, b[i].east), (115.0, 126.5));
+      if (i > 0) expect(b[i].north, b[i - 1].south, reason: 'band $i');
+    }
+    final rows = radarBandRows();
+    expect((rows.first.$1, rows.last.$2), (0, radarFrameRowMap.length));
+    for (var i = 1; i < rows.length; i++) {
+      expect(rows[i].$1, rows[i - 1].$2);
+    }
+  });
+
+  test('station image response: url and time parsed', () {
+    final s = _load('O-A0084-001');
+    expect(s.imageUrl, 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0084-001.png');
+    expect(s.time.toUtc(), DateTime.utc(2026, 11, 14, 12, 40));
   });
 
   test('station bounds are centre ± 150 km from the response', () {

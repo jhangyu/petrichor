@@ -140,14 +140,3 @@ sealed class WeatherCondition with _$WeatherCondition {
       _$WeatherConditionFromJson(json);
 }
 
-/// 雷達圖 URL
-@freezed
-sealed class RadarImage with _$RadarImage {
-  const factory RadarImage({
-    required String url,
-    required String time,
-  }) = _RadarImage;
-
-  factory RadarImage.fromJson(Map<String, dynamic> json) =>
-      _$RadarImageFromJson(json);
-}

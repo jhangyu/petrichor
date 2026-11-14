@@ -23,9 +23,3 @@ Map<String, dynamic> _$WeatherConditionToJson(_WeatherCondition instance) =>
       'startTime': instance.startTime,
       'endTime': instance.endTime,
     };
-
-_RadarImage _$RadarImageFromJson(Map<String, dynamic> json) =>
-    _RadarImage(url: json['url'] as String, time: json['time'] as String);
-
-Map<String, dynamic> _$RadarImageToJson(_RadarImage instance) =>
-    <String, dynamic>{'url': instance.url, 'time': instance.time};

@@ -158,6 +158,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   Widget _buildRadarOverlay() {
+    if (selectedRadar == AppConstants.radarTaiwan) return _buildCompositeOverlay();
     final radarAsync = ref.watch(openDataRadarProvider(selectedRadar));
 
     return radarAsync.when(
@@ -173,5 +174,24 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       loading: () => const SizedBox.shrink(),
       error: (_, _) => const SizedBox.shrink(),
     );
+  }
+
+  /// 全台: newest processed website frame (same image as O-A0058-001, reprojected).
+  Widget _buildCompositeOverlay() {
+    final decodeWidth = (MediaQuery.sizeOf(context).width * MediaQuery.devicePixelRatioOf(context)).ceil();
+    return ref.watch(radarFramesProvider).when(
+          data: (frames) => OverlayImageLayer(
+            overlayImages: [
+              for (final band in frames.last.bands)
+                OverlayImage(
+                  bounds: band.bounds,
+                  opacity: opacity,
+                  imageProvider: band.imageProvider(decodeWidth: decodeWidth),
+                ),
+            ],
+          ),
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+        );
   }
 }

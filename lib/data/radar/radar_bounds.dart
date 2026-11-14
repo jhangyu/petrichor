@@ -3,18 +3,34 @@ import 'dart:math';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'radar_frame_processor.dart';
+
 /// Extent of the website `CV1_3600_` frames. Same grid as open-data O-A0058-001
 /// (pixel-identical image; graticule lines verified at whole degrees), see
 /// docs/logs/2026-11-14/radar-impl-notes.md. The source image is linear in
-/// latitude; the processor reprojects rows to Web Mercator so this box can be
-/// used directly by flutter_map's `OverlayImage`.
-final websiteRadarBounds = LatLngBounds(const LatLng(17.75, 115.0), const LatLng(29.25, 126.5));
+/// latitude; the processor reprojects rows to Web Mercator so these boxes can
+/// be used directly by flutter_map's `OverlayImage` (Mercator-linear stretch).
+const _frameWest = 115.0;
+const _frameEast = 126.5;
+
+/// Bounds of each processed band, top band first (see `radarBandRows`).
+final websiteRadarBandBounds = [
+  for (final (top, end) in radarBandRows())
+    LatLngBounds(
+      LatLng(_edgeLat(end), _frameWest),
+      LatLng(_edgeLat(top), _frameEast),
+    ),
+];
+
+double _edgeLat(int row) => mercatorRowEdgeLat(row,
+    height: radarFrameRowMap.length, south: radarFrameSouth, north: radarFrameNorth);
 
 const _earthRadiusKm = 6371.0088;
-final _rangePattern = RegExp(r'^\s*(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)\s*$');
 final _radiusKmPattern = RegExp(r'(\d+(?:\.\d+)?)\s*公里');
 
-/// One open-data radar image (O-A0058-00x composite or O-A0084-00x station).
+/// One open-data station radar image (O-A0084-001..003). The composite
+/// (全台) layer is not taken from open data: O-A0058-001 is pixel-identical to
+/// the newest website frame, which is shown reprojected instead.
 class OpenDataRadarImage {
   final String imageUrl;
   final LatLngBounds bounds;
@@ -22,11 +38,8 @@ class OpenDataRadarImage {
 
   const OpenDataRadarImage({required this.imageUrl, required this.bounds, required this.time});
 
-  /// Parses a `fileapi/v1/opendataapi/<id>?format=JSON` response.
-  ///
-  /// Composite products state `LongitudeRange`/`LatitudeRange`; station products
-  /// state `StationLongitude`/`StationLatitude` and a radius such as
-  /// 「距雷達150公里」, from which the corners are computed.
+  /// Parses a `fileapi/v1/opendataapi/<id>?format=JSON` response: corners from
+  /// `StationLongitude`/`StationLatitude` and a radius such as 「距雷達150公里」.
   factory OpenDataRadarImage.fromJson(String datasetId, Map<String, dynamic> json) {
     Never fail(String what, Object? actual) =>
         throw FormatException('$datasetId: expected $what, got ${actual ?? 'nothing'}');
@@ -37,34 +50,27 @@ class OpenDataRadarImage {
     final time = DateTime.tryParse('${dataset['DateTime']}') ?? fail('DateTime (ISO 8601)', dataset['DateTime']);
     final params = (dataset['datasetInfo'] as Map?)?['parameterSet'] as Map? ??
         fail('datasetInfo.parameterSet', dataset['datasetInfo']);
-
-    LatLngBounds bounds;
-    if (params.containsKey('LongitudeRange')) {
-      (double, double) range(String key) {
-        final m = _rangePattern.firstMatch('${params[key]}') ?? fail('$key as "<from>-<to>"', params[key]);
-        return (double.parse(m.group(1)!), double.parse(m.group(2)!));
-      }
-
-      final (west, east) = range('LongitudeRange');
-      final (south, north) = range('LatitudeRange');
-      bounds = LatLngBounds(LatLng(south, west), LatLng(north, east));
-    } else {
-      double number(String key) => double.tryParse('${params[key]}') ?? fail('numeric $key', params[key]);
-      final radiusText = (params['parameter'] as Map?)?['parameterValue'];
-      final radius = _radiusKmPattern.firstMatch('$radiusText') ?? fail('parameter.parameterValue like 「距雷達150公里」', radiusText);
-      bounds = stationRadarBounds(
+    double number(String key) => double.tryParse('${params[key]}') ?? fail('numeric $key', params[key]);
+    final radiusText = (params['parameter'] as Map?)?['parameterValue'];
+    final radius = _radiusKmPattern.firstMatch('$radiusText') ??
+        fail('parameter.parameterValue like 「距雷達150公里」', radiusText);
+    return OpenDataRadarImage(
+      imageUrl: url,
+      time: time,
+      bounds: stationRadarBounds(
         LatLng(number('StationLatitude'), number('StationLongitude')),
         radiusKm: double.parse(radius.group(1)!),
-      );
-    }
-    return OpenDataRadarImage(imageUrl: url, bounds: bounds, time: time);
+      ),
+    );
   }
 }
 
 /// Square around a station radar whose half-side is [radiusKm] (the image's
-/// range ring touches the image edges). ponytail: equirectangular offsets; the
-/// station image projection is not stated by CWA, so edge placement can be off
-/// by about 1 km — reproject per pixel if a projection spec appears.
+/// range ring touches the image edges). ponytail: equirectangular offsets and
+/// no row reprojection: CWA does not state the station image projection, and
+/// the Mercator-vs-linear difference over ±150 km is ≤ 0.83 km (10 px of 3600),
+/// so a reprojection could not be shown to be more correct. Revisit if CWA
+/// publishes the projection.
 LatLngBounds stationRadarBounds(LatLng centre, {required double radiusKm}) {
   final dLat = radiusKm / _earthRadiusKm * 180 / pi;
   final dLon = dLat / cos(centre.latitude * pi / 180);

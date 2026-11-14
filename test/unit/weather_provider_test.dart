@@ -42,7 +42,7 @@ void main() {
     adapter = FakeCwaAdapter();
     container = ProviderContainer(overrides: [
       locationServiceProvider.overrideWithValue(location),
-      weatherRepositoryProvider.overrideWithValue(WeatherRepository(adapter.dio(), adapter.dio())),
+      weatherRepositoryProvider.overrideWithValue(WeatherRepository(adapter.dio())),
     ]);
     addTearDown(container.dispose);
   });

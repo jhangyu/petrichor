@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -76,7 +75,7 @@ final class Failure<T> extends Result<T> {
 
 /// WeatherRepository 單例 Provider
 final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
-  return WeatherRepository(ref.watch(dioProvider), ref.watch(fileApiDioProvider));
+  return WeatherRepository(ref.watch(dioProvider));
 });
 
 // ============================================================================
@@ -89,9 +88,8 @@ final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
 /// 所有 API 呼叫皆回傳 [Result] 型別，確保錯誤可被 caller 處理。
 class WeatherRepository {
   final Dio _dio;
-  final Dio _fileApiDio;
 
-  WeatherRepository(this._dio, this._fileApiDio);
+  WeatherRepository(this._dio);
 
   // ==========================================================================
   // 即時觀測
@@ -152,56 +150,6 @@ class WeatherRepository {
       query: {'LocationName': township},
       parse: (body) => parse(body, township),
     );
-  }
-
-  // ==========================================================================
-  // 雷達圖
-  // ==========================================================================
-
-  /// 取得雷達圖 URL
-  ///
-  /// 使用 fileapi/v1/opendataapi 端點，解析 JSON 中的 ProductURL。
-  /// [datasetId] 雷達資料集 ID，預設為台灣雷達站（O-A0058-001）
-  Future<Result<String>> getRadarImageUrl({String? datasetId}) async {
-    if (!AppConstants.hasApiKey) {
-      return const Failure('API Key 未設定，請使用 --dart-define=CWA_API_KEY=your_key');
-    }
-
-    final dataset = datasetId ?? AppConstants.radarTaiwan;
-    final url = AppConstants.radarApiUrl(dataset, AppConstants.cwaApiKey);
-
-    try {
-      final response = await _fileApiDio.get(
-        url,
-        options: Options(
-          followRedirects: true,
-          validateStatus: (status) => status != null && status < 500,
-        ),
-      );
-
-      // 處理 response.data 可能為 String 或 Map 的情況
-      Map<String, dynamic> data;
-      if (response.data is String) {
-        // 如果是字串，手動解析 JSON
-        data = Map<String, dynamic>.from(
-          const JsonDecoder().convert(response.data as String) as Map,
-        );
-      } else {
-        data = response.data as Map<String, dynamic>;
-      }
-
-      final productUrl = data['cwaopendata']?['dataset']?['resource']?['ProductURL'] as String?;
-
-      if (productUrl == null || productUrl.isEmpty) {
-        return const Failure('無法解析雷達圖 URL，API 回應缺少 ProductURL 欄位');
-      }
-
-      return Success(productUrl);
-    } on DioException catch (e) {
-      return _handleDioError(e);
-    } catch (e) {
-      return Failure('取得雷達圖失敗：$e');
-    }
   }
 
   // ==========================================================================
