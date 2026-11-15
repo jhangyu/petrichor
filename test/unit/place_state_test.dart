@@ -1,4 +1,5 @@
 import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:petrichor/features/location/place_provider.dart';
@@ -106,7 +107,7 @@ void main() {
 
     await expectLater(
       newContainer().read(savedPlacesProvider.future),
-      throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', PlaceStore.savedKey)),
+      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', PlaceStore.savedKey)),
     );
   });
 
@@ -139,7 +140,7 @@ void main() {
 
     await expectLater(
       container.read(currentPlaceProvider.future),
-      throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', 'place.gps')),
+      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', 'place.gps')),
     );
     await container.read(currentPlaceProvider.notifier).select(_banqiao);
 
@@ -189,7 +190,7 @@ void main() {
     final container = newContainer();
     await expectLater(
       container.read(savedPlacesProvider.future),
-      throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', 'place.saved')),
+      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', 'place.saved')),
     );
 
     await container.read(savedPlacesProvider.notifier).clear();

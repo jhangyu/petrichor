@@ -90,22 +90,12 @@ String locationFailureMessage(LocationFailure failure) {
 // 本機儲存
 // ============================================================================
 
-/// 本機儲存的地點資料損毀（[key] 為受影響的儲存鍵）
-class StoredPlaceException implements Exception {
-  final String key;
-  final String message;
-  const StoredPlaceException(this.key, this.message);
-
-  @override
-  String toString() => 'StoredPlaceException($key): $message';
-}
-
 final placeStoreProvider = FutureProvider<PlaceStore>(
   (ref) async => PlaceStore(await ref.watch(sharedPreferencesProvider.future)),
   retry: noRetry,
 );
 
-/// 已儲存地點與手動選定地點的本機存取。讀取時一次解析成 [Place]，損毀即丟 [StoredPlaceException]。
+/// 已儲存地點與手動選定地點的本機存取。讀取時一次解析成 [Place]，損毀即丟 [StoredSettingException]。
 class PlaceStore {
   static const currentKey = 'place.current';
   static const savedKey = 'place.saved';
@@ -116,14 +106,14 @@ class PlaceStore {
   final SharedPreferences _prefs;
   PlaceStore(this._prefs);
 
-  /// null＝尚未選過；非 bool＝損毀，丟 [StoredPlaceException]。
+  /// null＝尚未選過；非 bool＝損毀，丟 [StoredSettingException]。
   bool? loadUseGps() {
     final Object? raw = _prefs.get(gpsKey);
     if (raw == null || raw is bool) return raw as bool?;
-    throw StoredPlaceException(gpsKey, '儲存資料損毀：期望 true/false，實際「$raw」');
+    throw StoredSettingException(gpsKey, '儲存資料損毀：期望 true/false，實際「$raw」');
   }
 
-  Future<void> saveUseGps(bool value) => _write(gpsKey, _prefs.setBool(gpsKey, value));
+  Future<void> saveUseGps(bool value) => writeChecked(gpsKey, _prefs.setBool(gpsKey, value));
 
   /// 手動選定的地點；null＝使用 GPS
   Place? loadCurrent() {
@@ -132,8 +122,8 @@ class PlaceStore {
   }
 
   Future<void> saveCurrent(Place? place) => place == null
-      ? _write(currentKey, _prefs.remove(currentKey))
-      : _write(currentKey, _prefs.setString(currentKey, jsonEncode(place.toJson())));
+      ? writeChecked(currentKey, _prefs.remove(currentKey))
+      : writeChecked(currentKey, _prefs.setString(currentKey, jsonEncode(place.toJson())));
 
   List<Place> loadSaved() {
     final raw = _prefs.getString(savedKey);
@@ -145,18 +135,14 @@ class PlaceStore {
   }
 
   Future<void> saveSaved(List<Place> places) =>
-      _write(savedKey, _prefs.setString(savedKey, jsonEncode([for (final p in places) p.toJson()])));
+      writeChecked(savedKey, _prefs.setString(savedKey, jsonEncode([for (final p in places) p.toJson()])));
 
   T _decode<T>(String key, String raw, T Function(Object? json) parse) {
     try {
       return parse(jsonDecode(raw));
     } on FormatException catch (e) {
-      throw StoredPlaceException(key, '儲存資料損毀：${e.message}；實際內容「$raw」');
+      throw StoredSettingException(key, '儲存資料損毀：${e.message}；實際內容「$raw」');
     }
-  }
-
-  Future<void> _write(String key, Future<bool> write) async {
-    if (!await write) throw StoredPlaceException(key, '寫入失敗：期望 true，實際 false');
   }
 }
 
@@ -166,7 +152,7 @@ class PlaceStore {
 
 /// 目前地點：有手動選定地點就用它；自動定位開啟就定位；已關閉＝[NoPlace.autoLocateOff]；從未選過＝[NoPlace.firstRun]（皆不請求權限）。
 /// GPS 失敗＝[NoPlace]（不給預設地點）。
-/// 儲存資料損毀＝AsyncError(StoredPlaceException)；呼叫 [CurrentPlaceNotifier.select]／useGps／stopAutoLocate 會覆寫並恢復。
+/// 儲存資料損毀＝AsyncError(StoredSettingException)；呼叫 [CurrentPlaceNotifier.select]／useGps／stopAutoLocate 會覆寫並恢復。
 final currentPlaceProvider = AsyncNotifierProvider<CurrentPlaceNotifier, CurrentPlace>(
   CurrentPlaceNotifier.new,
   retry: noRetry,
