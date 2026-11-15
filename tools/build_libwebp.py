@@ -221,35 +221,23 @@ def compile_all(jobs: list[list[str]], env) -> None:
             future.result()
 
 
-def build(args) -> Path:
-    if args.os == "ios" and args.ios_sdk is None:
-        raise BuildError("--os ios needs --ios-sdk iphoneos|iphonesimulator")
-    if args.os in ("macos", "ios", "android") and args.min_os_version is None:
-        raise BuildError(f"--os {args.os} needs --min-os-version")
-    out_dir = Path(args.out_dir).resolve()
-    cache_dir = Path(args.cache_dir).resolve() if args.cache_dir else out_dir / "cache"
-    libwebp = extract(fetch_tarball(cache_dir), cache_dir)
-    obj_dir = out_dir / "obj"
-    obj_dir.mkdir(parents=True, exist_ok=True)
-    library = out_dir / library_name(args.os)
-    sources = source_files(libwebp)
-    cc = resolve_compiler(args)
-    defines = ["NDEBUG", "WEBP_EXTERN=extern"]
-    includes = [libwebp, libwebp / "src", SHIM_DIR]
+def compile_msvc(args, cc: str, libwebp: Path, sources: list[Path], obj_dir: Path, library: Path,
+                 defines: list[str], includes: list[Path]) -> Path:
+    if not args.vcvars:
+        raise BuildError("--os windows needs --vcvars (Visual Studio vcvars script)")
+    env = vcvars_env(args.vcvars)
+    # /std:c11 for _Thread_local and _Alignof in radar_webp.c.
+    base = ["/nologo", "/std:c11", "/O2", "/c"] + [f"/D{d}" for d in defines] + [f"/I{i}" for i in includes]
+    objs = [obj_dir / f"{object_name(s)}.obj" for s in sources]
+    compile_all([[cc, *base, *(f"/FI{h}" for h in allocator_include(libwebp, s)), str(s), f"/Fo{o}"]
+                 for s, o in zip(sources, objs)], env)
+    run([cc, "/nologo", "/LD", *map(str, objs), f"/Fe{library}",
+         "/link", f"/IMPLIB:{obj_dir / (LIBRARY_BASENAME + '.lib')}"], env)
+    return library
 
-    if args.os == "windows":
-        if not args.vcvars:
-            raise BuildError("--os windows needs --vcvars (Visual Studio vcvars script)")
-        env = vcvars_env(args.vcvars)
-        # /std:c11 for _Thread_local and _Alignof in radar_webp.c.
-        base = ["/nologo", "/std:c11", "/O2", "/c"] + [f"/D{d}" for d in defines] + [f"/I{i}" for i in includes]
-        objs = [obj_dir / f"{object_name(s)}.obj" for s in sources]
-        compile_all([[cc, *base, *(f"/FI{h}" for h in allocator_include(libwebp, s)), str(s), f"/Fo{o}"]
-                     for s, o in zip(sources, objs)], env)
-        run([cc, "/nologo", "/LD", *map(str, objs), f"/Fe{library}",
-             "/link", f"/IMPLIB:{obj_dir / (LIBRARY_BASENAME + '.lib')}"], env)
-        return library
 
+def compile_gnu(args, cc: str, libwebp: Path, sources: list[Path], obj_dir: Path, library: Path,
+                defines: list[str], includes: list[Path]) -> Path:
     target = gnu_target_flags(args)
     base = [*target, "-O2", "-fPIC", "-fvisibility=hidden", "-c"]
     base += [f"-D{d}" for d in defines] + [f"-I{i}" for i in includes]
@@ -265,6 +253,25 @@ def build(args) -> Path:
         link += ["-lm", "-Wl,--no-undefined", "-Wl,--exclude-libs,ALL"]
     run(link)
     return library
+
+
+def build(args) -> Path:
+    if args.os == "ios" and args.ios_sdk is None:
+        raise BuildError("--os ios needs --ios-sdk iphoneos|iphonesimulator")
+    if args.os in ("macos", "ios", "android") and args.min_os_version is None:
+        raise BuildError(f"--os {args.os} needs --min-os-version")
+    out_dir = Path(args.out_dir).resolve()
+    cache_dir = Path(args.cache_dir).resolve() if args.cache_dir else out_dir / "cache"
+    libwebp = extract(fetch_tarball(cache_dir), cache_dir)
+    obj_dir = out_dir / "obj"
+    obj_dir.mkdir(parents=True, exist_ok=True)
+    library = out_dir / library_name(args.os)
+    sources = source_files(libwebp)
+    cc = resolve_compiler(args)
+    defines = ["NDEBUG", "WEBP_EXTERN=extern"]
+    includes = [libwebp, libwebp / "src", SHIM_DIR]
+    compile_ = compile_msvc if args.os == "windows" else compile_gnu
+    return compile_(args, cc, libwebp, sources, obj_dir, library, defines, includes)
 
 
 def main() -> int:
