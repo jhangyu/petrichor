@@ -269,7 +269,7 @@ single screen needs is composed in that screen from the API above.
    cell at expanded and a full cell at medium are the same width, as weather
    noted).
 
-### Token architecture check (ui-ux-pro-max:design-system)
+### Guidance check (ui-ux-pro-max:design-system)
 
 The skill uses three layers: primitive → semantic → component.
 - `AppSpace` is the primitive spacing scale.
@@ -277,7 +277,15 @@ The skill uses three layers: primitive → semantic → component.
 - Screen-local named constants (chart px/h, sun-arc max width) are the component layer.
 - Every layout value is on the 4 px grid.
 
-What it changed:
+Naming:
+- `AppBreakpoint` names each class by its lower bound (`medium`, `expanded`,
+  `large`, `heightMedium`, `heightExpanded`).
+- `AppLayout` names say the purpose (`gridMinColumn`, `readingWidth`,
+  `paneMinWidth`, ...), which is the skill's semantic-naming rule.
+- No renames.
+
+What it changed (commit d0ecb76, made before the freeze on 57196f2): the change
+only adds tokens, and every value stays the same.
 - The page margins were primitives picked inside `WindowSizeClass`. They are
   now semantic aliases of `AppSpace` in `AppLayout`
   (`pageMarginCompact/Medium/Expanded`).
