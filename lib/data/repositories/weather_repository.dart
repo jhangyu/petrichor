@@ -232,6 +232,7 @@ class WeatherRepository {
 
 /// CWA 缺值標記（所有值皆為字串）
 const double _missingValue = -99;
+final _missingText = _missingValue.toStringAsFixed(0); // '-99'
 const double _earthRadiusKm = 6371.0;
 const Duration _taiwanOffset = Duration(hours: 8);
 
@@ -269,6 +270,20 @@ Object? _dig(Map<String, dynamic> m, List<String> path) {
   return cur;
 }
 
+/// `records.Station`, at least one station.
+List<Object?> _stationList(Map<String, dynamic> body) {
+  final stations = _list(_dig(body, ['records', 'Station']), 'records.Station');
+  if (stations.isEmpty) throw const FormatException('records.Station：期望至少 1 站，實際 0 站');
+  return stations;
+}
+
+/// `records.Locations[0]`, which must exist.
+Map<String, dynamic> _firstLocationGroup(Map<String, dynamic> body) {
+  final groups = _list(_dig(body, ['records', 'Locations']), 'records.Locations');
+  if (groups.isEmpty) throw const FormatException('records.Locations：期望 1 組，實際 0 組');
+  return _obj(groups.first, 'records.Locations[0]');
+}
+
 /// CWA 以「-」表示該時間槽無值（例如 12 小時降雨機率）。
 const _noValueMarker = '-';
 
@@ -288,7 +303,7 @@ int? _int(Object? raw, String path) => _num(raw, path)?.round();
 String? _text(Object? raw) {
   if (raw == null) return null;
   final text = raw.toString().trim();
-  return (text.isEmpty || text == '-99') ? null : text;
+  return (text.isEmpty || text == _missingText) ? null : text;
 }
 
 DateTime _time(Object? raw, String path) {
@@ -306,8 +321,7 @@ double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
 }
 
 CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double lon) {
-  final stations = _list(_dig(body, ['records', 'Station']), 'records.Station');
-  if (stations.isEmpty) throw const FormatException('records.Station：期望至少 1 站，實際 0 站');
+  final stations = _stationList(body);
 
   Map<String, dynamic>? best;
   double bestKm = double.infinity;
@@ -365,8 +379,7 @@ class _StationCounty {
 
 /// 全部測站依距離由近到遠排序；縣市名正規化成「臺」。
 List<_StationCounty> _parseStationCounties(Map<String, dynamic> body, double lat, double lon) {
-  final stations = _list(_dig(body, ['records', 'Station']), 'records.Station');
-  if (stations.isEmpty) throw const FormatException('records.Station：期望至少 1 站，實際 0 站');
+  final stations = _stationList(body);
   return [
     for (var i = 0; i < stations.length; i++)
       _stationCounty(_obj(stations[i], 'records.Station[$i]'), lat, lon, 'records.Station[$i]'),
@@ -399,6 +412,8 @@ Place _nearestPlace(List<Place> places, double lat, double lon) => places.reduce
     _distanceKm(lat, lon, a.latitude, a.longitude) <= _distanceKm(lat, lon, b.latitude, b.longitude) ? a : b);
 
 final _issueTimePattern = RegExp(r'"IssueTime"\s*:\s*"([^"]+)"');
+final _sunClockPattern = RegExp(r'^\d{2}:\d{2}$');
+final _transitAltitudePattern = RegExp(r'^(\d{1,2})([NS])$');
 
 /// file API 回應開頭（非完整 JSON）→ DatasetInfo.IssueTime。
 DateTime _parseIssueTime(String head, String dataset) {
@@ -431,9 +446,7 @@ ObservedWind? _observedWind(Object? raw) {
 }
 
 List<Place> _parseTowns(Map<String, dynamic> body, String county) {
-  final groups = _list(_dig(body, ['records', 'Locations']), 'records.Locations');
-  if (groups.isEmpty) throw const FormatException('records.Locations：期望 1 組，實際 0 組');
-  final group = _obj(groups.first, 'records.Locations[0]');
+  final group = _firstLocationGroup(body);
   final actual = normalizeCwaName(_text(group['LocationsName']) ?? '');
   if (actual != county) throw FormatException('LocationsName：期望「$county」，實際「$actual」');
   final list = _list(group['Location'], 'Location');
@@ -465,9 +478,7 @@ class _Slot {
 typedef _Elements = Map<String, Map<DateTime, _Slot>>;
 
 _Elements _parseElements(Map<String, dynamic> body, String township) {
-  final locations = _list(_dig(body, ['records', 'Locations']), 'records.Locations');
-  if (locations.isEmpty) throw const FormatException('records.Locations：期望 1 組，實際 0 組');
-  final list = _list(_obj(locations.first, 'records.Locations[0]')['Location'], 'Location');
+  final list = _list(_firstLocationGroup(body)['Location'], 'Location');
   final names = <String>[];
   for (final item in list) {
     final loc = _obj(item, 'Location[]');
@@ -594,7 +605,7 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
 /// 日出日沒時刻字串「HH:mm」（臺灣時間）→ 絕對時刻
 DateTime _sunTime(Object? raw, String date, String path) {
   final text = _text(raw);
-  if (text == null || !RegExp(r'^\d{2}:\d{2}$').hasMatch(text)) {
+  if (text == null || !_sunClockPattern.hasMatch(text)) {
     throw FormatException('$path@$date：期望「HH:mm」，實際「$raw」');
   }
   return DateTime.parse('${date}T$text:00+08:00');
@@ -628,7 +639,7 @@ List<SunDay> _parseSunTimes(Map<String, dynamic> body, String county, List<Strin
 
 /// 過中天仰角「47S」→ (47, 南)；格式不符即 FormatException。
 (int, TransitSide) _transitAltitude(Object? raw, String date) {
-  final match = RegExp(r'^(\d{1,2})([NS])$').firstMatch(_text(raw) ?? '');
+  final match = _transitAltitudePattern.firstMatch(_text(raw) ?? '');
   if (match == null) throw FormatException('SunTransitAlt@$date：期望「度數+N/S」（如 47S），實際「$raw」');
   return (int.parse(match.group(1)!), match.group(2) == 'S' ? TransitSide.south : TransitSide.north);
 }
