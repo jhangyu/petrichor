@@ -18,6 +18,7 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/radar/radar_frame_list.dart';
+import '../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../data/radar/radar_loop.dart';
 import '../../data/radar/radar_source.dart' show RadarStaleListException;
 import '../location/place_provider.dart';
@@ -27,13 +28,7 @@ import 'radar_provider.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';
-
-/// Station coverage ring (dashed): points on the circle and dash pattern in px.
-const _ringPoints = 72;
-const _ringStrokeWidth = 1.5;
-const _ringDash = [4.0, 4.0];
-const _stationDotRadius = 3.5;
-const _fullCircleDegrees = 360;
+import 'widgets/station_layers.dart';
 
 const _stationNames = {AppConstants.radarShulin: '樹林', AppConstants.radarNantun: '南屯', AppConstants.radarLinyuan: '林園'};
 
@@ -227,29 +222,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     }
     final frame = slots[index].frame!;
     final newest = slots[radarShownIndex(slots, null)!].frame!;
-    final readyCount = radarReadyCount(slots);
     final name = _stationNames[_source];
-    final listError = loop.listError;
-    final banner = listError != null
-        ? StatusBanner(
-            tone: StatusTone.error,
-            title: listError is RadarStaleListException
-                ? '資料未更新，最新影格 ${clockText(newest.time)}'
-                : '離線，顯示 ${clockText(newest.time)} 的資料',
-            text: '$listError',
-            actions: [RetryButton(onPressed: _refresh)],
-          )
-        : failed.isNotEmpty
-            ? _FailureBanner(failed: failed, onRetry: _refresh)
-            : null;
     return _RadarView(
-      subtitle: name == null
-          ? '觀測 ${formatTaiwanFull(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
-          : '$name站 · 觀測 ${formatTaiwanFull(newest.time)}',
+      subtitle: _loopSubtitle(name, newest),
       sourceIds: [_source],
       loading: loop.loading,
       hero: _heroCard(
-        banner: switch ((banner, opacityBanner)) {
+        banner: switch ((_loopBanner(loop, failed, newest), opacityBanner)) {
           (final a?, final b?) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s16, children: [a, b]),
           (final a?, null) => a,
           (null, final b) => b,
@@ -269,82 +248,75 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                 gaplessPlayback: true,
               ),
           ],
-          extraLayers: name == null ? const [] : _stationLayers(frame.bounds),
+          extraLayers: name == null ? const [] : radarStationLayers(frame.bounds),
         ),
         legend: const RadarLegend(),
       ),
-      afterHero: [
-        if (slots.length == 1 && !loop.loading)
-          PlaybackCard(meta: '僅有最新影格', opacity: opacityControl)
-        else
-          PlaybackCard(
-            meta: radarPlaybackMeta(
-              buffering: _player.waitingOn != null,
-              playing: _player.playing,
-              loading: loop.loading,
-              ready: readyCount,
-              total: slots.length,
-              fps: fps,
-              repeat: repeat,
-              idle: '過去 ${window.inHours} 小時 · ${slots.length} 張',
-            ),
-            playback: PlaybackFrames(
-              slots: slots,
-              index: index,
-              current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
-              buffering: _player.waitingOn != null,
-              playing: _player.playing,
-              fps: fps,
-              repeat: repeat,
-              window: window,
-              windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
-              onTogglePlay: _player.togglePlay,
-              onSeek: _player.seek,
-              onFps: _setFps,
-              onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
-              onWindow: _setWindow,
-            ),
-            opacity: opacityControl,
-          ),
-      ],
+      afterHero: [_playbackCard(loop, index, window, maxWindow, fps, repeat, opacityControl)],
     );
   }
 
-  /// Dashed coverage ring and station dot of a station image covering [bounds].
-  List<Widget> _stationLayers(LatLngBounds bounds) {
-    final center = bounds.center;
-    final radius = const Distance().as(LengthUnit.Meter, center, LatLng(bounds.north, center.longitude));
-    return [
-      PolygonLayer(
-        polygons: [
-          Polygon(
-            points: [
-              for (var i = 0; i < _ringPoints; i++)
-                const Distance().offset(center, radius, i * _fullCircleDegrees / _ringPoints),
-            ],
-            borderColor: AppPalette.brandStroke,
-            borderStrokeWidth: _ringStrokeWidth,
-            pattern: StrokePattern.dashed(segments: _ringDash),
-          ),
-        ],
+  Widget? _loopBanner(RadarLoop loop, List<RadarSlot> failed, RadarFrame newest) {
+    final listError = loop.listError;
+    return listError != null
+        ? StatusBanner(
+            tone: StatusTone.error,
+            title: listError is RadarStaleListException
+                ? '資料未更新，最新影格 ${clockText(newest.time)}'
+                : '離線，顯示 ${clockText(newest.time)} 的資料',
+            text: '$listError',
+            actions: [RetryButton(onPressed: _refresh)],
+          )
+        : failed.isNotEmpty
+            ? _FailureBanner(failed: failed, onRetry: _refresh)
+            : null;
+  }
+
+  String _loopSubtitle(String? name, RadarFrame newest) => name == null
+      ? '觀測 ${formatTaiwanFull(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
+      : '$name站 · 觀測 ${formatTaiwanFull(newest.time)}';
+
+  Widget _playbackCard(
+    RadarLoop loop,
+    int index,
+    Duration window,
+    Duration maxWindow,
+    int fps,
+    bool repeat,
+    Widget? opacityControl,
+  ) {
+    final slots = loop.slots;
+    if (slots.length == 1 && !loop.loading) return PlaybackCard(meta: '僅有最新影格', opacity: opacityControl);
+    final readyCount = radarReadyCount(slots);
+    return PlaybackCard(
+      meta: radarPlaybackMeta(
+        buffering: _player.waitingOn != null,
+        playing: _player.playing,
+        loading: loop.loading,
+        ready: readyCount,
+        total: slots.length,
+        fps: fps,
+        repeat: repeat,
+        idle: '過去 ${window.inHours} 小時 · ${slots.length} 張',
       ),
-      MarkerLayer(
-        markers: [
-          Marker(
-            point: center,
-            width: _stationDotRadius * 2,
-            height: _stationDotRadius * 2,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppPalette.brandBg,
-                border: Border.all(color: AppPalette.bg1, width: _ringStrokeWidth),
-              ),
-            ),
-          ),
-        ],
+      playback: PlaybackFrames(
+        slots: slots,
+        index: index,
+        current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
+        buffering: _player.waitingOn != null,
+        playing: _player.playing,
+        fps: fps,
+        repeat: repeat,
+        window: window,
+        windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
+        onTogglePlay: _player.togglePlay,
+        onSeek: _player.seek,
+        onFps: _setFps,
+        onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
+        onWindow: _setWindow,
       ),
-    ];
+      opacity: opacityControl,
+    );
   }
 
   _RadarView _loadingView({int? listed}) => _RadarView(
