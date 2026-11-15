@@ -24,8 +24,8 @@ import 'accum_provider.dart';
 import 'rain_map_card.dart';
 
 const _cardTitle = '累積雨量';
+const _skeletonHeight = 360.0;
 const _group = RadarGroup.rainfall;
-const _overlayOpacity = 0.8;
 
 /// Peak under this many mm draws nothing (contract decision 11): the frame has no rain.
 const _noRainBelowMm = 1;
@@ -124,7 +124,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       );
     }
     if (!window.hasValue || !fps.hasValue || !repeat.hasValue) {
-      return const AppCard.loading(title: _cardTitle, skeletonHeight: 360);
+      return const AppCard.loading(title: _cardTitle, skeletonHeight: _skeletonHeight);
     }
     final hours = window.requireValue;
     ref.listen(accumLoopProvider(hours), (_, _) => _player.onLoopUpdate());
@@ -269,7 +269,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             if (!noRain)
               OverlayImage(
                 bounds: frame.bounds,
-                opacity: _overlayOpacity,
+                opacity: rainMapOverlayOpacity,
                 imageProvider: frame.imageProvider,
                 filterQuality: FilterQuality.none,
                 gaplessPlayback: true,

@@ -11,6 +11,9 @@ import '../../../core/widgets/app_card.dart';
 import '../../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../radar/widgets/radar_map_view.dart';
 
+/// Opacity of the rain overlay on both 雨量 maps.
+const rainMapOverlayOpacity = 0.8;
+
 /// Map height chrome in the wide layout: page header and top margin, card padding,
 /// card header, legend (title, bar, labels), note and the three gaps. The map takes
 /// the rest of the window, as radar's `_heroChromeHeight`. Banners are not counted.

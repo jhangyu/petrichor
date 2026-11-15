@@ -20,8 +20,6 @@ const _forecastWindow = Duration(hours: 1);
 /// Bring-an-umbrella hint threshold: visible rain on the map.
 const _umbrellaMinMm = forecastVisibleMinMm;
 
-const _gridOpacity = 0.8;
-
 /// Bucket 1–4 colours (light → dark = more rain) and legend labels.
 const _bucketTints = [AppPalette.brand150, AppPalette.brand120, AppPalette.brand90, AppPalette.brand60];
 const _bucketMarks = [(0, '1–5 mm'), (1, '5–10'), (2, '10–20'), (3, '≥ 20')];
@@ -158,7 +156,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
             semanticsLabel: '未來 1 小時雨量網格圖',
             overlayImages: image == null
                 ? const []
-                : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: _gridOpacity, filterQuality: FilterQuality.none)],
+                : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: rainMapOverlayOpacity, filterQuality: FilterQuality.none)],
             me: here?.point,
           ),
         );
