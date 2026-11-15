@@ -1,52 +1,31 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:petrichor/core/api/api_key.dart';
 import 'package:petrichor/core/api/dio_client.dart';
 import 'package:petrichor/data/models/hazard_models.dart';
 import 'package:petrichor/data/repositories/hazard_repository.dart';
 import 'package:petrichor/core/api/result.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 依 URL 路徑中的資料集 ID 回傳預設內容的假 HTTP adapter
-class _FakeAdapter implements HttpClientAdapter {
-  final Map<String, ({int status, String body})> routes;
-  final List<Uri> requests = [];
-  _FakeAdapter(this.routes);
-
-  @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
-    requests.add(options.uri);
-    final key = routes.keys.firstWhere(options.uri.path.endsWith, orElse: () => throw StateError('no fake route for ${options.uri}'));
-    final r = routes[key]!;
-    return ResponseBody.fromString(r.body, r.status, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    });
-  }
-
-  @override
-  void close({bool force = false}) {}
-}
+import '../support/fake_cwa_adapter.dart';
 
 String _fixture(String id) => File('test/fixtures/cwa/$id.json').readAsStringSync();
 
 Map<String, dynamic> _fixtureJson(String id) => jsonDecode(_fixture(id)) as Map<String, dynamic>;
 
-({int status, String body}) _ok(Object body) => (status: 200, body: body is String ? body : jsonEncode(body));
+(int, String) _ok(Object body) => (200, body is String ? body : jsonEncode(body));
 
 List<CountyWarning> _warningsOf(ActiveWarnings w, String county) =>
     w.counties.where((c) => c.county == county).firstOrNull?.warnings ?? const [];
 
-HazardRepository _repo(
-  Map<String, ({int status, String body})> routes, {
-  DateTime Function() clock = DateTime.now,
-}) {
-  final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1/rest/datastore/'))..httpClientAdapter = _FakeAdapter(routes);
-  return HazardRepository(dio, clock: clock);
+final _fixedNow = DateTime.utc(2026, 11, 14, 12);
+
+HazardRepository _repo(Map<String, (int, String)> routes, {DateTime Function()? clock}) {
+  final adapter = FakeCwaAdapter()..routes.addAll(routes);
+  return HazardRepository(adapter.dio(), clock: clock ?? () => _fixedNow);
 }
 
 DateTime _tw(String s) => DateTime.parse('$s+08:00');
@@ -250,7 +229,7 @@ void main() {
       SharedPreferences.setMockInitialValues({CwaApiKeyNotifier.storageKey: dummyKey});
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      final adapter = _FakeAdapter({'F-B0046-001': _ok(_fullGrid({}))});
+      final adapter = FakeCwaAdapter()..routes['F-B0046-001'] = _ok(_fullGrid({}));
       container.read(dioProvider).httpClientAdapter = adapter;
 
       final r = await container.read(hazardRepositoryProvider).getRainForecast(latitude: 25.0, longitude: 121.5);
