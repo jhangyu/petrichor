@@ -43,6 +43,7 @@ dependencies:
   # hook/build.dart (native asset build of libwebp + radar shim)
   hooks: ^2.0.2
   code_assets: ^1.2.1
+  flutter_map_vector_tiles: 2.11.0
 
 dev_dependencies:
   flutter_test:

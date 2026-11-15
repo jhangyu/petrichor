@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_tokens.dart';
@@ -12,8 +13,46 @@ const _taiwanCenter = LatLng(23.7, 121.0);
 const _overviewZoom = 6.5;
 const _locatedZoom = 8.0;
 
-const _tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const _userAgentPackage = 'com.example.cwbweather';
+/// OpenStreetMap's own keyless vector layer (Shortbread schema, SVWD03 style).
+/// The style ships no glyphs, so labels use each device's system fonts.
+const _styleUrl = 'https://vector.openstreetmap.org/styles/svwd/svwd03style.json';
+
+/// OSMF vector tile policy: a User-Agent that identifies the app.
+const _userAgent = 'com.example.cwbweather.cwb_flutter';
+const _attribution = '© OpenStreetMap contributors';
+const _styleFailedText = '底圖載入失敗';
+
+/// GPU budget for finished basemap tiles. The plugin's own default is at
+/// least 64 MB; radar frames already take most of the memory budget. A
+/// 256-logical-px tile costs about 2.25 MB at devicePixelRatio 3, and the
+/// 5:6 map card shows at most 3×3 tiles, so 32 MB holds one full card plus
+/// part of a zoom level; anything evicted re-renders from decoded geometry
+/// without network.
+const _basemapRasterCacheBytes = 32 * 1024 * 1024;
+
+Future<vt.Style>? _sharedStyle;
+
+/// The basemap style, loaded once and shared by every map. A failed load is
+/// reported and forgotten, so the next map that mounts tries again.
+// ponytail: the loaded style is never disposed; it lives as long as the app.
+Future<vt.Style> _basemapStyle() => _sharedStyle ??= _loadStyle();
+
+Future<vt.Style> _loadStyle() async {
+  try {
+    return await vt.StyleReader(uri: _styleUrl, headers: const {'User-Agent': _userAgent}).read();
+  } catch (error, stack) {
+    _sharedStyle = null;
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stack,
+        library: 'radar basemap',
+        context: ErrorDescription('loading $_styleUrl'),
+      ),
+    );
+    rethrow;
+  }
+}
 
 /// Frames decoded ahead of the shown one.
 const radarPreDecodeCount = 2;
@@ -68,6 +107,7 @@ class RadarMapView extends StatefulWidget {
 
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
+  final _style = _basemapStyle();
   double _initialZoom() => widget.me == null ? _overviewZoom : _locatedZoom;
 
   @override
@@ -106,8 +146,9 @@ class _RadarMapViewState extends State<RadarMapView> {
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: AspectRatio(
         aspectRatio: 5 / 6,
-        child: LayoutBuilder(
-          builder: (context, box) => Stack(
+        child: FutureBuilder(
+          future: _style,
+          builder: (context, style) => Stack(
             fit: StackFit.expand,
             children: [
               Opacity(
@@ -116,16 +157,36 @@ class _RadarMapViewState extends State<RadarMapView> {
                   mapController: _controller,
                   options: MapOptions(initialCenter: me ?? _taiwanCenter, initialZoom: _initialZoom()),
                   children: [
-                    TileLayer(urlTemplate: _tileUrl, userAgentPackageName: _userAgentPackage),
+                    // Same child slot before and after the load, so the layers above keep their state.
+                    if (style.data case final style?)
+                      vt.VectorTileLayer(
+                        theme: style.theme,
+                        tileProviders: style.providers,
+                        sprites: style.sprites,
+                        glyphs: style.glyphs,
+                        rasterCacheMaxBytes: _basemapRasterCacheBytes,
+                      )
+                    else
+                      const SizedBox.shrink(),
                     if (widget.overlayImages.isNotEmpty) OverlayImageLayer(overlayImages: widget.overlayImages),
                     ...widget.extraLayers,
                     if (me != null)
                       MarkerLayer(
                         markers: [Marker(point: me, width: _pinHalo, height: _pinHalo, child: const _MePin())],
                       ),
+                    const _Attribution(),
                   ],
                 ),
               ),
+              if (style.hasError)
+                const Positioned(
+                  bottom: AppSpace.s40,
+                  left: AppSpace.s12,
+                  right: AppSpace.s12,
+                  child: Center(
+                    child: _MapChip(icon: Icons.error_outline, text: _styleFailedText),
+                  ),
+                ),
               if (chipText != null)
                 Positioned(
                   top: AppSpace.s12,
@@ -188,6 +249,25 @@ class _MapChip extends StatelessWidget {
             Icon(glyph, size: AppSize.icon16, color: AppPalette.fg1),
           Text(text, style: style),
         ],
+      ),
+    );
+  }
+}
+
+/// OSM licence attribution, bottom right of the map (OSMF tile policy).
+class _Attribution extends StatelessWidget {
+  const _Attribution();
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: ColoredBox(
+        color: AppPalette.bgOverlay,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),
+          child: Text(_attribution, style: AppType.caption2.copyWith(color: AppPalette.fg2)),
+        ),
       ),
     );
   }
