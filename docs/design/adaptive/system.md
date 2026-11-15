@@ -80,7 +80,7 @@ always scrolls as one page: no nested scroll areas.
 
 ## 4. Public API
 
-Import `package:cwb_flutter/core/layout/adaptive.dart` (or the relative path).
+Import `package:petrichor/core/layout/adaptive.dart` (or the relative path).
 Tokens come from `app_tokens.dart`.
 
 ### `WindowSizeClass`: the only way to branch on window size

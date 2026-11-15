@@ -1,4 +1,4 @@
-# cwb_flutter
+# petrichor
 
 A new Flutter project.
 
