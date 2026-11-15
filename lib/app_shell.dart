@@ -21,12 +21,15 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
+/// Label, icon and page of one tab.
+typedef _TabSpec = ({String label, IconData icon, Widget page});
+
 class _AppShellState extends ConsumerState<AppShell> {
-  static const _tabs = <AppTab, (String, IconData, Widget)>{
-    AppTab.weather: ('天氣', Icons.home_outlined, WeatherScreen()),
-    AppTab.radar: ('雷達', Icons.radar, RadarScreen()),
-    AppTab.rainfall: ('雨量', Icons.water_drop_outlined, RainfallScreen()),
-    AppTab.settings: ('設定', Icons.settings_outlined, SettingsScreen()),
+  static const _tabs = <AppTab, _TabSpec>{
+    AppTab.weather: (label: '天氣', icon: Icons.home_outlined, page: WeatherScreen()),
+    AppTab.radar: (label: '雷達', icon: Icons.radar, page: RadarScreen()),
+    AppTab.rainfall: (label: '雨量', icon: Icons.water_drop_outlined, page: RainfallScreen()),
+    AppTab.settings: (label: '設定', icon: Icons.settings_outlined, page: SettingsScreen()),
   };
 
   /// Destinations start at the top of the rail (Fluent / M3 rail default).
@@ -43,58 +46,55 @@ class _AppShellState extends ConsumerState<AppShell> {
     final pages = IndexedStack(
       index: tab.index,
       children: [
-        for (final t in AppTab.values) _visited.contains(t) ? _tabs[t]!.$3 : const SizedBox.shrink(),
+        for (final t in AppTab.values) _visited.contains(t) ? _tabs[t]!.page : const SizedBox.shrink(),
       ],
     );
-    if (WindowSizeClass.of(context).usesRail) {
-      return Scaffold(
-        backgroundColor: AppPalette.bg3,
-        body: Row(
-          children: [
-            DecoratedBox(
-              decoration: const BoxDecoration(
-                border: Border(right: BorderSide(color: AppPalette.stroke2, width: AppStroke.thin)),
-              ),
-              child: NavigationRail(
-                selectedIndex: tab.index,
-                onDestinationSelected: _select,
-                labelType: NavigationRailLabelType.all,
-                groupAlignment: _railGroupAlignment,
-                // Short landscape windows (720x360) cannot fit every labelled destination.
-                scrollable: true,
-                backgroundColor: AppPalette.bg1,
-                indicatorColor: AppPalette.brandBgSubtle,
-                indicatorShape: const StadiumBorder(),
-                selectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.brandFgStrong),
-                unselectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.fg3),
-                selectedLabelTextStyle:
-                    AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600),
-                unselectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.fg3),
-                destinations: [
-                  for (final t in AppTab.values)
-                    NavigationRailDestination(icon: Icon(_tabs[t]!.$2), label: Text(_tabs[t]!.$1)),
-                ],
-              ),
-            ),
-            Expanded(child: pages),
-          ],
-        ),
-      );
-    }
+    final usesRail = WindowSizeClass.of(context).usesRail;
     return Scaffold(
       backgroundColor: AppPalette.bg3,
-      body: pages,
-      bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppPalette.stroke2, width: AppStroke.thin)),
-        ),
-        child: NavigationBar(
-          selectedIndex: tab.index,
-          onDestinationSelected: _select,
-          destinations: [
-            for (final t in AppTab.values) NavigationDestination(icon: Icon(_tabs[t]!.$2), label: _tabs[t]!.$1),
-          ],
-        ),
+      body: usesRail ? Row(children: [_rail(tab), Expanded(child: pages)]) : pages,
+      bottomNavigationBar: usesRail ? null : _bar(tab),
+    );
+  }
+
+  Widget _rail(AppTab tab) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(right: BorderSide(color: AppPalette.stroke2, width: AppStroke.thin)),
+      ),
+      child: NavigationRail(
+        selectedIndex: tab.index,
+        onDestinationSelected: _select,
+        labelType: NavigationRailLabelType.all,
+        groupAlignment: _railGroupAlignment,
+        // Short landscape windows (720x360) cannot fit every labelled destination.
+        scrollable: true,
+        backgroundColor: AppPalette.bg1,
+        indicatorColor: AppPalette.brandBgSubtle,
+        indicatorShape: const StadiumBorder(),
+        selectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.brandFgStrong),
+        unselectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.fg3),
+        selectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600),
+        unselectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.fg3),
+        destinations: [
+          for (final t in AppTab.values)
+            NavigationRailDestination(icon: Icon(_tabs[t]!.icon), label: Text(_tabs[t]!.label)),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(AppTab tab) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppPalette.stroke2, width: AppStroke.thin)),
+      ),
+      child: NavigationBar(
+        selectedIndex: tab.index,
+        onDestinationSelected: _select,
+        destinations: [
+          for (final t in AppTab.values) NavigationDestination(icon: Icon(_tabs[t]!.icon), label: _tabs[t]!.label),
+        ],
       ),
     );
   }
