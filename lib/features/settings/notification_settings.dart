@@ -1,0 +1,132 @@
+import 'dart:convert';
+
+import 'package:cwb_flutter/core/storage/stored_setting.dart';
+import 'package:cwb_flutter/data/models/place.dart';
+import 'package:cwb_flutter/features/location/place_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// Settings only: the values are stored and restored; nothing delivers a notification yet.
+
+enum NotifyToggle { master, rain, quiet }
+
+enum QuietEdge { start, end }
+
+/// Minutes in a day; valid minute-of-day values are 0 ..< minutesPerDay.
+const minutesPerDay = 24 * 60;
+
+const _warningAreasKey = 'notify.warningAreas';
+const _defaultQuietStartMinute = 22 * 60;
+const _defaultQuietEndMinute = 7 * 60;
+
+/// A notification on/off switch (stored as 1 / 0), off on a fresh install.
+class NotifyToggleSetting extends IntSetting<bool> {
+  NotifyToggleSetting(this.toggle);
+  final NotifyToggle toggle;
+
+  @override
+  String get key => 'notify.${toggle.name}';
+  @override
+  bool get defaultValue => false;
+  @override
+  String get expected => '0 or 1';
+  @override
+  bool? fromStored(int stored) => switch (stored) { 1 => true, 0 => false, _ => null };
+  @override
+  int toStored(bool value) => value ? 1 : 0;
+}
+
+/// Start or end of the quiet hours as minute of day.
+class QuietMinuteSetting extends IntSetting<int> {
+  QuietMinuteSetting(this.edge);
+  final QuietEdge edge;
+
+  @override
+  String get key => edge == QuietEdge.start ? 'notify.quietStart' : 'notify.quietEnd';
+  @override
+  int get defaultValue => edge == QuietEdge.start ? _defaultQuietStartMinute : _defaultQuietEndMinute;
+  @override
+  String get expected => '0..${minutesPerDay - 1}';
+  @override
+  int? fromStored(int stored) => stored >= 0 && stored < minutesPerDay ? stored : null;
+  @override
+  int toStored(int value) => value;
+}
+
+final notifyToggleProvider =
+    AsyncNotifierProvider.family<NotifyToggleSetting, bool, NotifyToggle>(NotifyToggleSetting.new, retry: noRetry);
+final quietMinuteProvider =
+    AsyncNotifierProvider.family<QuietMinuteSetting, int, QuietEdge>(QuietMinuteSetting.new, retry: noRetry);
+
+final warningAreasProvider = AsyncNotifierProvider<WarningAreas, Set<String>>(WarningAreas.new, retry: noRetry);
+
+/// Area keys of the saved places whose 警特報 is on. Keys of places that are no
+/// longer saved are pruned from the store whenever the saved places change.
+class WarningAreas extends AsyncNotifier<Set<String>> {
+  @override
+  Future<Set<String>> build() async {
+    final saved = {for (final p in await ref.watch(savedPlacesProvider.future)) p.areaKey};
+    final prefs = await ref.watch(sharedPreferencesProvider.future);
+    final stored = _parse(prefs.get(_warningAreasKey));
+    final kept = stored.intersection(saved);
+    if (kept.length != stored.length) await _write(kept);
+    return kept;
+  }
+
+  /// Turns 警特報 of [place] on or off. On a corrupt stored set, overwrites it with [place] alone or empty.
+  Future<void> setPlace(Place place, bool on) async {
+    final saved = await ref.read(savedPlacesProvider.future);
+    if (!saved.any((p) => p.areaKey == place.areaKey)) {
+      throw ArgumentError.value(place, 'place', 'expected a saved place, key ${place.areaKey}');
+    }
+    final next = {...?state.value}..remove(place.areaKey);
+    if (on) next.add(place.areaKey);
+    state = AsyncData(next);
+    final written = await AsyncValue.guard(() async {
+      await _write(next);
+      return next;
+    });
+    // A later setPlace() may have replaced the state meanwhile; only a failure overrides it.
+    if (written is AsyncError || state.value == next) state = written;
+  }
+
+  Future<void> _write(Set<String> keys) async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    if (!await prefs.setString(_warningAreasKey, jsonEncode(keys.toList()..sort()))) {
+      throw const StoredSettingException(_warningAreasKey, '寫入失敗：期望 true，實際 false');
+    }
+  }
+
+  static Set<String> _parse(Object? raw) {
+    if (raw == null) return {};
+    StoredSettingException corrupt() =>
+        StoredSettingException(_warningAreasKey, '儲存資料損毀：期望 非空且不重複的字串 JSON 陣列，實際「$raw」');
+    if (raw is! String) throw corrupt();
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      throw corrupt();
+    }
+    if (decoded is! List) throw corrupt();
+    final keys = <String>{};
+    for (final item in decoded) {
+      if (item is! String || item.isEmpty || !keys.add(item)) throw corrupt();
+    }
+    return keys;
+  }
+}
+
+/// Whether [at] (its local wall-clock hour:minute) falls in the quiet window
+/// [startMinute, endMinute). The window crosses midnight when start > end.
+/// start == end is an empty window (never quiet). No clock is read: the caller passes [at].
+/// Throws ArgumentError when a minute is outside 0..1439.
+bool isQuietAt({required bool enabled, required int startMinute, required int endMinute, required DateTime at}) {
+  for (final (name, minute) in [('startMinute', startMinute), ('endMinute', endMinute)]) {
+    if (minute < 0 || minute >= minutesPerDay) {
+      throw ArgumentError.value(minute, name, 'expected 0..${minutesPerDay - 1}');
+    }
+  }
+  if (!enabled || startMinute == endMinute) return false;
+  final m = at.hour * 60 + at.minute;
+  return startMinute < endMinute ? startMinute <= m && m < endMinute : m >= startMinute || m < endMinute;
+}
