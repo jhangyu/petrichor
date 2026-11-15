@@ -274,6 +274,10 @@ void main() {
       expect(uri.path, endsWith('/fileapi/v1/opendataapi/O-A0040-002'));
       expect(uri.queryParameters['Authorization'], dummyKey);
       expect(uri.queryParameters['downloadType'], 'WEB');
+      // CWA answers 404 when a query parameter appears twice
+      for (final name in ['format', 'downloadType', 'Authorization']) {
+        expect(RegExp('(^|&)$name=').allMatches(uri.query), hasLength(1), reason: uri.query.replaceAll(dummyKey, '<key>'));
+      }
     });
   });
 }

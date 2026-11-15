@@ -76,8 +76,9 @@ class AppConstants {
   /// 水利署雷達（林園）
   static const String radarLinyuan = 'O-A0084-003';
 
-  /// fileapi 資料集 URL（金鑰由 dioProvider 攔截器加入 query）
-  static String fileApiUrl(String datasetId) => '$cwaFileApiBaseUrl$datasetId?downloadType=WEB&format=JSON';
+  /// fileapi 資料集 URL。`format=JSON` 由 dioProvider 的預設 query 提供、金鑰由其攔截器加入；
+  /// 同名 query 重複會讓 CWA 回 404，所以這裡不能再寫。
+  static String fileApiUrl(String datasetId) => '$cwaFileApiBaseUrl$datasetId?downloadType=WEB';
 
   // -------------------------------------------------------------------------
   //網路請求設定
