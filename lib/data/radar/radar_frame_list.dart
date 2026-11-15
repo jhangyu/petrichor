@@ -11,9 +11,6 @@
 /// from the list only (checked 2026-11-15, radar-perf-contract.md item 6).
 library;
 
-import 'radar_bounds.dart';
-import 'radar_frame_processor.dart';
-
 const radarFrameListUrl = 'https://www.cwa.gov.tw/Data/js/obs_img/Observe_radar.js';
 const radarFrameBaseUrl = 'https://www.cwa.gov.tw/Data/radar/';
 const radarFrameSetPrefix = 'CV1_3600_';
@@ -35,18 +32,18 @@ const _taiwanUtcOffset = Duration(hours: 8);
 
 final _framePattern = RegExp("'$radarFrameSetPrefix(\\d{12})\\.png'");
 
-/// One frame of a radar source: what to download and how to process it.
+/// One frame of a source: its time and the URL that names it (the frame PNG
+/// of a radar loop; failures of the frame are reported against it).
 class RadarFrameRef {
   /// Observation time in UTC.
   final DateTime time;
   final String url;
-  final RadarImageGeometry geometry;
 
-  RadarFrameRef({required DateTime time, required this.url, required this.geometry}) : time = time.toUtc();
+  RadarFrameRef({required DateTime time, required this.url}) : time = time.toUtc();
 
   /// Website frame from the timestamp in its file name.
   RadarFrameRef.website(String stamp)
-      : this(time: radarStampTime(stamp), url: '$radarFrameBaseUrl$radarFrameSetPrefix$stamp.png', geometry: websiteRadarGeometry);
+      : this(time: radarStampTime(stamp), url: '$radarFrameBaseUrl$radarFrameSetPrefix$stamp.png');
 
   @override
   bool operator ==(Object other) => other is RadarFrameRef && other.url == url;
@@ -87,11 +84,11 @@ List<RadarFrameRef> parseRadarFrameList(String js) {
 
 /// Parses every 3600 px frame of the station with image-name code [code]
 /// (RCSL, RCNT, RCLY) in [js] (the content of Observe_radar_rain.js).
-List<RadarFrameRef> parseRadarStationList(String js, {required String code, required RadarImageGeometry geometry}) {
+List<RadarFrameRef> parseRadarStationList(String js, {required String code}) {
   final pattern = RegExp("'(CV1_${code}_3600/CV1_${code}_3600_(\\d{14})_[0-9a-f]{64}\\.png)'");
   final frames = pattern
       .allMatches(js)
-      .map((m) => RadarFrameRef(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}', geometry: geometry))
+      .map((m) => RadarFrameRef(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}'))
       .toSet()
       .toList();
   if (frames.isEmpty) {

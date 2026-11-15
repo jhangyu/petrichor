@@ -18,7 +18,8 @@ import 'radar_webp.dart';
 
 export 'radar_loop.dart';
 
-/// Cache sub-directory (one sub-directory per source); the suffix changes
+/// Cache sub-directory of the radar loops (one sub-directory per source,
+/// see [RadarSource.website]); the suffix changes
 /// whenever processing output changes, so frames made by an older pipeline are
 /// never shown.
 const radarFrameCacheDirName = 'radar_webp_2048_v2';
@@ -58,8 +59,8 @@ const radarProcessWorkers = 2;
 /// (~0.7 MB composite, ~1.1 MB station each) wait for a processing slot.
 const radarFetchWorkers = 4;
 
-/// Turns a downloaded frame into the cached frame; [radarProcessOffUiIsolate]
-/// except in tests.
+/// Turns a downloaded frame PNG into the cached frame ([RadarPngStep]);
+/// [radarProcessOffUiIsolate] except in tests.
 typedef RadarFrameProcess = Future<ProcessedRadarFrame> Function(Uint8List png, RadarImageGeometry geometry);
 
 /// Cache files per frame: `<key>.webp` (lossless WebP) and `<key>.stats`
@@ -114,7 +115,8 @@ class RadarFrame {
 /// at once, processing (off the UI isolate) is limited to [radarProcessWorkers],
 /// and slots are published strictly in that order, one event per slot. Keeps
 /// [RadarSource.maxWindow] of frames on disk per source, so changing the
-/// window never deletes or reprocesses frames.
+/// window never deletes or reprocesses frames. How a frame is obtained is the
+/// source's [RadarSource.step].
 class RadarFrameRepository {
   final Dio _dio;
   final Future<Directory> Function() cacheRoot;
@@ -169,7 +171,7 @@ class RadarFrameRepository {
       await deleteLegacyRadarCaches(root);
       _legacyCachesDeleted = true;
     }
-    final dir = Directory('${root.path}/$radarFrameCacheDirName/${source.id}');
+    final dir = Directory('${root.path}/${source.cachePath}');
     await dir.create(recursive: true);
     final now = clock();
     final cached = await _pruneCache(dir, now: now, retention: source.maxWindow);
@@ -241,7 +243,7 @@ class RadarFrameRepository {
       final token = CancelToken();
       frameTokens.add(token);
       try {
-        finished[_cacheKey(f.time)] = RadarSlot.ready(await _fetch(dir, f, token));
+        finished[_cacheKey(f.time)] = RadarSlot.ready(await _fetch(dir, source.step, f, token));
       } on Exception catch (e) {
         if (_isCancel(e)) rethrow;
         finished[_cacheKey(f.time)] = RadarSlot.failed(f.time, _frameFailure(f, e));
@@ -291,29 +293,37 @@ class RadarFrameRepository {
     return [for (final key in webpKeys) if (!_cacheKeyTime(key).isBefore(cutoff)) key];
   }
 
-  /// Downloads and processes [f]; the WebP is renamed into place last, so a
-  /// `<key>.webp` always has its stats file. Throws the cancellation error once
-  /// [cancel] fires, before any file is written: a frame still in processing
-  /// is dropped (its isolate runs to the end unobserved) and a frame waiting
-  /// for a processing slot is never processed.
-  Future<RadarFrame> _fetch(Directory dir, RadarFrameRef f, CancelToken cancel) async {
-    final response =
-        await _dio.get<List<int>>(f.url, options: Options(responseType: ResponseType.bytes), cancelToken: cancel);
-    final body = response.data ??
-        (throw RadarDataException(f.url, expected: 'PNG body', actual: 'HTTP ${response.statusCode} without body'));
-    final processed = await _processPool.withResource(() {
-      if (cancel.cancelError case final e?) throw e;
-      return Future.any([
-        process(Uint8List.fromList(body), f.geometry),
-        cancel.whenCancel.then<ProcessedRadarFrame>((e) => throw e),
-      ]);
-    });
+  /// Obtains [f] by [step] and caches it; the WebP is renamed into place last,
+  /// so a `<key>.webp` always has its stats file. Throws the cancellation error
+  /// once [cancel] fires, before any file is written: a frame still in
+  /// processing is dropped (its isolate runs to the end unobserved) and a frame
+  /// waiting for a processing slot is never processed.
+  Future<RadarFrame> _fetch(Directory dir, RadarFrameStep step, RadarFrameRef f, CancelToken cancel) async {
+    Future<ProcessedRadarFrame> processSlot(Future<ProcessedRadarFrame> Function() work) =>
+        _processPool.withResource(() {
+          if (cancel.cancelError case final e?) throw e;
+          return Future.any([work(), cancel.whenCancel.then<ProcessedRadarFrame>((e) => throw e)]);
+        });
+    final processed = switch (step) {
+      RadarPngStep(:final geometry) => await _downloadAndProcess(f, geometry, cancel, processSlot),
+      RadarComposedStep(:final obtain) => await obtain(f, cancel, processSlot),
+    };
     final key = _cacheKey(f.time);
     final stats = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
     await (await File('${stats.path}.tmp').writeAsBytes(processed.stats.toBytes(), flush: true)).rename(stats.path);
     await (await File('${webp.path}.tmp').writeAsBytes(processed.webp, flush: true)).rename(webp.path);
     return _frame(f.time, webp, processed.stats, radarWebpSize(processed.webp));
+  }
+
+  /// The [RadarPngStep]: download the frame PNG, then [process] it.
+  Future<ProcessedRadarFrame> _downloadAndProcess(
+      RadarFrameRef f, RadarImageGeometry geometry, CancelToken cancel, RadarProcessSlot processSlot) async {
+    final response =
+        await _dio.get<List<int>>(f.url, options: Options(responseType: ResponseType.bytes), cancelToken: cancel);
+    final body = response.data ??
+        (throw RadarDataException(f.url, expected: 'PNG body', actual: 'HTTP ${response.statusCode} without body'));
+    return processSlot(() => process(Uint8List.fromList(body), geometry));
   }
 }
 

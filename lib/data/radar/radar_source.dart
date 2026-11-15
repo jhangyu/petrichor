@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import '../../core/constants/app_constants.dart';
 import 'radar_bounds.dart';
 import 'radar_frame_list.dart';
+import 'radar_frame_processor.dart';
+import 'radar_frame_repository.dart' show radarFrameCacheDirName, radarProcessWorkers;
 
 /// Radar data could not be obtained or did not have the expected shape.
 class RadarDataException implements Exception {
@@ -27,63 +29,117 @@ class RadarStaleListException extends RadarDataException {
   const RadarStaleListException(super.source, {required super.expected, required super.actual});
 }
 
-/// A CWA website radar loop. Every source's frames go through the same
-/// pipeline (download → `processRadarFrame` → cache → stream) and the same
-/// screen; a source only differs in its frame list (native cadence, regular
-/// or not) and its longest look-back.
+/// Frames of the [window] span ending at a source's newest frame, oldest
+/// first. Throws [RadarDataException] when they cannot be obtained,
+/// [RadarStaleListException] when the source has no frame that recent, and the
+/// cancellation [DioException] as is once [cancelToken] fires.
+typedef RadarFrameLister = Future<List<RadarFrameRef>> Function(
+    {required DateTime now, required Duration window, CancelToken? cancelToken});
+
+/// Runs [work] in one of the repository's [radarProcessWorkers] processing
+/// slots; throws the cancellation error instead once the frame is cancelled
+/// (before or while [work] runs).
+typedef RadarProcessSlot = Future<ProcessedRadarFrame> Function(Future<ProcessedRadarFrame> Function() work);
+
+/// How a source obtains the processed bytes of one listed frame.
+sealed class RadarFrameStep {
+  const RadarFrameStep();
+}
+
+/// Download the frame PNG at its URL, then `processRadarFrame` it with
+/// [geometry] (the repository's download and process).
+final class RadarPngStep extends RadarFrameStep {
+  final RadarImageGeometry geometry;
+
+  const RadarPngStep(this.geometry);
+}
+
+/// The source makes the frame itself (e.g. from several downloads): [obtain]
+/// runs its heavy work through `processSlot`, stops with the cancellation
+/// error once `cancel` fires, and reports failures as [RadarDataException]
+/// naming the URL (other exceptions are reported against the frame's URL).
+final class RadarComposedStep extends RadarFrameStep {
+  final Future<ProcessedRadarFrame> Function(RadarFrameRef frame, CancelToken cancel, RadarProcessSlot processSlot) obtain;
+
+  const RadarComposedStep(this.obtain);
+}
+
+/// A frame source of the radar pipeline (frame list → [step] → cache →
+/// stream, one screen). A source differs in its frame list, its frame step,
+/// its cache directory and its longest look-back.
 class RadarSource {
-  /// Dataset id; also the source's cache sub-directory.
+  /// Dataset id.
   final String id;
-  final String listUrl;
+
+  /// Frame cache directory, relative to the cache root.
+  final String cachePath;
 
   /// Longest look-back the source offers (what its frame list covers).
   final Duration maxWindow;
 
-  /// Frames (time + URL + processing) listed in the JS at [listUrl].
-  final List<RadarFrameRef> Function(String js) parse;
-  final Dio _dio;
+  final RadarFrameLister listFrames;
+  final RadarFrameStep step;
 
-  RadarSource(this._dio, {required this.id, required this.listUrl, required this.maxWindow, required this.parse});
+  const RadarSource(
+      {required this.id, required this.cachePath, required this.maxWindow, required this.listFrames, required this.step});
+
+  /// A CWA website radar loop: frames (time + PNG URL) listed in the JS at
+  /// [listUrl], each processed with [geometry]; cached under
+  /// [radarFrameCacheDirName]/[id].
+  factory RadarSource.website(Dio dio,
+          {required String id,
+          required String listUrl,
+          required Duration maxWindow,
+          required List<RadarFrameRef> Function(String js) parse,
+          required RadarImageGeometry geometry}) =>
+      RadarSource(
+        id: id,
+        cachePath: '$radarFrameCacheDirName/$id',
+        maxWindow: maxWindow,
+        listFrames: ({required now, required window, cancelToken}) =>
+            _listWebsiteFrames(dio, id, listUrl, parse, now: now, window: window, cancelToken: cancelToken),
+        step: RadarPngStep(geometry),
+      );
 
   /// Composite (全台合成): website `CV1_3600_` loop, 10-minute frames, 24 h.
-  factory RadarSource.composite(Dio dio) => RadarSource(dio,
-      id: AppConstants.radarTaiwan, listUrl: radarFrameListUrl, maxWindow: radarWebsiteMaxWindow, parse: parseRadarFrameList);
+  factory RadarSource.composite(Dio dio) => RadarSource.website(dio,
+      id: AppConstants.radarTaiwan,
+      listUrl: radarFrameListUrl,
+      maxWindow: radarWebsiteMaxWindow,
+      parse: parseRadarFrameList,
+      geometry: websiteRadarGeometry);
 
   /// Station radar: website station list, ~108 s frames, 6 h.
-  factory RadarSource.station(Dio dio, RadarStation station) {
-    final geometry = stationRadarGeometry(stationRadarBounds(station.site, radiusKm: radarStationRangeKm));
-    return RadarSource(dio,
-        id: station.datasetId,
-        listUrl: radarStationListUrl,
-        maxWindow: radarStationMaxWindow,
-        parse: (js) => parseRadarStationList(js, code: station.code, geometry: geometry));
-  }
+  factory RadarSource.station(Dio dio, RadarStation station) => RadarSource.website(dio,
+      id: station.datasetId,
+      listUrl: radarStationListUrl,
+      maxWindow: radarStationMaxWindow,
+      parse: (js) => parseRadarStationList(js, code: station.code),
+      geometry: stationRadarGeometry(stationRadarBounds(station.site, radiusKm: radarStationRangeKm)));
+}
 
-  /// Frames of the [window] ending at the newest listed frame, oldest first.
-  /// Throws [RadarDataException] when the list cannot be obtained,
-  /// [RadarStaleListException] when it has no frame that recent, and the
-  /// cancellation [DioException] as is once [cancelToken] fires.
-  Future<List<RadarFrameRef>> listFrames({required DateTime now, required Duration window, CancelToken? cancelToken}) async {
-    final Response<String> response;
-    try {
-      response =
-          await _dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain), cancelToken: cancelToken);
-    } on DioException catch (e) {
-      if (CancelToken.isCancel(e)) rethrow;
-      throw RadarDataException(listUrl, expected: 'HTTP 200 with the frame list', actual: radarHttpFailure(e));
-    }
-    final js = response.data ??
-        (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
-    final List<RadarFrameRef> all;
-    try {
-      all = parse(js);
-    } on FormatException catch (e) {
-      throw RadarDataException(listUrl, expected: 'a frame list for $id', actual: e);
-    }
-    final frames = selectRadarFrameWindow(all, now: now, window: window);
-    if (frames.isEmpty) {
-      throw RadarStaleListException(listUrl, expected: 'frames newer than ${now.toUtc().subtract(window)} for $id', actual: 'none');
-    }
-    return frames;
+/// [RadarFrameLister] of a website loop: the JS list at [listUrl], parsed by [parse].
+Future<List<RadarFrameRef>> _listWebsiteFrames(
+    Dio dio, String id, String listUrl, List<RadarFrameRef> Function(String js) parse,
+    {required DateTime now, required Duration window, CancelToken? cancelToken}) async {
+  final Response<String> response;
+  try {
+    response = await dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain), cancelToken: cancelToken);
+  } on DioException catch (e) {
+    if (CancelToken.isCancel(e)) rethrow;
+    throw RadarDataException(listUrl, expected: 'HTTP 200 with the frame list', actual: radarHttpFailure(e));
   }
+  final js = response.data ??
+      (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
+  final List<RadarFrameRef> all;
+  try {
+    all = parse(js);
+  } on FormatException catch (e) {
+    throw RadarDataException(listUrl, expected: 'a frame list for $id', actual: e);
+  }
+  final frames = selectRadarFrameWindow(all, now: now, window: window);
+  if (frames.isEmpty) {
+    throw RadarStaleListException(listUrl, expected: 'frames newer than ${now.toUtc().subtract(window)} for $id', actual: 'none');
+  }
+  return frames;
 }

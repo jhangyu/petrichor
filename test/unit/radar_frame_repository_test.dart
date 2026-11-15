@@ -31,7 +31,7 @@ final _png = img.encodePng(img.Image(width: _size, height: _size)
   ..setPixelRgb(3, 3, radarEchoPalette[30] >> 16, (radarEchoPalette[30] >> 8) & 0xFF, radarEchoPalette[30] & 0xFF));
 
 RadarFrameRef _ref(Duration age) => RadarFrameRef(
-    time: _now.subtract(age), url: 'https://example.test/${_now.subtract(age).microsecondsSinceEpoch}.png', geometry: _geometry);
+    time: _now.subtract(age), url: 'https://example.test/${_now.subtract(age).microsecondsSinceEpoch}.png');
 
 /// Cache file stem of a frame (observation time, UTC, to the second).
 String _key(RadarFrameRef f) => f.time.toIso8601String().replaceAll(RegExp(r'[^0-9]'), '').substring(0, 14);
@@ -179,7 +179,7 @@ void main() {
 
   /// A source listing [frames] (any list body parses to them).
   RadarSource source(Dio dio, List<RadarFrameRef> frames, {Duration maxWindow = const Duration(hours: 24)}) =>
-      RadarSource(dio, id: 'test', listUrl: _listUrl, maxWindow: maxWindow, parse: (_) => frames);
+      RadarSource.website(dio, id: 'test', listUrl: _listUrl, maxWindow: maxWindow, parse: (_) => frames, geometry: _geometry);
 
   RadarFrameRepository repository(Dio dio, {DateTime? now, RadarFrameProcess process = radarProcessOffUiIsolate}) =>
       RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now, process: process);
@@ -376,6 +376,30 @@ void main() {
     ];
     expect(changed, [9, 0, 1, 2, 3, 4, 5, 6, 7, 8], reason: 'one slot per event: newest, then oldest first');
     expect(states(events.last), 'r' * 10);
+  });
+
+  test('a composed step makes its frames itself, in the processing slots, into its own cache path', () async {
+    final adapter = _Adapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final obtained = <String>[];
+    final listed = window;
+    final composed = RadarSource(
+      id: 'composed',
+      cachePath: 'composed_v1/3h',
+      maxWindow: const Duration(hours: 3),
+      listFrames: ({required now, required window, cancelToken}) async => listed,
+      step: RadarComposedStep((frame, cancel, processSlot) {
+        obtained.add(frame.url);
+        return processSlot(() async => processRadarFrame(_png, _geometry));
+      }),
+    );
+    final events = await repository(dio).watch(composed, window: span).toList();
+
+    expect(states(events.last), 'rrrr');
+    expect(obtained, [window.last.url, for (final f in window.take(3)) f.url]);
+    expect(adapter.requested, isEmpty, reason: 'nothing downloaded by the repository');
+    expect([for (final e in Directory('${root.path}/composed_v1/3h').listSync()) e.path.split('/').last]..sort(),
+        [for (final f in window) ...['${_key(f)}.stats', '${_key(f)}.webp']]);
   });
 
   test('per-source window limits: composite up to 24 h, stations up to 6 h', () {
