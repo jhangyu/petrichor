@@ -73,6 +73,70 @@ class StatusBanner extends StatelessWidget {
   }
 }
 
+/// `.note--*` tones: [rain] = rain-bg with rain-fg text and icon; [neutral] =
+/// bg-1 with fg-1 text and a brand icon.
+enum NoteTone { rain, neutral }
+
+/// `.note`: icon + body text row. Shown inside an [AppNoteList].
+class AppNote extends StatelessWidget {
+  const AppNote({super.key, required this.icon, required this.text, required this.tone});
+
+  final IconData icon;
+  final String text;
+  final NoteTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, iconColor) = switch (tone) {
+      NoteTone.rain => (AppPalette.rainBg, AppPalette.rainFg, AppPalette.rainFg),
+      NoteTone.neutral => (AppPalette.bg1, AppPalette.fg1, AppPalette.brandFg),
+    };
+    return ColoredBox(
+      color: bg,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpace.s8,
+          children: [
+            Icon(icon, size: AppSize.icon20, color: iconColor),
+            Expanded(
+              child: Text(text, style: AppType.body1.copyWith(color: fg, fontFeatures: AppType.tabular)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// `.notes--list`: [AppNote]s in one rounded stroke-3 frame, stroke-3 dividers between them.
+class AppNoteList extends StatelessWidget {
+  const AppNoteList({super.key, required this.children});
+
+  final List<AppNote> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.small),
+        border: Border.all(color: AppPalette.stroke3, width: AppStroke.thin),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const Divider(height: AppStroke.thin, thickness: AppStroke.thin, color: AppPalette.stroke3),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// `.empty-state`: centred icon (48) + title + optional text + actions.
 /// [error] tints the icon danger (`.empty-state__icon--error`).
 class EmptyState extends StatelessWidget {
