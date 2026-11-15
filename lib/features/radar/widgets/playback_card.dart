@@ -7,6 +7,7 @@ import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_loop.dart';
 import '../radar_playback.dart';
+import '../radar_provider.dart' show radarOpacityMaxPercent, radarOpacityMinPercent, radarOpacityStepPercent;
 import 'radar_legend.dart';
 
 /// What the playback card shows once the loop's times are known.
@@ -79,16 +80,20 @@ class PlaybackFrames {
 
 /// `動畫播放` card. [playback] null = controls disabled (loading, or a source
 /// without a frame history); [loading] shows a skeleton in place of the slider.
+/// [opacity] (the [RadarOpacitySlider], or its error banner) sits at the very
+/// bottom, below a hairline, outside 播放設定.
 class PlaybackCard extends StatelessWidget {
-  const PlaybackCard({super.key, required this.meta, this.playback, this.loading = false});
+  const PlaybackCard({super.key, required this.meta, this.playback, this.loading = false, this.opacity});
 
   final String meta;
   final PlaybackFrames? playback;
   final bool loading;
+  final Widget? opacity;
 
   @override
   Widget build(BuildContext context) {
     final f = playback;
+    final bottom = opacity;
     return Semantics(
       label: '雷達動畫播放',
       container: true,
@@ -104,11 +109,15 @@ class PlaybackCard extends StatelessWidget {
             if (f != null) ...[
               _Timeline(f),
               _Settings(f),
-              Text(
-                '影格為中央氣象署網站帶時間戳的雷達圖，最多可回看 ${f.windowOptions.last.inHours} 小時。每格下方色條為該影格最強回波。',
-                style: AppType.caption1.copyWith(color: AppPalette.fg3),
-              ),
             ],
+            if (bottom != null)
+              Container(
+                padding: const EdgeInsets.only(top: AppSpace.s16),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin)),
+                ),
+                child: bottom,
+              ),
           ],
         ),
       ),
@@ -433,9 +442,10 @@ class _SettingsState extends State<_Settings> {
                     ),
                   ),
                   _Field(
-                    label: '播放速度',
+                    label: '播放速度（fps）',
+                    // Bare numbers: 「12 fps」 would ellipsize in five segments at 360–412 dp.
                     child: AppSegmented<int>(
-                      segments: [for (final v in radarFpsOptions) (v, '$v fps')],
+                      segments: [for (final v in radarFpsOptions) (v, '$v')],
                       selected: f.fps,
                       onChanged: f.onFps,
                     ),
@@ -492,6 +502,63 @@ class _Field extends StatelessWidget {
       children: [
         Text(label, style: _fieldLabel),
         child,
+      ],
+    );
+  }
+}
+
+/// `.slider`: 疊圖透明度 10–100 % (the [PlaybackCard.opacity] content).
+class RadarOpacitySlider extends StatelessWidget {
+  const RadarOpacitySlider({super.key, required this.percent, required this.onChanged});
+
+  final int percent;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpace.s4,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('疊圖透明度', style: AppType.body1.copyWith(color: AppPalette.fg1)),
+            Text(
+              '$percent%',
+              style: AppType.body1.copyWith(
+                color: AppPalette.fg1,
+                fontWeight: FontWeight.w600,
+                fontFeatures: AppType.tabular,
+              ),
+            ),
+          ],
+        ),
+        SliderTheme(
+          data: const SliderThemeData(
+            trackHeight: AppSize.sliderTrack,
+            activeTrackColor: AppPalette.brandBg,
+            inactiveTrackColor: AppPalette.strokeAccessible,
+            thumbColor: AppPalette.brandBg,
+            overlayColor: AppPalette.brandBgSubtle,
+            thumbShape: RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
+          ),
+          child: Slider(
+            min: radarOpacityMinPercent.toDouble(),
+            max: radarOpacityMaxPercent.toDouble(),
+            divisions: (radarOpacityMaxPercent - radarOpacityMinPercent) ~/ radarOpacityStepPercent,
+            value: percent.toDouble(),
+            semanticFormatterCallback: (_) => '疊圖透明度',
+            onChanged: (v) => onChanged(v.round()),
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (final v in const [radarOpacityMinPercent, radarOpacityMaxPercent])
+              Text('$v%', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+          ],
+        ),
       ],
     );
   }

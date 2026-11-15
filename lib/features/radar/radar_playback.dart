@@ -2,7 +2,7 @@ import '../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../data/radar/radar_loop.dart';
 
 /// Playback speeds offered in 播放設定 and the default.
-const radarFpsOptions = [2, 4, 8];
+const radarFpsOptions = [2, 4, 8, 12, 24];
 const radarDefaultFps = 4;
 
 /// Look-back choices; a source offers those up to its `maxWindow`.

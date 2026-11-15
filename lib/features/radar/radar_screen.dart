@@ -20,16 +20,9 @@ import '../../data/radar/radar_source.dart' show RadarStaleListException;
 import '../location/place_provider.dart';
 import 'radar_playback.dart';
 import 'radar_provider.dart';
-import 'radar_summary.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';
-
-/// Overlay opacity slider: 10–100 % in 10 % steps, default 60 %.
-const _opacityMinPercent = 10;
-const _opacityMaxPercent = 100;
-const _opacityStepPercent = 10;
-const _opacityDefaultPercent = 60;
 
 /// Station coverage ring (dashed): points on the circle and dash pattern in px.
 const _ringPoints = 72;
@@ -60,7 +53,6 @@ class RadarScreen extends ConsumerStatefulWidget {
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
   String _source = AppConstants.radarTaiwan;
-  int _opacityPercent = _opacityDefaultPercent;
   int _fps = radarDefaultFps;
   bool _repeat = true;
   bool _playing = false;
@@ -88,8 +80,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final place? => LatLng(place.latitude, place.longitude),
     null => null,
   };
-
-  bool get _isComposite => _source == AppConstants.radarTaiwan;
 
   @override
   void dispose() {
@@ -179,6 +169,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     });
   }
 
+  void _setOpacity(int percent) => unawaited(ref.read(radarOpacityProvider.notifier).set(percent));
+
   void _refresh() {
     setState(() {
       _stop();
@@ -219,9 +211,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           ),
         view.hero,
         ...view.afterHero,
-        _sourceCard(),
-        if (view.sourceIds != null) _opacityCard(),
-        if (view.sourceIds != null && _isComposite) _coverageCard(),
         if (view.sourceIds != null)
           Text(
             '資料來源：中央氣象署 官網雷達回波圖',
@@ -243,6 +232,24 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow) {
+    final opacity = ref.watch(radarOpacityProvider);
+    final opacityPercent = opacity.value;
+    final opacityControl = switch (opacity) {
+      AsyncError(:final error) => StatusBanner(
+          tone: StatusTone.error,
+          title: '無法使用疊圖透明度設定',
+          text: '$error',
+          actions: [
+            AppButton(
+              label: '重設為 $radarOpacityDefaultPercent%',
+              small: true,
+              onPressed: () => _setOpacity(radarOpacityDefaultPercent),
+            ),
+          ],
+        ),
+      AsyncData(:final value) => RadarOpacitySlider(percent: value, onChanged: _setOpacity),
+      _ => null,
+    };
     final slots = loop.slots;
     final failed = [for (final s in slots) if (s.state == RadarSlotState.failed) s];
     final index = radarShownIndex(slots, _playhead);
@@ -255,11 +262,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final newest = slots[radarShownIndex(slots, null)!].frame!;
     final readyCount = slots.where((s) => s.state == RadarSlotState.ready).length;
     final name = _stationNames[_source];
-    final summary = radarEchoSummary(
-      loop.newestStats!,
-      coverage: name == null ? '臺灣本島及周邊海域' : '$name雷達站涵蓋範圍內',
-      place: _place,
-    );
     final listError = loop.listError;
     final banner = listError != null
         ? StatusBanner(
@@ -280,9 +282,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       sourceIds: [_source],
       loading: loop.loading,
       hero: _heroCard(
-        eyebrow: name == null ? '全台合成回波' : '$name雷達站',
-        title: summary.title,
-        note: name == null ? summary.meta : '${summary.meta}\n僅顯示虛線圈內範圍 · 圈外請改看全台合成',
         banner: banner,
         map: RadarMapView(
           me: _me,
@@ -291,20 +290,21 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
           upcoming: radarUpcomingFrames(slots, _playhead, count: radarPreDecodeCount),
           overlayImages: [
-            OverlayImage(
-              bounds: frame.bounds,
-              opacity: _opacityPercent / 100,
-              imageProvider: frame.imageProvider,
-              gaplessPlayback: true,
-            ),
+            if (opacityPercent != null)
+              OverlayImage(
+                bounds: frame.bounds,
+                opacity: opacityPercent / 100,
+                imageProvider: frame.imageProvider,
+                gaplessPlayback: true,
+              ),
           ],
           extraLayers: name == null ? const [] : _stationLayers(frame.bounds),
         ),
-        legend: RadarLegend(showWords: name == null),
+        legend: const RadarLegend(),
       ),
       afterHero: [
         if (slots.length == 1 && !loop.loading)
-          const PlaybackCard(meta: '僅有最新影格')
+          PlaybackCard(meta: '僅有最新影格', opacity: opacityControl)
         else
           PlaybackCard(
             meta: _waitingOn != null
@@ -330,6 +330,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               onRepeat: (v) => setState(() => _repeat = v),
               onWindow: _setWindow,
             ),
+            opacity: opacityControl,
           ),
       ],
     );
@@ -400,130 +401,29 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   // ---- cards ----
 
-  AppCard _heroCard({
-    String? eyebrow,
-    String? title,
-    String? note,
-    Widget? banner,
-    required RadarMapView map,
-    Widget? legend,
-  }) {
-    final titles = eyebrow == null
-        ? null
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpace.s4,
-            children: [
-              Text(eyebrow, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-              if (title != null) Text(title, style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
-              if (note != null) Text(note, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-            ],
-          );
+  /// Radar map card: source switch on top, then [banner], the map and [legend].
+  AppCard _heroCard({Widget? banner, required RadarMapView map, Widget? legend}) {
     return AppCard(
       hero: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: AppSpace.s16,
-        children: [?titles, ?banner, map, ?legend],
-      ),
-    );
-  }
-
-  AppCard _sourceCard() {
-    return AppCard(
-      title: '雷達來源',
-      meta: '${_radarSources.length} 個',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s16,
         children: [
-          Wrap(
-            spacing: AppSpace.s8,
-            runSpacing: AppSpace.s8,
-            children: [
-              for (final (id, label) in _radarSources)
-                AppChip(label: label, selected: _source == id, onTap: () => _selectSource(id)),
-            ],
-          ),
-          if (!_isComposite)
-            Text('單站雷達：涵蓋範圍以虛線圈表示，越接近圈邊訊號越弱。', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-        ],
-      ),
-    );
-  }
-
-  AppCard _opacityCard() {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s4,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('疊圖透明度', style: AppType.body1.copyWith(color: AppPalette.fg1)),
-              Text(
-                '$_opacityPercent%',
-                style: AppType.body1.copyWith(
-                  color: AppPalette.fg1,
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: AppType.tabular,
-                ),
-              ),
-            ],
-          ),
-          SliderTheme(
-            data: const SliderThemeData(
-              trackHeight: AppSize.sliderTrack,
-              activeTrackColor: AppPalette.brandBg,
-              inactiveTrackColor: AppPalette.strokeAccessible,
-              thumbColor: AppPalette.brandBg,
-              overlayColor: AppPalette.brandBgSubtle,
-              thumbShape: RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
-            ),
-            child: Slider(
-              min: _opacityMinPercent.toDouble(),
-              max: _opacityMaxPercent.toDouble(),
-              divisions: (_opacityMaxPercent - _opacityMinPercent) ~/ _opacityStepPercent,
-              value: _opacityPercent.toDouble(),
-              semanticFormatterCallback: (_) => '疊圖透明度',
-              onChanged: (v) => setState(() => _opacityPercent = v.round()),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (final v in const [_opacityMinPercent, _opacityMaxPercent])
-                Text('$v%', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _coverageCard() {
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.s16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppPalette.stroke2, width: AppStroke.thin),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpace.s12,
-        children: [
-          const Icon(Icons.info_outline, size: AppSize.icon20, color: AppPalette.brandFg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: AppSpace.s4,
+          Semantics(
+            label: '雷達站',
+            container: true,
+            child: Wrap(
+              spacing: AppSpace.s8,
+              runSpacing: AppSpace.s8,
               children: [
-                Text('涵蓋範圍：臺灣本島及周邊海域', style: AppType.body1Strong.copyWith(color: AppPalette.fg2)),
-                Text('全台合成整合各雷達站。單站雷達僅涵蓋該站周邊，距離越遠、山區背面訊號越弱。', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                for (final (id, label) in _radarSources)
+                  AppChip(label: label, selected: _source == id, onTap: () => _selectSource(id)),
               ],
             ),
           ),
+          ?banner,
+          map,
+          ?legend,
         ],
       ),
     );
