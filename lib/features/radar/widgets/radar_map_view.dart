@@ -10,6 +10,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_frame_repository.dart';
+import 'basemap_theme.dart';
 
 /// Map centre and zoom: Taiwan overview when the place is unknown, else the place.
 const _taiwanCenter = LatLng(23.7, 121.0);
@@ -67,7 +68,7 @@ int _rasterCacheBytes(Size card, double dpr) {
 /// How long the camera has to rest before its zoom is written to the log.
 const _zoomLogDebounce = Duration(milliseconds: 400);
 
-typedef _Basemap = ({vt.Style style, vt.TileProviders tiles});
+typedef _Basemap = ({vt.Style style, vt.Theme theme, vt.TileProviders tiles});
 
 /// The basemap style load shared by every map. Only [retryRadarBasemap]
 /// replaces it (after a failure), and every mounted map follows.
@@ -102,7 +103,13 @@ Future<_Basemap> _loadBasemap() async {
     final tiles = vt.TileProviders({
       for (final MapEntry(:key, :value) in sources.entries) key: _LoggedTiles(key, value),
     }, promoteIds: style.providers.promoteIds);
-    return (style: style, tiles: tiles);
+    final patternFree = withoutPatterns(style.theme);
+    appLog(
+      _logTag,
+      'sprite patterns removed: ${patternFree.recoloured} fill-pattern layers recoloured, '
+      '${patternFree.dropped.length} patterned layers dropped (${patternFree.dropped.join(',')})',
+    );
+    return (style: style, theme: patternFree.theme, tiles: tiles);
   } catch (error, stack) {
     _basemapFailed = true;
     appLog(_logTag, 'style load failed: $error');
@@ -309,9 +316,9 @@ class _RadarMapViewState extends State<RadarMapView> {
                       ),
                       children: [
                         // Same child slot before and after the load, so the layers above keep their state.
-                        if (style.data case (:final style, :final tiles))
+                        if (style.data case (:final style, :final theme, :final tiles))
                           vt.VectorTileLayer(
-                            theme: style.theme,
+                            theme: theme,
                             tileProviders: tiles,
                             sprites: style.sprites,
                             glyphs: style.glyphs,
