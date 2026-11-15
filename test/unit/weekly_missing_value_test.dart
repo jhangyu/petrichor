@@ -1,4 +1,4 @@
-import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_cwa_adapter.dart';

@@ -1,5 +1,5 @@
-import 'package:cwb_flutter/core/storage/stored_setting.dart';
-import 'package:cwb_flutter/features/hazard/rainfall/accum_provider.dart';
+import 'package:petrichor/core/storage/stored_setting.dart';
+import 'package:petrichor/features/hazard/rainfall/accum_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

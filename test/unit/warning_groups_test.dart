@@ -1,5 +1,5 @@
-import 'package:cwb_flutter/data/models/hazard_models.dart';
-import 'package:cwb_flutter/features/hazard/warnings/warning_groups.dart';
+import 'package:petrichor/data/models/hazard_models.dart';
+import 'package:petrichor/features/hazard/warnings/warning_groups.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 CountyWarning _w(String phenomena, DateTime start, {WarningBulletin? bulletin}) => CountyWarning(

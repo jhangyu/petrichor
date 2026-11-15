@@ -1,5 +1,5 @@
-import 'package:cwb_flutter/data/models/hazard_models.dart';
-import 'package:cwb_flutter/features/hazard/rainfall/rainfall_logic.dart';
+import 'package:petrichor/data/models/hazard_models.dart';
+import 'package:petrichor/features/hazard/rainfall/rainfall_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 RainStation _station(String name, double? mm) => RainStation(

@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:cwb_flutter/data/models/weather_models.dart';
-import 'package:cwb_flutter/core/location/location_service.dart';
-import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:petrichor/data/models/weather_models.dart';
+import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_cwa_adapter.dart';

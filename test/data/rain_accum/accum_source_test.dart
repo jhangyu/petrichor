@@ -2,15 +2,15 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/core/theme/app_tokens.dart';
-import 'package:cwb_flutter/data/radar/radar_frame_list.dart';
-import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
-import 'package:cwb_flutter/data/radar/radar_frame_repository.dart';
-import 'package:cwb_flutter/data/radar/radar_source.dart';
-import 'package:cwb_flutter/data/radar/radar_webp.dart';
-import 'package:cwb_flutter/data/rain_accum/accum_grid.dart';
-import 'package:cwb_flutter/data/rain_accum/accum_pieces.dart';
-import 'package:cwb_flutter/data/rain_accum/accum_source.dart';
+import 'package:petrichor/core/theme/app_tokens.dart';
+import 'package:petrichor/data/radar/radar_frame_list.dart';
+import 'package:petrichor/data/radar/radar_frame_processor.dart';
+import 'package:petrichor/data/radar/radar_frame_repository.dart';
+import 'package:petrichor/data/radar/radar_source.dart';
+import 'package:petrichor/data/radar/radar_webp.dart';
+import 'package:petrichor/data/rain_accum/accum_grid.dart';
+import 'package:petrichor/data/rain_accum/accum_pieces.dart';
+import 'package:petrichor/data/rain_accum/accum_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

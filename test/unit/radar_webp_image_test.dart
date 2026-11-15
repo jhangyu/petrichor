@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cwb_flutter/features/radar/widgets/radar_webp_image.dart';
+import 'package:petrichor/features/radar/widgets/radar_webp_image.dart';
 
 void main() {
   test('same path with different content is a different image key', () {

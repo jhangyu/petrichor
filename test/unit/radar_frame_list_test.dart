@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:cwb_flutter/data/radar/radar_frame_list.dart';
+import 'package:petrichor/data/radar/radar_frame_list.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// `yyyyMMddHHmm` (or with [seconds] `yyyyMMddHHmmss`) Taiwan time of [f].

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/core/constants/app_constants.dart';
+import 'package:petrichor/core/constants/app_constants.dart';
 import 'package:dio/dio.dart';
 
 /// 離線 HTTP 轉接器：依資料集代號（路徑最後一段）回傳 test/fixtures/cwa 內的範例回應。

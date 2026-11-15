@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/data/radar/radar_bounds.dart';
-import 'package:cwb_flutter/data/radar/radar_echo_stats.dart';
-import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
+import 'package:petrichor/data/radar/radar_bounds.dart';
+import 'package:petrichor/data/radar/radar_echo_stats.dart';
+import 'package:petrichor/data/radar/radar_frame_processor.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';

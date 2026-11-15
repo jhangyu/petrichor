@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:cwb_flutter/core/storage/stored_setting.dart';
-import 'package:cwb_flutter/data/models/place.dart';
-import 'package:cwb_flutter/features/location/place_provider.dart';
-import 'package:cwb_flutter/features/settings/notification_settings.dart';
+import 'package:petrichor/core/storage/stored_setting.dart';
+import 'package:petrichor/data/models/place.dart';
+import 'package:petrichor/features/location/place_provider.dart';
+import 'package:petrichor/features/settings/notification_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

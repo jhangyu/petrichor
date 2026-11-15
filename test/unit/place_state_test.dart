@@ -1,7 +1,7 @@
-import 'package:cwb_flutter/core/location/location_service.dart';
-import 'package:cwb_flutter/data/models/place.dart';
-import 'package:cwb_flutter/data/repositories/weather_repository.dart';
-import 'package:cwb_flutter/features/location/place_provider.dart';
+import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/data/models/place.dart';
+import 'package:petrichor/data/repositories/weather_repository.dart';
+import 'package:petrichor/features/location/place_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

@@ -8,18 +8,18 @@ Future<void> main() async {
   await initAppLog();
   runApp(
     const ProviderScope(
-      child: CwaWeatherApp(),
+      child: PetrichorApp(),
     ),
   );
 }
 
-class CwaWeatherApp extends StatelessWidget {
-  const CwaWeatherApp({super.key});
+class PetrichorApp extends StatelessWidget {
+  const PetrichorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CWA Weather',
+      title: 'Cirrus · Wisp · Billow',
       theme: AppTheme.light,
       builder: (context, child) => DefaultTextHeightBehavior(
         textHeightBehavior: const TextHeightBehavior(leadingDistribution: TextLeadingDistribution.even),

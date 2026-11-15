@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
-import 'package:cwb_flutter/data/radar/radar_png_rows.dart';
-import 'package:cwb_flutter/data/radar/radar_webp.dart';
+import 'package:petrichor/data/radar/radar_frame_processor.dart';
+import 'package:petrichor/data/radar/radar_png_rows.dart';
+import 'package:petrichor/data/radar/radar_webp.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;

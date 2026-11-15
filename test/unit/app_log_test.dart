@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:cwb_flutter/core/logging/app_log.dart';
+import 'package:petrichor/core/logging/app_log.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

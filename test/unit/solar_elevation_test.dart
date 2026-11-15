@@ -1,4 +1,4 @@
-import 'package:cwb_flutter/features/weather/solar_elevation.dart';
+import 'package:petrichor/features/weather/solar_elevation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 臺北市 (Taipei City Hall area).

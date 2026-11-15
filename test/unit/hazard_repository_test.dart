@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/core/api/api_key.dart';
-import 'package:cwb_flutter/core/api/dio_client.dart';
-import 'package:cwb_flutter/data/models/hazard_models.dart';
-import 'package:cwb_flutter/data/repositories/hazard_repository.dart';
-import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:petrichor/core/api/api_key.dart';
+import 'package:petrichor/core/api/dio_client.dart';
+import 'package:petrichor/data/models/hazard_models.dart';
+import 'package:petrichor/data/repositories/hazard_repository.dart';
+import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

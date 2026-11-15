@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:code_assets/code_assets.dart';
 import 'package:hooks/hooks.dart';
 
-// Asset id `package:cwb_flutter/radar_webp`, bound by the @DefaultAsset in
+// Asset id `package:petrichor/radar_webp`, bound by the @DefaultAsset in
 // lib/data/radar/radar_webp.dart.
 const _assetName = 'radar_webp';
 

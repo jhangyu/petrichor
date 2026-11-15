@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/data/radar/radar_webp.dart';
+import 'package:petrichor/data/radar/radar_webp.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

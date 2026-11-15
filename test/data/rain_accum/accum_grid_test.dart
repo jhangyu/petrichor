@@ -3,9 +3,9 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:cwb_flutter/core/theme/app_tokens.dart';
-import 'package:cwb_flutter/data/rain_accum/accum_grid.dart';
-import 'package:cwb_flutter/data/rain_accum/accum_pieces.dart';
+import 'package:petrichor/core/theme/app_tokens.dart';
+import 'package:petrichor/data/rain_accum/accum_grid.dart';
+import 'package:petrichor/data/rain_accum/accum_pieces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AccumGrid load(String name) {

@@ -1,4 +1,4 @@
-@DefaultAsset('package:cwb_flutter/radar_webp')
+@DefaultAsset('package:petrichor/radar_webp')
 library;
 
 import 'dart:ffi';

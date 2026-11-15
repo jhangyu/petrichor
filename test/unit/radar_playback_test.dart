@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:cwb_flutter/data/radar/radar_frame_repository.dart';
-import 'package:cwb_flutter/data/radar/radar_source.dart';
-import 'package:cwb_flutter/features/radar/radar_playback.dart';
+import 'package:petrichor/data/radar/radar_frame_repository.dart';
+import 'package:petrichor/data/radar/radar_source.dart';
+import 'package:petrichor/features/radar/radar_playback.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';

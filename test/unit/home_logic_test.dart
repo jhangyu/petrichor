@@ -1,8 +1,8 @@
-import 'package:cwb_flutter/data/models/place.dart';
-import 'package:cwb_flutter/data/models/weather_models.dart';
-import 'package:cwb_flutter/data/repositories/weather_repository.dart';
-import 'package:cwb_flutter/features/weather/weather_provider.dart';
-import 'package:cwb_flutter/features/weather/widgets/home_logic.dart';
+import 'package:petrichor/data/models/place.dart';
+import 'package:petrichor/data/models/weather_models.dart';
+import 'package:petrichor/data/repositories/weather_repository.dart';
+import 'package:petrichor/features/weather/weather_provider.dart';
+import 'package:petrichor/features/weather/widgets/home_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const taipei = Place(county: '臺北市', town: '中正區', latitude: 25.0375, longitude: 121.5637);

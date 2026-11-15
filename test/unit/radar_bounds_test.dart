@@ -1,4 +1,4 @@
-import 'package:cwb_flutter/data/radar/radar_bounds.dart';
+import 'package:petrichor/data/radar/radar_bounds.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:cwb_flutter/core/storage/stored_setting.dart';
-import 'package:cwb_flutter/data/models/place.dart';
-import 'package:cwb_flutter/features/location/place_provider.dart';
+import 'package:petrichor/core/storage/stored_setting.dart';
+import 'package:petrichor/data/models/place.dart';
+import 'package:petrichor/features/location/place_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Settings only: the values are stored and restored; nothing delivers a notification yet.
