@@ -24,6 +24,9 @@ class SunCard extends StatelessWidget {
 
   static const _title = '日出日落';
 
+  /// Widest the sun arc grows; wider cards put the times beside it.
+  static const _arcMaxWidth = 360.0;
+
   @override
   Widget build(BuildContext context) {
     return switch (days) {
@@ -35,50 +38,67 @@ class SunCard extends StatelessWidget {
 
   Widget _card(SunDay today, SunDay? tomorrow) {
     final todayWall = taiwanDate(today.date);
+    final arc = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: _arcMaxWidth),
+        child: AspectRatio(
+          aspectRatio: _SunArcPainter.viewWidth / _SunArcPainter.viewHeight,
+          child: CustomPaint(
+            painter: _SunArcPainter(day: today, now: now),
+            child: Semantics(
+              label:
+                  '太陽位置：曙光 ${clockText(today.civilDawn)}、日出 ${clockText(today.sunrise)}、'
+                  '過中天 ${clockText(today.transit)}（仰角 ${today.transitAltitudeDegrees}°）、'
+                  '日落 ${clockText(today.sunset)}、暮光 ${clockText(today.civilDusk)}',
+            ),
+          ),
+        ),
+      ),
+    );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpace.s12,
+      children: [
+        _row([
+          ('日出', clockText(today.sunrise), _ValueSize.main),
+          ('白晝長度', durationText(today.sunset.difference(today.sunrise)), _ValueSize.sub),
+          ('日落', clockText(today.sunset), _ValueSize.main),
+        ]),
+        _row([
+          ('曙光', clockText(today.civilDawn), _ValueSize.minor),
+          ('過中天', clockText(today.transit), _ValueSize.minor),
+          ('暮光', clockText(today.civilDusk), _ValueSize.minor),
+        ]),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpace.s4,
+          children: [
+            const Icon(Icons.schedule, size: AppSize.icon16, color: AppPalette.brandFg),
+            Flexible(
+              child: Text(
+                sunNowLine(today, tomorrow, now),
+                style: AppType.body1.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+              ),
+            ),
+          ],
+        ),
+        if (tomorrow != null) _tomorrow(tomorrow),
+      ],
+    );
     return AppCard(
       title: _title,
       meta: '${relativeDay(todayWall, now)} ${monthDayWeekday(todayWall)}',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s12,
-        children: [
-          AspectRatio(
-            aspectRatio: _SunArcPainter.viewWidth / _SunArcPainter.viewHeight,
-            child: CustomPaint(
-              painter: _SunArcPainter(day: today, now: now),
-              child: Semantics(
-                label:
-                    '太陽位置：曙光 ${clockText(today.civilDawn)}、日出 ${clockText(today.sunrise)}、'
-                    '過中天 ${clockText(today.transit)}（仰角 ${today.transitAltitudeDegrees}°）、'
-                    '日落 ${clockText(today.sunset)}、暮光 ${clockText(today.civilDusk)}',
-              ),
-            ),
-          ),
-          _row([
-            ('日出', clockText(today.sunrise), _ValueSize.main),
-            ('白晝長度', durationText(today.sunset.difference(today.sunrise)), _ValueSize.sub),
-            ('日落', clockText(today.sunset), _ValueSize.main),
-          ]),
-          _row([
-            ('曙光', clockText(today.civilDawn), _ValueSize.minor),
-            ('過中天', clockText(today.transit), _ValueSize.minor),
-            ('暮光', clockText(today.civilDusk), _ValueSize.minor),
-          ]),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: AppSpace.s4,
-            children: [
-              const Icon(Icons.schedule, size: AppSize.icon16, color: AppPalette.brandFg),
-              Flexible(
-                child: Text(
-                  sunNowLine(today, tomorrow, now),
-                  style: AppType.body1.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
-                ),
-              ),
-            ],
-          ),
-          if (tomorrow != null) _tomorrow(tomorrow),
-        ],
+      child: LayoutBuilder(
+        builder: (context, box) => box.maxWidth >= AppLayout.cardWideWidth
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: AppSpace.s16,
+                children: [
+                  Expanded(child: arc),
+                  Expanded(child: details),
+                ],
+              )
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s12, children: [arc, details]),
       ),
     );
   }

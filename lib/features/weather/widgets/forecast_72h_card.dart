@@ -46,10 +46,19 @@ class Forecast72hCard extends StatelessWidget {
           Failure() => '發布時間無法取得',
           null => null,
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: AppSpace.s16,
-          children: [_summary(forecastExtremes(data)), _chart(data), _legend()],
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final geometry = _ChartGeometry(data, now, box.maxWidth - _axisWidth);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: AppSpace.s16,
+              children: [
+                _summary(forecastExtremes(data)),
+                _chart(data, geometry),
+                _legend(scrolls: geometry.scrolls),
+              ],
+            );
+          },
         ),
       ),
     };
@@ -100,8 +109,27 @@ class Forecast72hCard extends StatelessWidget {
     );
   }
 
-  Widget _chart(List<HourlyForecast> slots) {
-    final geometry = _ChartGeometry(slots, now);
+  Widget _chart(List<HourlyForecast> slots, _ChartGeometry geometry) {
+    final scrolls = geometry.scrolls;
+    Widget plot = Semantics(
+      label: _chartLabel(slots, scrolls),
+      child: SizedBox(
+        width: geometry.width,
+        height: _ChartGeometry.height,
+        child: Stack(
+          children: [
+            Positioned.fill(child: CustomPaint(painter: _ChartPainter(geometry))),
+            for (final s in slots)
+              Positioned(
+                left: geometry.slotCenter(s) - AppSize.icon24 / 2,
+                top: _ChartGeometry.iconTop,
+                child: WeatherGlyphIcon(text: s.weather, size: AppSize.icon24),
+              ),
+          ],
+        ),
+      ),
+    );
+    plot = scrolls ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: plot) : Center(child: plot);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -111,36 +139,20 @@ class Forecast72hCard extends StatelessWidget {
           child: CustomPaint(painter: _AxisPainter()),
         ),
         Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Semantics(
-                label: '未來 72 小時逐時溫度、體感溫度、降雨機率與風，可左右捲動',
-                child: SizedBox(
-                  width: geometry.width,
-                  height: _ChartGeometry.height,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: CustomPaint(painter: _ChartPainter(geometry))),
-                      for (final s in slots)
-                        Positioned(
-                          left: geometry.slotCenter(s) - AppSize.icon24 / 2,
-                          top: _ChartGeometry.iconTop,
-                          child: WeatherGlyphIcon(text: s.weather, size: AppSize.icon24),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.sm), child: plot),
         ),
       ],
     );
   }
 
-  Widget _legend() {
+  String _chartLabel(List<HourlyForecast> slots, bool scrolls) {
+    final e = forecastExtremes(slots);
+    final summary =
+        '最高溫 ${tempText(e.hottest?.temperature)}、最低溫 ${tempText(e.coldest?.temperature)}、降雨機率最高 ${percentText(e.wettest?.pop)}';
+    return '未來 72 小時逐時溫度、體感溫度、降雨機率與風${scrolls ? '，可左右捲動' : ''}。$summary';
+  }
+
+  Widget _legend({required bool scrolls}) {
     final style = AppType.caption1.copyWith(color: AppPalette.fg3);
     Widget item(Widget key, String label) => Row(
       mainAxisSize: MainAxisSize.min,
@@ -190,7 +202,7 @@ class Forecast72hCard extends StatelessWidget {
             ],
           ),
         ),
-        Text('左右滑動看 72 小時', style: style),
+        if (scrolls) Text('左右滑動看 72 小時', style: style),
       ],
     );
   }
@@ -200,7 +212,7 @@ const _axisWidth = 40.0;
 
 /// Chart rows in the mockup's SVG coordinates (y), 16 px per hour (x).
 class _ChartGeometry {
-  _ChartGeometry(this.slots, this.now)
+  _ChartGeometry(this.slots, this.now, this.availableWidth)
     : origin = slots.first.startTime.isBefore(now) ? slots.first.startTime : now,
       end = slots.last.startTime.add(forecastSlotLength) {
     final temps = [
@@ -208,7 +220,17 @@ class _ChartGeometry {
     ].whereType<double>();
     tempMin = temps.isEmpty ? 0 : temps.reduce((a, b) => a < b ? a : b);
     tempMax = temps.isEmpty ? 0 : temps.reduce((a, b) => a > b ? a : b);
+    final hours = end.difference(origin).inMinutes / Duration.minutesPerHour;
+    pxPerHour = ((availableWidth - _padStart - _padEnd) / hours).clamp(_minPxPerHour, _maxPxPerHour);
   }
+
+  /// Width of the chart cell; the chart fills it up to [_maxPxPerHour] and scrolls below [_minPxPerHour].
+  final double availableWidth;
+  late final double pxPerHour;
+  bool get scrolls => width - availableWidth > _fitTolerance;
+
+  /// Bar width: two thirds of a 3-hour slot.
+  double get popWidth => forecastSlotLength.inMinutes / Duration.minutesPerHour * pxPerHour * 2 / 3;
 
   final List<HourlyForecast> slots;
   final DateTime now;
@@ -220,7 +242,9 @@ class _ChartGeometry {
   late final double tempMax;
 
   static const height = 340.0;
-  static const _pxPerHour = 16.0;
+  static const _minPxPerHour = 16.0;
+  static const _maxPxPerHour = 32.0;
+  static const _fitTolerance = 0.5;
   static const _padStart = 32.0;
   static const _padEnd = 24.0;
   static const dayLabelY = 14.0;
@@ -241,12 +265,11 @@ class _ChartGeometry {
   static const apparentLabelY = 216.0;
   static const popTop = 236.0;
   static const popHeight = 40.0;
-  static const popWidth = 32.0;
   static const popLabelY = 292.0;
   static const windDirY = 312.0;
   static const windSpeedY = 328.0;
 
-  double x(DateTime t) => _padStart + t.difference(origin).inMinutes / Duration.minutesPerHour * _pxPerHour;
+  double x(DateTime t) => _padStart + t.difference(origin).inMinutes / Duration.minutesPerHour * pxPerHour;
 
   double slotCenter(HourlyForecast s) => x(s.startTime.add(forecastSlotLength ~/ 2));
 
@@ -434,12 +457,7 @@ class _ChartPainter extends CustomPainter {
         halo: halo,
       );
 
-      final track = Rect.fromLTWH(
-        center - _ChartGeometry.popWidth / 2,
-        _ChartGeometry.popTop,
-        _ChartGeometry.popWidth,
-        _ChartGeometry.popHeight,
-      );
+      final track = Rect.fromLTWH(center - g.popWidth / 2, _ChartGeometry.popTop, g.popWidth, _ChartGeometry.popHeight);
       canvas.drawRRect(
         RRect.fromRectAndRadius(track, const Radius.circular(_popRadius)),
         Paint()..color = AppPalette.rainBarTrack,
@@ -477,7 +495,8 @@ class _ChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ChartPainter old) => old.g.slots != g.slots || old.g.now != g.now;
+  bool shouldRepaint(_ChartPainter old) =>
+      old.g.slots != g.slots || old.g.now != g.now || old.g.pxPerHour != g.pxPerHour;
 }
 
 /// Dashed 體感 legend key (`.fc72__key--at`).

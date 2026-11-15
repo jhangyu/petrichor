@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../app_shell.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/buttons.dart';
@@ -76,8 +77,11 @@ class WeatherScreen extends ConsumerWidget {
           ),
         ],
       ),
-      _ when selected == null => AppPageScaffold(header: header, children: const [_PullHint(loading: true)]),
-      _ => _content(ref, header, selected.$1, weather, refresh),
+      _ when selected == null => AppPageScaffold(
+        header: header,
+        children: const [AppGridItem.full(child: _PullHint(loading: true))],
+      ),
+      _ => _content(context, ref, header, selected.$1, weather, refresh),
     };
   }
 
@@ -98,7 +102,14 @@ class WeatherScreen extends ConsumerWidget {
     };
   }
 
-  Widget _content(WidgetRef ref, AppPageHeader header, Place place, WeatherState weather, VoidCallback refresh) {
+  Widget _content(
+    BuildContext context,
+    WidgetRef ref,
+    AppPageHeader header,
+    Place place,
+    WeatherState weather,
+    VoidCallback refresh,
+  ) {
     final now = ref.read(weatherClockProvider)();
     final hourly = weather.hourly;
     final current = weather.current;
@@ -123,20 +134,25 @@ class WeatherScreen extends ConsumerWidget {
       onRefresh: () async => refresh(),
       source: sources.isEmpty ? null : SourceLine(datasetIds: sources),
       children: [
-        _PullHint(loading: weather.isLoading),
-        HeroCard(
-          current: current,
-          slot: hourly is Success<List<HourlyForecast>> ? currentSlot(hourly.data, now) : null,
-          onRetry: refresh,
-        ),
+        if (weather.isLoading || WindowSizeClass.of(context).width == WindowWidthClass.compact)
+          AppGridItem.full(child: _PullHint(loading: weather.isLoading)),
         ?_warningEntry(ref, warnings, groups, now),
-        SunCard(days: weather.sun, now: now, onRetry: refresh),
-        Forecast72hCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
-        WeeklyCard(
-          weekly: weather.weekly,
-          currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,
-          now: now,
-          onRetry: refresh,
+        AppGridItem.full(
+          child: _CardFlow(
+            hero: HeroCard(
+              current: current,
+              slot: hourly is Success<List<HourlyForecast>> ? currentSlot(hourly.data, now) : null,
+              onRetry: refresh,
+            ),
+            sun: SunCard(days: weather.sun, now: now, onRetry: refresh),
+            forecast: Forecast72hCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
+            weekly: WeeklyCard(
+              weekly: weather.weekly,
+              currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,
+              now: now,
+              onRetry: refresh,
+            ),
+          ),
         ),
       ],
     );
@@ -150,12 +166,13 @@ class WeatherScreen extends ConsumerWidget {
     List<WarningGroup> groups,
     DateTime now,
   ) {
-    return switch (warnings) {
+    final entry = switch (warnings) {
       AsyncData(value: Failure(:final message)) => _warningError(ref, message),
       AsyncError(:final error) => _warningError(ref, '$error'),
       AsyncData(value: Success()) => _activeEntry(ref, groups, now),
       _ => null,
     };
+    return entry == null ? null : AppGridItem.full(child: entry);
   }
 
   Widget _warningError(WidgetRef ref, String message) => StatusBanner(
@@ -186,6 +203,49 @@ class WeatherScreen extends ConsumerWidget {
 
   String _range(DateTime start, DateTime end) =>
       '${monthDay(taiwanWall(start))} ${clockText(start)} – ${monthDay(taiwanWall(end))} ${clockText(end)}';
+}
+
+/// The four data cards. Cards sit in a row only while each keeps at least a
+/// grid column of width: hero beside sun, then 72 小時 beside 7 日; otherwise
+/// they stack in reading order.
+class _CardFlow extends StatelessWidget {
+  const _CardFlow({required this.hero, required this.sun, required this.forecast, required this.weekly});
+
+  final Widget hero;
+  final Widget sun;
+  final Widget forecast;
+  final Widget weekly;
+
+  /// Share of the lower row taken by the 72 小時 card (3 of 5 parts).
+  static const _forecastFlex = 3;
+  static const _weeklyFlex = 2;
+  static const _cardCount = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final columns = AppGrid.columnsFor(box.maxWidth, spanUnits: _cardCount);
+        Widget pair(Widget a, Widget b, {int aFlex = 1, int bFlex = 1}) => Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppLayout.gridGap,
+          children: [
+            Expanded(flex: aFlex, child: a),
+            Expanded(flex: bFlex, child: b),
+          ],
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppLayout.gridGap,
+          children: switch (columns) {
+            1 => [hero, sun, forecast, weekly],
+            2 => [pair(hero, sun), forecast, weekly],
+            _ => [pair(hero, sun), pair(forecast, weekly, aFlex: _forecastFlex, bFlex: _weeklyFlex)],
+          },
+        );
+      },
+    );
+  }
 }
 
 /// `.ptr`: pull-to-refresh hint; while loading, the spinner pill 「載入天氣資料…」.
