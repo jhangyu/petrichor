@@ -8,7 +8,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/models/weather_models.dart';
-import '../../../data/repositories/weather_repository.dart';
+import '../../../core/api/result.dart';
 import '../../hazard/warnings/warning_groups.dart';
 import '../../hazard/warnings/warning_style.dart';
 import 'chart_paint.dart';

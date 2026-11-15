@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:petrichor/data/models/weather_models.dart';
 import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -104,7 +105,7 @@ void main() {
       final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
       final f = r as Failure;
-      expect(f.statusCode, 500);
+      expect(f.message, contains('伺服器回應錯誤：500'));
       expect(f.dataset, 'O-A0003-001');
       expect(f.location, '新北市淡水區');
       expect(f.message, contains('O-A0003-001'));

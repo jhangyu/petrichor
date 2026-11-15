@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/weather_repository.dart' show ApiKeyIssue, CwaApiKeyException;
+import 'result.dart' show ApiKeyIssue, CwaApiKeyException;
 import '../constants/app_constants.dart';
 import '../storage/stored_setting.dart';
 import 'api_key.dart';

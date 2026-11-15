@@ -14,7 +14,7 @@ import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
 import '../../data/repositories/hazard_repository.dart';
-import '../../data/repositories/weather_repository.dart';
+import '../../core/api/result.dart';
 import '../hazard/hazard_provider.dart';
 import '../hazard/warnings/warning_groups.dart';
 import '../hazard/warnings/warnings_section.dart';

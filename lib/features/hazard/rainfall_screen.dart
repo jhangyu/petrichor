@@ -14,7 +14,7 @@ import '../../core/widgets/status.dart';
 import '../../data/models/hazard_models.dart' show CountyRainfall;
 import '../../data/models/place.dart';
 import '../../data/repositories/hazard_repository.dart';
-import '../../data/repositories/weather_repository.dart' show Failure, Result, Success;
+import '../../core/api/result.dart' show Failure, Result, Success;
 import '../location/place_provider.dart';
 import '../radar/radar_playback.dart';
 import '../radar/widgets/radar_map_view.dart' show RadarCameraLink;

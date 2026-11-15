@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/hazard_models.dart';
 import '../../data/repositories/hazard_repository.dart';
-import '../../data/repositories/weather_repository.dart' show Result;
+import '../../core/api/result.dart' show Result;
 
 /// 使用者位置：縣市名（CWA 寫法，用「臺」）與經緯度
 typedef HazardLocation = ({String county, double latitude, double longitude});

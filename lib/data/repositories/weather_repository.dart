@@ -2,120 +2,12 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/api/result.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/cwa_names.dart';
 import '../../core/location/location_service.dart';
 import '../models/place.dart';
 import '../models/weather_models.dart';
-
-// ============================================================================
-// Result 型別（Error handling）
-// ============================================================================
-
-/// API 操作結果封裝
-sealed class Result<T> {
-  const Result();
-
-  /// 成功結果
-  factory Result.success(T data) = Success<T>;
-
-  /// 失敗結果
-  factory Result.failure(
-    String message, {
-    int? statusCode,
-    String? dataset,
-    String? location,
-  }) = Failure<T>;
-
-  /// 匹配結果
-  R fold<R>({
-    required R Function(T data) onSuccess,
-    required R Function(String message, int? statusCode) onFailure,
-  }) {
-    return switch (this) {
-      Success<T>(:final data) => onSuccess(data),
-      Failure<T>(:final message, :final statusCode) =>
-        onFailure(message, statusCode),
-    };
-  }
-
-  /// 是否成功
-  bool get isSuccess => this is Success<T>;
-
-  /// 是否失敗
-  bool get isFailure => this is Failure<T>;
-
-  ///取得資料（失敗時拋例外）
-  T get data {
-    return switch (this) {
-      Success<T>(:final data) => data,
-      Failure<T>(:final message) => throw StateError(message),
-    };
-  }
-}
-
-/// 成功結果
-final class Success<T> extends Result<T> {
-  @override
-  final T data;
-  const Success(this.data);
-}
-
-/// 失敗結果。[dataset]、[location] 為受影響的資料集代號與地點（可得時必填）。
-final class Failure<T> extends Result<T> {
-  final String message;
-  final int? statusCode;
-  final String? dataset;
-  final String? location;
-
-  /// Non-null = the request failed because of the API key; pages show 「請到「設定」輸入 / 更新 token」.
-  final ApiKeyIssue? apiKeyIssue;
-  const Failure(this.message, {this.statusCode, this.dataset, this.location, this.apiKeyIssue});
-}
-
-/// Why a request failed because of the API key.
-enum ApiKeyIssue { missing, rejected, unreadable }
-
-/// Interceptor rejection payload (`DioException.error`).
-class CwaApiKeyException implements Exception {
-  final ApiKeyIssue issue;
-  final String message;
-  const CwaApiKeyException(this.issue, this.message);
-
-  @override
-  String toString() => 'CwaApiKeyException(${issue.name}): $message';
-}
-
-/// The one DioException → [Failure] mapping for every repository.
-Failure<T> failureFromDio<T>(DioException e, {required String dataset, String? location}) {
-  final status = e.response?.statusCode;
-  final error = e.error;
-  final issue = error is CwaApiKeyException
-      ? error.issue
-      : (status == 401 || status == 403)
-          ? ApiKeyIssue.rejected
-          : null;
-  final message = switch (error) {
-    CwaApiKeyException(:final message) => message,
-    _ when issue == ApiKeyIssue.rejected => 'API 授權失敗，請確認 API Key 正確（HTTP $status）',
-    _ => switch (e.type) {
-        DioExceptionType.connectionTimeout => '連線逾時，請檢查網路',
-        DioExceptionType.sendTimeout => '傳送逾時，請稍後再試',
-        DioExceptionType.receiveTimeout => '接收逾時，請稍後再試',
-        DioExceptionType.badResponse => '伺服器回應錯誤：$status',
-        DioExceptionType.cancel => '請求已取消',
-        DioExceptionType.connectionError => '連線失敗，請檢查網路',
-        _ => '網路錯誤：${e.message}',
-      },
-  };
-  return Failure(
-    location == null ? '$message（資料集 $dataset）' : '$message（資料集 $dataset，地點 $location）',
-    statusCode: status,
-    dataset: dataset,
-    location: location,
-    apiKeyIssue: issue,
-  );
-}
 
 // ============================================================================
 // Repository Provider
@@ -237,17 +129,17 @@ class WeatherRepository {
       query: {'WeatherElement': _countyLookupElement, 'GeoInfo': 'Coordinates,CountyName'},
       parse: (body) => _parseStationCounties(body, latitude, longitude),
     );
-    if (stations is Failure<List<_StationCounty>>) return _retype(stations);
+    if (stations is Failure<List<_StationCounty>>) return stations.retype<Place>();
     final nearest = stations.data.first;
     final other = stations.data.where((s) => s.county != nearest.county).firstOrNull;
 
     final home = await getTowns(nearest.county);
-    if (home is Failure<List<Place>>) return _retype(home);
+    if (home is Failure<List<Place>>) return home.retype<Place>();
     var best = _nearestPlace(home.data, latitude, longitude);
     if (other != null &&
         other.km <= _distanceKm(latitude, longitude, best.latitude, best.longitude) + countyBorderSlackKm) {
       final neighbour = await getTowns(other.county);
-      if (neighbour is Failure<List<Place>>) return _retype(neighbour);
+      if (neighbour is Failure<List<Place>>) return neighbour.retype<Place>();
       best = _nearestPlace([best, ...neighbour.data], latitude, longitude);
     }
     return Success(best);
@@ -285,10 +177,6 @@ class WeatherRepository {
       return Failure('解析 $dataset 發布時間失敗（地點 $county）：${e.message}', dataset: dataset, location: county);
     }
   }
-
-  /// 同一失敗換成另一結果型別（訊息、資料集、地點原樣保留）。
-  Failure<T> _retype<T>(Failure<Object?> f) =>
-      Failure(f.message, statusCode: f.statusCode, dataset: f.dataset, location: f.location, apiKeyIssue: f.apiKeyIssue);
 
   Future<Result<T>> _townshipForecast<T>(
     String city,

@@ -7,7 +7,7 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/buttons.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
-import '../../data/repositories/weather_repository.dart';
+import '../../core/api/result.dart';
 import '../location/place_provider.dart';
 import 'place_picker.dart';
 import 'widgets/notification_card.dart';

@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
 import '../models/hazard_models.dart';
-import 'weather_repository.dart' show Failure, Result, Success, failureFromDio;
+import '../../core/api/result.dart' show Failure, Result, Success, failureFromDio;
 
 /// 警特報：各縣市生效特報
 const String warningsByCountyDataset = 'W-C0033-001';
@@ -86,14 +86,7 @@ class HazardRepository {
   }) async {
     return switch (await getRainStations()) {
       Success(data: final all) => _countyRainfall(all, county, latitude, longitude),
-      Failure(:final message, :final statusCode, :final dataset, :final location, :final apiKeyIssue) =>
-        Failure<CountyRainfall>(
-          message,
-          statusCode: statusCode,
-          dataset: dataset,
-          location: location,
-          apiKeyIssue: apiKeyIssue,
-        ),
+      final Failure<List<RainStation>> f => f.retype<CountyRainfall>(),
     };
   }
 
@@ -119,14 +112,7 @@ class HazardRepository {
       Success(data: final g) => g.contains(latitude, longitude)
           ? Success(RainForecast(grid: g, mmAtLocation: g.valueAt(latitude, longitude)))
           : Failure<RainForecast>('[$rainForecast1hDataset] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
-      Failure(:final message, :final statusCode, :final dataset, :final location, :final apiKeyIssue) =>
-        Failure<RainForecast>(
-          message,
-          statusCode: statusCode,
-          dataset: dataset,
-          location: location,
-          apiKeyIssue: apiKeyIssue,
-        ),
+      final Failure<RainForecastGrid> f => f.retype<RainForecast>(),
     };
   }
 

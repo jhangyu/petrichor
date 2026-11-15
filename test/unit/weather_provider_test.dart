@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:petrichor/core/location/location_service.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/models/weather_models.dart';
+import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:petrichor/features/location/place_provider.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
@@ -143,7 +144,7 @@ void main() {
     expect(s.error, isNull);
     expect(s.hourly, isA<Failure<List<HourlyForecast>>>());
     expect((s.hourly as Failure).message, contains('F-D0047-061'));
-    expect(s.current!.isSuccess, isTrue);
+    expect(s.current, isA<Success<CurrentWeather>>());
     expect(s.weekly!.data.first.minTemperature, 21);
     expect(s.sun, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
   });

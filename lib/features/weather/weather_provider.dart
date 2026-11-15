@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
+import '../../core/api/result.dart';
 import '../../data/repositories/weather_repository.dart';
 import '../location/place_provider.dart';
 

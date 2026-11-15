@@ -6,7 +6,7 @@ import 'package:petrichor/core/api/api_key.dart';
 import 'package:petrichor/core/api/dio_client.dart';
 import 'package:petrichor/data/models/hazard_models.dart';
 import 'package:petrichor/data/repositories/hazard_repository.dart';
-import 'package:petrichor/data/repositories/weather_repository.dart';
+import 'package:petrichor/core/api/result.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -106,7 +106,7 @@ void main() {
         'W-C0033-002': _ok({'success': 'true', 'records': <String, dynamic>{}}),
       });
       final r = await repo.getActiveWarnings();
-      expect(r.isSuccess, isTrue);
+      expect(r, isA<Success<ActiveWarnings>>());
       expect(r.data.counties, isEmpty);
       expect(r.data.bulletins, isEmpty);
       expect(r.data.updatedAt, isNull);
@@ -131,7 +131,7 @@ void main() {
         'W-C0033-002': _ok(w2),
       });
       final r = await repo.getActiveWarnings();
-      expect(r.isSuccess, isTrue);
+      expect(r, isA<Success<ActiveWarnings>>());
       expect(r.data.bulletins.length, 2);
       expect(r.data.bulletins.any((b) => b.description.contains('解除')), isFalse);
       expect(r.data.forCounty('澎湖縣').single.bulletin!.title, '陸上強風特報');

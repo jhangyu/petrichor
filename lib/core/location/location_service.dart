@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/place.dart';
+import '../api/result.dart';
 import '../../data/repositories/weather_repository.dart';
 
 final locationServiceProvider =

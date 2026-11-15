@@ -11,7 +11,7 @@ import '../../core/widgets/data_display.dart';
 import '../../core/widgets/inputs.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../data/models/place.dart';
-import '../../data/repositories/weather_repository.dart';
+import '../../core/api/result.dart';
 import '../location/place_provider.dart';
 
 /// 鄉鎮清單載入骨架高度

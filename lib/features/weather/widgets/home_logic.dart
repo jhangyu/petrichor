@@ -1,6 +1,6 @@
 import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
-import '../../../data/repositories/weather_repository.dart';
+import '../../../core/api/result.dart';
 import '../solar_elevation.dart';
 import '../weather_provider.dart';
 

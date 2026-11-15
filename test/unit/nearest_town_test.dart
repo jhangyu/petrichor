@@ -1,5 +1,6 @@
 import 'package:petrichor/core/constants/app_constants.dart';
 import 'package:petrichor/data/models/place.dart';
+import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,7 +67,7 @@ void main() {
 
     expect(failure.location, '臺北市');
     expect(failure.dataset, 'F-D0047-061');
-    expect(failure.statusCode, 500);
+    expect(failure.message, contains('伺服器回應錯誤：500'));
   });
 
   test('a station list failure names the station dataset and coordinates', () async {

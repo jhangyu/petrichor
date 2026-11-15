@@ -4,7 +4,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/weather_models.dart';
-import '../../../data/repositories/weather_repository.dart';
+import '../../../core/api/result.dart';
 import 'home_logic.dart';
 import 'weather_glyph_icon.dart';
 

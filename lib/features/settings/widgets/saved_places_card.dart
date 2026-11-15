@@ -8,7 +8,7 @@ import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
-import '../../../data/repositories/weather_repository.dart';
+import '../../../core/api/result.dart';
 import '../../location/place_provider.dart';
 import '../../weather/widgets/home_logic.dart';
 import '../../weather/widgets/weather_glyph_icon.dart';

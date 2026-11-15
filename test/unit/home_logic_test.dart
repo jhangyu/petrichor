@@ -1,6 +1,6 @@
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/models/weather_models.dart';
-import 'package:petrichor/data/repositories/weather_repository.dart';
+import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
 import 'package:petrichor/features/weather/widgets/home_logic.dart';
 import 'package:flutter_test/flutter_test.dart';

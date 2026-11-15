@@ -8,7 +8,7 @@ import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
-import '../../../data/repositories/weather_repository.dart' show Failure, Success;
+import '../../../core/api/result.dart' show Failure, Success;
 import '../../radar/radar_playback.dart' show formatTaiwanClock;
 import '../../weather/weather_provider.dart' show weatherClockProvider;
 import '../hazard_provider.dart';
