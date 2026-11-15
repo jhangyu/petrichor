@@ -50,7 +50,7 @@ class CwaApiKeyNotifier extends AsyncNotifier<CwaApiKey?> {
   Future<void> _write(CwaApiKey? value, Future<bool> Function(SharedPreferences prefs) write) async {
     state = await AsyncValue.guard(() async {
       final prefs = await ref.read(sharedPreferencesProvider.future);
-      if (!await write(prefs)) throw const StoredSettingException(storageKey, '寫入失敗：期望 true，實際 false');
+      await writeChecked(storageKey, write(prefs));
       return value;
     });
   }

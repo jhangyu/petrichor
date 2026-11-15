@@ -19,6 +19,11 @@ class StoredSettingException implements Exception {
   String toString() => 'StoredSettingException($key): $message';
 }
 
+/// Awaits [write] (a SharedPreferences write); false = the write failed.
+Future<void> writeChecked(String key, Future<bool> write) async {
+  if (!await write) throw StoredSettingException(key, '寫入失敗：期望 true，實際 false');
+}
+
 /// One setting remembered across restarts as an int under [key]. A corrupt
 /// stored value is an [AsyncError]; [set] overwrites it and recovers.
 abstract class IntSetting<T> extends AsyncNotifier<T> {
@@ -50,9 +55,7 @@ abstract class IntSetting<T> extends AsyncNotifier<T> {
     state = AsyncData(value);
     final written = await AsyncValue.guard(() async {
       final prefs = await ref.read(sharedPreferencesProvider.future);
-      if (!await prefs.setInt(key, toStored(value))) {
-        throw StoredSettingException(key, '寫入失敗：期望 true，實際 false');
-      }
+      await writeChecked(key, prefs.setInt(key, toStored(value)));
       return value;
     });
     // A later set() may have replaced the state meanwhile; only a failure overrides it.
