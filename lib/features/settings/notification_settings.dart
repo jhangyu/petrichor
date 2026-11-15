@@ -91,9 +91,7 @@ class WarningAreas extends AsyncNotifier<Set<String>> {
 
   Future<void> _write(Set<String> keys) async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
-    if (!await prefs.setString(_warningAreasKey, jsonEncode(keys.toList()..sort()))) {
-      throw const StoredSettingException(_warningAreasKey, '寫入失敗：期望 true，實際 false');
-    }
+    await writeChecked(_warningAreasKey, prefs.setString(_warningAreasKey, jsonEncode(keys.toList()..sort())));
   }
 
   static Set<String> _parse(Object? raw) {
