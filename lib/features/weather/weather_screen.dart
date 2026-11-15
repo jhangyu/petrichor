@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -239,13 +240,85 @@ class _CardFlow extends StatelessWidget {
           spacing: AppLayout.gridGap,
           children: switch (columns) {
             1 => [hero, sun, forecast, weekly],
-            2 => [pair(hero, sun), forecast, weekly],
-            _ => [pair(hero, sun), pair(forecast, weekly, aFlex: _forecastFlex, bFlex: _weeklyFlex)],
+            2 => [_EqualHeightPair(gap: AppLayout.gridGap, children: [hero, sun]), forecast, weekly],
+            _ => [
+              _EqualHeightPair(gap: AppLayout.gridGap, children: [hero, sun]),
+              pair(forecast, weekly, aFlex: _forecastFlex, bFlex: _weeklyFlex),
+            ],
           },
         );
       },
     );
   }
+}
+
+/// Two equal-width cards side by side, both as tall as the taller one. A custom
+/// layout because IntrinsicHeight cannot measure SunCard's LayoutBuilder.
+class _EqualHeightPair extends MultiChildRenderObjectWidget {
+  const _EqualHeightPair({required this.gap, required super.children});
+
+  final double gap;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderEqualHeightPair(gap);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderEqualHeightPair renderObject,
+  ) => renderObject.gap = gap;
+}
+
+class _PairParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderEqualHeightPair extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _PairParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _PairParentData> {
+  _RenderEqualHeightPair(this._gap);
+
+  double _gap;
+  set gap(double value) {
+    if (value == _gap) return;
+    _gap = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _PairParentData) child.parentData = _PairParentData();
+  }
+
+  @override
+  void performLayout() {
+    final first = firstChild!;
+    final second = childAfter(first)!;
+    final width = (constraints.maxWidth - _gap) / 2;
+    final loose = BoxConstraints(minWidth: width, maxWidth: width);
+    first.layout(loose, parentUsesSize: true);
+    second.layout(loose, parentUsesSize: true);
+    final height = first.size.height > second.size.height
+        ? first.size.height
+        : second.size.height;
+    final tight = BoxConstraints.tightFor(width: width, height: height);
+    for (final child in [first, second]) {
+      if (child.size.height != height) {
+        child.layout(tight, parentUsesSize: true);
+      }
+    }
+    (first.parentData! as _PairParentData).offset = Offset.zero;
+    (second.parentData! as _PairParentData).offset = Offset(width + _gap, 0);
+    size = constraints.constrain(Size(constraints.maxWidth, height));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) =>
+      defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }
 
 /// `.ptr`: pull-to-refresh hint; while loading, the spinner pill 「載入天氣資料…」.
