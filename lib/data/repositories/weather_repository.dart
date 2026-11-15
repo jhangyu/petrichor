@@ -181,11 +181,13 @@ class WeatherRepository {
   // 日出日沒
   // ==========================================================================
 
-  /// 取得 [city] 縣市「[now] 所在臺灣曆日」與隔日的日出日沒時刻（[今天, 明天]）。
+  /// 取得 [city] 縣市「[now] 所在臺灣曆日」前一日、當日與隔日的日出日沒時刻（[昨天, 今天, 明天]）。
   Future<Result<List<SunDay>>> getSunTimes(String city, DateTime now) {
     final county = normalizeCwaName(city);
     final today = now.toUtc().add(_taiwanOffset);
-    final days = [for (var i = 0; i < _sunDayCount; i++) _dateKey(today.add(Duration(days: i)))];
+    final days = [
+      for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) _dateKey(today.add(Duration(days: i))),
+    ];
     return _query(
       dataset: AppConstants.sunTimesDataset,
       location: county,
@@ -193,7 +195,7 @@ class WeatherRepository {
       query: {
         'CountyName': county,
         'timeFrom': days.first,
-        'timeTo': _dateKey(today.add(const Duration(days: _sunDayCount))),
+        'timeTo': _dateKey(today.add(const Duration(days: _sunDaysAfter + 1))),
       },
       parse: (body) => _parseSunTimes(body, county, days),
     );
@@ -357,8 +359,9 @@ const Duration _taiwanOffset = Duration(hours: 8);
 /// 一週預報顯示天數
 const int _weeklyDayCount = 7;
 
-/// 日出日沒查詢天數（今天＋明天）
-const int _sunDayCount = 2;
+/// 日出日沒查詢範圍：今天前 1 日（夜間弧線）與後 1 日（暮光後切換明天）
+const int _sunDaysBefore = 1;
+const int _sunDaysAfter = 1;
 
 /// 12 小時預報中「白天時段」的起始時（臺灣時間）
 const int _daySlotStartHour = 6;

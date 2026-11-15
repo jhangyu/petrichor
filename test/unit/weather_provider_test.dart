@@ -89,7 +89,7 @@ void main() {
     expect(s.current!.data.temperature, isNotNull);
     expect(s.hourly!.data, hasLength(4));
     expect(s.weekly!.data.first.minTemperature, 21);
-    expect(s.sun!.data, hasLength(2));
+    expect(s.sun, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
     expect(s.hourlyIssuedAt!.data, DateTime.parse('2026-11-14T17:00:00+08:00'));
     expect(adapter.fileRequests.single.pathSegments.last, 'F-D0047-061');
   });
@@ -145,6 +145,35 @@ void main() {
     expect((s.hourly as Failure).message, contains('F-D0047-061'));
     expect(s.current!.isSuccess, isTrue);
     expect(s.weekly!.data.first.minTemperature, 21);
-    expect(s.sun!.data, hasLength(2));
+    expect(s.sun, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
+  });
+
+  group('minuteTickProvider', () {
+    test('emits on subscribe then at each minute boundary, using the injected clock and timer', () async {
+      var clock = DateTime.utc(2026, 11, 14, 4, 0, 42, 500);
+      final delays = <Duration>[];
+      final fires = <void Function()>[];
+      final tickContainer = ProviderContainer(overrides: [
+        weatherClockProvider.overrideWithValue(() => clock),
+        minuteTimerFactoryProvider.overrideWithValue((delay, callback) {
+          delays.add(delay);
+          fires.add(callback);
+          return Timer(Duration.zero, () {})..cancel();
+        }),
+      ]);
+      addTearDown(tickContainer.dispose);
+      final ticks = <DateTime>[];
+      tickContainer.listen(minuteTickProvider, (_, next) => ticks.add(next.requireValue));
+
+      await Future<void>.delayed(Duration.zero);
+      expect(ticks, [DateTime.utc(2026, 11, 14, 4, 0, 42, 500)]);
+      expect(delays, [const Duration(seconds: 17, milliseconds: 500)]);
+
+      clock = DateTime.utc(2026, 11, 14, 4, 1);
+      fires.last();
+      await Future<void>.delayed(Duration.zero);
+      expect(ticks.last, DateTime.utc(2026, 11, 14, 4, 1));
+      expect(delays.last, const Duration(minutes: 1));
+    });
   });
 }
