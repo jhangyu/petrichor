@@ -92,6 +92,15 @@ void main() {
     }
   });
 
+  test('corrupt warning areas with no saved places: reset recovers', () async {
+    SharedPreferences.setMockInitialValues({'notify.warningAreas': '{'});
+    final c = newContainer();
+    expectCorrupt(await readOutcome(() => c.read(warningAreasProvider.future)), 'notify.warningAreas');
+    await c.read(warningAreasProvider.notifier).reset();
+    expect(c.read(warningAreasProvider).value, isEmpty);
+    expect(await newContainer().read(warningAreasProvider.future), isEmpty);
+  });
+
   test('warning areas: on for a saved place, pruned on remove, off after re-add, unsaved rejected', () async {
     SharedPreferences.setMockInitialValues({});
     final c = newContainer();

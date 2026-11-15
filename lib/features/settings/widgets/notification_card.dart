@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/storage/stored_setting.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
@@ -157,24 +156,21 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     final areas = ref.watch(warningAreasProvider);
     const none = AppListRow(enabled: false, primary: '尚無儲存的地點', secondary: '先在「儲存的地點」新增');
 
-    final error = saved.error ?? areas.error;
-    if (error != null) {
-      if (error is StoredSettingException) {
-        return [
-          SettingsBlock(children: [
-            settingsErrorBanner(
-              title: '無法讀取分區警特報設定',
-              text: '$error',
-              actionLabel: '重設分區警特報',
-              // setPlace overwrites the whole corrupt set; the place is switched off.
-              onAction: () => ref
-                  .read(warningAreasProvider.notifier)
-                  .setPlace(saved.requireValue.first, false),
-            ),
-          ]),
-        ];
-      }
+    // Decide by which provider failed: warningAreasProvider also fails when the saved places do.
+    if (saved.error case final error?) {
       return [SettingsBlock(children: [settingsErrorBanner(title: '無法讀取已儲存的地點', text: '$error')])];
+    }
+    if (areas.error case final error?) {
+      return [
+        SettingsBlock(children: [
+          settingsErrorBanner(
+            title: '無法讀取分區警特報設定',
+            text: '$error',
+            actionLabel: '重設分區警特報',
+            onAction: () => ref.read(warningAreasProvider.notifier).reset(),
+          ),
+        ]),
+      ];
     }
     final places = saved.value;
     final on = areas.value;

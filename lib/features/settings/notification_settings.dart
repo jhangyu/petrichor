@@ -89,6 +89,12 @@ class WarningAreas extends AsyncNotifier<Set<String>> {
     if (written is AsyncError || state.value == next) state = written;
   }
 
+  /// Overwrites the stored set with empty (all off): recovery from a corrupt set, needs no saved place.
+  Future<void> reset() async {
+    await _write(const {});
+    state = const AsyncData({});
+  }
+
   Future<void> _write(Set<String> keys) async {
     final prefs = await ref.read(sharedPreferencesProvider.future);
     await writeChecked(_warningAreasKey, prefs.setString(_warningAreasKey, jsonEncode(keys.toList()..sort())));
