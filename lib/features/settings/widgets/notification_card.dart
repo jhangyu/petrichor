@@ -191,7 +191,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
       for (final Place p in places)
         _SwitchRow(
           icon: Icons.warning_amber_outlined,
-          title: '${p.county} ${p.town}',
+          title: placeLabel(p),
           subtitle: '依${p.county}的警特報',
           value: on.contains(p.areaKey),
           enabled: masterOn,
