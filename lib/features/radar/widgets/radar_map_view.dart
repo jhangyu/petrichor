@@ -24,7 +24,7 @@ const _styleUrl = 'https://vector.openstreetmap.org/styles/svwd/svwd03style.json
 
 /// OSMF vector tile policy: a User-Agent that identifies the app.
 const _userAgent = 'us.jhangy.petrichor';
-const _attribution = '© OpenStreetMap contributors';
+const _attribution = '© OpenStreetMap';
 const _styleFailedText = '底圖載入失敗，點按重試';
 const _logTag = 'basemap';
 
