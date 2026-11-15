@@ -8,18 +8,20 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:pool/pool.dart';
 
+import '../../features/radar/widgets/radar_webp_image.dart';
 import 'radar_echo_stats.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
 import 'radar_loop.dart';
 import 'radar_source.dart';
+import 'radar_webp.dart';
 
 export 'radar_loop.dart';
 
 /// Cache sub-directory (one sub-directory per source); the suffix changes
 /// whenever processing output changes, so frames made by an older pipeline are
 /// never shown.
-const radarFrameCacheDirName = 'radar_indexed_png_2048_v1';
+const radarFrameCacheDirName = 'radar_webp_2048_v1';
 
 /// Frames processed at once (one isolate each). Measured on the Mac
 /// (docs/logs/2026-11-15/radar-perf-handover.md §9): 2 workers are 2.1x
@@ -35,10 +37,10 @@ const radarFetchWorkers = 4;
 /// except in tests.
 typedef RadarFrameProcess = Future<ProcessedRadarFrame> Function(Uint8List png, RadarImageGeometry geometry);
 
-/// Cache files per frame: `<key>.png` (indexed PNG) and `<key>.stats.gz`
+/// Cache files per frame: `<key>.webp` (lossless WebP) and `<key>.stats.gz`
 /// (gzip of [RadarEchoStats.toBytes]; the cell grid is mostly zeros); key =
 /// observation time `yyyyMMddHHmmss` UTC (station frames have irregular seconds).
-final _cacheFilePattern = RegExp(r'^(\d{14})\.(png|stats\.gz)$');
+final _cacheFilePattern = RegExp(r'^(\d{14})\.(webp|stats\.gz)$');
 
 String _cacheKey(DateTime t) {
   final u = t.toUtc();
@@ -49,7 +51,7 @@ String _cacheKey(DateTime t) {
 DateTime _cacheKeyTime(String k) => DateTime.utc(int.parse(k.substring(0, 4)), int.parse(k.substring(4, 6)),
     int.parse(k.substring(6, 8)), int.parse(k.substring(8, 10)), int.parse(k.substring(10, 12)), int.parse(k.substring(12, 14)));
 
-/// One processed, cached frame: transparent indexed PNG with rows linear in
+/// One processed, cached frame: transparent lossless WebP with rows linear in
 /// Web Mercator, shown as one `OverlayImage` over [bounds]. Only the strongest
 /// echo is kept per frame: the full statistics (~560 KB of cell grid each,
 /// ~110 MB for a 200-frame station loop) are held for the newest frame only
@@ -78,11 +80,9 @@ class RadarFrame {
   /// Height / width of the decoded image.
   double get aspect => height / width;
 
-  /// Decoded at [decodeWidth] px, not always at the stored 2048 px: a
-  /// full-width decoded website frame is ~17 MB, so decode no wider than the
-  /// frame is shown on screen.
-  ImageProvider imageProvider({required int decodeWidth}) =>
-      ResizeImage(FileImage(file), width: decodeWidth, policy: ResizeImagePolicy.fit);
+  /// Decoded at the stored size (~17 MB for a website frame); the map and its
+  /// pre-decode share this provider's cache entry.
+  ImageProvider get imageProvider => RadarWebpImage(file);
 }
 
 /// Loads a source's frames: cached frames first, then the frame list, then
@@ -150,9 +150,10 @@ class RadarFrameRepository {
 
     Future<void> readCached(String key) async {
       if (ready.containsKey(key)) return;
-      final png = File('${dir.path}/$key.png');
-      final size = _pngSize(await png.openRead(0, _pngHeaderBytes).expand((chunk) => chunk).toList(), source: png.path);
-      ready[key] = _frame(_cacheKeyTime(key), png, await readStats(key), size);
+      final webp = File('${dir.path}/$key.webp');
+      final size = radarWebpSize(Uint8List.fromList(
+          await webp.openRead(0, radarWebpHeaderBytes).expand((chunk) => chunk).toList()));
+      ready[key] = _frame(_cacheKeyTime(key), webp, await readStats(key), size);
     }
 
     // Events go out in order; each carries the slots as they were when it was
@@ -263,18 +264,18 @@ class RadarFrameRepository {
       for (final entity in await dir.list().toList())
         (entity, _cacheFilePattern.firstMatch(entity.path.substring(dir.path.length + 1)))
     ];
-    final pngKeys = [for (final (_, match) in entries) if (match?[2] == 'png') match![1]!]..sort();
-    final newest = pngKeys.isEmpty ? null : _cacheKeyTime(pngKeys.last);
+    final webpKeys = [for (final (_, match) in entries) if (match?[2] == 'webp') match![1]!]..sort();
+    final newest = webpKeys.isEmpty ? null : _cacheKeyTime(webpKeys.last);
     final end = newest != null && newest.isBefore(now.toUtc()) ? newest : now.toUtc();
     final cutoff = end.subtract(retention);
     for (final (entity, match) in entries) {
       if (match == null || _cacheKeyTime(match[1]!).isBefore(cutoff)) await entity.delete(recursive: true);
     }
-    return [for (final key in pngKeys) if (!_cacheKeyTime(key).isBefore(cutoff)) key];
+    return [for (final key in webpKeys) if (!_cacheKeyTime(key).isBefore(cutoff)) key];
   }
 
-  /// Downloads and processes [f]; the PNG is renamed into place last, so a
-  /// `<key>.png` always has its stats file. Throws the cancellation error once
+  /// Downloads and processes [f]; the WebP is renamed into place last, so a
+  /// `<key>.webp` always has its stats file. Throws the cancellation error once
   /// [cancel] fires, before any file is written: a frame still in processing
   /// is dropped (its isolate runs to the end unobserved) and a frame waiting
   /// for a processing slot is never processed.
@@ -292,36 +293,24 @@ class RadarFrameRepository {
     });
     final key = _cacheKey(f.time);
     final stats = File('${dir.path}/$key.stats.gz');
-    final png = File('${dir.path}/$key.png');
+    final webp = File('${dir.path}/$key.webp');
     await (await File('${stats.path}.tmp').writeAsBytes(gzip.encode(processed.stats.toBytes()), flush: true))
         .rename(stats.path);
-    await (await File('${png.path}.tmp').writeAsBytes(processed.png, flush: true)).rename(png.path);
-    return _frame(f.time, png, processed.stats, _pngSize(processed.png, source: f.url));
+    await (await File('${webp.path}.tmp').writeAsBytes(processed.webp, flush: true)).rename(webp.path);
+    return _frame(f.time, webp, processed.stats, radarWebpSize(processed.webp));
   }
 }
 
 bool _isCancel(Object e) => e is DioException && CancelToken.isCancel(e);
 
-RadarFrame _frame(DateTime time, File png, RadarEchoStats stats, ({int width, int height}) size) => RadarFrame(
+RadarFrame _frame(DateTime time, File webp, RadarEchoStats stats, ({int width, int height}) size) => RadarFrame(
       time: time,
-      file: png,
+      file: webp,
       bounds: stats.frame,
       significantDbz: stats.hasSignificantEcho ? stats.strongestDbz : null,
       width: size.width,
       height: size.height,
     );
-
-/// PNG signature (8) + IHDR length and type (8) + width and height (8).
-const _pngHeaderBytes = 24;
-
-/// Pixel size from the IHDR chunk at the start of a PNG.
-({int width, int height}) _pngSize(List<int> head, {required String source}) {
-  if (head.length < _pngHeaderBytes || String.fromCharCodes(head.sublist(12, 16)) != 'IHDR') {
-    throw FormatException('$source: expected a PNG starting with IHDR, got ${head.take(_pngHeaderBytes).toList()}');
-  }
-  final data = ByteData.sublistView(Uint8List.fromList(head.sublist(0, _pngHeaderBytes)));
-  return (width: data.getUint32(16), height: data.getUint32(20));
-}
 
 /// Why listed frame [f] has no cached frame, naming the frame by its URL.
 RadarDataException _frameFailure(RadarFrameRef f, Exception e) => switch (e) {

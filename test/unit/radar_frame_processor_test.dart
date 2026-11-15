@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:cwb_flutter/data/radar/radar_png_rows.dart';
+import 'package:cwb_flutter/data/radar/radar_webp.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -18,11 +19,16 @@ void main() {
   RadarImageGeometry geometry({List<int>? rowMap, List<PixelRect> decorations = const []}) =>
       RadarImageGeometry(
         size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations, palette: radarEchoPalette);
-  img.Image decode(ProcessedRadarFrame p) => img.decodePng(p.png)!;
+  img.Image decode(ProcessedRadarFrame p) {
+    final size = radarWebpSize(p.webp);
+    return img.Image.fromBytes(
+        width: size.width, height: size.height, bytes: decodeRadarWebp(p.webp).buffer, numChannels: 4);
+  }
+
   final keyed = decode(processRadarFrame(png, geometry()));
 
-  test('output is one indexed PNG; background transparent, echo keeps its RGB exactly', () {
-    expect((keyed.hasPalette, keyed.width, keyed.height), (true, 64, 64));
+  test('output is one lossless WebP; background transparent, echo keeps its RGB exactly', () {
+    expect((keyed.width, keyed.height), (64, 64));
     var echo = 0, background = 0, sumR = 0, sumG = 0, sumB = 0;
     for (var y = 0; y < 64; y++) {
       for (var x = 0; x < 64; x++) {
@@ -74,7 +80,7 @@ void main() {
     expect(() => processRadarFrame(png, geometry(rowMap: [0, 2, 1])), throwsArgumentError);
   });
 
-  test('stored image is 2048 wide: nearest source pixel, exact palette indices, statistics from the full source', () {
+  test('stored image is 2048 wide: nearest source pixel, exact colours, statistics from the full source', () {
     const size = 2304; // not a multiple of 2048: exercises the uneven nearest mapping
     int level(int x, int y) => (x * 7 + y * 13) % 70; // 0..65 echo, 66..69 background
     final rgb = img.Image(width: size, height: size);
@@ -97,13 +103,16 @@ void main() {
         palette: radarEchoPalette,
       ),
     );
-    final out = img.decodePng(p.png)!;
-    expect((out.width, out.height, out.hasPalette), (2048, 2048, true));
-    final data = out.toUint8List();
+    final out = decode(p);
+    expect((out.width, out.height), (2048, 2048));
     for (var oy = 0; oy < 2048; oy++) {
       for (var ox = 0; ox < 2048; ox++) {
         final l = level(ox * size ~/ 2048, oy * size ~/ 2048);
-        if (data[oy * out.rowStride + ox] != (l < 66 ? l + 1 : 0)) fail('index differs at ($ox,$oy)');
+        final o = out.getPixel(ox, oy);
+        final expected = l < 66 ? [radarEchoPalette[l] >> 16, (radarEchoPalette[l] >> 8) & 0xFF, radarEchoPalette[l] & 0xFF, 255] : null;
+        if (expected == null ? o.a != 0 : [o.r, o.g, o.b, o.a].toString() != expected.toString()) {
+          fail('pixel differs at ($ox,$oy)');
+        }
       }
     }
     expect(p.stats.pixelsPerDbz, counts);

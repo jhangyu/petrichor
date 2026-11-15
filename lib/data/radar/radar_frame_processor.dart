@@ -2,15 +2,15 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:image/image.dart' as img;
 
 import '../../core/theme/app_tokens.dart';
 import 'radar_echo_stats.dart';
 import 'radar_png_rows.dart';
+import 'radar_webp.dart';
 
 /// Post-processing of a radar image (website `CV1_3600_` frame or website
 /// station image): background → transparent, rows reprojected as the
-/// [RadarImageGeometry] says, stored as one 8-bit indexed PNG.
+/// [RadarImageGeometry] says, stored as one lossless WebP.
 ///
 /// Background key (evidence: docs/logs/2026-11-14/radar-impl-notes.md): echo
 /// pixels are drawn only in the 66 colours of the dBZ legend (one per dBZ,
@@ -20,7 +20,7 @@ import 'radar_png_rows.dart';
 
 const radarFrameSize = 3600;
 
-/// Width of the stored PNG (nearest-neighbour from the source, so the palette
+/// Width of the stored image (nearest-neighbour from the source, so the palette
 /// stays exact); narrower sources are stored at their own width. The CWA
 /// source is upsampled from a ~1.27 km grid, so more width adds no echo
 /// detail (radar-perf-contract.md item 1); never lowered to fit memory (user
@@ -88,18 +88,20 @@ class RadarImageGeometry {
   });
 }
 
-/// A processed frame: indexed PNG (palette [radarIndexedPalette] of the
+/// A processed frame: lossless WebP (transparent background, opaque echo in the
 /// source colours) and the echo statistics of the source image.
-typedef ProcessedRadarFrame = ({Uint8List png, RadarEchoStats stats});
+typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStats stats});
 
-/// Palette of the processed PNG: index 0 = transparent, index d + 1 = dBZ d
+/// RGBA pixel (bytes R, G, B, A in memory, little-endian host) per palette index
+/// of the processed image: index 0 = transparent, index d + 1 = dBZ d
 /// ([colours], index = dBZ), opaque.
-img.PaletteUint8 radarIndexedPalette(List<int> colours) {
-  final palette = img.PaletteUint8(colours.length + 1, 4);
+Uint32List _rgbaOfIndex(List<int> colours) {
+  const opaque = 0xFF000000;
+  final lut = Uint32List(colours.length + 1);
   for (final (d, c) in colours.indexed) {
-    palette.setRgba(d + 1, c >> 16, (c >> 8) & 0xFF, c & 0xFF, 0xFF);
+    lut[d + 1] = opaque | ((c & 0xFF) << 16) | (c & 0xFF00) | (c >> 16);
   }
-  return palette;
+  return lut;
 }
 
 /// Full pipeline for one downloaded image, in one pass over the source rows
@@ -108,7 +110,7 @@ img.PaletteUint8 radarIndexedPalette(List<int> colours) {
 /// key echo pixels to palette indices (decorations → transparent), count the
 /// echo statistics (on the full-resolution source), copy each index row,
 /// sampled nearest-neighbour to [radarStoredWidth] px wide, to the output rows
-/// [g.rowMap] maps to it, encode one indexed PNG (zlib from the platform). Pure
+/// [g.rowMap] maps to it, encode one lossless WebP. Pure
 /// and synchronous: run it in a background isolate.
 ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   if (g.palette.length != radarEchoPalette.length) {
@@ -132,8 +134,8 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final outHeight = (g.rowMap.length * outWidth / width).round();
   final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
   final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);
-  final out = img.Image(width: outWidth, height: outHeight, numChannels: 1, palette: radarIndexedPalette(g.palette));
-  final d = out.toUint8List();
+  final rgbaOfIndex = _rgbaOfIndex(g.palette);
+  final out = Uint32List(outWidth * outHeight);
   final row = Uint8List(width);
   var k = 0;
   readPngRgbRows(png, g.size, (y, rgb) {
@@ -156,13 +158,13 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
     while (k < outHeight && outRows[k] == y) {
       final o = k * outWidth;
       for (var x = 0; x < outWidth; x++) {
-        d[o + x] = row[outColumns[x]];
+        out[o + x] = rgbaOfIndex[row[outColumns[x]]];
       }
       k++;
     }
   });
   return (
-    png: img.encodePng(out),
+    webp: encodeRadarWebp(out.buffer.asUint8List(), outWidth, outHeight),
     stats: RadarEchoStats(
       frame: g.bounds,
       imageWidth: width,

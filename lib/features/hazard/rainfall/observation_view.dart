@@ -181,7 +181,7 @@ class RainfallMapCard extends StatelessWidget {
             chipIcon: Icons.schedule,
             chipText: '今日累積 $clock',
             semanticsLabel: '今日累積雨量圖',
-            overlayBuilder: (_) => [
+            overlayImages: [
               OverlayImage(
                 bounds: LatLngBounds(LatLng(map.minLatitude, map.minLongitude), LatLng(map.maxLatitude, map.maxLongitude)),
                 imageProvider: NetworkImage(map.imageUrl),

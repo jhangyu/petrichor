@@ -8,6 +8,7 @@ import 'package:cwb_flutter/data/radar/radar_frame_list.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_repository.dart';
 import 'package:cwb_flutter/data/radar/radar_source.dart';
+import 'package:cwb_flutter/data/radar/radar_webp.dart';
 import 'package:cwb_flutter/features/radar/radar_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -214,7 +215,8 @@ void main() {
     expect(frames(events.last).first.bounds, _geometry.bounds);
     expect(events.last.newestStats!.pixelsPerDbz[30], 1);
     expect(frames(events.last).first.significantDbz, 30, reason: '1 px of an 8 px, 1° image is over the area rule');
-    expect(img.decodePng(frames(events.last).first.file.readAsBytesSync())!.getPixel(3, 3).a, 255);
+    final webp = frames(events.last).first.file.readAsBytesSync();
+    expect(decodeRadarWebp(webp)[(3 * 8 + 3) * 4 + 3], 255);
   });
 
   test('list failure with a cache: cached frames plus the error, not an error state', () async {
@@ -262,14 +264,14 @@ void main() {
     expect(stamps(full), [edge.time, outside.time, recent.time]);
     expect(again.requested, [_listUrl], reason: 'a full window is not pruned and downloaded again');
 
-    File('${cacheDir().path}/${_key(recent)}.png.tmp').writeAsStringSync('interrupted write');
+    File('${cacheDir().path}/${_key(recent)}.webp.tmp').writeAsStringSync('interrupted write');
     final later = _now.add(const Duration(hours: 2));
     final newer = _ref(const Duration(minutes: -115));
     await load([newer], now: later, maxWindow: maxWindow).drain<void>();
     final last = await load([newer], now: later, maxWindow: maxWindow).last;
     expect(stamps(last), [newer.time]);
     expect(cacheFiles(), [
-      for (final f in [outside, recent, newer]) ...['${_key(f)}.png', '${_key(f)}.stats.gz'],
+      for (final f in [outside, recent, newer]) ...['${_key(f)}.stats.gz', '${_key(f)}.webp'],
     ]);
   });
 
@@ -291,7 +293,7 @@ void main() {
     expect(gated.requested, [uncached.url]);
     expect(gated.cancelled, [uncached.url], reason: 'the in-flight download was cancelled, not awaited');
     expect(gated.release.isCompleted, isFalse);
-    expect(cacheFiles().where((f) => !f.endsWith('.png') && !f.endsWith('.stats.gz')), isEmpty);
+    expect(cacheFiles().where((f) => !f.endsWith('.webp') && !f.endsWith('.stats.gz')), isEmpty);
   }, timeout: const Timeout(Duration(seconds: 2)));
 
   test('two overlapping loads: events in order, one load after the other, no partial files', () async {
@@ -317,7 +319,7 @@ void main() {
     expect([stamps(b.first), stamps(b.last)], [recent, recent]);
     expect(b.last.loading, isFalse);
     expect(gated.requested, unorderedEquals([for (final f in window) f.url]), reason: 'the second load reads the cache');
-    expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.png', '${_key(f)}.stats.gz']]);
+    expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.stats.gz', '${_key(f)}.webp']]);
   });
 
   test('schedule: newest first, then oldest first; 4 downloads, 2 processes; slots published in that order', () async {

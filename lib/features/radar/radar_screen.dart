@@ -286,16 +286,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         banner: banner,
         map: RadarMapView(
           me: _me,
-          frameBounds: frame.bounds,
           chipIcon: Icons.schedule,
           chipText: formatTaiwanMonthDayClock(frame.time),
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
           upcoming: radarUpcomingFrames(slots, _playhead, count: radarPreDecodeCount),
-          overlayBuilder: (decodeWidth) => [
+          overlayImages: [
             OverlayImage(
               bounds: frame.bounds,
               opacity: _opacityPercent / 100,
-              imageProvider: frame.imageProvider(decodeWidth: decodeWidth),
+              imageProvider: frame.imageProvider,
               gaplessPlayback: true,
             ),
           ],

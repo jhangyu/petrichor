@@ -167,16 +167,16 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
                 chipIcon: image == null ? null : Icons.schedule,
                 chipText: image == null ? null : range,
                 semanticsLabel: '未來 1 小時雨量網格圖',
-                overlayBuilder: image == null
-                    ? null
-                    : (_) => [
-                          OverlayImage(
-                            bounds: _bounds,
-                            imageProvider: image,
-                            opacity: _gridOpacity,
-                            filterQuality: FilterQuality.none,
-                          ),
-                        ],
+                overlayImages: image == null
+                    ? const []
+                    : [
+                        OverlayImage(
+                          bounds: _bounds,
+                          imageProvider: image,
+                          opacity: _gridOpacity,
+                          filterQuality: FilterQuality.none,
+                        ),
+                      ],
                 me: LatLng(widget.latitude, widget.longitude),
               ),
               const _ForecastLegend(),
