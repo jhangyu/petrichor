@@ -10,12 +10,14 @@ import '../../../data/radar/radar_webp.dart';
 /// A cached radar frame (lossless WebP) decoded by libwebp on a background
 /// isolate at its stored size (the GPU scales it when drawing; an engine
 /// downscale measured slower than the full decode). The cache key is the file
-/// path, so the map and its pre-decode share one cache entry.
+/// path plus its length and modified time, so the map and its pre-decode share
+/// one cache entry and a frame re-rendered at the same path is decoded anew.
 @immutable
 class RadarWebpImage extends ImageProvider<RadarWebpImage> {
-  const RadarWebpImage(this.file);
+  RadarWebpImage(this.file) : _stat = file.statSync();
 
   final File file;
+  final FileStat _stat;
 
   @override
   Future<RadarWebpImage> obtainKey(ImageConfiguration configuration) => SynchronousFuture(this);
@@ -59,10 +61,14 @@ class RadarWebpImage extends ImageProvider<RadarWebpImage> {
   }
 
   @override
-  bool operator ==(Object other) => other is RadarWebpImage && other.file.path == file.path;
+  bool operator ==(Object other) =>
+      other is RadarWebpImage &&
+      other.file.path == file.path &&
+      other._stat.size == _stat.size &&
+      other._stat.modified == _stat.modified;
 
   @override
-  int get hashCode => file.path.hashCode;
+  int get hashCode => Object.hash(file.path, _stat.size, _stat.modified);
 
   @override
   String toString() => '${objectRuntimeType(this, 'RadarWebpImage')}("${file.path}")';

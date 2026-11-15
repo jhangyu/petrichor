@@ -28,7 +28,12 @@ class PlaybackFrames {
     required this.onFps,
     required this.onRepeat,
     this.onWindow,
+    this.timeText,
   });
+
+  /// Time-row text of the current slot's time; null = the time itself. An
+  /// accumulation frame has no single moment, so its card words the span.
+  final String Function(DateTime)? timeText;
 
   /// Every listed time of the window, oldest first, one timeline cell each
   /// (the source's native cadence, regular or not).
@@ -164,7 +169,7 @@ class _TimeRow extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         Text(
-          formatTaiwanMonthDayClock(f.slots[f.current].time),
+          (f.timeText ?? formatTaiwanMonthDayClock)(f.slots[f.current].time),
           style: AppType.subtitle2.copyWith(
             color: AppPalette.fg1,
             fontWeight: FontWeight.w600,
@@ -174,7 +179,7 @@ class _TimeRow extends StatelessWidget {
         Text(
           f.buffering
               ? '緩衝中…'
-              : '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : '過去 $hours 小時'}',
+              : '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : f.timeText != null ? '累積中' : '過去 $hours 小時'}',
           style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
         ),
       ],

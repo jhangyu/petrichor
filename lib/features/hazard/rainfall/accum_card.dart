@@ -25,6 +25,9 @@ const _cardTitle = '累積雨量';
 const _group = RadarGroup.rainfall;
 const _overlayOpacity = 0.8;
 
+/// Peak under this many mm draws nothing (contract decision 11): the frame has no rain.
+const _noRainBelowMm = 1;
+
 /// Legend numbers under the 17-colour bar: the first colour index of each band
 /// and its label (the band lower edge of `accumScaleEdgesMm`).
 const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), (16, '≥300')];
@@ -208,6 +211,12 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       return ('無法取得', _failureBody(hours, '${loop.listError ?? failed.map((s) => s.error).join('；')}'));
     }
     final frame = slots[index].frame!;
+    // Contract decision 12: the window starts at S = newest slot - window and each frame accumulates from S.
+    final start = slots.last.time.subtract(Duration(hours: hours));
+    String span(DateTime t) => '${formatTaiwanMonthDayClock(start)} 起累積至 ${formatTaiwanMonthDayClock(t)}';
+    final isLast = index == slots.length - 1;
+    final noRain = (frame.peakMm ?? double.infinity) < _noRainBelowMm;
+    final accumulated = isLast ? '過去 $hours 小時' : span(frame.time);
     final readyCount = slots.where((s) => s.state == RadarSlotState.ready).length;
     final waiting = _player.waitingOn != null;
     final meta = waiting
@@ -237,17 +246,22 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
           ),
         _map(
           chipIcon: Icons.schedule,
-          chipText: '過去 $hours 小時累積 · ${formatTaiwanMonthDayClock(frame.time)}',
-          semanticsLabel: '過去 $hours 小時累積雨量圖',
+          chipText: noRain
+              ? '$accumulated全臺沒有降雨'
+              : isLast
+              ? '過去 $hours 小時累積 · ${formatTaiwanMonthDayClock(frame.time)}'
+              : accumulated,
+          semanticsLabel: noRain ? '地圖，全臺沒有降雨' : '累積雨量圖，${span(frame.time)}',
           upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
           overlayImages: [
-            OverlayImage(
-              bounds: frame.bounds,
-              opacity: _overlayOpacity,
-              imageProvider: frame.imageProvider,
-              filterQuality: FilterQuality.none,
-              gaplessPlayback: true,
-            ),
+            if (!noRain)
+              OverlayImage(
+                bounds: frame.bounds,
+                opacity: _overlayOpacity,
+                imageProvider: frame.imageProvider,
+                filterQuality: FilterQuality.none,
+                gaplessPlayback: true,
+              ),
           ],
         ),
         PlaybackBody(
@@ -260,6 +274,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             fps: fps,
             repeat: repeat,
             window: Duration(hours: hours),
+            timeText: span,
             onTogglePlay: _player.togglePlay,
             onSeek: _player.seek,
             onFps: _setFps,
