@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
+import 'package:cwb_flutter/data/radar/radar_png_rows.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -107,6 +108,32 @@ void main() {
     }
     expect(p.stats.pixelsPerDbz, counts);
     expect((p.stats.imageWidth, p.stats.imageHeight), (size, size));
+  });
+
+  test('row reader returns the decoded pixels for every PNG filter and rejects other formats', () {
+    const size = 41;
+    final rgb = img.Image(width: size, height: size);
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        rgb.setPixelRgb(x, y, (x * 37 + y * 11) & 0xFF, (x * y * 5) & 0xFF, (x ^ y) * 7 & 0xFF);
+      }
+    }
+    for (final filter in img.PngFilter.values) {
+      final rows = <List<int>>[];
+      readPngRgbRows(img.encodePng(rgb, filter: filter), size, (y, row) {
+        expect(y, rows.length);
+        rows.add(List<int>.of(row));
+      });
+      expect(rows.length, size, reason: '$filter');
+      for (var y = 0; y < size; y++) {
+        expect(rows[y], [for (var x = 0; x < size; x++) ...[rgb.getPixel(x, y).r, rgb.getPixel(x, y).g, rgb.getPixel(x, y).b]],
+            reason: '$filter row $y');
+      }
+    }
+    expect(() => readPngRgbRows(img.encodePng(rgb), size + 1, (_, _) {}), throwsFormatException);
+    expect(() => readPngRgbRows(img.encodePng(img.Image(width: size, height: size, numChannels: 4)), size, (_, _) {}),
+        throwsFormatException);
+    expect(() => readPngRgbRows(img.encodePng(rgb).sublist(0, 100), size, (_, _) {}), throwsFormatException);
   });
 
   test('Mercator row map for the 3600 frame keeps every source row in order', () {

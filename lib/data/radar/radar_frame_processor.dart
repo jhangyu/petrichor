@@ -6,6 +6,7 @@ import 'package:image/image.dart' as img;
 
 import '../../core/theme/app_tokens.dart';
 import 'radar_echo_stats.dart';
+import 'radar_png_rows.dart';
 
 /// Post-processing of a radar image (website `CV1_3600_` frame or website
 /// station image): background → transparent, rows reprojected as the
@@ -98,33 +99,26 @@ img.PaletteUint8 radarIndexedPalette(List<int> colours) {
   return palette;
 }
 
-/// Full pipeline for one downloaded image, in one pass over the source rows:
+/// Full pipeline for one downloaded image, in one pass over the source rows
+/// (inflated and unfiltered one row at a time, so the 3600x3600 RGB image is
+/// never held in memory):
 /// key echo pixels to palette indices (decorations → transparent), count the
 /// echo statistics (on the full-resolution source), copy each index row,
 /// sampled nearest-neighbour to [radarStoredWidth] px wide, to the output rows
 /// [g.rowMap] maps to it, encode one indexed PNG (zlib from the platform). Pure
 /// and synchronous: run it in a background isolate.
 ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
-  final src = img.decodePng(png) ?? (throw const FormatException('radar image: expected PNG bytes, decode failed'));
-  if (src.width != g.size || src.height != g.size) {
-    throw FormatException('radar image: expected ${g.size}x${g.size}, got ${src.width}x${src.height}');
-  }
-  if (src.numChannels != 3 || src.format != img.Format.uint8 || src.hasPalette) {
-    throw FormatException(
-      'radar image: expected 8-bit RGB without palette, got ${src.numChannels} channels, '
-      '${src.format}, palette=${src.hasPalette}',
-    );
-  }
   if (g.palette.length != radarEchoPalette.length) {
     throw ArgumentError('radar image: expected a colour table of ${radarEchoPalette.length} dBZ levels '
         '(echo statistics are 0..65 dBZ), got ${g.palette.length}');
   }
-  final width = src.width;
+  final width = g.size;
+  final height = g.size;
   final echoBits = _colourBits(g.palette);
   final indexOf = {for (final (d, c) in g.palette.indexed) c: d + 1};
   final counts = List<int>.filled(radarEchoPalette.length, 0);
   final columns = (width / radarStatsCellPixels).ceil();
-  final cells = Uint16List(columns * (src.height / radarStatsCellPixels).ceil() * radarDbzBands);
+  final cells = Uint16List(columns * (height / radarStatsCellPixels).ceil() * radarDbzBands);
   for (var j = 0; j < g.rowMap.length; j++) {
     if (g.rowMap[j] < 0 || g.rowMap[j] >= g.size || (j > 0 && g.rowMap[j] < g.rowMap[j - 1])) {
       throw ArgumentError('radar image: expected a non-decreasing row map within source rows 0..${g.size - 1}, '
@@ -136,16 +130,14 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
   final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);
   final out = img.Image(width: outWidth, height: outHeight, numChannels: 1, palette: radarIndexedPalette(g.palette));
-  final s = src.toUint8List();
   final d = out.toUint8List();
   final row = Uint8List(width);
   var k = 0;
-  for (var y = 0; y < src.height; y++) {
+  readPngRgbRows(png, g.size, (y, rgb) {
     row.fillRange(0, width, 0);
-    final sRow = y * src.rowStride;
     for (var x = 0; x < width; x++) {
-      final si = sRow + x * 3;
-      final c = (s[si] << 16) | (s[si + 1] << 8) | s[si + 2];
+      final si = x * 3;
+      final c = (rgb[si] << 16) | (rgb[si + 1] << 8) | rgb[si + 2];
       if (echoBits[c >> 5] & (1 << (c & 31)) != 0) row[x] = indexOf[c]!;
     }
     for (final rect in g.decorations) {
@@ -165,17 +157,17 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
       }
       k++;
     }
-  }
+  });
   return (
     png: img.encodePng(out),
     stats: RadarEchoStats(
       frame: g.bounds,
       imageWidth: width,
-      imageHeight: src.height,
+      imageHeight: height,
       pixelsPerDbz: counts,
       cellBandPixels: cells,
       gridColumns: columns,
-      gridRows: (src.height / radarStatsCellPixels).ceil(),
+      gridRows: (height / radarStatsCellPixels).ceil(),
     ),
   );
 }
