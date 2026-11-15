@@ -223,6 +223,7 @@ void main() {
     expect(stamps(events.last), all);
     expect(frames(events.last).first.bounds, _geometry.bounds);
     expect(frames(events.last).first.significantDbz, 30, reason: '1 px of an 8 px, 1° image is over the area rule');
+    expect(frames(events.last).first.peakMm, isNull, reason: 'radar frames have no rain peak');
     final webp = frames(events.last).first.file.readAsBytesSync();
     expect(decodeRadarWebp(webp)[(3 * 8 + 3) * 4 + 3], 255);
   });

@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cwb_flutter/core/theme/app_tokens.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_list.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
+import 'package:cwb_flutter/data/radar/radar_frame_repository.dart';
 import 'package:cwb_flutter/data/radar/radar_source.dart';
 import 'package:cwb_flutter/data/radar/radar_webp.dart';
 import 'package:cwb_flutter/data/rain_accum/accum_grid.dart';
@@ -11,7 +13,8 @@ import 'package:cwb_flutter/data/rain_accum/accum_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// now − 6 min = 10:54Z: newest frame 10:50 (10-min), 10:00 (1 h), 09:00 (3 h).
+/// now − 6 min = 10:54Z: newest grid slot 10:50; last aligned frame 10:50
+/// (10-min), 10:00 (1 h), 09:00 (3 h).
 final _now = DateTime.utc(2026, 11, 15, 11);
 
 /// Serves [bodies] by file name (default: a 1-byte body), 404 for [missing],
@@ -58,7 +61,7 @@ void main() {
 
   Future<List<RadarFrameRef>> list(RadarSource s) => s.listFrames(now: _now, window: s.maxWindow);
 
-  test('frame list per window: count, step, alignment, newest', () async {
+  test('frame list per window: aligned frames, then the newest 10-min slot when newer', () async {
     const expected = {
       4: (24, Duration(minutes: 10), '10:50'),
       6: (36, Duration(minutes: 10), '10:50'),
@@ -67,21 +70,32 @@ void main() {
       48: (48, Duration(hours: 1), '10:00'),
       168: (56, Duration(hours: 3), '09:00'),
     };
-    for (final MapEntry(key: w, value: (count, step, newest)) in expected.entries) {
+    for (final MapEntry(key: w, value: (count, step, lastAligned)) in expected.entries) {
       final s = source(w);
-      expect(s.cachePath, 'rain_accum_frames_v1/${w}h');
+      expect(s.cachePath, 'rain_accum_frames_v2/${w}h');
       final frames = await list(s);
-      expect(frames.length, count, reason: '$w h');
-      expect(frames.last.time.toIso8601String(), contains('T$newest'), reason: '$w h');
-      for (final (i, f) in frames.indexed) {
+      expect(frames.last.time, DateTime.utc(2026, 11, 15, 10, 50), reason: '$w h: newest slot is last');
+      final aligned = step == accumGridInterval ? frames : frames.sublist(0, frames.length - 1);
+      expect(aligned.length, count, reason: '$w h');
+      expect(aligned.last.time.toIso8601String(), contains('T$lastAligned'), reason: '$w h');
+      for (final (i, f) in aligned.indexed) {
         expect(f.time.microsecondsSinceEpoch % step.inMicroseconds, 0, reason: '$w h frame $i');
-        if (i > 0) expect(f.time.difference(frames[i - 1].time), step, reason: '$w h frame $i');
+        if (i > 0) expect(f.time.difference(aligned[i - 1].time), step, reason: '$w h frame $i');
       }
     }
   });
 
-  test('unique piece downloads: 72 for 48 h, 104 for 168 h (shared via the cache)', () async {
-    for (final (w, unique) in [(48, 72), (168, 104)]) {
+  test('newest slot equal to the last aligned frame is not appended', () async {
+    final s = accumRadarSource(Dio()..httpClientAdapter = adapter,
+        windowHours: 24, cacheRoot: () async => root, clock: () => _now);
+    // now − 6 min = 11:00Z: the newest slot is the aligned 11:00 frame.
+    final frames = await s.listFrames(now: _now.add(const Duration(minutes: 6)), window: s.maxWindow);
+    expect(frames.length, 24);
+    expect(frames.last.time, DateTime.utc(2026, 11, 15, 11));
+  });
+
+  test('unique piece downloads: aligned frames plus the newest slot (+1 for 24 h, +2 for 48 h, +7 for 168 h)', () async {
+    for (final (w, unique) in [(24, 24 + 1), (48, 72 + 2), (168, 104 + 7)]) {
       // Cold cache per window (windows share the piece cache).
       for (final e in root.listSync()) {
         e.deleteSync(recursive: true);
@@ -130,6 +144,47 @@ void main() {
     }
     expect(coloured, greaterThan(0));
     expect(processed.stats.frame, accumBounds);
+    expect(processed.stats.peakMm, sum.reduce(max) / accumRawPerMm);
+    expect(processed.stats.peakMm, greaterThan(1));
+  });
+
+  group('cached frame and a revalidated offset-0 grid', () {
+    // One 10-min frame of the 4 h window: 3H@10:50 (young, revalidated) + 1H@07:50.
+    late Uint8List g03, g01;
+    setUp(() {
+      g03 = gzip.decode(_fixture('g03_20261115_1050')) as Uint8List;
+      g01 = gzip.decode(_fixture('g01_20261115_0750')) as Uint8List;
+      adapter.bodies['GAGE_PCP_3H.20261115.1050.dat'] = g03;
+      adapter.bodies['GAGE_PCP_1H.20261115.0750.dat'] = g01;
+      adapter.etag = '"v1"';
+    });
+
+    Future<RadarFrame> load() async {
+      final repo = RadarFrameRepository(Dio(), cacheRoot: () async => root, clock: () => _now);
+      final loop = await repo.watch(source(4), window: accumGridInterval).last;
+      expect(loop.slots.single.state, RadarSlotState.ready, reason: '${loop.slots.single}');
+      return loop.slots.single.frame!;
+    }
+
+    test('304: the cached frame is kept', () async {
+      final first = await load();
+      // A re-render would now fail: the 1 h grid is gone from disk and server.
+      for (final f in Directory('${root.path}/$accumPieceCacheDirName/01h').listSync()) {
+        f.deleteSync();
+      }
+      adapter.missing.add('GAGE_PCP_1H.20261115.0750.dat');
+      final second = await load();
+      expect(second.peakMm, first.peakMm);
+    });
+
+    test('200: the dependent frame is made again from the new grid', () async {
+      final first = await load();
+      // The grid changes: new ETag and a body with a different peak.
+      adapter.etag = '"v2"';
+      adapter.bodies['GAGE_PCP_3H.20261115.1050.dat'] = g01;
+      final second = await load();
+      expect(second.peakMm, isNot(first.peakMm));
+    });
   });
 
   test('young cached grid is revalidated by ETag; 304 keeps it', () async {

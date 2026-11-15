@@ -45,11 +45,16 @@ class RadarEchoStats {
   /// Echo pixel count per dBZ over the whole image (index = dBZ, 0..65).
   final List<int> pixelsPerDbz;
 
+  /// Highest accumulated rain (mm) over an accumulated-rainfall grid; null for
+  /// radar images.
+  final double? peakMm;
+
   RadarEchoStats({
     required this.frame,
     required this.imageWidth,
     required this.imageHeight,
     required this.pixelsPerDbz,
+    this.peakMm,
   }) {
     if (pixelsPerDbz.length != radarEchoPalette.length) {
       throw ArgumentError(
@@ -86,7 +91,9 @@ class RadarEchoStats {
     return (BytesBuilder(copy: false)
           ..add(words.buffer.asUint8List())
           ..add(doubles.buffer.asUint8List())
-          ..add(Uint32List.fromList(pixelsPerDbz).buffer.asUint8List()))
+          ..add(Uint32List.fromList(pixelsPerDbz).buffer.asUint8List())
+          // NaN = no peak (radar).
+          ..add(Float64List.fromList([peakMm ?? double.nan]).buffer.asUint8List()))
         .takeBytes();
   }
 
@@ -94,7 +101,8 @@ class RadarEchoStats {
   factory RadarEchoStats.fromBytes(Uint8List bytes, {required String source}) {
     const wordBytes = Uint32List.bytesPerElement, doubleBytes = Float64List.bytesPerElement;
     const countsAt = _headerWords * wordBytes + _frameDoubles * doubleBytes;
-    final expected = countsAt + radarEchoPalette.length * wordBytes;
+    final peakAt = countsAt + radarEchoPalette.length * wordBytes;
+    final expected = peakAt + doubleBytes;
     if (bytes.length != expected) {
       throw FormatException('$source: expected $expected bytes of echo stats, got ${bytes.length}');
     }
@@ -106,6 +114,7 @@ class RadarEchoStats {
       imageWidth: word(0),
       imageHeight: word(wordBytes),
       pixelsPerDbz: [for (var d = 0; d < radarEchoPalette.length; d++) word(countsAt + d * wordBytes)],
+      peakMm: switch (data.getFloat64(peakAt, Endian.host)) { final p when p.isNaN => null, final p => p },
     );
   }
 }

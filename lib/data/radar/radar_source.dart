@@ -80,8 +80,18 @@ class RadarSource {
   final RadarFrameLister listFrames;
   final RadarFrameStep step;
 
+  /// Whether the cached frame of `frame` was made from data that has changed
+  /// since (it is then made again by [step]). Throws [RadarDataException] when
+  /// that cannot be checked (the slot fails). Null: cached frames never change.
+  final Future<bool> Function(RadarFrameRef frame, CancelToken cancel)? cachedFrameStale;
+
   const RadarSource(
-      {required this.id, required this.cachePath, required this.maxWindow, required this.listFrames, required this.step});
+      {required this.id,
+      required this.cachePath,
+      required this.maxWindow,
+      required this.listFrames,
+      required this.step,
+      this.cachedFrameStale});
 
   /// A CWA website radar loop: frames (time + PNG URL) listed in the JS at
   /// [listUrl], each processed with [geometry]; cached under

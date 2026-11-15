@@ -22,10 +22,10 @@ export 'radar_loop.dart';
 /// see [RadarSource.website]); the suffix changes
 /// whenever processing output changes, so frames made by an older pipeline are
 /// never shown.
-const radarFrameCacheDirName = 'radar_webp_2048_v2';
+const radarFrameCacheDirName = 'radar_webp_2048_v3';
 
-/// Cache directories of earlier pipelines (each was [radarFrameCacheDirName]
-/// once); deleted by [deleteLegacyRadarCaches]. Never contains the current name.
+/// Frame cache directories of earlier pipelines (radar and accumulated
+/// rainfall); deleted by [deleteLegacyRadarCaches]. Never contains a current name.
 const radarLegacyCacheDirNames = [
   'radar_cv1_3600_webp_v1',
   'radar_cv1_3600_webp_v2',
@@ -34,6 +34,8 @@ const radarLegacyCacheDirNames = [
   'radar_indexed_png_v1',
   'radar_indexed_png_2048_v1',
   'radar_webp_2048_v1',
+  'radar_webp_2048_v2',
+  'rain_accum_frames_v1',
 ];
 
 /// Deletes the [radarLegacyCacheDirNames] directories under [root]; anything
@@ -88,6 +90,10 @@ class RadarFrame {
   /// [RadarEchoStats.strongestDbz] when the frame has significant echo, else null.
   final int? significantDbz;
 
+  /// [RadarEchoStats.peakMm]: highest accumulated rain (mm) of an
+  /// accumulated-rainfall frame; null for radar frames.
+  final double? peakMm;
+
   /// Pixel size of [file] (website frames: 2048 x 2132 Mercator rows).
   final int width;
   final int height;
@@ -97,6 +103,7 @@ class RadarFrame {
     required this.file,
     required this.bounds,
     required this.significantDbz,
+    this.peakMm,
     required this.width,
     required this.height,
   });
@@ -217,7 +224,18 @@ class RadarFrameRepository {
     final slots = <String, RadarSlot>{};
     for (final f in byTime) {
       final key = _cacheKey(f.time);
-      if (cached.contains(key)) await readCached(key);
+      if (cached.contains(key)) {
+        try {
+          if (await source.cachedFrameStale?.call(f, cancel) ?? false) {
+            ready.remove(key);
+          } else {
+            await readCached(key);
+          }
+        } on RadarDataException catch (e) {
+          slots[key] = RadarSlot.failed(f.time, e);
+          continue;
+        }
+      }
       slots[key] = switch (ready[key]) { final frame? => RadarSlot.ready(frame), null => RadarSlot.pending(f.time) };
     }
     void sendSlots({required bool loading}) => send([...slots.values], loading: loading);
@@ -334,6 +352,7 @@ RadarFrame _frame(DateTime time, File webp, RadarEchoStats stats, ({int width, i
       file: webp,
       bounds: stats.frame,
       significantDbz: stats.hasSignificantEcho ? stats.strongestDbz : null,
+      peakMm: stats.peakMm,
       width: size.width,
       height: size.height,
     );

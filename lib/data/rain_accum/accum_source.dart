@@ -25,11 +25,14 @@ import 'accum_pieces.dart';
 /// `<root>/rain_accum_pieces_v1/<WW>h/<yyyyMMddHHmm>.dat.gz` (+ `.etag`).
 const accumPieceCacheDirName = 'rain_accum_pieces_v1';
 
-/// Rendered frames: `<root>/rain_accum_frames_v1/<W>h` (the repository's cache).
-const accumFrameCacheDirName = 'rain_accum_frames_v1';
+/// Rendered frames: `<root>/rain_accum_frames_v2/<W>h` (the repository's cache).
+const accumFrameCacheDirName = 'rain_accum_frames_v2';
 
-/// The newest frame is the step-aligned time at least this long ago (QPEplus
-/// publishes a grid a few minutes after its end time).
+/// QPEplus publishes every native grid every 10 min.
+const accumGridInterval = Duration(minutes: 10);
+
+/// The newest grid is the [accumGridInterval] slot at least this long ago
+/// (QPEplus publishes a grid a few minutes after its end time).
 const accumPublishDelay = Duration(minutes: 6);
 
 /// A cached grid this young (by its end time) is revalidated with its ETag:
@@ -44,7 +47,7 @@ final accumBounds = LatLngBounds(const LatLng(20, 118), const LatLng(27, 123.5))
 
 /// Frame step of a window: 10 min for 4/6/12 h, 1 h for 24/48 h, 3 h for 168 h.
 Duration accumFrameStep(int windowHours) => switch (windowHours) {
-      4 || 6 || 12 => const Duration(minutes: 10),
+      4 || 6 || 12 => accumGridInterval,
       24 || 48 => const Duration(hours: 1),
       168 => const Duration(hours: 3),
       _ => throw ArgumentError.value(windowHours, 'windowHours', 'expected one of $accumWindowHours'),
@@ -61,8 +64,11 @@ List<DateTime> accumFrameTimes(DateTime newest, {required Duration step, require
     ];
 
 /// The accumulated-rainfall source of a [windowHours] window (one of
-/// [accumWindowHours]); playback span = window. [cacheRoot] holds the piece
-/// cache; [clock] decides which cached grids are young enough to revalidate.
+/// [accumWindowHours]); playback span = window. Frames are step-aligned, plus
+/// the newest grid slot as a last frame when it is newer than the last aligned
+/// one (so the newest frame is at most [accumGridInterval] behind). [cacheRoot]
+/// holds the piece cache; [clock] decides which cached grids are young enough
+/// to revalidate.
 RadarSource accumRadarSource(
   Dio dio, {
   required int windowHours,
@@ -79,24 +85,40 @@ RadarSource accumRadarSource(
     maxWindow: Duration(hours: windowHours),
     listFrames: ({required now, required window, cancelToken}) async {
       await cache.prune(now);
-      var newest = _floor(now.toUtc().subtract(accumPublishDelay), step);
-      // Not published yet: one step back, once (a second miss is a failed slot).
-      final first = pieces.first;
-      if (await cache.get(first.nativeHours, newest, cancelToken) == null) newest = newest.subtract(step);
+      var newest = _floor(now.toUtc().subtract(accumPublishDelay), accumGridInterval);
+      // Not published yet: one slot back, once (a second miss is a failed slot).
+      if (await cache.get(pieces.first.nativeHours, newest, cancelToken) == null) {
+        newest = newest.subtract(accumGridInterval);
+      }
+      final aligned = _floor(newest, step);
       return [
-        for (final t in accumFrameTimes(newest, step: step, window: window)) RadarFrameRef(time: t, url: frameUrl(t)),
+        for (final t in [...accumFrameTimes(aligned, step: step, window: window), if (newest.isAfter(aligned)) newest])
+          RadarFrameRef(time: t, url: frameUrl(t)),
       ];
+    },
+    // Only the offset-0 grid can change once its frame exists: the others ended
+    // an hour or more before the frame, past [accumRevalidateAge]. Stale when
+    // that grid's ETag (revalidated if young; another window may have done it)
+    // is not the one the frame was made from.
+    cachedFrameStale: (frame, cancel) async {
+      final first = pieces.first.nativeHours;
+      if (cache.young(frame.time)) await cache.get(first, frame.time, cancel);
+      return await cache.etag(first, frame.time) != await cache.renderedEtag(windowHours, frame.time);
     },
     step: RadarComposedStep((frame, cancel, processSlot) async {
       final inputs = <AccumPieceInput>[];
+      String? firstEtag;
       for (final p in pieces) {
         final end = frame.time.subtract(Duration(hours: p.offsetHours));
         final url = accumPieceUrl(p.nativeHours, end);
         final gz = await cache.get(p.nativeHours, end, cancel) ??
             (throw RadarDataException(url, expected: 'HTTP 200 with the QPEplus grid', actual: 'HTTP 404'));
+        if (p.offsetHours == 0) firstEtag = await cache.etag(p.nativeHours, end);
         inputs.add((url: url, gz: gz));
       }
-      return processSlot(() => _renderOffUiIsolate(inputs));
+      final processed = await processSlot(() => _renderOffUiIsolate(inputs));
+      await cache.setRenderedEtag(windowHours, frame.time, firstEtag);
+      return processed;
     }),
   );
 }
@@ -122,6 +144,10 @@ final _rowMap = mercatorRowMap(srcHeight: accumGridHeight, south: accumBounds.so
 /// throws [RadarDataException] naming its URL.
 ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> pieces) {
   final sum = sumAccumGrids([for (final p in pieces) _parse(p)]);
+  var peak = 0;
+  for (final v in sum) {
+    if (v > peak) peak = v;
+  }
   final webp = encodeRadarWebp(accumGridWidth, _rowMap.length, (out) {
     for (var j = 0; j < _rowMap.length; j++) {
       // Row map counts from the north edge; grid row 0 is the south edge.
@@ -141,6 +167,7 @@ ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> pieces) {
       imageHeight: accumGridHeight,
       // No echo statistics for rain totals: significantDbz stays null.
       pixelsPerDbz: List.filled(radarEchoPalette.length, 0),
+      peakMm: peak / accumRawPerMm,
     ),
   );
 }
@@ -190,19 +217,47 @@ class _PieceCache {
     }
   }
 
+  /// Whether a cached grid ending at [end] is revalidated on read.
+  bool young(DateTime end) => end.isAfter(_clock().toUtc().subtract(accumRevalidateAge));
+
+  /// ETag of the cached [nativeHours] grid ending at [end]; '' when it has none
+  /// (or is not cached).
+  Future<String> etag(int nativeHours, DateTime end) async =>
+      _readOrEmpty(File('${(await _dir()).path}/${_subdir(nativeHours)}/${_key(end)}.etag'));
+
+  /// `rendered/<W>h/<key>.etag`: the offset-0 grid ETag a rendered frame of the
+  /// [windowHours] window was made from.
+  Future<File> _renderedFile(int windowHours, DateTime frame) async =>
+      File('${(await _dir()).path}/rendered/${windowHours}h/${_key(frame)}.etag');
+
+  /// The ETag [setRenderedEtag] stored for the frame; null when none is stored.
+  Future<String?> renderedEtag(int windowHours, DateTime frame) async {
+    final file = await _renderedFile(windowHours, frame);
+    return await file.exists() ? file.readAsString() : null;
+  }
+
+  Future<void> setRenderedEtag(int windowHours, DateTime frame, String? etag) async {
+    final file = await _renderedFile(windowHours, frame);
+    await file.parent.create(recursive: true);
+    await (await File('${file.path}.${_tmpSeq++}.tmp').writeAsString(etag ?? '', flush: true)).rename(file.path);
+  }
+
+  static Future<String> _readOrEmpty(File file) async => await file.exists() ? file.readAsString() : '';
+
+  static String _subdir(int nativeHours) => '${nativeHours.toString().padLeft(2, '0')}h';
+
   /// Gzipped text of the [nativeHours] grid ending at [end]; null when QPEplus
   /// answers 404. Other failures throw [RadarDataException] naming the URL;
   /// the cancellation [DioException] is rethrown.
   Future<Uint8List?> get(int nativeHours, DateTime end, CancelToken? cancel) async {
     final url = accumPieceUrl(nativeHours, end);
-    final dir = Directory('${(await _dir()).path}/${nativeHours.toString().padLeft(2, '0')}h');
+    final dir = Directory('${(await _dir()).path}/${_subdir(nativeHours)}');
     final file = File('${dir.path}/${_key(end)}.dat.gz');
     final etagFile = File('${dir.path}/${_key(end)}.etag');
     final cached = await file.exists();
     String? etag;
     if (cached) {
-      final young = end.isAfter(_clock().toUtc().subtract(accumRevalidateAge));
-      if (!young || !await etagFile.exists()) return file.readAsBytes();
+      if (!young(end) || !await etagFile.exists()) return file.readAsBytes();
       etag = await etagFile.readAsString();
     }
     final Response<List<int>> response;
