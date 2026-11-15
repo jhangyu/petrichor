@@ -109,4 +109,92 @@ void main() {
       throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', PlaceStore.savedKey)),
     );
   });
+
+  void answerFix() => when(() => location.getCurrentLocation()).thenAnswer(
+        (_) async => LocationData(
+          latitude: 23.565,
+          longitude: 119.586,
+          city: '澎湖縣',
+          district: '馬公市',
+          fixedAt: DateTime.utc(2026, 11, 14, 6, 10),
+        ),
+      );
+
+  test('auto-locate off without a manual place: autoLocateOff, never locates, survives restart', () async {
+    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: false});
+
+    final first = await newContainer().read(currentPlaceProvider.future);
+    final second = await newContainer().read(currentPlaceProvider.future);
+
+    for (final c in [first, second]) {
+      expect(c, isA<NoPlace>().having((p) => p.kind, 'kind', NoPlaceKind.autoLocateOff));
+      expect(c.autoLocate, isFalse);
+    }
+    verifyNever(() => location.getCurrentLocation());
+  });
+
+  test('non-bool place.gps is a typed error and select() recovers', () async {
+    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: 'yes'});
+    final container = newContainer();
+
+    await expectLater(
+      container.read(currentPlaceProvider.future),
+      throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', 'place.gps')),
+    );
+    await container.read(currentPlaceProvider.notifier).select(_banqiao);
+
+    final current = await newContainer().read(currentPlaceProvider.future) as PlaceSelected;
+    expect((current.place, current.source), (_banqiao, PlaceSource.manual));
+  });
+
+  test('stopAutoLocate after a GPS fix keeps the same place as manual and stops locating', () async {
+    answerFix();
+    final container = newContainer();
+    await container.read(currentPlaceProvider.future);
+    await container.read(currentPlaceProvider.notifier).useGps();
+    expect(container.read(currentPlaceProvider).value!.autoLocate, isTrue);
+
+    await container.read(currentPlaceProvider.notifier).stopAutoLocate();
+
+    final now = container.read(currentPlaceProvider).value as PlaceSelected;
+    expect((now.place, now.source, now.autoLocate), (_magong, PlaceSource.manual, false));
+    clearInteractions(location);
+    final restarted = await newContainer().read(currentPlaceProvider.future) as PlaceSelected;
+    expect((restarted.place, restarted.source), (_magong, PlaceSource.manual));
+    verifyNever(() => location.getCurrentLocation());
+  });
+
+  test('select after useGps stores place.gps = false', () async {
+    answerFix();
+    final container = newContainer();
+    await container.read(currentPlaceProvider.future);
+    await container.read(currentPlaceProvider.notifier).useGps();
+
+    await container.read(currentPlaceProvider.notifier).select(_banqiao);
+
+    expect((await SharedPreferences.getInstance()).get(PlaceStore.gpsKey), false);
+  });
+
+  test('saving the same area with other coordinates keeps one entry', () async {
+    final container = newContainer();
+    final saved = container.read(savedPlacesProvider.notifier);
+    await saved.save(_banqiao);
+    await saved.save(const Place(county: '新北市', town: '板橋區', latitude: 25.0, longitude: 121.4));
+
+    expect(await container.read(savedPlacesProvider.future), [_banqiao]);
+  });
+
+  test('clear() recovers a corrupt saved list to empty', () async {
+    SharedPreferences.setMockInitialValues({PlaceStore.savedKey: '{'});
+    final container = newContainer();
+    await expectLater(
+      container.read(savedPlacesProvider.future),
+      throwsA(isA<StoredPlaceException>().having((e) => e.key, 'key', 'place.saved')),
+    );
+
+    await container.read(savedPlacesProvider.notifier).clear();
+
+    expect(container.read(savedPlacesProvider).value, isEmpty);
+    expect(await newContainer().read(savedPlacesProvider.future), isEmpty);
+  });
 }

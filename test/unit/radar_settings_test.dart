@@ -1,4 +1,5 @@
 import 'package:cwb_flutter/core/constants/app_constants.dart';
+import 'package:cwb_flutter/core/storage/stored_setting.dart';
 import 'package:cwb_flutter/features/radar/radar_playback.dart';
 import 'package:cwb_flutter/features/radar/radar_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +58,7 @@ void main() {
       SharedPreferences.setMockInitialValues({key: corrupt});
       final container = newContainer();
       final p = provider as AsyncNotifierProvider;
-      await expectLater(container.read(p.future), throwsA(isA<StoredRadarSettingException>()), reason: key);
+      await expectLater(container.read(p.future), throwsA(isA<StoredSettingException>()), reason: key);
 
       await set(container);
 

@@ -48,6 +48,9 @@ class Place {
         'longitude': longitude,
       };
 
+  /// Stable identity of the area, e.g. '臺北市/中正區' (names normalized to 「臺」).
+  String get areaKey => '$county/$town';
+
   /// 顯示名，如「臺北市中正區」
   String get name => '$county$town';
 

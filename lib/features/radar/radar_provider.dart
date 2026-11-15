@@ -3,10 +3,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/storage/stored_setting.dart';
 import '../../data/radar/radar_bounds.dart';
 import '../../data/radar/radar_frame_repository.dart';
 import '../../data/radar/radar_source.dart';
-import '../location/place_provider.dart' show sharedPreferencesProvider;
 import 'radar_playback.dart';
 
 /// Overlay opacity slider: 10–100 % in 10 % steps, default 60 %.
@@ -18,23 +18,9 @@ const radarOpacityDefaultPercent = 60;
 bool _isOpacityPercent(int p) =>
     p >= radarOpacityMinPercent && p <= radarOpacityMaxPercent && (p - radarOpacityMinPercent) % radarOpacityStepPercent == 0;
 
-/// Stored playback setting is corrupt or could not be written ([key] = storage key).
-class StoredRadarSettingException implements Exception {
-  final String key;
-  final String message;
-  const StoredRadarSettingException(this.key, this.message);
-
-  @override
-  String toString() => 'StoredRadarSettingException($key): $message';
-}
-
-/// Stored data is deterministic: a retry never repairs it.
-Duration? _noRetry(int retryCount, Object error) => null;
-
 /// One playback setting of one [RadarGroup], remembered across restarts as an
-/// int under `radar.<group>.<name>`. A corrupt stored value is an [AsyncError];
-/// [set] overwrites it and recovers.
-abstract class RadarSetting<T> extends AsyncNotifier<T> {
+/// int under `radar.<group>.<name>`.
+abstract class RadarSetting<T> extends IntSetting<T> {
   RadarSetting(this.group);
 
   final RadarGroup group;
@@ -42,41 +28,8 @@ abstract class RadarSetting<T> extends AsyncNotifier<T> {
   /// Last key segment, e.g. `opacity`.
   String get name;
 
-  /// Value of a fresh install.
-  T get defaultValue;
-
-  /// Human-readable list of valid stored ints, for messages.
-  String get expected;
-
-  /// The setting for a stored int, or null when it is not a valid one.
-  T? fromStored(int stored);
-
-  int toStored(T value);
-
-  String get key => 'radar.${group.name}.$name';
-
   @override
-  Future<T> build() async {
-    final Object? raw = (await ref.watch(sharedPreferencesProvider.future)).get(key);
-    if (raw == null) return defaultValue;
-    final value = raw is int ? fromStored(raw) : null;
-    return value ?? (throw StoredRadarSettingException(key, '儲存資料損毀：期望 $expected，實際「$raw」'));
-  }
-
-  /// Shows [value] at once, then stores it; a failed write becomes the state.
-  Future<void> set(T value) async {
-    if (fromStored(toStored(value)) == null) throw ArgumentError.value(value, 'value', 'expected $expected');
-    state = AsyncData(value);
-    final written = await AsyncValue.guard(() async {
-      final prefs = await ref.read(sharedPreferencesProvider.future);
-      if (!await prefs.setInt(key, toStored(value))) {
-        throw StoredRadarSettingException(key, '寫入失敗：期望 true，實際 false');
-      }
-      return value;
-    });
-    // A later set() may have replaced the state meanwhile; only a failure overrides it.
-    if (written is AsyncError || state.value == value) state = written;
-  }
+  String get key => 'radar.${group.name}.$name';
 }
 
 /// Overlay opacity in percent.
@@ -145,10 +98,10 @@ class RadarWindow extends RadarSetting<Duration> {
   int toStored(Duration value) => value.inMinutes;
 }
 
-final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacity, int, RadarGroup>(RadarOpacity.new, retry: _noRetry);
-final radarFpsProvider = AsyncNotifierProvider.family<RadarFps, int, RadarGroup>(RadarFps.new, retry: _noRetry);
-final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeat, bool, RadarGroup>(RadarRepeat.new, retry: _noRetry);
-final radarWindowProvider = AsyncNotifierProvider.family<RadarWindow, Duration, RadarGroup>(RadarWindow.new, retry: _noRetry);
+final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacity, int, RadarGroup>(RadarOpacity.new, retry: noRetry);
+final radarFpsProvider = AsyncNotifierProvider.family<RadarFps, int, RadarGroup>(RadarFps.new, retry: noRetry);
+final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeat, bool, RadarGroup>(RadarRepeat.new, retry: noRetry);
+final radarWindowProvider = AsyncNotifierProvider.family<RadarWindow, Duration, RadarGroup>(RadarWindow.new, retry: noRetry);
 
 /// Settings group of the source with dataset [id].
 RadarGroup radarGroupOf(String id) => id == AppConstants.radarTaiwan ? RadarGroup.taiwan : RadarGroup.regional;
