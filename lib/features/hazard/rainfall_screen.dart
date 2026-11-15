@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_shell.dart' show AppTab, appTabProvider;
+import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart' show LocationFailure;
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
@@ -48,26 +49,28 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
     return switch (ref.watch(currentPlaceProvider)) {
       AsyncData(value: PlaceSelected(:final place)) => _placeBody(place, switcher),
       AsyncData(value: NoPlace(:final reason)) => _scaffold(
-          subtitle: '尚無目前地點',
-          switcher: switcher,
-          children: [_noPlaceBanner(reason)],
-        ),
+        subtitle: '尚無目前地點',
+        switcher: switcher,
+        children: [AppGridItem.full(child: _noPlaceBanner(reason))],
+      ),
       AsyncError(:final error) => _scaffold(
-          subtitle: '無法讀取地點',
-          switcher: switcher,
-          children: [
-            AppCard.error(
+        subtitle: '無法讀取地點',
+        switcher: switcher,
+        children: [
+          AppGridItem.full(
+            child: AppCard.error(
               title: '無法讀取已儲存的地點',
               message: '$error',
               onRetry: () => ref.invalidate(currentPlaceProvider),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
       _ => _scaffold(
-          subtitle: _loadingSubtitle,
-          switcher: switcher,
-          children: const [AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight)],
-        ),
+        subtitle: _loadingSubtitle,
+        switcher: switcher,
+        children: const [AppGridItem.full(child: AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight))],
+      ),
     };
   }
 
@@ -86,7 +89,18 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
         actions: [AppIconButton(icon: Icons.refresh, tooltip: '重新整理', onPressed: onRefresh)],
       ),
       source: sourceIds == null ? null : SourceLine(datasetIds: sourceIds),
-      children: [switcher, ...children],
+      children: [
+        AppGridItem.full(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppLayout.readingWidth),
+              child: switcher,
+            ),
+          ),
+        ),
+        ...children,
+      ],
     );
   }
 
@@ -131,6 +145,28 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
     final mapResult = map.value;
     final loading = rainfall.isLoading || map.isLoading;
     final anyData = result is Success || mapResult is Success;
+    final hero = _resultCard(
+      rainfall,
+      errorTitle: '無法取得雨量資料',
+      skeleton: const AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight),
+      onRetry: retryRainfall,
+      builder: (r) => ObservationHeroCard(rainfall: r),
+    );
+    final mapCard = _resultCard(
+      map,
+      errorTitle: '無法取得累積雨量圖',
+      skeleton: const AppCard.loading(title: '累積雨量圖', skeletonHeight: _mapSkeletonHeight),
+      onRetry: retryMap,
+      builder: (m) => RainfallMapCard(map: m, latitude: place.latitude, longitude: place.longitude),
+    );
+    final list = _resultCard(
+      rainfall,
+      errorTitle: '無法取得測站列表',
+      skeleton: const AppCard.loading(title: '測站今日累積雨量', skeletonHeight: _listSkeletonHeight),
+      onRetry: retryRainfall,
+      builder: (r) => StationListCard(county: r.county, stations: r.allStations, nearestId: r.nearest.id),
+      showError: false,
+    );
     return _scaffold(
       subtitle: switch (result) {
         Success(:final data) => '${place.name} · 觀測 ${formatTaiwanClock(data.nearest.obsTime)}',
@@ -146,29 +182,13 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
               retryMap();
             },
       children: [
-        ?_resultCard(
-          rainfall,
-          errorTitle: '無法取得雨量資料',
-          skeleton: const AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight),
-          onRetry: retryRainfall,
-          builder: (r) => ObservationHeroCard(rainfall: r),
+        AppGridItem.full(
+          child: _panes(hero: hero, map: mapCard, list: list),
         ),
-        ?_resultCard(
-          map,
-          errorTitle: '無法取得累積雨量圖',
-          skeleton: const AppCard.loading(title: '累積雨量圖', skeletonHeight: _mapSkeletonHeight),
-          onRetry: retryMap,
-          builder: (m) => RainfallMapCard(map: m, latitude: place.latitude, longitude: place.longitude),
-        ),
-        ?_resultCard(
-          rainfall,
-          errorTitle: '無法取得測站列表',
-          skeleton: const AppCard.loading(title: '測站今日累積雨量', skeletonHeight: _listSkeletonHeight),
-          onRetry: retryRainfall,
-          builder: (r) => StationListCard(county: r.county, stations: r.allStations, nearestId: r.nearest.id),
-          showError: false,
-        ),
-        if (result is Success) Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+        if (result is Success)
+          AppGridItem.full(
+            child: Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+          ),
       ],
     );
   }
@@ -179,6 +199,21 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
     final loc = (latitude: place.latitude, longitude: place.longitude);
     final forecast = ref.watch(rainForecastProvider(loc));
     void retry() => ref.invalidate(rainForecastProvider(loc));
+    final hero = _resultCard(
+      forecast,
+      errorTitle: '無法取得降雨預測',
+      skeleton: const AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight),
+      onRetry: retry,
+      builder: (f) => ForecastHeroCard(forecast: f, placeName: place.name),
+    );
+    final mapCard = _resultCard(
+      forecast,
+      errorTitle: '無法取得降雨預測',
+      skeleton: const AppCard.loading(title: '未來 1 小時雨量', skeletonHeight: _mapSkeletonHeight),
+      onRetry: retry,
+      builder: (f) => ForecastMapCard(grid: f.grid, latitude: place.latitude, longitude: place.longitude),
+      showError: false,
+    );
     return _scaffold(
       subtitle: switch (forecast.value) {
         Success(:final data) => '${place.name} · 預測發布 ${formatTaiwanClock(data.grid.issuedAt)}',
@@ -189,22 +224,35 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
       sourceIds: forecast.value is Success ? const [rainForecast1hDataset] : null,
       onRefresh: forecast.isLoading ? null : retry,
       children: [
-        ?_resultCard(
-          forecast,
-          errorTitle: '無法取得降雨預測',
-          skeleton: const AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight),
-          onRetry: retry,
-          builder: (f) => ForecastHeroCard(forecast: f, placeName: place.name),
-        ),
-        ?_resultCard(
-          forecast,
-          errorTitle: '無法取得降雨預測',
-          skeleton: const AppCard.loading(title: '未來 1 小時雨量', skeletonHeight: _mapSkeletonHeight),
-          onRetry: retry,
-          builder: (f) => ForecastMapCard(grid: f.grid, latitude: place.latitude, longitude: place.longitude),
-          showError: false,
+        AppGridItem.full(
+          child: _panes(hero: hero, map: mapCard),
         ),
       ],
+    );
+  }
+
+  /// Hero (+ [list]) in the main pane, map in the side pane when both fit side by side;
+  /// otherwise stacked in reading order hero, map, list.
+  Widget _panes({required Widget? hero, required Widget? map, Widget? list}) {
+    final mapSlot = map == null
+        ? null
+        : Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppLayout.paneMaxWidth),
+              child: map,
+            ),
+          );
+    Widget column(List<Widget?> items) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppLayout.gridGap,
+      children: [...items.nonNulls],
+    );
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (mapSlot == null || !AppTwoPane.fits(box.maxWidth)) return column([hero, mapSlot, list]);
+        return AppTwoPane(main: column([hero, list]), side: mapSlot);
+      },
     );
   }
 

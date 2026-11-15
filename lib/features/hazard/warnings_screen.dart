@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_shell.dart' show AppTab, appTabProvider;
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/buttons.dart';
@@ -47,21 +48,29 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
     return switch (placeAsync) {
       AsyncLoading() => _loading(),
       AsyncError(:final error) => _page(
-          subtitle: '無法取得目前地點',
-          children: [
-            AppCard.error(title: '無法取得目前地點', message: '$error', onRetry: () => ref.invalidate(currentPlaceProvider)),
-          ],
-        ),
+        subtitle: '無法取得目前地點',
+        children: [
+          AppGridItem.full(
+            child: AppCard.error(
+              title: '無法取得目前地點',
+              message: '$error',
+              onRetry: () => ref.invalidate(currentPlaceProvider),
+            ),
+          ),
+        ],
+      ),
       AsyncData(value: NoPlace(:final reason)) => _page(
-          children: [
-            StatusBanner(
+        children: [
+          AppGridItem.full(
+            child: StatusBanner(
               tone: StatusTone.permission,
               title: '尚未選定地點',
               text: locationFailureMessage(reason),
               actions: [AppButton(label: '手動選擇', small: true, onPressed: () => _openTab(AppTab.location))],
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
       AsyncData(value: PlaceSelected(:final place)) => _forPlace(place.county),
     };
   }
@@ -98,7 +107,8 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
             ? checkedFoot
             : (
                 icon: Icons.location_on_outlined,
-                text: '影響 ${countyCount(shown)} 個縣市 · '
+                text:
+                    '影響 ${countyCount(shown)} 個縣市 · '
                     '${mine.isEmpty ? '你所在的$county目前無生效特報' : '你所在的$county有 ${mine.length} 項'}',
               ),
         emptyText: '全臺目前沒有生效中的警特報。',
@@ -122,31 +132,52 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
             ),
           ],
         ),
-        if (shown.isNotEmpty) ..._list(shown, county, now) else _empty(county, all.length),
+        if (shown.isNotEmpty) ..._list(shown, county, now) else AppGridItem.full(child: _empty(county, all.length)),
       ],
     );
   }
 
   List<Widget> _list(List<WarningGroup> shown, String county, DateTime now) {
     return [
-      SectionHeader(
-        title: _mineOnly ? county : '生效中',
-        trailing: Text(_mineOnly ? '${shown.length} 項' : '依等級排序',
-            style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+      AppGridItem.full(
+        child: SectionHeader(
+          title: _mineOnly ? county : '生效中',
+          trailing: Text(
+            _mineOnly ? '${shown.length} 項' : '依等級排序',
+            style: AppType.caption1.copyWith(color: AppPalette.fg3),
+          ),
+        ),
       ),
-      Column(
-        spacing: AppSpace.s12,
-        children: [
-          for (var i = 0; i < shown.length; i++)
-            WarningCard(
-              // Key by content so an open card stays attached to its warning when the list changes.
-              key: ValueKey((shown[i].name, shown[i].start, shown[i].end)),
-              group: shown[i],
-              now: now,
-              onViewRainfall: () => _openTab(AppTab.rainfall),
-              initiallyOpen: i == 0,
-            ),
-        ],
+      AppGridItem.full(
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final columns = AppGrid.columnsFor(box.maxWidth, spanUnits: shown.length);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppLayout.gridGap,
+              children: [
+                for (var c = 0; c < columns; c++)
+                  Expanded(
+                    child: Column(
+                      spacing: AppSpace.s12,
+                      children: [
+                        // Item i goes to column i % columns so the highest levels share the top row.
+                        for (var i = c; i < shown.length; i += columns)
+                          WarningCard(
+                            // Key by content so an open card stays attached to its warning when the list changes.
+                            key: ValueKey((shown[i].name, shown[i].start, shown[i].end)),
+                            group: shown[i],
+                            now: now,
+                            onViewRainfall: () => _openTab(AppTab.rainfall),
+                            initiallyOpen: i == 0,
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
     ];
   }
@@ -174,7 +205,9 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
       subtitle: '更新中…',
       loading: true,
       children: [
-        const StatusBanner(tone: StatusTone.loading, title: '載入警特報…'),
+        const AppGridItem.full(
+          child: StatusBanner(tone: StatusTone.loading, title: '載入警特報…'),
+        ),
         const AppCard.loading(skeletonHeight: AppSize.icon64 + AppSpace.s32, hero: true),
         const AppCard.loading(skeletonHeight: AppSize.touch),
         const AppCard.loading(skeletonHeight: AppSize.touch),
@@ -186,12 +219,21 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
     return _page(
       subtitle: '更新失敗',
       children: [
-        StatusBanner(tone: StatusTone.error, title: '無法取得警特報', text: message, actions: [RetryButton(onPressed: _retry)]),
-        EmptyState(
-          error: true,
-          title: '暫時無法顯示警特報',
-          text: '這不代表目前沒有警特報。請稍後重試，或改看天氣主頁。',
-          actions: [AppButton(label: '回天氣主頁', onPressed: () => _openTab(AppTab.weather))],
+        AppGridItem.full(
+          child: StatusBanner(
+            tone: StatusTone.error,
+            title: '無法取得警特報',
+            text: message,
+            actions: [RetryButton(onPressed: _retry)],
+          ),
+        ),
+        AppGridItem.full(
+          child: EmptyState(
+            error: true,
+            title: '暫時無法顯示警特報',
+            text: '這不代表目前沒有警特報。請稍後重試，或改看天氣主頁。',
+            actions: [AppButton(label: '回天氣主頁', onPressed: () => _openTab(AppTab.weather))],
+          ),
         ),
       ],
     );

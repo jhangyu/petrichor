@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/adaptive.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
@@ -46,90 +47,112 @@ class _StationListCardState extends State<StationListCard> {
   }
 
   void _toggleSort() => setState(() {
-        _sort = _sort == StationSort.rainfall ? StationSort.name : StationSort.rainfall;
-      });
+    _sort = _sort == StationSort.rainfall ? StationSort.name : StationSort.rainfall;
+  });
 
   void _selectCounty(String? county) => setState(() {
-        _county = county;
-        _expanded = false;
-      });
+    _county = county;
+    _expanded = false;
+  });
 
   @override
   Widget build(BuildContext context) {
     final counties = countyChipOrder(widget.stations, widget.county);
     final inScope = _county == null ? widget.stations : widget.stations.where((s) => s.county == _county).toList();
     final sorted = sortStations(inScope, _sort);
-    final visible = _expanded ? sorted : sorted.take(_collapsedRowCount).toList();
     final sortLabel = _sort == StationSort.rainfall ? '雨量高到低' : '站名';
     return AppCard(
       flush: true,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, AppSpace.s12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: AppSpace.s12,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: AppSpace.s4,
-                        children: [
-                          Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
-                          Text(
-                            '${_county ?? '全部縣市'} · ${sorted.length} 站 · 依$sortLabel',
-                            style: AppType.caption1.copyWith(color: AppPalette.fg3),
-                          ),
-                        ],
-                      ),
-                    ),
-                    AppButton(
-                      label: '排序',
-                      icon: Icons.tune,
-                      variant: AppButtonVariant.subtle,
-                      small: true,
-                      onPressed: _toggleSort,
-                    ),
-                  ],
-                ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    spacing: AppSpace.s8,
-                    children: [
-                      AppChip(label: '全部縣市', selected: _county == null, onTap: () => _selectCounty(null)),
-                      for (final c in counties)
-                        AppChip(label: c, selected: _county == c, onTap: () => _selectCounty(c)),
-                    ],
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final wide = box.maxWidth >= AppLayout.cardWideWidth;
+          final columns = AppGrid.columnsFor(
+            box.maxWidth,
+            spanUnits: sorted.length,
+            minColumnWidth: AppLayout.paneMinWidth,
+          );
+          final chips = [
+            AppChip(label: '全部縣市', selected: _county == null, onTap: () => _selectCounty(null)),
+            for (final c in counties) AppChip(label: c, selected: _county == c, onTap: () => _selectCounty(c)),
+          ];
+          final collapsed = columns * _collapsedRowCount;
+          final visible = _expanded ? sorted : sorted.take(collapsed).toList();
+          final rows = [for (final s in visible) _StationRow(station: s, isNearest: s.id == widget.nearestId)];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, AppSpace.s12),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin),
                   ),
                 ),
-              ],
-            ),
-          ),
-          for (final s in visible) _StationRow(station: s, isNearest: s.id == widget.nearestId),
-          if (sorted.length > _collapsedRowCount)
-            Container(
-              padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s16, AppSpace.s12),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: AppSpace.s12,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            spacing: AppSpace.s4,
+                            children: [
+                              Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
+                              Text(
+                                '${_county ?? '全部縣市'} · ${sorted.length} 站 · 依$sortLabel',
+                                style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                              ),
+                            ],
+                          ),
+                        ),
+                        AppButton(
+                          label: '排序',
+                          icon: Icons.tune,
+                          variant: AppButtonVariant.subtle,
+                          small: true,
+                          onPressed: _toggleSort,
+                        ),
+                      ],
+                    ),
+                    if (wide)
+                      Wrap(spacing: AppSpace.s8, runSpacing: AppSpace.s8, children: chips)
+                    else
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(spacing: AppSpace.s8, children: chips),
+                      ),
+                  ],
+                ),
               ),
-              alignment: Alignment.center,
-              child: AppButton(
-                label: _expanded ? '收合' : '顯示全部 ${sorted.length} 站',
-                icon: _expanded ? Icons.expand_less : Icons.expand_more,
-                variant: AppButtonVariant.subtle,
-                small: true,
-                onPressed: () => setState(() => _expanded = !_expanded),
-              ),
-            ),
-        ],
+              if (columns > 1)
+                Padding(
+                  padding: const EdgeInsets.all(AppSpace.s16),
+                  child: AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: rows),
+                )
+              else
+                ...rows,
+              if (sorted.length > collapsed)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s16, AppSpace.s12),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: AppButton(
+                    label: _expanded ? '收合' : '顯示全部 ${sorted.length} 站',
+                    icon: _expanded ? Icons.expand_less : Icons.expand_more,
+                    variant: AppButtonVariant.subtle,
+                    small: true,
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
