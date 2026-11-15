@@ -13,7 +13,7 @@
 ## Providers
 | Provider | 型別 | 用途 |
 |---|---|---|
-| `currentPlaceProvider` | `AsyncValue<CurrentPlace>` | 目前地點。loading＝讀取儲存資料或定位中；error＝本機儲存資料損毀（`StoredPlaceException`） |
+| `currentPlaceProvider` | `AsyncValue<CurrentPlace>` | 目前地點。loading＝讀取儲存資料或定位中；error＝本機儲存資料損毀（`StoredSettingException`） |
 | `savedPlacesProvider` | `AsyncValue<List<Place>>` | 已儲存地點，依加入順序 |
 | `townsProvider(county)` | `AsyncValue<Result<List<Place>>>` | 某縣市的鄉鎮清單與經緯度（資料來源是該縣市的 3 天鄉鎮預報資料集） |
 | `placeObservationProvider(place)` | `AsyncValue<Result<CurrentWeather>>` | 某地點的即時觀測（已儲存地點列表顯示現況溫度） |

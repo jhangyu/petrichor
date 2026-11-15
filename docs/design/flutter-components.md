@@ -10,13 +10,13 @@ Rules for page screens: import tokens and widgets from `lib/core/`. Do not write
 | `--color-*` (bg, fg, stroke, brand ramp and aliases, status, temp, rain, icon tints, alert-1…4) | `AppPalette.<camelCase>`, e.g. `--color-brand-fg-strong` → `AppPalette.brandFgStrong`, `--color-alert-2-bg` → `AppPalette.alert2Bg` |
 | `--dbz-0 … --dbz-60` (data-vis exception) | `AppPalette.dbz0 … dbz60` |
 | transparent | `AppPalette.transparent` |
-| `--space-N` | `AppSpace.sN` (`AppSpace.gutter` = 16) |
-| `--shape-none/extra-small/small/medium/large/extra-large/full` | `AppRadius.none/extraSmall/small/medium/large/extraLarge/full` |
+| `--space-N` | `AppSpace.s0 … s40` |
+| `--shape-extra-small/small/medium/extra-large/full` | `AppRadius.extraSmall/small/medium/extraLarge/full` |
 | `--stroke-thin/thick/thicker` | `AppStroke.thin/thick/thicker` |
 | `--size-*`, `--layout-max-width` | `AppSize.touch, control, controlSm, appBar, bottomNav, icon16…icon64, sliderTrack, sliderThumb, legendBar, spinner, dot, layoutMaxWidth` |
-| `--shadow-2/4/8/16/28` | `AppShadows.s2/s4/s8/s16/s28` (`List<BoxShadow>`) |
-| `--duration-*`, `--curve-*` | `AppMotion.ultraFast … slower, spin`, `AppMotion.decelerateMid / accelerateMid / easyEase` |
-| `.text-caption2 … .text-display` | `AppType.caption2, caption1, body1, body1Strong, body2, subtitle2, subtitle1, title3, title2, title1, largeTitle, display`. These styles have no colour. Add it with `.copyWith(color: AppPalette.fg1)`. |
+| `--shadow-2/4/8` | `AppShadows.s2/s4/s8` (`List<BoxShadow>`) |
+| `--duration-*`, `--curve-*` | `AppMotion.fast / normal`, `AppMotion.decelerateMid / easyEase` |
+| `.text-caption2 … .text-display` | `AppType.caption2, caption1, body1, body1Strong, body2, subtitle2, subtitle1, display`. These styles have no colour. Add it with `.copyWith(color: AppPalette.fg1)`. |
 | `.num` (tabular-nums) | `style.copyWith(fontFeatures: AppType.tabular)` |
 
 Theme: `lib/core/theme/app_theme.dart` → `AppTheme.light`. The app is light-only. Fonts use the platform default with offline CJK fallback (`PingFang TC`, `Microsoft JhengHei`, `Noto Sans CJK TC`). The app does not load fonts from the network.

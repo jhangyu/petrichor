@@ -13,7 +13,7 @@ Versions (pubspec.lock): flutter_riverpod 3.3.2, shared_preferences 2.5.5. No ne
 | `useGps()` clears the manual place, writes `place.gps=true`, and locates. The UI uses it for 允許使用位置, 重新定位 and 使用目前位置 | `place_provider.dart:178-185`; callers `location_screen.dart:88`, `weather_screen.dart:390`, `rainfall_screen.dart:117` |
 | `select(place)` stores the manual place but does not touch `place.gps`, so a stale `true` stays behind | `place_provider.dart:171-175` |
 | Stale results are dropped by an epoch counter | `place_provider.dart:168,188-199` |
-| **Bug:** `loadUseGps()` uses `getBool`. A non-bool stored value throws an uncaught `TypeError`, not `StoredPlaceException` | `place_provider.dart:106`; `shared_preferences-2.5.5/lib/src/shared_preferences_legacy.dart:117` |
+| **Bug:** `loadUseGps()` uses `getBool`. A non-bool stored value throws an uncaught `TypeError`, not `StoredSettingException` | `place_provider.dart:106`; `shared_preferences-2.5.5/lib/src/shared_preferences_legacy.dart:117` |
 | **Inconsistency:** saved places are de-duplicated by full `Place ==`, which includes coordinates. The screen matches places by county+town (a GPS place has device coordinates; the town list has town-centre coordinates). The same area can be saved twice | `place_provider.dart:215`, `place.dart:62-68`, `location_screen.dart:625-626` |
 | Saved places support select and remove. Reorder is not supported. Search is a UI-only filter over county chips and the town list (`townsProvider`) | `location_screen.dart:443,576,690,700`; `place_provider.dart:229` |
 | RadarSetting pattern: stored int, `prefs.get(key)` strict parse, corrupt value → `AsyncError(StoredRadarSettingException)`, `set()` shows the new value at once and recovers, failed write → error state, `retry: _noRetry` | `radar_provider.dart:37-80,148-151` |
@@ -30,7 +30,7 @@ Versions (pubspec.lock): flutter_riverpod 3.3.2, shared_preferences 2.5.5. No ne
 | `false` | absent | `NoPlace` kind `autoLocateOff` (new) | **no, never** |
 | `true` | absent | `PlaceSelected(gps)` or `NoPlace` kind `locationFailed` (unchanged GPS flow) | yes |
 | any | present | `PlaceSelected(manual)` (unchanged: a manual place wins) | no |
-| not a bool | — | `AsyncError(StoredPlaceException('place.gps', …))` | no |
+| not a bool | — | `AsyncError(StoredSettingException('place.gps', …))` | no |
 
 The writes keep one invariant: **auto-locate on ⇔ no manual place stored.**
 - `useGps()` (unchanged name and callers) = turn auto-locate on: clear `place.current`, write `place.gps=true`, locate. Calling it while already on = relocate (the 重新定位 button).
@@ -44,7 +44,7 @@ The writes keep one invariant: **auto-locate on ⇔ no manual place stored.**
 
 `NoPlace` change: replace `final bool firstRun` (`place_provider.dart:39`) with `final NoPlaceKind kind`, `enum NoPlaceKind { firstRun, autoLocateOff, locationFailed }`, plus a temporary `bool get firstRun => kind == NoPlaceKind.firstRun`. **The frontend package removes this getter** when it rewrites the screens, and it switches the remaining callers to `kind`; no compatibility shim may remain after frontend wiring. Until then, existing consumers keep compiling (`location_screen.dart:72`, `place_state_test.dart:63,98`). `NoPlace.autoLocateOff()` follows the `firstRun()` precedent (`place_provider.dart:44-49`): `error = LocationException(LocationFailure.permissionDenied, 'Auto-locate is off and no manual place is selected.')`. Data pages that switch on `reason` (`weather_screen.dart:393`, `rainfall_screen.dart:51`, `warnings_screen.dart:62`, `radar_screen.dart:223`) then show 使用目前位置 / 手動選擇, the same as for first run. No edits are needed there.
 
-Strict parse: `loadUseGps()` returns `bool?` from `prefs.get(gpsKey)`. A non-bool value → `StoredPlaceException(gpsKey, '儲存資料損毀：期望 true/false，實際「$raw」')`. Recovery: `select`, `useGps` or `stopAutoLocate` overwrites the key and sets the state.
+Strict parse: `loadUseGps()` returns `bool?` from `prefs.get(gpsKey)`. A non-bool value → `StoredSettingException(gpsKey, '儲存資料損毀：期望 true/false，實際「$raw」')`. Recovery: `select`, `useGps` or `stopAutoLocate` overwrites the key and sets the state.
 
 ### 2.2 Saved place identity (area key)
 
@@ -101,17 +101,17 @@ New `lib/core/storage/stored_setting.dart`:
 - `abstract class IntSetting<T> extends AsyncNotifier<T>` is the body of `RadarSetting` (`radar_provider.dart:43-79`) with `String get key` made abstract: `defaultValue`, `expected`, `fromStored(int)`, `toStored(T)`, `build()`, `set(T)`.
 - `RadarSetting<T> extends IntSetting<T>` keeps only `group`, `name` and `key => 'radar.${group.name}.$name'`. Radar behaviour is unchanged.
 
-`StoredPlaceException` stays. It belongs to PlaceStore's JSON place data and is a different domain from scalar settings.
+PlaceStore throws the same `StoredSettingException` as scalar settings. The UI tells place errors from setting errors by which provider failed (`savedPlacesProvider` vs `warningAreasProvider`), not by exception type.
 
 ### 3.2 Error states (all recoverable by overwrite)
 
 | Provider | Error state | Cause | Recovery |
 |---|---|---|---|
-| `currentPlaceProvider` | `AsyncError(StoredPlaceException(key))`, key ∈ `place.current`, `place.gps` | corrupt stored value | `select` / `useGps` / `stopAutoLocate` |
-| `savedPlacesProvider` | `AsyncError(StoredPlaceException('place.saved'))` | corrupt array | `SavedPlacesNotifier.clear()` overwrites with `[]` (lead decision; UI offers it only in this error state) |
+| `currentPlaceProvider` | `AsyncError(StoredSettingException(key))`, key ∈ `place.current`, `place.gps` | corrupt stored value | `select` / `useGps` / `stopAutoLocate` |
+| `savedPlacesProvider` | `AsyncError(StoredSettingException('place.saved'))` | corrupt array | `SavedPlacesNotifier.clear()` overwrites with `[]` (lead decision; UI offers it only in this error state) |
 | `notifyToggleProvider(t)`, `quietMinuteProvider(e)` | `AsyncError(StoredSettingException(key))` | wrong type or out of range | `set(value)` |
-| `warningAreasProvider` | `AsyncError(StoredSettingException('notify.warningAreas'))` | not JSON / not an array of unique non-empty strings | `setPlace(...)` overwrites the whole set (only the toggled place on/off, the others off) |
-| `warningAreasProvider` | `AsyncError(StoredPlaceException('place.saved'))` | saved places corrupt (watched dependency) | fix saved places |
+| `warningAreasProvider` | `AsyncError(StoredSettingException('notify.warningAreas'))` | not JSON / not an array of unique non-empty strings | `WarningAreas.reset()` overwrites with `[]` (works with zero saved places); `setPlace(...)` also overwrites the whole set |
+| `warningAreasProvider` | `AsyncError(StoredSettingException('place.saved'))` | saved places corrupt (watched dependency) | fix saved places |
 | any setter | `AsyncError(... '寫入失敗 …')` | `prefs.set*` returned false | set again |
 
 Rules: `prefs.get(key)` only, never typed getters. Parse happens once in `build()`. No silent default for a present but corrupt value. Every provider uses `retry: noRetry`.
@@ -164,11 +164,11 @@ Acceptance:
 5. These tests are among the green ones in item 4: (a) `stopAutoLocate()` after a GPS fix keeps the same place selected as manual; (b) `clear()` recovers a corrupt `place.saved` to `[]`. The `NoPlace.firstRun` getter has a doc comment saying it is temporary and the frontend package removes it.
 Tests to add (place_state_test.dart, each ≤1 s, mocked LocationService, `SharedPreferences.setMockInitialValues`):
 - `place.gps=false`, no manual place → `NoPlace` kind `autoLocateOff`, `verifyNever(getCurrentLocation)`; survives a new container.
-- `place.gps='yes'` → `AsyncError(StoredPlaceException(key: 'place.gps'))`; `select()` recovers, and a new container reads the manual place.
+- `place.gps='yes'` → `AsyncError(StoredSettingException(key: 'place.gps'))`; `select()` recovers, and a new container reads the manual place.
 - `stopAutoLocate()` after a GPS fix → `PlaceSelected(manual)` with the same place, `autoLocate` false, no further location call in a new container.
 - `select()` after `useGps()` → stored `place.gps == false`.
 - saving the same area with different coordinates keeps one entry.
-- `place.saved='{'` → `AsyncError(StoredPlaceException(key: 'place.saved'))`; `clear()` → `AsyncData([])`, and a new container reads `[]`.
+- `place.saved='{'` → `AsyncError(StoredSettingException(key: 'place.saved'))`; `clear()` → `AsyncData([])`, and a new container reads `[]`.
 
 ### Package 2 — notification settings (sonnet; starts after package 1 is committed)
 Owns: `lib/features/settings/notification_settings.dart` (new), `test/unit/notification_settings_test.dart` (new).

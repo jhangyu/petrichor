@@ -66,7 +66,7 @@ Semantics: index rows are announced as selectable buttons (`AppListRow` → `Sem
 | Empty | `EmptyState` (`status.dart:78`) inside the card | icon `bookmark_border`; 「尚未儲存地點」; 「在「地點設定」搜尋鄉鎮，選好後按「儲存」。」 |
 | No current place | `_Note` under the list | 「尚無目前地點：點一個儲存的地點，或在下方搜尋。」 |
 | Loading | `AppCard.loading(title: '儲存的地點', skeletonHeight: AppSize.touch * 3)` | |
-| Corrupt storage | `StatusBanner(tone: StatusTone.error)` (`status.dart:11`) replaces the list | 「無法讀取已儲存的地點」 + the `StoredPlaceException` text as-is; action 「重新選擇」 = opens the picker (writing overwrites the corrupt value) |
+| Corrupt storage | `StatusBanner(tone: StatusTone.error)` (`status.dart:11`) replaces the list | 「無法讀取已儲存的地點」 + the `StoredSettingException` text as-is; action 「重新選擇」 = opens the picker (writing overwrites the corrupt value) |
 
 Reorder: not shown. `SavedPlacesNotifier` (`lib/features/location/place_provider.dart:244`) has no reorder today, and the contract allows reorder only if already supported.
 Delete: immediate, like today. No confirm dialog. Undo is out of scope.
