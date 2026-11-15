@@ -39,10 +39,12 @@ double _num(Object? v, String path) {
   return n;
 }
 
+final _zonePattern = RegExp(r'[+-]\d\d:\d\d$');
+
 /// "yyyy-MM-dd HH:mm:ss"（+08 本地）或 ISO 8601 → DateTime
 DateTime _time(Object? v, String path) {
   final s = _str(v, path);
-  final hasZone = s.endsWith('Z') || RegExp(r'[+-]\d\d:\d\d$').hasMatch(s);
+  final hasZone = s.endsWith('Z') || _zonePattern.hasMatch(s);
   final parsed = DateTime.tryParse(hasZone ? s : '${s.replaceFirst(' ', 'T')}$_taiwanOffset');
   if (parsed == null) throw FormatException('expected timestamp at $path, got "$s"');
   return parsed;
@@ -146,14 +148,6 @@ class ActiveWarnings {
   DateTime? get updatedAt {
     if (bulletins.isEmpty) return null;
     return bulletins.map((b) => b.updatedAt).reduce((a, b) => a.isAfter(b) ? a : b);
-  }
-
-  /// 指定縣市的特報；無生效特報回空 list
-  List<CountyWarning> forCounty(String county) {
-    for (final c in counties) {
-      if (c.county == county) return c.warnings;
-    }
-    return const [];
   }
 
   /// 解析 W-C0033-001（[w1Records] = `records`）；缺 `location` 陣列視為格式錯誤，
@@ -281,9 +275,6 @@ class CountyRainfall {
   final RainStation nearest;
 
   const CountyRainfall({required this.county, required this.stations, required this.allStations, required this.nearest});
-
-  /// 資料集內有測站的縣市名，依首次出現順序
-  List<String> get counties => {for (final s in allStations) s.county}.toList();
 }
 
 /// 解析 O-A0002-001 的 `records.Station[]` 全部測站

@@ -38,6 +38,9 @@ Map<String, dynamic> _fixtureJson(String id) => jsonDecode(_fixture(id)) as Map<
 
 ({int status, String body}) _ok(Object body) => (status: 200, body: body is String ? body : jsonEncode(body));
 
+List<CountyWarning> _warningsOf(ActiveWarnings w, String county) =>
+    w.counties.where((c) => c.county == county).firstOrNull?.warnings ?? const [];
+
 HazardRepository _repo(
   Map<String, ({int status, String body})> routes, {
   DateTime Function() clock = DateTime.now,
@@ -69,7 +72,7 @@ void main() {
       expect(w.counties.length, 11);
       expect(w.bulletins.length, 2);
 
-      final pingtung = w.forCounty('屏東縣');
+      final pingtung = _warningsOf(w, '屏東縣');
       expect(pingtung.map((e) => e.phenomena), ['豪雨', '陸上強風']);
       final heavyRain = pingtung.first;
       expect(heavyRain.start, _tw('2026-11-14T18:57:00'));
@@ -81,8 +84,8 @@ void main() {
       expect(heavyRain.bulletin!.description, equals(heavyRain.bulletin!.description.trim()));
       expect(heavyRain.bulletin!.affectedAreas, containsAll(['高雄市', '屏東縣']));
 
-      expect(w.forCounty('澎湖縣').single.bulletin!.title, '陸上強風特報');
-      expect(w.forCounty('臺北市'), isEmpty);
+      expect(_warningsOf(w, '澎湖縣').single.bulletin!.title, '陸上強風特報');
+      expect(_warningsOf(w, '臺北市'), isEmpty);
     });
 
     test('updatedAt is the newest bulletin update, fetchedAt comes from the injected clock', () async {
@@ -134,7 +137,7 @@ void main() {
       expect(r, isA<Success<ActiveWarnings>>());
       expect(r.data.bulletins.length, 2);
       expect(r.data.bulletins.any((b) => b.description.contains('解除')), isFalse);
-      expect(r.data.forCounty('澎湖縣').single.bulletin!.title, '陸上強風特報');
+      expect(_warningsOf(r.data, '澎湖縣').single.bulletin!.title, '陸上強風特報');
     });
 
     test('-001 without records.location is Failure, not empty', () async {
