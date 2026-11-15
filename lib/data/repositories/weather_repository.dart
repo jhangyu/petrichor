@@ -6,6 +6,7 @@ import '../../core/api/result.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/cwa_names.dart';
 import '../../core/location/location_service.dart';
+import '../../core/time/taiwan_time.dart';
 import '../models/place.dart';
 import '../models/weather_models.dart';
 
@@ -86,9 +87,9 @@ class WeatherRepository {
   /// 取得 [city] 縣市「[now] 所在臺灣曆日」前一日、當日與隔日的日出日沒時刻（[昨天, 今天, 明天]）。
   Future<Result<List<SunDay>>> getSunTimes(String city, DateTime now) {
     final county = normalizeCwaName(city);
-    final today = now.toUtc().add(_taiwanOffset);
+    final today = taiwanWall(now);
     final days = [
-      for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) _dateKey(today.add(Duration(days: i))),
+      for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) isoDate(today.add(Duration(days: i))),
     ];
     return _query(
       dataset: AppConstants.sunTimesDataset,
@@ -97,7 +98,7 @@ class WeatherRepository {
       query: {
         'CountyName': county,
         'timeFrom': days.first,
-        'timeTo': _dateKey(today.add(const Duration(days: _sunDaysAfter + 1))),
+        'timeTo': isoDate(today.add(const Duration(days: _sunDaysAfter + 1))),
       },
       parse: (body) => _parseSunTimes(body, county, days),
     );
@@ -234,7 +235,6 @@ class WeatherRepository {
 const double _missingValue = -99;
 final _missingText = _missingValue.toStringAsFixed(0); // '-99'
 const double _earthRadiusKm = 6371.0;
-const Duration _taiwanOffset = Duration(hours: 8);
 
 /// 一週預報顯示天數
 const int _weeklyDayCount = 7;
@@ -542,9 +542,6 @@ List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
   ];
 }
 
-String _dateKey(DateTime wall) =>
-    '${wall.year.toString().padLeft(4, '0')}-${wall.month.toString().padLeft(2, '0')}-${wall.day.toString().padLeft(2, '0')}';
-
 /// 一週預報為 12 小時時段（白天 06–18、夜間 18–06）。
 /// 單日最高／最低溫 = 該臺灣曆日所涉時段的最高／最低；其餘欄位取該日白天時段（今天只剩夜間時只取夜間）。
 List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
@@ -562,12 +559,12 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
   for (final entry in maxT.entries) {
     final end = entry.value.end;
     if (end == null) throw FormatException('最高溫度@${entry.key}：缺少 EndTime');
-    final startWall = entry.key.add(_taiwanOffset);
-    final lastWall = end.add(_taiwanOffset).subtract(const Duration(microseconds: 1));
+    final startWall = entry.key.add(taiwanUtcOffset);
+    final lastWall = end.add(taiwanUtcOffset).subtract(const Duration(microseconds: 1));
     for (var day = DateTime.utc(startWall.year, startWall.month, startWall.day);
         !day.isAfter(lastWall);
         day = day.add(const Duration(days: 1))) {
-      slotsByDate.putIfAbsent(_dateKey(day), () => []).add(entry.key);
+      slotsByDate.putIfAbsent(isoDate(day), () => []).add(entry.key);
     }
   }
 
@@ -583,7 +580,7 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
   for (final entry in slotsByDate.entries.take(_weeklyDayCount)) {
     final starts = entry.value;
     final rep = starts.firstWhere(
-      (s) => s.add(_taiwanOffset).hour == _daySlotStartHour && _dateKey(s.add(_taiwanOffset)) == entry.key,
+      (s) => s.add(taiwanUtcOffset).hour == _daySlotStartHour && isoDate(s.add(taiwanUtcOffset)) == entry.key,
       orElse: () => starts.first,
     );
     days.add(DailyForecast(
