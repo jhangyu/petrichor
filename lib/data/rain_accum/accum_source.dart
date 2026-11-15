@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_tokens.dart';
+import '../../core/time/taiwan_time.dart';
 import '../radar/radar_echo_stats.dart';
 import '../radar/radar_frame_list.dart';
 import '../radar/radar_frame_processor.dart';
@@ -243,14 +244,6 @@ class _PieceCache {
 
   Future<Directory> _dir() async => Directory('${(await _root()).path}/$accumPieceCacheDirName');
 
-  static String _key(DateTime t) {
-    String two(int v) => v.toString().padLeft(2, '0');
-    return '${t.year}${two(t.month)}${two(t.day)}${two(t.hour)}${two(t.minute)}';
-  }
-
-  static DateTime _keyTime(String k) => DateTime.utc(int.parse(k.substring(0, 4)), int.parse(k.substring(4, 6)),
-      int.parse(k.substring(6, 8)), int.parse(k.substring(8, 10)), int.parse(k.substring(10, 12)));
-
   /// Deletes every file that is not a grid (or its ETag) ending within
   /// [accumPieceRetention] before [now] (temp files included).
   Future<void> prune(DateTime now) async {
@@ -260,7 +253,7 @@ class _PieceCache {
     await for (final entity in dir.list(recursive: true)) {
       if (entity is! File) continue;
       final match = _pieceFilePattern.firstMatch(entity.uri.pathSegments.last);
-      if (match == null || _keyTime(match[1]!).isBefore(cutoff)) await entity.delete();
+      if (match == null || parseUtcStamp(match[1]!).isBefore(cutoff)) await entity.delete();
     }
   }
 
@@ -270,17 +263,17 @@ class _PieceCache {
   /// ETag of the cached [nativeHours] grid ending at [end]; '' when it has none
   /// (or is not cached).
   Future<String> etag(int nativeHours, DateTime end) async =>
-      _readOrEmpty(File('${(await _dir()).path}/${_subdir(nativeHours)}/${_key(end)}.etag'));
+      _readOrEmpty(File('${(await _dir()).path}/${_subdir(nativeHours)}/${formatUtcStamp(end, seconds: false)}.etag'));
 
   /// What a frame from [start] to [end] is made from: S and the ETag of the
   /// [nativeHours] grid ending at [end].
   Future<String> signature(int nativeHours, DateTime start, DateTime end) async =>
-      '${_key(start)} ${await etag(nativeHours, end)}';
+      '${formatUtcStamp(start, seconds: false)} ${await etag(nativeHours, end)}';
 
   /// `rendered/<W>h/<key>.sig`: the [signature] a rendered frame of the
   /// [windowHours] window was made from.
   Future<File> _renderedFile(int windowHours, DateTime frame) async =>
-      File('${(await _dir()).path}/rendered/${windowHours}h/${_key(frame)}.sig');
+      File('${(await _dir()).path}/rendered/${windowHours}h/${formatUtcStamp(frame, seconds: false)}.sig');
 
   /// The signature [setRenderedSignature] stored for the frame; null when none is stored.
   Future<String?> renderedSignature(int windowHours, DateTime frame) async {
@@ -296,7 +289,7 @@ class _PieceCache {
 
   static Future<String> _readOrEmpty(File file) async => await file.exists() ? file.readAsString() : '';
 
-  static String _subdir(int nativeHours) => '${nativeHours.toString().padLeft(2, '0')}h';
+  static String _subdir(int nativeHours) => '${twoDigits(nativeHours)}h';
 
   /// Gzipped text of the [nativeHours] grid ending at [end]; null when QPEplus
   /// answers 404. Other failures throw [RadarDataException] naming the URL;
@@ -304,8 +297,8 @@ class _PieceCache {
   Future<Uint8List?> get(int nativeHours, DateTime end, CancelToken? cancel) async {
     final url = accumPieceUrl(nativeHours, end);
     final dir = Directory('${(await _dir()).path}/${_subdir(nativeHours)}');
-    final file = File('${dir.path}/${_key(end)}.dat.gz');
-    final etagFile = File('${dir.path}/${_key(end)}.etag');
+    final file = File('${dir.path}/${formatUtcStamp(end, seconds: false)}.dat.gz');
+    final etagFile = File('${dir.path}/${formatUtcStamp(end, seconds: false)}.etag');
     final cached = await file.exists();
     String? etag;
     if (cached) {

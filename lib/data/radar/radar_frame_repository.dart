@@ -43,15 +43,6 @@ typedef RadarFrameProcess = Future<ProcessedRadarFrame> Function(Uint8List png, 
 /// (station frames have irregular seconds).
 final _cacheFilePattern = RegExp(r'^(\d{14})\.(webp|stats)$');
 
-String _cacheKey(DateTime t) {
-  final u = t.toUtc();
-  String two(int v) => v.toString().padLeft(2, '0');
-  return '${u.year}${two(u.month)}${two(u.day)}${two(u.hour)}${two(u.minute)}${two(u.second)}';
-}
-
-DateTime _cacheKeyTime(String k) => DateTime.utc(int.parse(k.substring(0, 4)), int.parse(k.substring(4, 6)),
-    int.parse(k.substring(6, 8)), int.parse(k.substring(8, 10)), int.parse(k.substring(10, 12)), int.parse(k.substring(12, 14)));
-
 /// One processed, cached frame: transparent lossless WebP with rows linear in
 /// Web Mercator, shown as one `OverlayImage` over [bounds]. Of the echo
 /// statistics only the strongest echo is kept.
@@ -162,7 +153,7 @@ class RadarFrameRepository {
       final webp = File('${dir.path}/$key.webp');
       final size = radarWebpSize(Uint8List.fromList(
           await webp.openRead(0, radarWebpHeaderBytes).expand((chunk) => chunk).toList()));
-      ready[key] = _frame(_cacheKeyTime(key), webp, await readStats(key), size);
+      ready[key] = _frame(parseUtcStamp(key), webp, await readStats(key), size);
     }
 
     // Each event carries the slots as they were when it was sent.
@@ -172,8 +163,8 @@ class RadarFrameRepository {
     // Cache first: the window span ending at the newest cached frame.
     final cachedSlots = <RadarSlot>[];
     if (cached.isNotEmpty) {
-      final start = _cacheKeyTime(cached.last).subtract(window);
-      for (final key in cached.where((s) => _cacheKeyTime(s).isAfter(start))) {
+      final start = parseUtcStamp(cached.last).subtract(window);
+      for (final key in cached.where((s) => parseUtcStamp(s).isAfter(start))) {
         await readCached(key);
         cachedSlots.add(RadarSlot.ready(ready[key]!));
       }
@@ -192,7 +183,7 @@ class RadarFrameRepository {
     final byTime = [...listed]..sort((a, b) => a.time.compareTo(b.time));
     final slots = <String, RadarSlot>{};
     for (final f in byTime) {
-      final key = _cacheKey(f.time);
+      final key = formatUtcStamp(f.time, seconds: true);
       if (cached.contains(key)) {
         try {
           if (await source.cachedFrameStale?.call(f, cancel) ?? false) {
@@ -213,7 +204,7 @@ class RadarFrameRepository {
     if (byTime.isNotEmpty) {
       final from = byTime.last.time.subtract(window);
       for (final key in cached) {
-        final t = _cacheKeyTime(key);
+        final t = parseUtcStamp(key);
         if (t.isAfter(from) && !t.isAfter(byTime.last.time) && !slots.containsKey(key)) {
           await File('${dir.path}/$key.webp').delete();
           await File('${dir.path}/$key.stats').delete();
@@ -223,7 +214,7 @@ class RadarFrameRepository {
     void sendSlots({required bool loading}) => send([...slots.values], loading: loading);
     sendSlots(loading: true);
 
-    final pending = [for (final f in byTime) if (slots[_cacheKey(f.time)]!.state == RadarSlotState.pending) f];
+    final pending = [for (final f in byTime) if (slots[formatUtcStamp(f.time, seconds: true)]!.state == RadarSlotState.pending) f];
     final order = pending.isEmpty ? const <RadarFrameRef>[] : [pending.last, ...pending.sublist(0, pending.length - 1)];
     // Finished slots wait here until every slot before them in [order] is published.
     final finished = <String, RadarSlot>{};
@@ -243,15 +234,15 @@ class RadarFrameRepository {
       final token = CancelToken();
       frameTokens.add(token);
       try {
-        finished[_cacheKey(f.time)] = RadarSlot.ready(await _fetch(dir, source.step, f, token));
+        finished[formatUtcStamp(f.time, seconds: true)] = RadarSlot.ready(await _fetch(dir, source.step, f, token));
       } on Exception catch (e) {
         if (_isCancel(e)) rethrow;
-        finished[_cacheKey(f.time)] = RadarSlot.failed(f.time, _frameFailure(f, e));
+        finished[formatUtcStamp(f.time, seconds: true)] = RadarSlot.failed(f.time, _frameFailure(f, e));
       } finally {
         frameTokens.remove(token);
       }
       while (published < order.length) {
-        final key = _cacheKey(order[published].time);
+        final key = formatUtcStamp(order[published].time, seconds: true);
         final slot = finished.remove(key);
         if (slot == null) break;
         slots[key] = slot;
@@ -284,13 +275,13 @@ class RadarFrameRepository {
         (entity, _cacheFilePattern.firstMatch(entity.path.substring(dir.path.length + 1)))
     ];
     final webpKeys = [for (final (_, match) in entries) if (match?[2] == 'webp') match![1]!]..sort();
-    final newest = webpKeys.isEmpty ? null : _cacheKeyTime(webpKeys.last);
+    final newest = webpKeys.isEmpty ? null : parseUtcStamp(webpKeys.last);
     final end = newest != null && newest.isBefore(now.toUtc()) ? newest : now.toUtc();
     final cutoff = end.subtract(retention);
     for (final (entity, match) in entries) {
-      if (match == null || _cacheKeyTime(match[1]!).isBefore(cutoff)) await entity.delete(recursive: true);
+      if (match == null || parseUtcStamp(match[1]!).isBefore(cutoff)) await entity.delete(recursive: true);
     }
-    return [for (final key in webpKeys) if (!_cacheKeyTime(key).isBefore(cutoff)) key];
+    return [for (final key in webpKeys) if (!parseUtcStamp(key).isBefore(cutoff)) key];
   }
 
   /// Obtains [f] by [step] and caches it; the WebP is renamed into place last,
@@ -308,7 +299,7 @@ class RadarFrameRepository {
       RadarPngStep(:final geometry) => await _downloadAndProcess(f, geometry, cancel, processSlot),
       RadarComposedStep(:final obtain) => await obtain(f, cancel, processSlot),
     };
-    final key = _cacheKey(f.time);
+    final key = formatUtcStamp(f.time, seconds: true);
     final stats = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
     await writeAtomic(stats, processed.stats.toBytes());

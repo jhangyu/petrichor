@@ -11,6 +11,8 @@
 /// from the list only (checked 2026-11-15, radar-perf-contract.md item 6).
 library;
 
+import '../../core/time/taiwan_time.dart';
+
 const radarFrameListUrl = 'https://www.cwa.gov.tw/Data/js/obs_img/Observe_radar.js';
 const radarFrameBaseUrl = 'https://www.cwa.gov.tw/Data/radar/';
 const radarFrameSetPrefix = 'CV1_3600_';
@@ -26,9 +28,6 @@ const radarStationBaseUrl = 'https://www.cwa.gov.tw/Data/radar_rain/';
 
 /// Longest look-back of a station loop: what the station list covers (~6.2 h).
 const radarStationMaxWindow = Duration(hours: 6);
-
-/// File names carry Taiwan local time (UTC+8, no DST).
-const _taiwanUtcOffset = Duration(hours: 8);
 
 final _framePattern = RegExp("'$radarFrameSetPrefix(\\d{12})\\.png'");
 
@@ -55,19 +54,30 @@ class RadarFrameRef {
   String toString() => 'RadarFrameRef($time, $url)';
 }
 
+/// `yyyyMMddHHmm` (+`ss` when [seconds]) of [t] in UTC: cache file keys.
+String formatUtcStamp(DateTime t, {required bool seconds}) {
+  final u = t.toUtc();
+  return '${u.year}${twoDigits(u.month)}${twoDigits(u.day)}${twoDigits(u.hour)}${twoDigits(u.minute)}'
+      '${seconds ? twoDigits(u.second) : ''}';
+}
+
+/// Fields of a 12- or 14-digit `yyyyMMddHHmm[ss]` stamp as a UTC DateTime, no
+/// offset applied. Callers match the stamp pattern first.
+DateTime parseUtcStamp(String s) => DateTime.utc(
+      int.parse(s.substring(0, 4)),
+      int.parse(s.substring(4, 6)),
+      int.parse(s.substring(6, 8)),
+      int.parse(s.substring(8, 10)),
+      int.parse(s.substring(10, 12)),
+      s.length == 14 ? int.parse(s.substring(12, 14)) : 0,
+    );
+
 final _stampPattern = RegExp(r'^\d{12}(\d{2})?$');
 
 /// Time of a `yyyyMMddHHmm[ss]` Taiwan-time stamp, in UTC.
 DateTime radarStampTime(String s) {
   if (!_stampPattern.hasMatch(s)) throw FormatException('radar stamp: expected yyyyMMddHHmm[ss], got "$s"');
-  return DateTime.utc(
-    int.parse(s.substring(0, 4)),
-    int.parse(s.substring(4, 6)),
-    int.parse(s.substring(6, 8)),
-    int.parse(s.substring(8, 10)),
-    int.parse(s.substring(10, 12)),
-    s.length == 14 ? int.parse(s.substring(12, 14)) : 0,
-  ).subtract(_taiwanUtcOffset);
+  return parseUtcStamp(s).subtract(taiwanUtcOffset);
 }
 
 /// Parses every `CV1_3600_` frame in [js] (the content of Observe_radar.js).
