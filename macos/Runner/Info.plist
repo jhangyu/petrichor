@@ -8,6 +8,8 @@
 	<string>需要您的位置以顯示所在縣市與鄉鎮的天氣預報與雷達資訊。</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Cirrus · Wisp · Billow</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
