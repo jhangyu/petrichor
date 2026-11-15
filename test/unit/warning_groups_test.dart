@@ -33,7 +33,6 @@ void main() {
     expect([for (final g in groups) g.name], ['豪雨特報', '大雨特報', '低溫特報']);
     expect(groups.first.counties, ['宜蘭縣', '花蓮縣']);
     expect([for (final g in groups) g.level], [2, 1, null]);
-    expect(countyCount(groups), 3);
     expect([for (final g in groupsForCounty(groups, '臺北市')) g.name], ['大雨特報']);
   });
 

@@ -28,9 +28,6 @@ class WarningLevelStyle {
             AppPalette.alert4Bg, AppPalette.alert4Fg, AppPalette.alert4Stroke, AppPalette.alert4Solid, BadgeTone.alert4),
         _ => _info,
       };
-
-  static const ok = WarningLevelStyle._(
-      AppPalette.successBg, AppPalette.successFg, AppPalette.successStroke, AppPalette.successSolid, BadgeTone.neutral);
 }
 
 /// Icon by warning name (`i-thunder`, `i-rain`, `i-thermo`, else the generic warning glyph).

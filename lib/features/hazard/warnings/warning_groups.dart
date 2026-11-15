@@ -70,6 +70,3 @@ List<WarningGroup> groupWarnings(ActiveWarnings active) {
 /// Groups that apply to [county].
 List<WarningGroup> groupsForCounty(List<WarningGroup> groups, String county) =>
     [for (final g in groups) if (g.counties.contains(county)) g];
-
-/// Number of distinct counties across [groups].
-int countyCount(List<WarningGroup> groups) => {for (final g in groups) ...g.counties}.length;
