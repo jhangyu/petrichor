@@ -29,7 +29,7 @@ class AppBadge extends StatelessWidget {
     };
     final glyph = icon;
     return Container(
-      constraints: const BoxConstraints(minHeight: AppSize.icon20),
+      constraints: const BoxConstraints(minHeight: AppSize.icon24),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s8),
       decoration: BoxDecoration(
         color: bg,

@@ -210,7 +210,7 @@ button.list-row { width: 100%; border: none; text-align: left; }
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
-  min-height: var(--size-icon-20);
+  min-height: var(--size-icon-24);
   padding: var(--space-0) var(--space-8);
   border-radius: var(--shape-full);
   font-size: var(--type-caption1-size);
