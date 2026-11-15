@@ -20,6 +20,10 @@ const _okCode = 0;
 /// Bytes of a WebP file that [radarWebpSize] needs (RIFF header, VP8L header).
 const radarWebpHeaderBytes = 32;
 
+/// Opaque RGBA word (bytes R, G, B, A in memory, little-endian host) of the
+/// 0xRRGGBB colour in the low 24 bits of [rgb]; higher bits are ignored.
+int rgbToRgbaWord(int rgb) => 0xFF000000 | ((rgb & 0xFF) << 16) | (rgb & 0xFF00) | ((rgb >> 16) & 0xFF);
+
 @Native<Int32 Function(Pointer<Uint8>, Int32, Int32, Int32, Int32, Pointer<Pointer<Uint8>>, Pointer<Size>)>(
     symbol: 'radar_webp_encode_lossless_rgba')
 external int _encode(Pointer<Uint8> rgba, int width, int height, int stride, int level, Pointer<Pointer<Uint8>> out,

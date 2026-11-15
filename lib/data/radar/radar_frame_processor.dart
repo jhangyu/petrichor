@@ -96,10 +96,9 @@ typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStats stats});
 /// of the processed image: index 0 = transparent, index d + 1 = dBZ d
 /// ([colours], index = dBZ), opaque.
 Uint32List _rgbaOfIndex(List<int> colours) {
-  const opaque = 0xFF000000;
   final lut = Uint32List(colours.length + 1);
   for (final (d, c) in colours.indexed) {
-    lut[d + 1] = opaque | ((c & 0xFF) << 16) | (c & 0xFF00) | (c >> 16);
+    lut[d + 1] = rgbToRgbaWord(c);
   }
   return lut;
 }

@@ -176,8 +176,7 @@ Future<ProcessedRadarFrame> _renderOffUiIsolate(List<AccumPieceInput> whole, Acc
 
 /// RGBA words (bytes R, G, B, A in memory) of `AppPalette.rainfallMapScale`, opaque.
 final _rgba = Uint32List.fromList([
-  for (final c in AppPalette.rainfallMapScale)
-    0xFF000000 | ((c.toARGB32() & 0xFF) << 16) | (c.toARGB32() & 0xFF00) | ((c.toARGB32() >> 16) & 0xFF),
+  for (final c in AppPalette.rainfallMapScale) rgbToRgbaWord(c.toARGB32()),
 ]);
 
 final _rowMap = mercatorRowMap(srcHeight: accumGridHeight, south: accumBounds.south, north: accumBounds.north);
