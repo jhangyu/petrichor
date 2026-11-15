@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example.cwbweather" "\0"
-            VALUE "FileDescription", "cwb_flutter" "\0"
+            VALUE "CompanyName", "us.jhangy" "\0"
+            VALUE "FileDescription", "Cirrus · Wisp · Billow" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "cwb_flutter" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example.cwbweather. All rights reserved." "\0"
-            VALUE "OriginalFilename", "cwb_flutter.exe" "\0"
-            VALUE "ProductName", "cwb_flutter" "\0"
+            VALUE "InternalName", "petrichor" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 us.jhangy. All rights reserved." "\0"
+            VALUE "OriginalFilename", "petrichor.exe" "\0"
+            VALUE "ProductName", "Cirrus · Wisp · Billow" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
