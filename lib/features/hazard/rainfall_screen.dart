@@ -23,13 +23,15 @@ import 'rainfall/accum_card.dart';
 import 'rainfall/accum_provider.dart';
 import 'rainfall/forecast_view.dart';
 import 'rainfall/observation_view.dart';
+import 'rainfall/rainfall_logic.dart';
 import 'rainfall/station_list.dart';
 
 const _loadingSubtitle = '正在取得測站資料…';
 const _heroSkeletonHeight = 160.0;
 const _mapSkeletonHeight = 300.0;
 const _listSkeletonHeight = 240.0;
-const _thresholdHint = '警戒等級依 24 小時累積雨量：大雨 80、豪雨 200、大豪雨 350、超大豪雨 500 mm。';
+final _thresholdHint =
+    '警戒等級依 24 小時累積雨量：${[for (var i = 0; i < rainWarningThresholds.length; i++) '${rainLevelNames[i + 1]} ${rainWarningThresholds[i].toInt()}'].join('、')} mm。';
 
 /// 雨量 tab: 最近測站, 累積雨量, 未來1hr預測, 測站今日累積雨量.
 class RainfallScreen extends ConsumerWidget {

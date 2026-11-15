@@ -97,7 +97,7 @@ class _ThresholdBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final flexes = [for (final p in thresholdSegmentPercents) p.round()];
-    final labels = ['0', '大雨 80', '豪雨 200', '大豪雨 350'];
+    final labels = ['0', for (var i = 0; i < flexes.length - 1; i++) '${rainLevelNames[i + 1]} ${rainWarningThresholds[i].toInt()}'];
     final semantics = nextWarning(mm);
     return Semantics(
       label: semantics == null
