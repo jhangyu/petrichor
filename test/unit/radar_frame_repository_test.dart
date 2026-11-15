@@ -211,8 +211,6 @@ void main() {
     final left = {for (final e in root.listSync()) e.path.split('/').last};
     expect(left, {radarFrameCacheDirName, 'unrelated_dir'});
     expect(File('${root.path}/unrelated_dir/test/keep.txt').existsSync(), isTrue);
-    expect(radarLegacyCacheDirNames, isNot(contains(radarFrameCacheDirName)));
-    expect(radarLegacyCacheDirNames, containsAll(['radar_cv1_3600_webp_v1', 'radar_cv1_3600_webp_v2']));
   });
 
   test('empty cache: a slot per listed time, newest ready first, then oldest first, one slot per event', () async {

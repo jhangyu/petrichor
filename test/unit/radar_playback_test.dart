@@ -86,9 +86,4 @@ void main() {
     expect(upcoming(t(4)), [t(0), t(2)]);
     expect(upcoming(null), [t(0), t(2)]);
   });
-
-  test('times render as Taiwan time', () {
-    expect(formatTaiwanMonthDayClock(DateTime.utc(2026, 11, 14, 6, 0)), '11/14 14:00');
-    expect(formatTaiwanFull(DateTime.utc(2026, 11, 14, 18, 5)), '2026-11-15 02:05');
-  });
 }

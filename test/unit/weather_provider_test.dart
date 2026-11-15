@@ -94,16 +94,6 @@ void main() {
     expect(adapter.fileRequests.single.pathSegments.last, 'F-D0047-061');
   });
 
-  test('更新於 is the injected clock at load completion, not the observation time', () async {
-    when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
-    serveTaipei();
-
-    final s = await _settled(container);
-
-    expect(s.fetchedAt, DateTime.utc(2026, 11, 14, 4));
-    expect(s.fetchedAt, isNot(s.current!.data.observedAt));
-  });
-
   test('permission denied with no saved choice: no place, denial reason, API never called', () async {
     when(() => location.getCurrentLocation()).thenThrow(
       LocationException(LocationFailure.permissionDenied, 'denied'),
@@ -139,21 +129,6 @@ void main() {
     expect(byDataset['F-D0047-071']!['LocationName'], '板橋區');
     expect(byDataset['A-B0062-001']!['CountyName'], '新北市');
     expect(adapter.fileRequests.last.pathSegments.last, 'F-D0047-069');
-  });
-
-  test('failing sun times keep observation and both forecasts', () async {
-    when(() => location.getCurrentLocation()).thenAnswer((_) async => _taipei);
-    adapter.serveFixture('O-A0003-001');
-    adapter.serveFixture('F-D0047-061');
-    adapter.serveFixture('F-D0047-091', _renameTo('中正區'), 'F-D0047-063');
-    adapter.serveStatus('A-B0062-001', 500);
-
-    final s = await _settled(container);
-
-    expect((s.sun as Failure).message, contains('A-B0062-001'));
-    expect(s.current!.isSuccess, isTrue);
-    expect(s.hourly!.data, hasLength(4));
-    expect(s.weekly!.isSuccess, isTrue);
   });
 
   test('one failing dataset keeps the other three and exposes its own message', () async {

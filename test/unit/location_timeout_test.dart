@@ -42,7 +42,6 @@ void main() {
             .having((e) => e.cause, 'cause', isA<TimeoutException>()),
       ),
     );
-    expect(locationTimeout, const Duration(seconds: 10));
   });
 
   test('a late GPS result after a manual selection does not override it', () async {

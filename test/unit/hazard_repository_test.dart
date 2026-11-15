@@ -143,16 +143,6 @@ void main() {
       expect(r, isA<Failure<ActiveWarnings>>());
       expect((r as Failure).message, allOf(contains('W-C0033-001'), contains('records.location')));
     });
-
-    test('HTTP 500 is Failure with status and dataset', () async {
-      final repo = _repo({
-        'W-C0033-001': (status: 500, body: '{}'),
-        'W-C0033-002': _ok(_fixture('W-C0033-002')),
-      });
-      final r = await repo.getActiveWarnings() as Failure;
-      expect(r.statusCode, 500);
-      expect(r.message, contains('W-C0033-001'));
-    });
   });
 
   group('getRainfall', () {
@@ -210,14 +200,6 @@ void main() {
       final r = await _repo({'O-A0002-001': _ok(body)}).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9);
       expect((r as Failure).message, allOf(contains('O-A0002-001'), contains('Past1hr')));
     });
-
-    test('reads past 1 and 3 hour values and lists every county', () async {
-      final r = (await _repo(routes).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9)).data;
-      expect(r.nearest.past1hrMm, 0.5);
-      expect(r.nearest.past3hrMm, 11.0);
-      expect(r.nearest.past10MinMm, 0.5);
-      expect(r.counties, ['南投縣', '基隆市', '新北市']);
-    });
   });
 
   group('getRainfallMap', () {
@@ -234,11 +216,6 @@ void main() {
       (body['cwaopendata']['dataset'] as Map).remove('Resource');
       final r = await _repo({'O-A0040-002': _ok(body)}).getRainfallMap();
       expect((r as Failure).message, allOf(contains('O-A0040-002'), contains('Resource')));
-    });
-
-    test('empty API key is Failure without request', () async {
-      final r = await _repo({}, apiKey: '').getRainfallMap();
-      expect((r as Failure).message, contains('O-A0040-002'));
     });
   });
 

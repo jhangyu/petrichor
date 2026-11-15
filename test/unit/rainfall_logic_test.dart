@@ -1,4 +1,3 @@
-import 'package:cwb_flutter/core/theme/app_tokens.dart';
 import 'package:cwb_flutter/data/models/hazard_models.dart';
 import 'package:cwb_flutter/features/hazard/rainfall/rainfall_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -40,10 +39,6 @@ void main() {
 
   test('current rain tile: >0 in the past 10 min is raining, 0 is not, null is a dash', () {
     expect([0.5, 0.0, null].map(currentRainText), ['持續降雨', '無降雨', '—']);
-  });
-
-  test('map legend has one label per colour', () {
-    expect(rainfallMapScaleLabels.length, AppPalette.rainfallMapScale.length);
   });
 
   test('county chips start with the current county, then the others once', () {

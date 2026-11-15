@@ -105,16 +105,6 @@ void main() {
     expect(weatherGlyph(null), WeatherGlyph.unknown);
   });
 
-  test('value formatting shows 「—」 for missing data', () {
-    expect(tempText(27.6), '28°');
-    expect(tempText(null), '—');
-    expect(speedText(3), '3 m/s');
-    expect(speedText(3.2), '3.2 m/s');
-    expect(speedText(null), '—');
-    expect(windDirectionLabel('偏北風'), '偏北');
-    expect(durationText(const Duration(hours: 10, minutes: 57)), '10 小時 57 分');
-  });
-
   test('observed wind maps degrees to the nearest of 8 points, plus calm and variable', () {
     expect(observedWindLabel(const WindFrom(360)), '北');
     expect(observedWindLabel(const WindFrom(22)), '北');

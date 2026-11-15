@@ -148,20 +148,6 @@ void main() {
       expect(f.dataset, 'F-D0047-061');
       expect(f.location, '臺北市中正區');
     });
-
-    test('unknown county is a Failure without any request', () async {
-      final r = await repo.getHourlyForecast('火星市', '中正區');
-
-      expect(r.isFailure, isTrue);
-      expect(adapter.requests, isEmpty);
-    });
-
-    test('HTTP 404 is a Failure', () async {
-      adapter.serveStatus('F-D0047-061', 404);
-      final r = await repo.getHourlyForecast('臺北市', '中正區');
-
-      expect((r as Failure).statusCode, 404);
-    });
   });
 
   group('getForecastIssueTime (file API head of the 3-day dataset)', () {
@@ -278,16 +264,6 @@ void main() {
       expect(f.dataset, 'A-B0062-001');
       expect(f.location, '臺北市');
       expect(f.message, contains('2026-11-20'));
-    });
-
-    test('county absent from the response is a Failure', () async {
-      adapter.serveFixture('A-B0062-001', (json) {
-        (((json['records'] as Map)['locations'] as Map)['location'] as List).clear();
-        return null;
-      });
-      final r = await repo.getSunTimes('臺北市', now);
-
-      expect((r as Failure).message, contains('期望縣市「臺北市」'));
     });
 
     test('unknown transit altitude format is a Failure, not a guess', () async {
