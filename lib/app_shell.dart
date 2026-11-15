@@ -2,25 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/layout/adaptive.dart';
+import 'core/navigation/app_tab.dart';
 import 'core/theme/app_tokens.dart';
 import 'features/hazard/rainfall_screen.dart';
 import 'features/radar/radar_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/weather/weather_screen.dart';
-
-/// The 4 bottom-navigation tabs, in display order.
-enum AppTab { weather, radar, rainfall, settings }
-
-/// Selected tab. Pages switch tabs with
-/// `ref.read(appTabProvider.notifier).select(AppTab.settings)` (e.g. 「手動選擇」).
-final appTabProvider = NotifierProvider<AppTabNotifier, AppTab>(AppTabNotifier.new);
-
-class AppTabNotifier extends Notifier<AppTab> {
-  @override
-  AppTab build() => AppTab.weather;
-
-  void select(AppTab tab) => state = tab;
-}
 
 /// Full-window shell with the 4 tabs (天氣｜雷達｜雨量｜設定): bottom
 /// [NavigationBar] on compact-width windows, [NavigationRail] on the left

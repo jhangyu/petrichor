@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../app_shell.dart' show AppTab, appTabProvider;
+import '../../core/navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart' show LocationFailure;
 import '../../core/theme/app_tokens.dart';

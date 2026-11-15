@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app_shell.dart' show AppTab, appTabProvider;
+import '../navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../api/result.dart' show ApiKeyIssue;
 import 'buttons.dart';
 import 'status.dart';

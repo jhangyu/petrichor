@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app_shell.dart' show AppTab, appTabProvider;
+import '../../../core/navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../../../core/layout/adaptive.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/api_key_notice.dart';

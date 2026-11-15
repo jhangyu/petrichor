@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../../app_shell.dart';
+import '../../core/navigation/app_tab.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart';
