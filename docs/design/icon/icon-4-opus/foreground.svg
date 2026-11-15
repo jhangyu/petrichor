@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <!-- Petrichor MARK: P-drop monogram + fallen drop. Weight 10, bowl R16, counter r6, drop r5. Max extent 27.5 from centre (safe zone 33). -->
+  <g transform="translate(54 54) scale(0.9) translate(-54 -54)">
+    <g fill="#FFFFFF"><path fill-rule="evenodd" d="M38 28H54A16 16 0 0 1 54 60H48V80H38Z M48 38H54A6 6 0 1 1 48 44Z"/></g>
+    <g fill="#F2B66D"><path d="M58 68H63A5 5 0 1 1 58 73Z"/></g>
+  </g>
+</svg>

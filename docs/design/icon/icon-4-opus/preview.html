@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Petrichor icon — MARK (icon-4-opus)</title>
+<style>
+  :root { --ink:#242424; --muted:#616161; --line:#D1D1D1; }
+  body { margin:0; padding:32px; font:14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; color:var(--ink); background:#FAFAFA; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:15px; margin:32px 0 12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  .row { display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end; }
+  figure { margin:0; text-align:center; } figcaption { font-size:12px; color:var(--muted); margin-top:6px; }
+  .tile svg { width:120px; height:120px; display:block; }
+  .wall { padding:24px; border-radius:16px; display:flex; gap:20px; flex-wrap:wrap; }
+  .wall.light { background:linear-gradient(135deg,#E8EEF5,#CFD8E3); } .wall.dark { background:linear-gradient(135deg,#1B1F24,#0B0D10); }
+  .themed { width:96px; height:96px; }
+  .ios svg { width:160px; height:160px; display:block; border-radius:22.37%; }
+  .mac svg { width:200px; height:200px; display:block; }
+  .small { display:flex; gap:24px; align-items:flex-end; padding:20px; border-radius:12px; }
+  .small.light { background:#FFFFFF; border:1px solid var(--line); } .small.dark { background:#1F1F1F; }
+  .small svg { display:block; border-radius:22%; }
+  label { cursor:pointer; user-select:none; }
+  .safe { display:none; } body.show-safe .safe { display:inline; }
+</style>
+</head>
+<body>
+<h1>Petrichor — MARK</h1>
+<p>P-drop monogram: the bowl's counter is a geometric raindrop (circle with one square corner), and a second drop has fallen to the ground beside the stem.</p>
+<label><input type="checkbox" id="safe"> Show 66 dp safe-zone circle</label>
+
+<!-- master artwork (same geometry as foreground/background/monochrome.svg) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2886DE"/><stop offset="1" stop-color="#0C3B5E"/></linearGradient>
+    <linearGradient id="bgDark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14191F"/><stop offset="1" stop-color="#06090D"/></linearGradient>
+    <linearGradient id="fgLight" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EBF3FC"/></linearGradient>
+    <linearGradient id="fgDark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#77B7F7"/><stop offset="1" stop-color="#2886DE"/></linearGradient>
+    <linearGradient id="fgTint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C8C8C8"/></linearGradient>
+    <linearGradient id="hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.18"/><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+    <filter id="macShadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity="0.30"/></filter>
+    <path id="glyph" fill-rule="evenodd" transform="translate(54 54) scale(0.9) translate(-54 -54)" d="M38 28H54A16 16 0 0 1 54 60H48V80H38Z M48 38H54A6 6 0 1 1 48 44Z"/>
+    <path id="drop" transform="translate(54 54) scale(0.9) translate(-54 -54)" d="M58 68H63A5 5 0 1 1 58 73Z"/>
+    <g id="bg"><rect width="108" height="108" fill="url(#bgGrad)"/></g>
+    <g id="fg"><use href="#glyph" fill="#FFFFFF"/><use href="#drop" fill="#F2B66D"/></g>
+    <g id="mono"><use href="#glyph"/><use href="#drop"/></g>
+  </defs>
+</svg>
+
+<h2>Android adaptive — launcher masks (72 dp visible of 108 dp canvas)</h2>
+<div class="row" id="masks"></div>
+
+<h2>Android 13+ themed (monochrome layer)</h2>
+<div class="row">
+  <div class="wall light" id="themedLight"></div>
+  <div class="wall dark" id="themedDark"></div>
+</div>
+
+<h2>iOS / iPadOS 18 — light · dark · tinted</h2>
+<div class="row">
+  <figure class="ios"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="url(#bgGrad)"/><g transform="translate(512 512) scale(12.19) translate(-54 -54)"><use href="#glyph" fill="url(#fgLight)"/><use href="#drop" fill="#F2B66D"/></g></svg><figcaption>Light</figcaption></figure>
+  <figure class="ios"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="url(#bgDark)"/><g transform="translate(512 512) scale(12.19) translate(-54 -54)"><use href="#glyph" fill="url(#fgDark)"/><use href="#drop" fill="#F2B66D"/></g></svg><figcaption>Dark</figcaption></figure>
+  <figure class="ios"><svg viewBox="0 0 1024 1024"><rect width="1024" height="1024" fill="#000000"/><g transform="translate(512 512) scale(12.19) translate(-54 -54)"><use href="#glyph" fill="url(#fgTint)"/><use href="#drop" fill="#8C8C8C"/></g></svg><figcaption>Tinted (grayscale source)</figcaption></figure>
+  <figure class="ios"><svg viewBox="0 0 1024 1024" style="filter:sepia(1) saturate(4) hue-rotate(95deg)"><rect width="1024" height="1024" fill="#000000"/><g transform="translate(512 512) scale(12.19) translate(-54 -54)"><use href="#glyph" fill="url(#fgTint)"/><use href="#drop" fill="#8C8C8C"/></g></svg><figcaption>Tinted (simulated green)</figcaption></figure>
+</div>
+
+<h2>macOS — Big Sur grid (824 body, r 185, baked shadow)</h2>
+<div class="row">
+  <div class="wall light" id="macLight"></div>
+  <div class="wall dark" id="macDark"></div>
+</div>
+
+<h2>Small sizes — 16 · 29 · 32 · 48 · 64 px</h2>
+<div class="row">
+  <div class="small light" id="smallLight"></div>
+  <div class="small dark" id="smallDark"></div>
+</div>
+
+<script>
+  const NS = 'http://www.w3.org/2000/svg';
+  const C = 54, R = 36; // visible 72 dp region centred on the 108 canvas
+  const polar = (fn, n = 360) => {
+    let d = '';
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * 2 * Math.PI, r = fn(t);
+      d += (i ? 'L' : 'M') + (C + r * Math.cos(t)).toFixed(2) + ' ' + (C + r * Math.sin(t)).toFixed(2);
+    }
+    return d + 'Z';
+  };
+  const poly = (pts) => 'M' + pts.map(p => p.join(' ')).join('L') + 'Z';
+  const regular = (k, r, rot) => poly(Array.from({ length: k }, (_, i) => {
+    const t = rot + (i / k) * 2 * Math.PI; return [(C + r * Math.cos(t)).toFixed(2), (C + r * Math.sin(t)).toFixed(2)];
+  }));
+  const superellipse = () => polar(t => R / Math.pow(Math.pow(Math.abs(Math.cos(t)), 5) + Math.pow(Math.abs(Math.sin(t)), 5), 1 / 5));
+  const SHAPES = [
+    ['Circle', polar(() => R)],
+    ['Squircle', superellipse()],
+    ['Rounded square', 'M34 18H74A16 16 0 0 1 90 34V74A16 16 0 0 1 74 90H34A16 16 0 0 1 18 74V34A16 16 0 0 1 34 18Z'],
+    ['Square', 'M18 18H90V90H18Z'],
+    ['M3 Pill', null, 'rotate'],
+    ['M3 Arch', 'M18 54A36 36 0 0 1 90 54V80A10 10 0 0 1 80 90H28A10 10 0 0 1 18 80Z'],
+    ['M3 Slanted', 'M30 18H90L78 90H18Z'],
+    ['M3 Cookie (9)', polar(t => 34 + 2 * Math.cos(9 * t))],
+    ['M3 Clover (4)', polar(t => 33 + 3 * Math.cos(4 * t))],
+    ['M3 Flower (8)', polar(t => 33.5 + 2.5 * Math.cos(8 * t))],
+    ['M3 Sunny', polar(t => 33 + 3 * (2 / Math.PI) * Math.asin(Math.cos(8 * t)))],
+    ['M3 Gem', poly([[54, 18], [86, 38], [80, 86], [28, 86], [22, 38]])],
+    ['M3 Pentagon', regular(5, 37, -Math.PI / 2)],
+  ];
+  const safeCircle = `<circle class="safe" cx="54" cy="54" r="33" fill="none" stroke="#FF3B30" stroke-width="0.6" stroke-dasharray="2 1.5"/>`;
+  const masks = document.getElementById('masks');
+  SHAPES.forEach(([name, d, mode], i) => {
+    // Pill: a diagonal capsule centred on the canvas
+    const shape = mode === 'rotate'
+      ? `<rect x="14" y="24" width="80" height="60" rx="30" transform="rotate(-45 54 54)"/>`
+      : `<path d="${d}"/>`;
+    masks.insertAdjacentHTML('beforeend',
+      `<figure class="tile"><svg viewBox="18 18 72 72"><clipPath id="m${i}">${shape}</clipPath>
+        <g clip-path="url(#m${i})"><use href="#bg"/><use href="#fg"/></g>${safeCircle}</svg><figcaption>${name}</figcaption></figure>`);
+  });
+  const themed = (bg, ink) => `<svg class="themed" viewBox="18 18 72 72"><circle cx="54" cy="54" r="36" fill="${bg}"/><use href="#mono" fill="${ink}"/>${safeCircle}</svg>`;
+  document.getElementById('themedLight').innerHTML = themed('#D6E3F5', '#0E4775') + themed('#E6E0D2', '#5A4A2A');
+  document.getElementById('themedDark').innerHTML = themed('#0E2A44', '#B4D6FA') + themed('#2E2A22', '#E8D9B5');
+  const mac = `<figure class="mac"><svg viewBox="0 0 1024 1024"><g filter="url(#macShadow)"><rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bgGrad)"/></g>
+    <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#hl)"/>
+    <g transform="translate(512 512) scale(9.81) translate(-54 -54)"><use href="#glyph" fill="url(#fgLight)"/><use href="#drop" fill="#F2B66D"/></g></svg></figure>`;
+  document.getElementById('macLight').innerHTML = mac; document.getElementById('macDark').innerHTML = mac;
+  const small = (s) => `<figure><svg width="${s}" height="${s}" viewBox="12 12 84 84"><use href="#bg"/><use href="#fg"/></svg><figcaption>${s}</figcaption></figure>`;
+  const strip = [16, 29, 32, 48, 64].map(small).join('');
+  document.getElementById('smallLight').innerHTML = strip; document.getElementById('smallDark').innerHTML = strip;
+  document.getElementById('safe').addEventListener('change', e => document.body.classList.toggle('show-safe', e.target.checked));
+</script>
+</body>
+</html>

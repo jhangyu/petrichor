@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><defs><linearGradient id="io" x1="28" y1="27" x2="80" y2="66" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#9ADCFF"/><stop offset=".45" stop-color="#8CCFFB"/><stop offset="1" stop-color="#479EF5"/></linearGradient>
+<radialGradient id="ih" cx="42" cy="33" r="30" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FFFFFF" stop-opacity=".85"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+<linearGradient id="im" x1="30" y1="28" x2="82" y2="64" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#4FA8F7"/><stop offset="1" stop-color="#1E6FD9"/></linearGradient>
+<radialGradient id="ic" cx="56" cy="44" r="24" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FFE14A"/><stop offset=".4" stop-color="#FF9A1F"/><stop offset=".75" stop-color="#F5513A"/><stop offset="1" stop-color="#E5394F"/></radialGradient>
+<linearGradient id="id" x1="0" y1="66" x2="0" y2="86" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#62ABF5"/><stop offset="1" stop-color="#2163D8"/></linearGradient>
+<linearGradient id="idh" x1="0" y1="68" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#FFFFFF" stop-opacity=".55"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+<filter id="ish" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6"/></filter>
+<filter id="igs" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.6"/></filter>
+<g id="icl"><circle cx="57" cy="43" r="16"/><circle cx="40" cy="49" r="11.5"/><circle cx="72.5" cy="50.5" r="10.5"/><rect x="27" y="46" width="57" height="18" rx="9"/></g><clipPath id="iclip"><circle cx="57" cy="43" r="16"/><circle cx="40" cy="49" r="11.5"/><circle cx="72.5" cy="50.5" r="10.5"/><rect x="27" y="46" width="57" height="18" rx="9"/></clipPath>
+<linearGradient id="in" x1="30" y1="30" x2="80" y2="64" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#2FD1B4"/><stop offset="1" stop-color="#16A35A"/></linearGradient><filter id="igray"><feColorMatrix type="saturate" values="0"/></filter></defs><g transform="scale(12.190476) translate(-12 -12)"><rect x="0" y="0" width="108" height="108" fill="#000000"/><g filter="url(#igray)"><g transform="translate(54 54) scale(0.92) translate(-54 -54)"><g filter="url(#igs)" opacity="0.45"><use href="#icl" fill="#000000" transform="translate(0 3.2)"/><rect x="40.2" y="69.5" width="5.6" height="11" rx="2.8" transform="rotate(20 43 75)" fill="#000000"/><rect x="52.7" y="73.5" width="5.6" height="11" rx="2.8" transform="rotate(20 55.5 79)" fill="#000000"/><rect x="65.2" y="69.5" width="5.6" height="11" rx="2.8" transform="rotate(20 68 75)" fill="#000000"/></g>
+<use href="#icl" fill="url(#io)"/>
+<rect x="0" y="0" width="108" height="108" fill="url(#ih)" clip-path="url(#iclip)"/>
+<g opacity=".28" filter="url(#ish)"><use href="#icl" fill="#0A3E8C" transform="translate(0 1.4) translate(58.5 52.5) scale(0.76) translate(-58.5 -52.5)"/></g>
+<use href="#icl" fill="url(#im)" opacity=".92" transform="translate(58.5 52.5) scale(0.76) translate(-58.5 -52.5)"/>
+<g opacity=".28" filter="url(#ish)"><use href="#icl" fill="#064030" transform="translate(0 1.2) translate(58.5 52.5) scale(0.54) translate(-58.5 -52.5)"/></g>
+<use href="#icl" fill="url(#in)" opacity=".94" transform="translate(58.5 52.5) scale(0.54) translate(-58.5 -52.5)"/>
+<g opacity=".3" filter="url(#ish)"><use href="#icl" fill="#7A2E00" transform="translate(0 1.1) translate(58.5 52.5) scale(0.33) translate(-58.5 -52.5)"/></g>
+<use href="#icl" fill="url(#ic)" opacity=".96" transform="translate(58.5 52.5) scale(0.33) translate(-58.5 -52.5)"/>
+<rect x="40.2" y="69.5" width="5.6" height="11" rx="2.8" transform="rotate(20 43 75)" fill="url(#id)"/><rect x="52.7" y="73.5" width="5.6" height="11" rx="2.8" transform="rotate(20 55.5 79)" fill="url(#id)"/><rect x="65.2" y="69.5" width="5.6" height="11" rx="2.8" transform="rotate(20 68 75)" fill="url(#id)"/>
+<g opacity=".9"><rect x="40.2" y="69.5" width="5.6" height="11" rx="2.8" transform="rotate(20 43 75)" fill="url(#idh)"/><rect x="52.7" y="73.5" width="5.6" height="11" rx="2.8" transform="rotate(20 55.5 79)" fill="url(#idh)"/><rect x="65.2" y="69.5" width="5.6" height="11" rx="2.8" transform="rotate(20 68 75)" fill="url(#idh)"/></g></g></g></g></svg>
