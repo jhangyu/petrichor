@@ -31,53 +31,34 @@ const _channelMax = 255;
 String forecastRange(RainForecastGrid grid) =>
     '${formatTaiwanClock(grid.baseTime)} – ${formatTaiwanClock(grid.baseTime.add(_forecastWindow))}';
 
-/// Hero: forecast mm at the user's cell (「—」 when that cell has no value).
-class ForecastHeroCard extends StatelessWidget {
-  const ForecastHeroCard({super.key, required this.forecast, required this.placeName});
+/// 「此處」 row under the map: forecast mm at the user's cell (「—」 when that cell has no value).
+class _HereRow extends StatelessWidget {
+  const _HereRow({required this.mm, required this.placeName});
 
-  final RainForecast forecast;
+  final double? mm;
   final String placeName;
 
   @override
   Widget build(BuildContext context) {
-    final mm = forecast.mmAtLocation;
-    final umbrella = mm != null && mm >= _umbrellaMinMm;
-    return AppCard(
-      hero: true,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: AppSpace.s4,
-              children: [
-                Text(
-                  '未來 1 小時 · ${forecastRange(forecast.grid)}',
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  spacing: AppSpace.s8,
-                  children: [
-                    Text(
-                      formatMm(mm),
-                      style: AppType.display.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
-                    ),
-                    Text('mm', style: AppType.subtitle1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                Text(
-                  mm == null ? '$placeName 此格無有效預測（雷達無回波或無資料）' : '$placeName預估雨量${umbrella ? ' · 出門請帶傘' : ''}',
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3),
-                ),
-              ],
-            ),
+    final value = mm;
+    final umbrella = value != null && value >= _umbrellaMinMm;
+    return Row(
+      children: [
+        const Icon(Icons.umbrella_outlined, size: AppSize.icon24, color: AppPalette.rainBar),
+        const SizedBox(width: AppSpace.s8),
+        Expanded(
+          child: Text(
+            value == null ? '$placeName 此格無有效預測（雷達無回波或無資料）' : '$placeName預估雨量${umbrella ? ' · 出門請帶傘' : ''}',
+            style: AppType.caption1.copyWith(color: AppPalette.fg3),
           ),
-          const Icon(Icons.umbrella_outlined, size: AppSize.icon64, color: AppPalette.rainBar),
-        ],
-      ),
+        ),
+        Text(
+          formatMm(value),
+          style: AppType.subtitle1.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
+        ),
+        const SizedBox(width: AppSpace.s4),
+        Text('mm', style: AppType.caption1.copyWith(color: AppPalette.fg2)),
+      ],
     );
   }
 }
@@ -109,11 +90,12 @@ Future<ImageProvider> _gridImage(RainForecastGrid grid) async {
   return MemoryImage(png.buffer.asUint8List());
 }
 
-/// `未來 1 小時雨量` grid map with legend.
+/// `未來 1hr 預測` grid map with the value at the user's place and the legend.
 class ForecastMapCard extends StatefulWidget {
-  const ForecastMapCard({super.key, required this.grid, required this.latitude, required this.longitude});
+  const ForecastMapCard({super.key, required this.forecast, required this.placeName, required this.latitude, required this.longitude});
 
-  final RainForecastGrid grid;
+  final RainForecast forecast;
+  final String placeName;
   final double latitude;
   final double longitude;
 
@@ -122,16 +104,16 @@ class ForecastMapCard extends StatefulWidget {
 }
 
 class _ForecastMapCardState extends State<ForecastMapCard> {
-  late Future<ImageProvider> _image = _gridImage(widget.grid);
+  late Future<ImageProvider> _image = _gridImage(widget.forecast.grid);
 
   @override
   void didUpdateWidget(ForecastMapCard old) {
     super.didUpdateWidget(old);
-    if (!identical(old.grid, widget.grid)) _image = _gridImage(widget.grid);
+    if (!identical(old.forecast.grid, widget.forecast.grid)) _image = _gridImage(widget.forecast.grid);
   }
 
   LatLngBounds get _bounds {
-    final g = widget.grid;
+    final g = widget.forecast.grid;
     final half = g.resolution / 2;
     return LatLngBounds(
       LatLng(g.startLatitude - half, g.startLongitude - half),
@@ -141,7 +123,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
 
   @override
   Widget build(BuildContext context) {
-    final range = forecastRange(widget.grid);
+    final range = forecastRange(widget.forecast.grid);
     return FutureBuilder<ImageProvider>(
       future: _image,
       builder: (context, snapshot) {
@@ -150,12 +132,12 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
           return AppCard.error(
             title: '無法繪製雨量網格圖',
             message: '$error',
-            onRetry: () => setState(() => _image = _gridImage(widget.grid)),
+            onRetry: () => setState(() => _image = _gridImage(widget.forecast.grid)),
           );
         }
         final image = snapshot.data;
         return AppCard(
-          title: '未來 1 小時雨量',
+          title: '未來 1hr 預測',
           meta: range,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -179,6 +161,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
                       ],
                 me: LatLng(widget.latitude, widget.longitude),
               ),
+              _HereRow(mm: widget.forecast.mmAtLocation, placeName: widget.placeName),
               const _ForecastLegend(),
               Text(
                 '空白格表示預估雨量小於 1 mm 或無資料。',

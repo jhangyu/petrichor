@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../data/models/hazard_models.dart';
 import '../../radar/radar_playback.dart';
-import '../../radar/widgets/radar_map_view.dart';
 import 'level_style.dart';
 import 'rainfall_logic.dart';
 
@@ -156,79 +153,6 @@ class _ThresholdBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// `累積雨量圖`: CWA's O-A0040-002 image over the base map, with a legend of CWA's own
-/// colour scale (`AppPalette.rainfallMapScale`, sampled from the image's legend bar).
-class RainfallMapCard extends StatelessWidget {
-  const RainfallMapCard({super.key, required this.map, required this.latitude, required this.longitude});
-
-  final RainfallMap map;
-  final double latitude;
-  final double longitude;
-
-  @override
-  Widget build(BuildContext context) {
-    final clock = formatTaiwanClock(map.obsTime);
-    return AppCard(
-      title: '累積雨量圖',
-      meta: '今日 · $clock',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s16,
-        children: [
-          RadarMapView(
-            chipIcon: Icons.schedule,
-            chipText: '今日累積 $clock',
-            semanticsLabel: '今日累積雨量圖',
-            overlayImages: [
-              OverlayImage(
-                bounds: LatLngBounds(LatLng(map.minLatitude, map.minLongitude), LatLng(map.maxLatitude, map.maxLongitude)),
-                imageProvider: NetworkImage(map.imageUrl),
-              ),
-            ],
-            me: LatLng(latitude, longitude),
-          ),
-          const _MapLegend(),
-        ],
-      ),
-    );
-  }
-}
-
-/// CWA accumulated-rainfall colour scale; every swatch is labelled with its mm band.
-class _MapLegend extends StatelessWidget {
-  const _MapLegend();
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: '累積雨量圖例（毫米）',
-      child: Wrap(
-        spacing: AppSpace.s12,
-        runSpacing: AppSpace.s8,
-        children: [
-          for (var i = 0; i < rainfallMapScaleLabels.length; i++)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpace.s4,
-              children: [
-                Container(
-                  width: AppSize.icon16,
-                  height: AppSize.icon16,
-                  decoration: BoxDecoration(
-                    color: AppPalette.rainfallMapScale[i],
-                    borderRadius: BorderRadius.circular(AppRadius.extraSmall),
-                  ),
-                ),
-                Text(rainfallMapScaleLabels[i], style: AppType.caption1.copyWith(color: AppPalette.fg2)),
-              ],
-            ),
-          Text('單位：毫米', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-        ],
       ),
     );
   }

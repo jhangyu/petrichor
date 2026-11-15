@@ -22,12 +22,12 @@ class PlaybackFrames {
     required this.fps,
     required this.repeat,
     required this.window,
-    required this.windowOptions,
+    this.windowOptions = const [],
     required this.onTogglePlay,
     required this.onSeek,
     required this.onFps,
     required this.onRepeat,
-    required this.onWindow,
+    this.onWindow,
   });
 
   /// Every listed time of the window, oldest first, one timeline cell each
@@ -48,7 +48,8 @@ class PlaybackFrames {
   final bool repeat;
   final Duration window;
 
-  /// Look-back choices this source offers.
+  /// Look-back choices this source offers; empty = the span is fixed elsewhere
+  /// and 播放設定 has no 回看範圍.
   final List<Duration> windowOptions;
 
   /// Null = play disabled (no ready slot).
@@ -59,7 +60,7 @@ class PlaybackFrames {
   final ValueChanged<DateTime> onSeek;
   final ValueChanged<int> onFps;
   final ValueChanged<bool> onRepeat;
-  final ValueChanged<Duration> onWindow;
+  final ValueChanged<Duration>? onWindow;
 
   bool _ready(int i) => slots[i].state == RadarSlotState.ready;
 
@@ -105,12 +106,7 @@ class PlaybackCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppSpace.s16,
           children: [
-            if (f != null) _TimeRow(f),
-            _Controls(playback: f, loading: loading),
-            if (f != null) ...[
-              _Timeline(f),
-              _Settings(f),
-            ],
+            PlaybackBody(playback: f, loading: loading),
             if (bottom != null)
               Container(
                 padding: const EdgeInsets.only(top: AppSpace.s16),
@@ -122,6 +118,32 @@ class PlaybackCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Time row, controls, timeline and 播放設定 without a card around them; shared
+/// by [PlaybackCard] and the 雨量 page's 累積雨量 card.
+class PlaybackBody extends StatelessWidget {
+  const PlaybackBody({super.key, required this.playback, this.loading = false});
+
+  final PlaybackFrames? playback;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final f = playback;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpace.s16,
+      children: [
+        if (f != null) _TimeRow(f),
+        _Controls(playback: f, loading: loading),
+        if (f != null) ...[
+          _Timeline(f),
+          _Settings(f),
+        ],
+      ],
     );
   }
 }
@@ -427,21 +449,22 @@ class _SettingsState extends State<_Settings> {
               child: AppGrid(
                 minColumnWidth: AppLayout.paneMinWidth,
                 children: [
-                  _Field(
-                    label: '回看範圍',
-                    child: Wrap(
-                      spacing: AppSpace.s8,
-                      runSpacing: AppSpace.s8,
-                      children: [
-                        for (final w in f.windowOptions)
-                          AppChip(
-                            label: '${w.inHours} 小時',
-                            selected: f.window == w,
-                            onTap: () => f.onWindow(w),
-                          ),
-                      ],
+                  if (f.windowOptions.isNotEmpty)
+                    _Field(
+                      label: '回看範圍',
+                      child: Wrap(
+                        spacing: AppSpace.s8,
+                        runSpacing: AppSpace.s8,
+                        children: [
+                          for (final w in f.windowOptions)
+                            AppChip(
+                              label: '${w.inHours} 小時',
+                              selected: f.window == w,
+                              onTap: () => f.onWindow!(w),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
                   _Field(
                     label: '播放速度（fps）',
                     // Bare numbers: 「12 fps」 would ellipsize in five segments at 360–412 dp.

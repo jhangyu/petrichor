@@ -1,0 +1,289 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/buttons.dart';
+import '../../../core/widgets/choices.dart';
+import '../../../core/widgets/status.dart';
+import '../../../data/radar/radar_loop.dart';
+import '../../../data/rain_accum/accum_pieces.dart';
+import '../../radar/radar_playback.dart';
+import '../../radar/radar_player.dart';
+import '../../radar/radar_provider.dart';
+import '../../radar/widgets/playback_card.dart';
+import '../../radar/widgets/radar_map_view.dart';
+import 'accum_provider.dart';
+
+const _cardTitle = '累積雨量';
+const _group = RadarGroup.rainfall;
+const _overlayOpacity = 0.8;
+
+/// Legend numbers under the 17-colour bar: the first colour index of each band
+/// and its label (the band lower edge of `accumScaleEdgesMm`).
+const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), (16, '≥300')];
+
+/// 累積雨量 card (design 3): window chips, accumulation map, the radar's
+/// playback and the 17-colour legend. [me] null = no current place.
+class AccumulationCard extends ConsumerStatefulWidget {
+  const AccumulationCard({super.key, required this.me});
+
+  final LatLng? me;
+
+  @override
+  ConsumerState<AccumulationCard> createState() => _AccumulationCardState();
+}
+
+class _AccumulationCardState extends ConsumerState<AccumulationCard> {
+  late final RadarPlayer _player = RadarPlayer(
+    slots: () => ref.read(accumLoopProvider(ref.read(rainAccumWindowProvider).requireValue)).value?.slots,
+    fps: () => ref.read(radarFpsProvider(_group)).requireValue,
+    repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
+    onChanged: () => setState(() {}),
+  );
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  void _setWindow(int hours) {
+    _player.reset();
+    unawaited(ref.read(rainAccumWindowProvider.notifier).set(hours));
+  }
+
+  void _setFps(int fps) {
+    unawaited(ref.read(radarFpsProvider(_group).notifier).set(fps));
+    _player.onFpsChanged();
+  }
+
+  void _retry(int hours) {
+    _player.reset();
+    ref.invalidate(accumLoopProvider(hours));
+  }
+
+  void _resetSettings(AsyncValue<int> window, AsyncValue<int> fps, AsyncValue<bool> repeat) {
+    if (window.hasError) unawaited(ref.read(rainAccumWindowProvider.notifier).set(accumDefaultWindowHours));
+    if (fps.hasError) unawaited(ref.read(radarFpsProvider(_group).notifier).set(_group.defaultFps));
+    if (repeat.hasError) unawaited(ref.read(radarRepeatProvider(_group).notifier).set(true));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // The one platform difference: QPEplus sends no CORS header, so a browser cannot fetch it.
+    if (kIsWeb) {
+      return const AppCard(
+        title: _cardTitle,
+        child: StatusBanner(
+          tone: StatusTone.error,
+          title: '網頁版無法取得此資料',
+          text: '累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。',
+        ),
+      );
+    }
+    final window = ref.watch(rainAccumWindowProvider);
+    final fps = ref.watch(radarFpsProvider(_group));
+    final repeat = ref.watch(radarRepeatProvider(_group));
+    if (window.hasError || fps.hasError || repeat.hasError) {
+      return AppCard(
+        title: _cardTitle,
+        child: StatusBanner(
+          tone: StatusTone.error,
+          title: '累積雨量設定無法讀取',
+          text: [for (final e in [window.error, fps.error, repeat.error]) ?e].join('；'),
+          actions: [AppButton(label: '重設設定', small: true, onPressed: () => _resetSettings(window, fps, repeat))],
+        ),
+      );
+    }
+    if (!window.hasValue || !fps.hasValue || !repeat.hasValue) {
+      return const AppCard.loading(title: _cardTitle, skeletonHeight: 360);
+    }
+    final hours = window.requireValue;
+    ref.listen(accumLoopProvider(hours), (_, _) => _player.onLoopUpdate());
+    final loop = ref.watch(accumLoopProvider(hours));
+    final (meta, body) = switch (loop) {
+      AsyncError(:final error) => ('無法取得', _failureBody(hours, '$error')),
+      AsyncValue(:final value?) => _loopBody(hours, value, fps.requireValue, repeat.requireValue),
+      _ => ('載入中', _loadingBody(hours)),
+    };
+    return AppCard(
+      title: _cardTitle,
+      meta: meta,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpace.s16,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpace.s8,
+            children: [
+              Text('累積時距（小時）', style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
+              Semantics(
+                label: '累積時距',
+                container: true,
+                child: Wrap(
+                  spacing: AppSpace.s8,
+                  runSpacing: AppSpace.s8,
+                  children: [
+                    for (final h in accumWindowHours)
+                      AppChip(label: '$h', selected: h == hours, onTap: () => _setWindow(h)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          ...body,
+          Text(
+            '資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。',
+            style: AppType.caption1.copyWith(color: AppPalette.fg3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _loadingBody(int hours) => [
+    RadarMapView(me: widget.me, loading: true, muted: true),
+    const PlaybackBody(playback: null, loading: true),
+    _Legend(hours: hours),
+  ];
+
+  List<Widget> _failureBody(int hours, String error) => [
+    StatusBanner(
+      tone: StatusTone.error,
+      title: '無法取得累積雨量',
+      text: error,
+      actions: [RetryButton(onPressed: () => _retry(hours))],
+    ),
+    RadarMapView(
+      me: widget.me,
+      muted: true,
+      chipIcon: Icons.cloud_off_outlined,
+      chipText: '無累積雨量資料',
+      semanticsLabel: '地圖，無累積雨量資料',
+    ),
+    _Legend(hours: hours),
+  ];
+
+  (String, List<Widget>) _loopBody(int hours, RadarLoop loop, int fps, bool repeat) {
+    final slots = loop.slots;
+    final failed = [for (final s in slots) if (s.state == RadarSlotState.failed) s];
+    final index = radarShownIndex(slots, _player.playhead);
+    if (index == null) {
+      if (loop.loading) return ('載入中', _loadingBody(hours));
+      return ('無法取得', _failureBody(hours, '${loop.listError ?? failed.map((s) => s.error).join('；')}'));
+    }
+    final frame = slots[index].frame!;
+    final readyCount = slots.where((s) => s.state == RadarSlotState.ready).length;
+    final waiting = _player.waitingOn != null;
+    final meta = waiting
+        ? '緩衝中 · 已就緒 $readyCount / ${slots.length} 張'
+        : _player.playing
+        ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
+        : loop.loading
+        ? '載入中 $readyCount / ${slots.length} 張'
+        : '${slots.length} 張';
+    final listError = loop.listError;
+    return (
+      meta,
+      [
+        if (listError != null)
+          StatusBanner(
+            tone: StatusTone.error,
+            title: '無法更新，顯示 ${formatTaiwanClock(frame.time)} 的資料',
+            text: '$listError',
+            actions: [RetryButton(onPressed: () => _retry(hours))],
+          )
+        else if (failed.isNotEmpty)
+          StatusBanner(
+            tone: StatusTone.error,
+            title: '${failed.length} 張影格無法取得',
+            text: '${formatTaiwanClock(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
+            actions: [RetryButton(onPressed: () => _retry(hours))],
+          ),
+        RadarMapView(
+          me: widget.me,
+          chipIcon: Icons.schedule,
+          chipText: '過去 $hours 小時累積 · ${formatTaiwanMonthDayClock(frame.time)}',
+          semanticsLabel: '過去 $hours 小時累積雨量圖',
+          upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
+          overlayImages: [
+            OverlayImage(
+              bounds: frame.bounds,
+              opacity: _overlayOpacity,
+              imageProvider: frame.imageProvider,
+              filterQuality: FilterQuality.none,
+              gaplessPlayback: true,
+            ),
+          ],
+        ),
+        PlaybackBody(
+          playback: PlaybackFrames(
+            slots: slots,
+            index: index,
+            current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
+            buffering: waiting,
+            playing: _player.playing,
+            fps: fps,
+            repeat: repeat,
+            window: Duration(hours: hours),
+            onTogglePlay: _player.togglePlay,
+            onSeek: _player.seek,
+            onFps: _setFps,
+            onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
+          ),
+        ),
+        _Legend(hours: hours),
+      ],
+    );
+  }
+}
+
+/// The 17-colour accumulation scale with six numbers under it.
+class _Legend extends StatelessWidget {
+  const _Legend({required this.hours});
+
+  final int hours;
+
+  @override
+  Widget build(BuildContext context) {
+    final caption = AppType.caption2.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular);
+    final colours = AppPalette.rainfallMapScale;
+    return Semantics(
+      label: '$hours 小時累積雨量圖例（毫米）',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpace.s4,
+        children: [
+          Text('$hours 小時累積 mm', style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: SizedBox(
+              height: AppSize.legendBar,
+              child: Row(children: [for (final c in colours) Expanded(child: ColoredBox(color: c))]),
+            ),
+          ),
+          Row(
+            children: [
+              for (var i = 0; i < _legendMarks.length; i++)
+                Expanded(
+                  flex: (i + 1 < _legendMarks.length ? _legendMarks[i + 1].$1 : colours.length) - _legendMarks[i].$1,
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    maxWidth: double.infinity,
+                    child: Text(_legendMarks[i].$2, softWrap: false, style: caption),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -21,11 +21,6 @@ final rainfallProvider = FutureProvider.family<Result<CountyRainfall>, HazardLoc
       );
 });
 
-/// 日累積雨量圖
-final rainfallMapProvider = FutureProvider<Result<RainfallMap>>((ref) {
-  return ref.watch(hazardRepositoryProvider).getRainfallMap();
-});
-
 /// 使用者位置的 1 小時雨量預測（含繪圖用格點）
 final rainForecastProvider = FutureProvider.family<Result<RainForecast>, ({double latitude, double longitude})>((ref, loc) {
   return ref.watch(hazardRepositoryProvider).getRainForecast(latitude: loc.latitude, longitude: loc.longitude);

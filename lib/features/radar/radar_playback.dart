@@ -18,7 +18,10 @@ const radarWindowOptions = [
 /// with its own defaults.
 enum RadarGroup {
   taiwan(defaultWindow: Duration(hours: 6), defaultFps: 8),
-  regional(defaultWindow: Duration(hours: 4), defaultFps: 12);
+  regional(defaultWindow: Duration(hours: 4), defaultFps: 12),
+
+  /// 雨量 page 累積雨量: only fps and repeat are used (the span is the accumulation window).
+  rainfall(defaultWindow: Duration(hours: 24), defaultFps: 8);
 
   const RadarGroup({required this.defaultWindow, required this.defaultFps});
 
