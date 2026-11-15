@@ -19,6 +19,10 @@ import 'radar_echo_stats.dart';
 
 const radarFrameSize = 3600;
 
+/// Width of the stored PNG (nearest-neighbour from the source, so the palette
+/// stays exact); narrower sources are stored at their own width.
+const radarStoredWidth = 2048;
+
 /// dBZ legend colours (0xRRGGBB, index = dBZ), from the CWA scale in
 /// [AppPalette.dbzScale] (sampled from the frames' legend bar).
 final radarEchoPalette = [for (final c in AppPalette.dbzScale) c.toARGB32() & _rgbMask];
@@ -60,7 +64,8 @@ class RadarImageGeometry {
   /// Web Mercator, which is what flutter_map's `OverlayImage` stretches by.
   final LatLngBounds bounds;
 
-  /// Output row j is source row `rowMap[j]`; non-decreasing, covers 0..size-1.
+  /// Full-resolution output row j is source row `rowMap[j]`; non-decreasing, within 0..size-1.
+  /// The stored image samples this map at [radarStoredWidth] scale.
   final List<int> rowMap;
 
   /// Rectangles (source px) drawn in legend colours that are not echo.
@@ -95,9 +100,10 @@ img.PaletteUint8 radarIndexedPalette(List<int> colours) {
 
 /// Full pipeline for one downloaded image, in one pass over the source rows:
 /// key echo pixels to palette indices (decorations → transparent), count the
-/// echo statistics, copy each index row to the output rows [g.rowMap] maps to
-/// it, encode one indexed PNG (zlib from the platform). Pure and synchronous:
-/// run it in a background isolate.
+/// echo statistics (on the full-resolution source), copy each index row,
+/// sampled nearest-neighbour to [radarStoredWidth] px wide, to the output rows
+/// [g.rowMap] maps to it, encode one indexed PNG (zlib from the platform). Pure
+/// and synchronous: run it in a background isolate.
 ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final src = img.decodePng(png) ?? (throw const FormatException('radar image: expected PNG bytes, decode failed'));
   if (src.width != g.size || src.height != g.size) {
@@ -119,11 +125,21 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final counts = List<int>.filled(radarEchoPalette.length, 0);
   final columns = (width / radarStatsCellPixels).ceil();
   final cells = Uint16List(columns * (src.height / radarStatsCellPixels).ceil() * radarDbzBands);
-  final out = img.Image(width: width, height: g.rowMap.length, numChannels: 1, palette: radarIndexedPalette(g.palette));
+  for (var j = 0; j < g.rowMap.length; j++) {
+    if (g.rowMap[j] < 0 || g.rowMap[j] >= g.size || (j > 0 && g.rowMap[j] < g.rowMap[j - 1])) {
+      throw ArgumentError('radar image: expected a non-decreasing row map within source rows 0..${g.size - 1}, '
+          'output row $j maps to ${g.rowMap[j]} (previous ${j > 0 ? g.rowMap[j - 1] : 'none'})');
+    }
+  }
+  final outWidth = min(width, radarStoredWidth);
+  final outHeight = (g.rowMap.length * outWidth / width).round();
+  final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
+  final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);
+  final out = img.Image(width: outWidth, height: outHeight, numChannels: 1, palette: radarIndexedPalette(g.palette));
   final s = src.toUint8List();
   final d = out.toUint8List();
   final row = Uint8List(width);
-  var j = 0;
+  var k = 0;
   for (var y = 0; y < src.height; y++) {
     row.fillRange(0, width, 0);
     final sRow = y * src.rowStride;
@@ -142,14 +158,13 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
       counts[i - 1]++;
       cells[(cellRow + x ~/ radarStatsCellPixels) * radarDbzBands + (i - 1) ~/ radarDbzBandWidth]++;
     }
-    while (j < g.rowMap.length && g.rowMap[j] == y) {
-      d.setRange(j * width, (j + 1) * width, row);
-      j++;
+    while (k < outHeight && outRows[k] == y) {
+      final o = k * outWidth;
+      for (var x = 0; x < outWidth; x++) {
+        d[o + x] = row[outColumns[x]];
+      }
+      k++;
     }
-  }
-  if (j != g.rowMap.length) {
-    throw ArgumentError('radar image: expected a non-decreasing row map over source rows 0..${g.size - 1}, '
-        'output row $j maps to ${g.rowMap[j]}');
   }
   return (
     png: img.encodePng(out),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cwb_flutter/data/radar/radar_bounds.dart';
@@ -78,6 +79,94 @@ class _GatedAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// Completes [reached] futures once [add] has been called that many times.
+class _Count {
+  var value = 0;
+  final _waiting = <(int, Completer<void>)>[];
+
+  void add() {
+    value++;
+    for (final w in [..._waiting]) {
+      if (value < w.$1) continue;
+      _waiting.remove(w);
+      w.$2.complete();
+    }
+  }
+
+  Future<void> reached(int n) {
+    if (value >= n) return Future.value();
+    final c = Completer<void>();
+    _waiting.add((n, c));
+    return c.future;
+  }
+}
+
+/// Answers the list at once; holds each frame download until [release] (or
+/// [releaseAll], after which downloads answer at once). Tracks open requests.
+class _HeldAdapter implements HttpClientAdapter {
+  final requested = <String>[];
+  final arrivals = _Count();
+  final _held = <String, Completer<void>>{};
+  var _holding = true;
+  var open = 0;
+  var maxOpen = 0;
+
+  void release(String url) => _held.remove(url)!.complete();
+
+  void releaseAll() {
+    _holding = false;
+    for (final c in _held.values) {
+      c.complete();
+    }
+    _held.clear();
+  }
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    final url = options.uri.toString();
+    if (url == _listUrl) return ResponseBody.fromString('list', 200);
+    requested.add(url);
+    maxOpen = max(maxOpen, ++open);
+    arrivals.add();
+    if (_holding) await (_held[url] = Completer<void>()).future;
+    open--;
+    return ResponseBody.fromBytes(_png, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// A [RadarFrameProcess] (on this isolate) whose calls wait until released, in
+/// call order by index or all at once. Tracks calls running at once.
+class _HeldProcess {
+  final arrivals = _Count();
+  final _held = <Completer<void>>[];
+  var _holding = true;
+  var active = 0;
+  var maxActive = 0;
+
+  void release(int call) => _held[call].complete();
+
+  void releaseAll() {
+    _holding = false;
+    for (final c in _held.where((c) => !c.isCompleted)) {
+      c.complete();
+    }
+  }
+
+  Future<ProcessedRadarFrame> call(Uint8List png, RadarImageGeometry geometry) async {
+    maxActive = max(maxActive, ++active);
+    final gate = Completer<void>();
+    _held.add(gate);
+    if (!_holding) gate.complete();
+    arrivals.add();
+    await gate.future;
+    active--;
+    return processRadarFrame(png, geometry);
+  }
+}
+
 void main() {
   late Directory root;
   setUp(() => root = Directory.systemTemp.createTempSync('radar_repo_test'));
@@ -91,8 +180,8 @@ void main() {
   RadarSource source(Dio dio, List<RadarFrameRef> frames, {Duration maxWindow = const Duration(hours: 24)}) =>
       RadarSource(dio, id: 'test', listUrl: _listUrl, maxWindow: maxWindow, parse: (_) => frames);
 
-  RadarFrameRepository repository(Dio dio, {DateTime? now}) =>
-      RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now);
+  RadarFrameRepository repository(Dio dio, {DateTime? now, RadarFrameProcess process = radarProcessOffUiIsolate}) =>
+      RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now, process: process);
 
   /// One load of a source listing [frames] over [adapter].
   Stream<RadarLoop> load(List<RadarFrameRef> frames,
@@ -105,23 +194,27 @@ void main() {
     return repository(dio, now: now).watch(source(dio, frames, maxWindow: maxWindow), window: window);
   }
 
-  List<DateTime> stamps(RadarLoop l) => [for (final f in l.frames) f.time];
+  List<DateTime> stamps(RadarLoop l) => [for (final s in l.slots) ?s.frame?.time];
+  List<RadarFrame> frames(RadarLoop l) => [for (final s in l.slots) ?s.frame];
+
+  /// Slot states, oldest first: p(ending), r(eady), f(ailed).
+  String states(RadarLoop l) => [for (final s in l.slots) s.state.name[0]].join();
   Directory cacheDir() => Directory('${root.path}/$radarFrameCacheDirName/test');
   List<String> cacheFiles() => [for (final e in cacheDir().listSync()) e.path.split('/').last]..sort();
 
-  test('empty cache: newest frame emitted first, then one frame per event, final loop oldest first', () async {
+  test('empty cache: a slot per listed time, newest ready first, then oldest first, one slot per event', () async {
     final events = await load(window).toList();
     final all = [for (final f in window) f.time];
-    expect(stamps(events.first), isEmpty, reason: 'cache emit before the list');
-    expect(stamps(events[1]), [all.last], reason: 'newest frame first');
-    final counts = [for (final e in events.skip(1)) e.frames.length];
-    expect(counts, [1, 2, 3, 4, 4]);
+    expect(events.first.slots, isEmpty, reason: 'cache emit before the list');
+    expect([for (final e in events) states(e)], ['', 'pppp', 'pppr', 'rppr', 'rrpr', 'rrrr', 'rrrr']);
+    expect([for (final s in events[1].slots) s.time], all, reason: 'slot times are the listed times, oldest first');
+    expect([for (final e in events) e.loading], [true, true, true, true, true, true, false]);
+    expect(events[1].newestStats, isNull, reason: 'no ready slot yet');
     expect(stamps(events.last), all);
-    expect((events.last.loading, events.last.windowSize), (false, 4));
-    expect(events.last.frames.first.bounds, _geometry.bounds);
+    expect(frames(events.last).first.bounds, _geometry.bounds);
     expect(events.last.newestStats!.pixelsPerDbz[30], 1);
-    expect(events.last.frames.first.significantDbz, 30, reason: '1 px of an 8 px, 1° image is over the area rule');
-    expect(img.decodePng(events.last.frames.first.file.readAsBytesSync())!.getPixel(3, 3).a, 255);
+    expect(frames(events.last).first.significantDbz, 30, reason: '1 px of an 8 px, 1° image is over the area rule');
+    expect(img.decodePng(frames(events.last).first.file.readAsBytesSync())!.getPixel(3, 3).a, 255);
   });
 
   test('list failure with a cache: cached frames plus the error, not an error state', () async {
@@ -132,7 +225,8 @@ void main() {
     expect(events.first.loading, isTrue);
     final last = events.last;
     expect(stamps(last), all);
-    expect((last.loading, last.windowSize), (false, null));
+    expect(states(last), 'rrrr');
+    expect(last.loading, isFalse);
     expect(last.listError, isA<RadarDataException>());
     expect('${last.listError}', allOf(contains(_listUrl), contains('HTTP 500')));
     expect(last.listError, isNot(isA<RadarStaleListException>()), reason: 'a failed request is not a stale list');
@@ -145,13 +239,14 @@ void main() {
     expect(last.listError, isA<RadarStaleListException>());
   });
 
-  test('a failing frame does not fail the window; the failure names the frame', () async {
+  test('a failing frame does not fail the window; its slot fails with an error naming the frame', () async {
     final bad = window[1];
     final last = await load(window, failing: {bad.url}).last;
-    expect(stamps(last), [for (final f in window) if (f != bad) f.time]);
+    expect(states(last), 'rfrr');
     expect((last.loading, last.listError), (false, null));
-    expect(last.failures.single.frame, bad);
-    expect(last.failures.single.error, isA<DioException>());
+    final failed = last.slots[1];
+    expect((failed.time, failed.frame), (bad.time, null));
+    expect('${failed.error}', allOf(contains(bad.url), contains('HTTP 500')));
   });
 
   test('retention = the source max window before the newest frame; outside the selected window stays', () async {
@@ -192,7 +287,7 @@ void main() {
     final shown = [for (final f in window.skip(1)) f.time];
     expect(stamps(events.first), shown, reason: 'cached frames first');
     expect(stamps(events.last), shown);
-    expect((events.last.loading, events.last.failures.length), (false, 0));
+    expect((events.last.loading, states(events.last)), (false, 'rrr'));
     expect(gated.requested, [uncached.url]);
     expect(gated.cancelled, [uncached.url], reason: 'the in-flight download was cancelled, not awaited');
     expect(gated.release.isCompleted, isFalse);
@@ -215,7 +310,7 @@ void main() {
     final (a, b) = (await first, await second);
 
     expect([for (final (name, _) in log) name], [...List.filled(a.length, 'first'), ...List.filled(b.length, 'second')]);
-    expect([for (final e in a) e.frames.length], [0, 1, 2, 3, 4, 4]);
+    expect([for (final e in a) states(e)], ['', 'pppp', 'pppr', 'rppr', 'rrpr', 'rrrr', 'rrrr']);
     expect([for (final e in a) e.loading], [...List.filled(a.length - 1, true), false]);
     expect(stamps(a.last), [for (final f in window) f.time]);
     final recent = [for (final f in window) if (f.time.isAfter(_now.subtract(short))) f.time];
@@ -223,6 +318,54 @@ void main() {
     expect(b.last.loading, isFalse);
     expect(gated.requested, unorderedEquals([for (final f in window) f.url]), reason: 'the second load reads the cache');
     expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.png', '${_key(f)}.stats.gz']]);
+  });
+
+  test('schedule: newest first, then oldest first; 4 downloads, 2 processes; slots published in that order', () async {
+    final listed = [for (var i = 9; i >= 0; i--) _ref(Duration(minutes: 5 + 10 * i))];
+    final newest = listed.last;
+    final adapter = _HeldAdapter();
+    final proc = _HeldProcess();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final done = repository(dio, process: proc.call).watch(source(dio, listed), window: const Duration(hours: 2)).toList();
+
+    await adapter.arrivals.reached(1);
+    expect(adapter.requested, [newest.url], reason: 'the newest frame alone first');
+    adapter.release(newest.url);
+    await proc.arrivals.reached(1);
+    proc.release(0);
+
+    await adapter.arrivals.reached(5);
+    expect(adapter.requested, [newest.url, for (final f in listed.take(4)) f.url], reason: 'then oldest first');
+    expect(adapter.open, 4);
+    for (final f in listed.take(4)) {
+      adapter.release(f.url);
+    }
+    await proc.arrivals.reached(3);
+    await pumpEventQueue();
+    expect((proc.active, proc.arrivals.value), (2, 3), reason: 'two process, the other two wait for a slot');
+    expect(adapter.requested, hasLength(5), reason: 'a worker holding a body downloads no other');
+
+    // The later of the two finishes first; its slot must wait for the older one.
+    proc.release(2);
+    await pumpEventQueue();
+    proc.release(1);
+    proc.releaseAll();
+    adapter.releaseAll();
+    final events = await done;
+
+    expect(adapter.requested, [newest.url, for (final f in listed.take(9)) f.url]);
+    expect((adapter.maxOpen, proc.maxActive), (4, 2));
+    final slotEvents = events.skip(1).toList();
+    for (final e in slotEvents) {
+      expect([for (final s in e.slots) s.time], [for (final f in listed) f.time]);
+    }
+    final changed = [
+      for (var i = 1; i < slotEvents.length; i++)
+        for (var s = 0; s < listed.length; s++)
+          if (slotEvents[i].slots[s].state != slotEvents[i - 1].slots[s].state) s,
+    ];
+    expect(changed, [9, 0, 1, 2, 3, 4, 5, 6, 7, 8], reason: 'one slot per event: newest, then oldest first');
+    expect(states(events.last), 'r' * 10);
   });
 
   test('per-source window limits: composite up to 24 h, stations up to 6 h', () {

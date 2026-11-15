@@ -47,9 +47,10 @@ final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) {
   return RadarSource.station(dio, station);
 });
 
-/// Frames of one source, updated as each frame is ready (newest first). Loads
-/// when first watched (screen open) or when the window changes; a user refresh
-/// is `ref.invalidate(radarLoopProvider(id))`. No timer/polling.
+/// Slots of one source, updated on every slot change (newest first, then
+/// oldest→newest). Loads when first watched (screen open) or when the window
+/// changes; a user refresh is `ref.invalidate(radarLoopProvider(id))`. No
+/// timer/polling.
 final radarLoopProvider = StreamProvider.autoDispose.family<RadarLoop, String>((ref, id) {
   final source = ref.watch(radarSourceProvider(id));
   return ref

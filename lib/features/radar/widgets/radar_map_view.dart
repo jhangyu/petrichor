@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/status.dart';
+import '../../../data/radar/radar_frame_repository.dart';
 
 /// Map centre and zoom: Taiwan overview when the place is unknown, else the place.
 const _taiwanCenter = LatLng(23.7, 121.0);
@@ -20,6 +21,9 @@ const _userAgentPackage = 'com.example.cwbweather';
 /// than this adds no echo detail (measured 2026-11-15, radar-perf-contract.md
 /// item 1). Never lowered to fit memory (user decision).
 const radarMaxDecodeWidth = 2048;
+
+/// Frames decoded ahead of the shown one.
+const radarPreDecodeCount = 2;
 
 const _fullCircleDegrees = 360.0;
 const _webMercatorTileSize = 256.0;
@@ -38,43 +42,6 @@ int radarDecodeWidth({required double lonSpanDegrees, required double zoom, requ
   return min(stepped, radarMaxDecodeWidth);
 }
 
-/// Image cache ceiling (user decision: 200–500 MB). The top of that range, so
-/// a 24-frame composite loop at 2048 px (~420 MiB with other images) is still
-/// held whole; longer loops (200 station frames ≈ 3.2 GiB) are decoded during
-/// playback instead ([radarImageCachePlan]).
-const radarImageCacheCeilingBytes = 500 << 20;
-
-/// Flutter's default ImageCache size (`_kDefaultSizeBytes`, 100 MiB); the cache
-/// never shrinks below it.
-const _flutterDefaultImageCacheBytes = 100 << 20;
-
-/// Room in the image cache for images other than the radar loop.
-const _otherImagesCacheBytes = 20 << 20;
-
-const _bytesPerDecodedPixel = 4;
-
-/// The loop on show: frame count and pixel aspect (height / width) size the
-/// image cache; [next] is the frame after the shown one (playback order) at a
-/// decode width, decoded ahead so the next tick does not wait.
-typedef RadarLoopShape = ({int frameCount, double aspect, ImageProvider Function(int decodeWidth) next});
-
-/// Image cache size for a loop and whether it holds the whole loop.
-typedef RadarImageCachePlan = ({int maximumBytes, bool holdsLoop});
-
-/// When every decoded frame plus room for other images fits under
-/// [radarImageCacheCeilingBytes], the cache holds the loop (a playback loop
-/// never decodes a frame twice; never below Flutter's default). Otherwise the
-/// cache is the ceiling and frames are decoded during playback: the map view
-/// evicts each frame once it leaves the screen, so the loop cannot push the
-/// app's other images out (LRU thrash), and decodes the next frame ahead.
-RadarImageCachePlan radarImageCachePlan({required int frameCount, required int decodeWidth, required double aspect}) {
-  final decodeHeight = (decodeWidth * aspect).ceil();
-  final needed = frameCount * decodeWidth * decodeHeight * _bytesPerDecodedPixel + _otherImagesCacheBytes;
-  return needed <= radarImageCacheCeilingBytes
-      ? (maximumBytes: max(_flutterDefaultImageCacheBytes, needed), holdsLoop: true)
-      : (maximumBytes: radarImageCacheCeilingBytes, holdsLoop: false);
-}
-
 const _pinDot = 9.0;
 const _pinHalo = 20.0;
 const _pinHaloAlpha = 0.2;
@@ -83,8 +50,8 @@ const _pinBorder = 2.0;
 /// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 button
 /// (top right) and the current place's pin. [overlayBuilder] gets the pixel width the
 /// radar frame should be decoded at ([radarDecodeWidth] of [frameBounds] at the
-/// current zoom), and must return the one shown frame. The image cache follows [radarImageCachePlan] for the [loop]; it goes
-/// back to Flutter's default when the map leaves the screen.
+/// current zoom), and must return the one shown frame. The image cache stays at Flutter's default; [upcoming] frames are
+/// decoded ahead.
 class RadarMapView extends StatefulWidget {
   const RadarMapView({
     super.key,
@@ -93,7 +60,7 @@ class RadarMapView extends StatefulWidget {
     this.chipIcon,
     this.frameBounds,
     this.overlayBuilder,
-    this.loop,
+    this.upcoming = const [],
     this.extraLayers = const [],
     this.loading = false,
     this.muted = false,
@@ -110,9 +77,10 @@ class RadarMapView extends StatefulWidget {
   /// Extent of the shown radar frame; required with [overlayBuilder].
   final LatLngBounds? frameBounds;
   final List<OverlayImage> Function(int decodeWidth)? overlayBuilder;
-  /// The radar loop shown by [overlayBuilder]; null for a single image that
-  /// needs no cache plan (rainfall maps).
-  final RadarLoopShape? loop;
+
+  /// The next ready frames in playback order (at most [radarPreDecodeCount]),
+  /// decoded ahead; empty for a single image (rainfall maps).
+  final List<RadarFrame> upcoming;
   final List<Widget> extraLayers;
 
   /// 載入雷達圖… chip centred on the map.
@@ -126,17 +94,9 @@ class RadarMapView extends StatefulWidget {
   State<RadarMapView> createState() => _RadarMapViewState();
 }
 
-/// Maps that have set the image cache size. The cache goes back to the default
-/// only when the last one is disposed, so an old map replaced by a new one
-/// (which sets the size first) cannot undo the new map's size.
-int _cacheOwners = 0;
-
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
   late double _zoom = _initialZoom();
-
-  /// Whether this map has set the image cache size ([_cacheOwners]).
-  bool _ownsCacheSize = false;
 
   double _initialZoom() => widget.me == null ? _overviewZoom : _locatedZoom;
 
@@ -150,9 +110,6 @@ class _RadarMapViewState extends State<RadarMapView> {
   @override
   void dispose() {
     _controller.dispose();
-    if (_ownsCacheSize && --_cacheOwners == 0) {
-      PaintingBinding.instance.imageCache.maximumSizeBytes = _flutterDefaultImageCacheBytes;
-    }
     super.dispose();
   }
 
@@ -172,39 +129,25 @@ class _RadarMapViewState extends State<RadarMapView> {
     if (stepChanged) setState(() {});
   }
 
-  /// Frame image on screen after the last build.
-  ImageProvider? _shown;
-
-  /// The frame overlay at the decode width, with the image cache sized by
-  /// [radarImageCachePlan]; after the frame is painted, the frame that left the
-  /// screen is evicted (loop not held) and the next frame is decoded ahead.
-  List<OverlayImage> _frameOverlay(List<OverlayImage> Function(int decodeWidth) builder, RadarLoopShape? loop) {
+  /// The frame overlay at the decode width; after it is painted, the
+  /// [RadarMapView.upcoming] frames are decoded ahead through the same
+  /// provider (and cache key) the map uses, so the next ticks do not wait.
+  List<OverlayImage> _frameOverlay(List<OverlayImage> Function(int decodeWidth) builder) {
     final width = _decodeWidth(_zoom);
-    if (loop == null) return builder(width);
-    final plan = radarImageCachePlan(frameCount: loop.frameCount, decodeWidth: width, aspect: loop.aspect);
-    PaintingBinding.instance.imageCache.maximumSizeBytes = plan.maximumBytes;
-    if (!_ownsCacheSize) {
-      _ownsCacheSize = true;
-      _cacheOwners++;
-    }
-    final overlay = builder(width);
-    final shown = overlay.single.imageProvider;
-    final left = _shown;
-    _shown = shown;
-    final next = loop.next(width);
+    final ahead = [for (final frame in widget.upcoming) frame.imageProvider(decodeWidth: width)];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!plan.holdsLoop && left != null && left != shown) left.evict();
-      precacheImage(next, context);
+      for (final provider in ahead) {
+        precacheImage(provider, context);
+      }
     });
-    return overlay;
+    return builder(width);
   }
 
   @override
   Widget build(BuildContext context) {
     final me = widget.me;
     final builder = widget.overlayBuilder;
-    final loop = widget.loop;
     final chipText = widget.chipText;
     final map = ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -226,7 +169,7 @@ class _RadarMapViewState extends State<RadarMapView> {
                   children: [
                     TileLayer(urlTemplate: _tileUrl, userAgentPackageName: _userAgentPackage),
                     if (builder != null)
-                      OverlayImageLayer(overlayImages: _frameOverlay(builder, loop)),
+                      OverlayImageLayer(overlayImages: _frameOverlay(builder)),
                     ...widget.extraLayers,
                     if (me != null)
                       MarkerLayer(

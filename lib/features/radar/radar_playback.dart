@@ -1,3 +1,6 @@
+import '../../data/radar/radar_frame_repository.dart' show RadarFrame;
+import '../../data/radar/radar_loop.dart';
+
 /// Playback speeds offered in 播放設定 and the default.
 const radarFpsOptions = [2, 4, 8];
 const radarDefaultFps = 4;
@@ -18,28 +21,104 @@ const radarDefaultWindow = Duration(hours: 4);
 /// Fixed wait after the last frame before the loop restarts (repeat on).
 const radarRepeatPause = Duration(seconds: 3);
 
-/// What the playback clock does after showing frame [index].
-class RadarTick {
-  const RadarTick({required this.delay, required this.nextIndex});
+/// What playback does after the frame at its playhead.
+sealed class RadarStep {
+  const RadarStep(this.time);
 
-  /// Time to wait before showing [nextIndex].
-  final Duration delay;
-  final int nextIndex;
+  /// Slot to show next, or to wait on.
+  final DateTime time;
 }
 
-/// Next step of the loop after showing frame [index] of [count], or null when
-/// playback ends (last frame shown and repeat is off).
-RadarTick? radarNextTick({required int index, required int count, required int fps, required bool repeat}) {
-  if (index < 0 || index >= count) {
-    throw RangeError.range(index, 0, count - 1, 'index');
+/// Show the ready slot at [time] after [delay].
+final class RadarShow extends RadarStep {
+  const RadarShow(super.time, this.delay);
+
+  final Duration delay;
+
+  @override
+  bool operator ==(Object other) => other is RadarShow && other.time == time && other.delay == delay;
+
+  @override
+  int get hashCode => Object.hash(time, delay);
+
+  @override
+  String toString() => 'RadarShow($time, $delay)';
+}
+
+/// The slot at [time] is still pending: stop (緩衝中) until a loop update makes
+/// it ready or failed, then ask again.
+final class RadarWait extends RadarStep {
+  const RadarWait(super.time);
+
+  @override
+  bool operator ==(Object other) => other is RadarWait && other.time == time;
+
+  @override
+  int get hashCode => time.hashCode;
+
+  @override
+  String toString() => 'RadarWait($time)';
+}
+
+/// Next step after showing the slot at [after] ([slots] oldest first), or null
+/// when playback ends (newest played and repeat off, or nothing playable).
+/// [after] null = playback has not started: the oldest slot comes next, shown
+/// at once. Playing goes oldest→newest, skips failed slots, stops at the first
+/// pending one, and after the newest restarts at the oldest following
+/// [radarRepeatPause].
+RadarStep? radarNextStep({
+  required List<RadarSlot> slots,
+  required DateTime? after,
+  required int fps,
+  required bool repeat,
+}) {
+  final start = after == null ? 0 : slots.indexWhere((s) => s.time.isAfter(after));
+  final frameDelay = Duration(microseconds: Duration.microsecondsPerSecond ~/ fps);
+  var delay = after == null ? Duration.zero : frameDelay;
+  var i = start < 0 ? slots.length : start;
+  // At most one full lap: past it every slot was seen failed.
+  for (var seen = 0; seen <= slots.length; seen++) {
+    if (i == slots.length) {
+      if (!repeat || slots.isEmpty) return null;
+      i = 0;
+      delay = radarRepeatPause;
+    }
+    final slot = slots[i];
+    switch (slot.state) {
+      case RadarSlotState.ready:
+        return RadarShow(slot.time, delay);
+      case RadarSlotState.pending:
+        return RadarWait(slot.time);
+      case RadarSlotState.failed:
+        i++;
+    }
   }
-  if (index < count - 1) {
-    return RadarTick(
-      delay: Duration(microseconds: Duration.microsecondsPerSecond ~/ fps),
-      nextIndex: index + 1,
-    );
+  return null;
+}
+
+/// Index of the slot on show: the ready slot at [playhead], or the newest ready
+/// slot when [playhead] is null (page open, before play) or no longer a ready
+/// listed time (the list was replaced). Null when no slot is ready.
+int? radarShownIndex(List<RadarSlot> slots, DateTime? playhead) {
+  if (playhead != null) {
+    final i = slots.indexWhere((s) => s.time == playhead && s.state == RadarSlotState.ready);
+    if (i >= 0) return i;
   }
-  return repeat ? const RadarTick(delay: radarRepeatPause, nextIndex: 0) : null;
+  final newest = slots.lastIndexWhere((s) => s.state == RadarSlotState.ready);
+  return newest < 0 ? null : newest;
+}
+
+/// Up to [count] ready frames that play after [after] (null = from the oldest),
+/// in play order with the wrap to the oldest; for decoding ahead.
+List<RadarFrame> radarUpcomingFrames(List<RadarSlot> slots, DateTime? after, {required int count}) {
+  final start = after == null ? 0 : slots.indexWhere((s) => s.time.isAfter(after));
+  final first = start < 0 ? 0 : start;
+  return [
+    for (var k = 0; k < slots.length; k++)
+      if (slots[(first + k) % slots.length] case RadarSlot(state: RadarSlotState.ready, :final frame?, :final time)
+          when time != after)
+        frame,
+  ].take(count).toList();
 }
 
 /// File names, the CWA site and the mockup use Taiwan time (UTC+8, no DST).

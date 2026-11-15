@@ -16,6 +16,10 @@ class RadarDataException implements Exception {
   String toString() => 'RadarDataException($source): expected $expected, got $actual';
 }
 
+/// What a failed (not cancelled) request got, for [RadarDataException.actual].
+String radarHttpFailure(DioException e) =>
+    switch (e.response) { final r? => 'HTTP ${r.statusCode}', null => '${e.type.name}: ${e.message}' };
+
 /// The frame list was fetched but has no frame within the window (the source
 /// stopped updating); every other [RadarDataException] means the data could
 /// not be obtained.
@@ -66,13 +70,17 @@ class RadarSource {
           await _dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain), cancelToken: cancelToken);
     } on DioException catch (e) {
       if (CancelToken.isCancel(e)) rethrow;
-      throw RadarDataException(listUrl,
-          expected: 'HTTP 200 with the frame list',
-          actual: switch (e.response) { final r? => 'HTTP ${r.statusCode}', null => '${e.type.name}: ${e.message}' });
+      throw RadarDataException(listUrl, expected: 'HTTP 200 with the frame list', actual: radarHttpFailure(e));
     }
     final js = response.data ??
         (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
-    final frames = selectRadarFrameWindow(parse(js), now: now, window: window);
+    final List<RadarFrameRef> all;
+    try {
+      all = parse(js);
+    } on FormatException catch (e) {
+      throw RadarDataException(listUrl, expected: 'a frame list for $id', actual: e);
+    }
+    final frames = selectRadarFrameWindow(all, now: now, window: window);
     if (frames.isEmpty) {
       throw RadarStaleListException(listUrl, expected: 'frames newer than ${now.toUtc().subtract(window)} for $id', actual: 'none');
     }

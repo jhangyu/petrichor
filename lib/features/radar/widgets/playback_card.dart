@@ -5,15 +5,16 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
+import '../../../data/radar/radar_loop.dart';
 import '../radar_playback.dart';
 import 'radar_legend.dart';
 
-/// What the playback card shows once frames exist.
+/// What the playback card shows once the loop's times are known.
 class PlaybackFrames {
   const PlaybackFrames({
-    required this.times,
-    required this.strongestDbz,
+    required this.slots,
     required this.index,
+    required this.buffering,
     required this.playing,
     required this.fps,
     required this.repeat,
@@ -26,14 +27,15 @@ class PlaybackFrames {
     required this.onWindow,
   });
 
-  /// Observation time of every frame, oldest first (the source's native
-  /// cadence; regular or not, one timeline slot per frame).
-  final List<DateTime> times;
+  /// Every listed time of the window, oldest first, one timeline cell each
+  /// (the source's native cadence, regular or not).
+  final List<RadarSlot> slots;
 
-  /// Strongest echo of every frame (timeline colour bar); null = no
-  /// significant echo.
-  final List<int?> strongestDbz;
+  /// Slot on show (always a ready one).
   final int index;
+
+  /// Playing but stopped at a pending slot (緩衝中).
+  final bool buffering;
   final bool playing;
   final int fps;
   final bool repeat;
@@ -41,25 +43,46 @@ class PlaybackFrames {
 
   /// Look-back choices this source offers.
   final List<Duration> windowOptions;
-  final VoidCallback onTogglePlay;
+
+  /// Null = play disabled (no ready slot).
+  final VoidCallback? onTogglePlay;
+
+  /// Called with a ready slot's index only.
   final ValueChanged<int> onSeek;
   final ValueChanged<int> onFps;
   final ValueChanged<bool> onRepeat;
   final ValueChanged<Duration> onWindow;
+
+  bool _ready(int i) => slots[i].state == RadarSlotState.ready;
+
+  /// Nearest ready slot before / after [index]; null when none.
+  int? get previousReady {
+    for (var i = index - 1; i >= 0; i--) {
+      if (_ready(i)) return i;
+    }
+    return null;
+  }
+
+  int? get nextReady {
+    for (var i = index + 1; i < slots.length; i++) {
+      if (_ready(i)) return i;
+    }
+    return null;
+  }
 }
 
-/// `動畫播放` card. [frames] null = controls disabled (loading, or a source
+/// `動畫播放` card. [playback] null = controls disabled (loading, or a source
 /// without a frame history); [loading] shows a skeleton in place of the slider.
 class PlaybackCard extends StatelessWidget {
-  const PlaybackCard({super.key, required this.meta, this.frames, this.loading = false});
+  const PlaybackCard({super.key, required this.meta, this.playback, this.loading = false});
 
   final String meta;
-  final PlaybackFrames? frames;
+  final PlaybackFrames? playback;
   final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final f = frames;
+    final f = playback;
     return Semantics(
       label: '雷達動畫播放',
       container: true,
@@ -71,7 +94,7 @@ class PlaybackCard extends StatelessWidget {
           spacing: AppSpace.s16,
           children: [
             if (f != null) _TimeRow(f),
-            _Controls(frames: f, loading: loading),
+            _Controls(playback: f, loading: loading),
             if (f != null) ...[
               _Timeline(f),
               _Settings(f),
@@ -94,8 +117,8 @@ class _TimeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final count = f.times.length;
-    final isLatest = f.index == count - 1;
+    final count = f.slots.length;
+    final isLatest = f.nextReady == null;
     final hours = f.window.inHours;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -103,7 +126,7 @@ class _TimeRow extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         Text(
-          formatTaiwanMonthDayClock(f.times[f.index]),
+          formatTaiwanMonthDayClock(f.slots[f.index].time),
           style: AppType.subtitle2.copyWith(
             color: AppPalette.fg1,
             fontWeight: FontWeight.w600,
@@ -111,7 +134,9 @@ class _TimeRow extends StatelessWidget {
           ),
         ),
         Text(
-          '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : '過去 $hours 小時'}',
+          f.buffering
+              ? '緩衝中…'
+              : '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : '過去 $hours 小時'}',
           style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
         ),
       ],
@@ -120,22 +145,24 @@ class _TimeRow extends StatelessWidget {
 }
 
 class _Controls extends StatelessWidget {
-  const _Controls({required this.frames, required this.loading});
+  const _Controls({required this.playback, required this.loading});
 
-  final PlaybackFrames? frames;
+  final PlaybackFrames? playback;
   final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    final f = frames;
-    final last = f == null ? 0 : f.times.length - 1;
+    final f = playback;
+    final last = f == null ? 0 : f.slots.length - 1;
+    final previous = f?.previousReady;
+    final next = f?.nextReady;
     return Row(
       spacing: AppSpace.s4,
       children: [
         AppIconButton(
           icon: Icons.skip_previous,
           tooltip: '上一張',
-          onPressed: f == null || f.index == 0 ? null : () => f.onSeek(f.index - 1),
+          onPressed: previous == null ? null : () => f!.onSeek(previous),
         ),
         IconButton.filled(
           tooltip: f != null && f.playing ? '暫停' : '播放',
@@ -152,7 +179,7 @@ class _Controls extends StatelessWidget {
         AppIconButton(
           icon: Icons.skip_next,
           tooltip: '下一張',
-          onPressed: f == null || f.index == last ? null : () => f.onSeek(f.index + 1),
+          onPressed: next == null ? null : () => f!.onSeek(next),
         ),
         Expanded(
           child: loading
@@ -175,7 +202,12 @@ class _Controls extends StatelessWidget {
                     divisions: last > 0 ? last : null,
                     value: (f?.index ?? 0).toDouble(),
                     semanticFormatterCallback: (_) => '影格時間',
-                    onChanged: f == null || last == 0 ? null : (v) => f.onSeek(v.round()),
+                    // Pending / failed times have no frame: the thumb stays on the shown one.
+                    onChanged: f == null || last == 0
+                        ? null
+                        : (v) {
+                            if (f._ready(v.round())) f.onSeek(v.round());
+                          },
                   ),
                 ),
         ),
@@ -231,11 +263,10 @@ class _TimelineState extends State<_Timeline> {
       child: Row(
         spacing: AppSpace.s8,
         children: [
-          for (var i = 0; i < f.times.length; i++)
+          for (var i = 0; i < f.slots.length; i++)
             _TimelineFrame(
               key: i == f.index ? _currentKey : null,
-              label: formatTaiwanClock(f.times[i]),
-              strongestDbz: f.strongestDbz[i],
+              slot: f.slots[i],
               current: i == f.index,
               onTap: () => f.onSeek(i),
             ),
@@ -245,61 +276,73 @@ class _TimelineState extends State<_Timeline> {
   }
 }
 
+/// One timeline cell: ready = tappable with the strongest-echo bar; pending =
+/// dimmed; failed = marked in the danger colour. Neither of the latter has a
+/// frame to seek to.
 class _TimelineFrame extends StatelessWidget {
-  const _TimelineFrame({
-    super.key,
-    required this.label,
-    required this.strongestDbz,
-    required this.current,
-    required this.onTap,
-  });
+  const _TimelineFrame({super.key, required this.slot, required this.current, required this.onTap});
 
-  final String label;
-  final int? strongestDbz;
+  final RadarSlot slot;
   final bool current;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: current ? AppPalette.brandBgSubtle : AppPalette.bg1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        side: BorderSide(color: current ? AppPalette.brandStroke : AppPalette.stroke2, width: AppStroke.thin),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minWidth: AppSize.icon48, minHeight: AppSize.touch),
-          padding: const EdgeInsets.all(AppSpace.s8),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: AppSpace.s4,
-            children: [
-              Text(
-                label,
-                style: AppType.caption1.copyWith(
-                  color: current ? AppPalette.brandFgStrong : AppPalette.fg2,
-                  fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-                  fontFeatures: AppType.tabular,
+    final (background, stroke, label, bar) = switch (slot.state) {
+      _ when current => (AppPalette.brandBgSubtle, AppPalette.brandStroke, AppPalette.brandFgStrong, _barColour),
+      RadarSlotState.ready => (AppPalette.bg1, AppPalette.stroke2, AppPalette.fg2, _barColour),
+      RadarSlotState.pending => (AppPalette.bgDisabled, AppPalette.strokeDisabled, AppPalette.fgDisabled, AppPalette.strokeDisabled),
+      RadarSlotState.failed => (AppPalette.dangerBg, AppPalette.dangerStroke, AppPalette.dangerFg, AppPalette.dangerSolid),
+    };
+    return Semantics(
+      label: switch (slot.state) {
+        RadarSlotState.ready => null,
+        RadarSlotState.pending => '尚未載入',
+        RadarSlotState.failed => '無法取得',
+      },
+      child: Material(
+        color: background,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          side: BorderSide(color: stroke, width: AppStroke.thin),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: slot.state == RadarSlotState.ready ? onTap : null,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: AppSize.icon48, minHeight: AppSize.touch),
+            padding: const EdgeInsets.all(AppSpace.s8),
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpace.s4,
+              children: [
+                Text(
+                  formatTaiwanClock(slot.time),
+                  style: AppType.caption1.copyWith(
+                    color: label,
+                    fontWeight: current ? FontWeight.w600 : FontWeight.w400,
+                    fontFeatures: AppType.tabular,
+                  ),
                 ),
-              ),
-              Container(
-                width: AppSize.icon24,
-                height: AppSize.sliderTrack,
-                decoration: BoxDecoration(
-                  color: strongestDbz == null ? AppPalette.stroke2 : radarDbzColour(strongestDbz!),
-                  borderRadius: BorderRadius.circular(AppRadius.circular),
+                Container(
+                  width: AppSize.icon24,
+                  height: AppSize.sliderTrack,
+                  decoration: BoxDecoration(color: bar, borderRadius: BorderRadius.circular(AppRadius.circular)),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  /// Strongest-echo colour of a ready frame; neutral without significant echo.
+  Color get _barColour => switch (slot.frame?.significantDbz) {
+    final dbz? => radarDbzColour(dbz),
+    null => AppPalette.stroke2,
+  };
 }
 
 /// `.pb-settings`: expandable 播放設定 (回看範圍, 播放速度, 重複播放).

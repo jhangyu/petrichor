@@ -73,6 +73,42 @@ void main() {
     expect(() => processRadarFrame(png, geometry(rowMap: [0, 2, 1])), throwsArgumentError);
   });
 
+  test('stored image is 2048 wide: nearest source pixel, exact palette indices, statistics from the full source', () {
+    const size = 2304; // not a multiple of 2048: exercises the uneven nearest mapping
+    int level(int x, int y) => (x * 7 + y * 13) % 70; // 0..65 echo, 66..69 background
+    final rgb = img.Image(width: size, height: size);
+    final counts = List<int>.filled(66, 0);
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        final l = level(x, y);
+        final c = l < 66 ? radarEchoPalette[l] : 0x808080;
+        if (l < 66) counts[l]++;
+        rgb.setPixelRgb(x, y, c >> 16, (c >> 8) & 0xFF, c & 0xFF);
+      }
+    }
+    final p = processRadarFrame(
+      img.encodePng(rgb),
+      RadarImageGeometry(
+        size: size,
+        bounds: bounds,
+        rowMap: List<int>.generate(size, (i) => i),
+        decorations: const [],
+        palette: radarEchoPalette,
+      ),
+    );
+    final out = img.decodePng(p.png)!;
+    expect((out.width, out.height, out.hasPalette), (2048, 2048, true));
+    final data = out.toUint8List();
+    for (var oy = 0; oy < 2048; oy++) {
+      for (var ox = 0; ox < 2048; ox++) {
+        final l = level(ox * size ~/ 2048, oy * size ~/ 2048);
+        if (data[oy * out.rowStride + ox] != (l < 66 ? l + 1 : 0)) fail('index differs at ($ox,$oy)');
+      }
+    }
+    expect(p.stats.pixelsPerDbz, counts);
+    expect((p.stats.imageWidth, p.stats.imageHeight), (size, size));
+  });
+
   test('Mercator row map for the 3600 frame keeps every source row in order', () {
     final rows = mercatorRowMap(srcHeight: 3600, south: 17.75, north: 29.25);
     expect(rows.first, 0);

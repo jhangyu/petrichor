@@ -15,7 +15,7 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/radar/radar_frame_list.dart';
-import '../../data/radar/radar_frame_repository.dart';
+import '../../data/radar/radar_loop.dart';
 import '../../data/radar/radar_source.dart' show RadarStaleListException;
 import '../location/place_provider.dart';
 import 'radar_playback.dart';
@@ -65,8 +65,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   bool _repeat = true;
   bool _playing = false;
 
-  /// Shown frame; null = the newest one (follows a reload).
-  int? _index;
+  /// Time of the shown slot; null = the newest ready one (page open, reload,
+  /// and before play starts from the oldest).
+  DateTime? _playhead;
+
+  /// Playing but stopped at a pending slot; resumed by the loop update that
+  /// makes it ready (see [build]), never by a timer.
+  bool _buffering = false;
+
+  /// Frame-rate / repeat-pause clock between shown frames.
   Timer? _timer;
 
   /// Current place; null while loading, on error or without a place.
@@ -93,56 +100,72 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     _timer?.cancel();
     _timer = null;
     _playing = false;
+    _buffering = false;
   }
 
-  int _currentIndex(int count) => (_index ?? count - 1).clamp(0, count - 1);
+  List<RadarSlot>? get _slots => ref.read(radarLoopProvider(_source)).value?.slots;
 
-  /// Chains one single-shot timer per frame: 1/fps between frames, a fixed
-  /// pause before restarting.
-  void _scheduleTick() {
+  /// Takes the next step after the playhead: shows the next ready slot after
+  /// 1/fps (at once when [immediate]: play start, or resuming from 緩衝中), or
+  /// stops at a pending one, or ends.
+  void _advance({required bool immediate}) {
     _timer?.cancel();
-    final count = ref.read(radarLoopProvider(_source)).value?.frames.length;
-    if (count == null) {
-      setState(_stop);
-      return;
+    final slots = _slots;
+    final step = slots == null ? null : radarNextStep(slots: slots, after: _playhead, fps: _fps, repeat: _repeat);
+    switch (step) {
+      case null:
+        setState(_stop);
+      case RadarWait():
+        setState(() => _buffering = true);
+      case RadarShow(:final time, :final delay):
+        void show() {
+          setState(() {
+            _playhead = time;
+            _buffering = false;
+          });
+          _advance(immediate: false);
+        }
+        if (immediate) {
+          show();
+        } else {
+          _timer = Timer(delay, show);
+        }
     }
-    final tick = radarNextTick(index: _currentIndex(count), count: count, fps: _fps, repeat: _repeat);
-    if (tick == null) {
-      setState(_stop);
-      return;
-    }
-    _timer = Timer(tick.delay, () {
-      setState(() => _index = tick.nextIndex);
-      _scheduleTick();
-    });
   }
 
-  void _togglePlay(int count) {
+  void _togglePlay() {
     if (_playing) {
       setState(_stop);
       return;
     }
+    final slots = _slots!;
+    final head = _playhead;
+    // At (or before reaching) the newest ready frame: play from the oldest.
+    final fromStart = head == null || !slots.any((s) => s.state == RadarSlotState.ready && s.time.isAfter(head));
     setState(() {
       _playing = true;
-      if (_currentIndex(count) == count - 1) _index = 0;
+      if (fromStart) _playhead = null;
     });
-    _scheduleTick();
+    _advance(immediate: fromStart);
   }
 
   void _seek(int i) {
-    setState(() => _index = i);
-    if (_playing) _scheduleTick();
+    setState(() {
+      _playhead = _slots![i].time;
+      _buffering = false;
+    });
+    if (_playing) _advance(immediate: false);
   }
 
   void _setFps(int fps) {
     setState(() => _fps = fps);
-    if (_playing) _scheduleTick();
+    if (_playing && !_buffering) _advance(immediate: false);
   }
 
   void _setWindow(Duration window) {
     setState(() {
       _stop();
-      _index = null;
+      _playhead = null;
     });
     ref.read(radarWindowProvider.notifier).set(window);
   }
@@ -150,7 +173,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   void _selectSource(String id) {
     setState(() {
       _stop();
-      _index = null;
+      _playhead = null;
       _source = id;
     });
   }
@@ -158,7 +181,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   void _refresh() {
     setState(() {
       _stop();
-      _index = null;
+      _playhead = null;
     });
     ref.invalidate(radarLoopProvider(_source));
   }
@@ -167,6 +190,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   Widget build(BuildContext context) {
     final source = ref.watch(radarSourceProvider(_source));
     final window = radarEffectiveWindow(ref.watch(radarWindowProvider), source);
+    // Each loop update may make the slot playback waits on ready (or failed).
+    ref.listen(radarLoopProvider(_source), (_, _) {
+      if (_playing && _buffering) _advance(immediate: true);
+    });
     final view = _sourceView(ref.watch(radarLoopProvider(_source)), window, source.maxWindow);
     return AppPageScaffold(
       header: AppPageHeader(
@@ -215,13 +242,17 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow) {
-    final frames = loop.frames;
-    if (frames.isEmpty) {
-      return loop.loading ? _loadingView(windowSize: loop.windowSize) : _errorView(loop.listError ?? loop.failures.join('；'));
+    final slots = loop.slots;
+    final failed = [for (final s in slots) if (s.state == RadarSlotState.failed) s];
+    final index = radarShownIndex(slots, _playhead);
+    if (index == null) {
+      return loop.loading
+          ? _loadingView(listed: slots.length)
+          : _errorView(loop.listError ?? failed.map((s) => s.error).join('；'));
     }
-    final index = _currentIndex(frames.length);
-    final frame = frames[index];
-    final newest = frames.last;
+    final frame = slots[index].frame!;
+    final newest = slots[radarShownIndex(slots, null)!].frame!;
+    final readyCount = slots.where((s) => s.state == RadarSlotState.ready).length;
     final name = _stationNames[_source];
     final summary = radarEchoSummary(
       loop.newestStats!,
@@ -238,8 +269,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             text: '$listError',
             actions: [RetryButton(onPressed: _refresh)],
           )
-        : loop.failures.isNotEmpty
-            ? _FailureBanner(failures: loop.failures, onRetry: _refresh)
+        : failed.isNotEmpty
+            ? _FailureBanner(failed: failed, onRetry: _refresh)
             : null;
     return _RadarView(
       subtitle: name == null
@@ -258,11 +289,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           chipIcon: Icons.schedule,
           chipText: formatTaiwanMonthDayClock(frame.time),
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
-          loop: (
-            frameCount: frames.length,
-            aspect: frame.aspect,
-            next: (decodeWidth) => frames[(index + 1) % frames.length].imageProvider(decodeWidth: decodeWidth),
-          ),
+          upcoming: radarUpcomingFrames(slots, _playhead, count: radarPreDecodeCount),
           overlayBuilder: (decodeWidth) => [
             OverlayImage(
               bounds: frame.bounds,
@@ -276,25 +303,27 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         legend: RadarLegend(showWords: name == null),
       ),
       afterHero: [
-        if (loop.loading)
-          PlaybackCard(meta: '載入中 ${frames.length} / ${loop.windowSize ?? '…'} 張', loading: true)
-        else if (frames.length == 1)
+        if (slots.length == 1 && !loop.loading)
           const PlaybackCard(meta: '僅有最新影格')
         else
           PlaybackCard(
-            meta: _playing
-                ? '播放中 · $_fps fps${_repeat ? ' · 重複' : ''}'
-                : '過去 ${window.inHours} 小時 · ${frames.length} 張',
-            frames: PlaybackFrames(
-              times: [for (final f in frames) f.time],
-              strongestDbz: [for (final f in frames) f.significantDbz],
+            meta: _buffering
+                ? '緩衝中 · 已就緒 $readyCount / ${slots.length} 張'
+                : _playing
+                    ? '播放中 · $_fps fps${_repeat ? ' · 重複' : ''}'
+                    : loop.loading
+                        ? '載入中 $readyCount / ${slots.length} 張'
+                        : '過去 ${window.inHours} 小時 · ${slots.length} 張',
+            playback: PlaybackFrames(
+              slots: slots,
               index: index,
+              buffering: _buffering,
               playing: _playing,
               fps: _fps,
               repeat: _repeat,
               window: window,
               windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
-              onTogglePlay: () => _togglePlay(frames.length),
+              onTogglePlay: _togglePlay,
               onSeek: _seek,
               onFps: _setFps,
               onRepeat: (v) => setState(() => _repeat = v),
@@ -342,11 +371,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     ];
   }
 
-  _RadarView _loadingView({int? windowSize}) => _RadarView(
+  _RadarView _loadingView({int? listed}) => _RadarView(
     subtitle: _loadingSubtitle,
     loading: true,
     hero: _heroCard(map: RadarMapView(me: _me, loading: true, muted: true)),
-    afterHero: [PlaybackCard(meta: windowSize == null ? '等待影格' : '載入中 0 / $windowSize 張', loading: true)],
+    afterHero: [PlaybackCard(meta: listed == null || listed == 0 ? '等待影格' : '載入中 0 / $listed 張', loading: true)],
   );
 
   _RadarView _errorView(Object error) => _RadarView(
@@ -526,41 +555,42 @@ const _failureDetailMaxLines = 20;
 /// Failed-frame banner: count, time range and the first cause on one line; every
 /// frame (up to [_failureDetailMaxLines]) with its cause under 「詳細」.
 class _FailureBanner extends StatelessWidget {
-  const _FailureBanner({required this.failures, required this.onRetry});
+  const _FailureBanner({required this.failed, required this.onRetry});
 
-  final List<RadarFrameFailure> failures;
+  /// Failed slots, oldest first.
+  final List<RadarSlot> failed;
   final VoidCallback onRetry;
 
   static String _oneLine(Object error) => '$error'.trim().split('\n').first.trim();
 
   @override
   Widget build(BuildContext context) {
-    final times = [for (final f in failures) f.frame.time]..sort();
+    final times = [for (final f in failed) f.time];
     final range = times.first == times.last
         ? formatTaiwanClock(times.first)
         : '${formatTaiwanClock(times.first)}–${formatTaiwanClock(times.last)}';
-    final shown = failures.take(_failureDetailMaxLines);
-    final hidden = failures.length - shown.length;
+    final shown = failed.take(_failureDetailMaxLines);
+    final hidden = failed.length - shown.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         StatusBanner(
           tone: StatusTone.error,
-          title: '${failures.length} 張影格無法取得',
-          text: '$range · ${_oneLine(failures.first.error)}',
+          title: '${failed.length} 張影格無法取得',
+          text: '$range · ${_oneLine(failed.first.error!)}',
           actions: [RetryButton(onPressed: onRetry)],
         ),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: AppPalette.transparent),
           child: ExpansionTile(
-            title: Text('詳細（${failures.length} 張）', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+            title: Text('詳細（${failed.length} 張）', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
             childrenPadding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
             children: [
               for (final f in shown)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '${formatTaiwanClock(f.frame.time)} ${_oneLine(f.error)}',
+                    '${formatTaiwanClock(f.time)} ${_oneLine(f.error!)}',
                     style: AppType.caption1.copyWith(color: AppPalette.fg3),
                   ),
                 ),
