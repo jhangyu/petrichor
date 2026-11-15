@@ -254,7 +254,12 @@ class _MapChip extends StatelessWidget {
   }
 }
 
-/// OSM licence attribution, bottom right of the map (OSMF tile policy).
+/// Half-transparent backing so the attribution stays legible over the map
+/// without drawing attention.
+const _attributionBackAlpha = 0.5;
+
+/// OSM licence attribution (OSMF tile policy), kept unobtrusive: a small
+/// low-contrast label tucked into the bottom-right corner.
 class _Attribution extends StatelessWidget {
   const _Attribution();
 
@@ -262,11 +267,17 @@ class _Attribution extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.bottomRight,
-      child: ColoredBox(
-        color: AppPalette.bgOverlay,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),
-          child: Text(_attribution, style: AppType.caption2.copyWith(color: AppPalette.fg2)),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpace.s4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppPalette.bgOverlay.withValues(alpha: _attributionBackAlpha),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),
+            child: Text(_attribution, style: AppType.caption2.copyWith(color: AppPalette.fg4)),
+          ),
         ),
       ),
     );
