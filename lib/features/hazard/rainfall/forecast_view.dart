@@ -94,17 +94,15 @@ Future<ImageProvider> _gridImage(RainForecastGrid grid) async {
 class ForecastMapCard extends StatefulWidget {
   const ForecastMapCard({
     super.key,
-    required this.forecast,
-    required this.placeName,
-    required this.latitude,
-    required this.longitude,
+    required this.grid,
+    required this.here,
     this.cameraLink,
   });
 
-  final RainForecast forecast;
-  final String placeName;
-  final double latitude;
-  final double longitude;
+  final RainForecastGrid grid;
+
+  /// The current place and the forecast at it; null = no place (no pin, no 「此處」 row).
+  final ({String name, LatLng point, double? mm})? here;
 
   /// Camera shared with the 累積雨量 map (side by side); null = stacked: square, locked until unlocked.
   final RadarCameraLink? cameraLink;
@@ -114,16 +112,16 @@ class ForecastMapCard extends StatefulWidget {
 }
 
 class _ForecastMapCardState extends State<ForecastMapCard> {
-  late Future<ImageProvider> _image = _gridImage(widget.forecast.grid);
+  late Future<ImageProvider> _image = _gridImage(widget.grid);
 
   @override
   void didUpdateWidget(ForecastMapCard old) {
     super.didUpdateWidget(old);
-    if (!identical(old.forecast.grid, widget.forecast.grid)) _image = _gridImage(widget.forecast.grid);
+    if (!identical(old.grid, widget.grid)) _image = _gridImage(widget.grid);
   }
 
   LatLngBounds get _bounds {
-    final g = widget.forecast.grid;
+    final g = widget.grid;
     final half = g.resolution / 2;
     return LatLngBounds(
       LatLng(g.startLatitude - half, g.startLongitude - half),
@@ -133,7 +131,8 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
 
   @override
   Widget build(BuildContext context) {
-    final range = forecastRange(widget.forecast.grid);
+    final range = forecastRange(widget.grid);
+    final here = widget.here;
     return FutureBuilder<ImageProvider>(
       future: _image,
       builder: (context, snapshot) {
@@ -142,7 +141,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
           return AppCard.error(
             title: '無法繪製雨量網格圖',
             message: '$error',
-            onRetry: () => setState(() => _image = _gridImage(widget.forecast.grid)),
+            onRetry: () => setState(() => _image = _gridImage(widget.grid)),
           );
         }
         final image = snapshot.data;
@@ -172,9 +171,9 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
                           filterQuality: FilterQuality.none,
                         ),
                       ],
-                me: LatLng(widget.latitude, widget.longitude),
+                me: here?.point,
               ),
-              _HereRow(mm: widget.forecast.mmAtLocation, placeName: widget.placeName),
+              if (here != null) _HereRow(mm: here.mm, placeName: here.name),
               const _ForecastLegend(),
               Text(
                 '空白格表示預估雨量小於 1 mm 或無資料。',

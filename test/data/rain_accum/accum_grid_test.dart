@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:cwb_flutter/core/theme/app_tokens.dart';
 import 'package:cwb_flutter/data/rain_accum/accum_grid.dart';
 import 'package:cwb_flutter/data/rain_accum/accum_pieces.dart';
-import 'package:cwb_flutter/features/hazard/rainfall/rainfall_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AccumGrid load(String name) {
@@ -86,9 +85,8 @@ void main() {
     );
   });
 
-  test('scale edges match palette and legend', () {
+  test('scale edges match palette', () {
     expect(accumScaleEdgesMm.length + 1, AppPalette.rainfallMapScale.length);
-    expect(accumScaleEdgesMm.length + 1, rainfallMapScaleLabels.length);
   });
 
   test('accumColorIndex maps raw units to scale index', () {

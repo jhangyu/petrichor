@@ -25,3 +25,13 @@ final rainfallProvider = FutureProvider.family<Result<CountyRainfall>, HazardLoc
 final rainForecastProvider = FutureProvider.family<Result<RainForecast>, ({double latitude, double longitude})>((ref, loc) {
   return ref.watch(hazardRepositoryProvider).getRainForecast(latitude: loc.latitude, longitude: loc.longitude);
 });
+
+/// 全部雨量測站（無目前地點時的測站列表）
+final rainStationsProvider = FutureProvider<Result<List<RainStation>>>((ref) {
+  return ref.watch(hazardRepositoryProvider).getRainStations();
+});
+
+/// 1 小時雨量預測格點（無目前地點時的預測圖）
+final rainForecastGridProvider = FutureProvider<Result<RainForecastGrid>>((ref) {
+  return ref.watch(hazardRepositoryProvider).getRainForecastGrid();
+});

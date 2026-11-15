@@ -16,15 +16,17 @@ const _collapsedRowCount = 6;
 final _barFullMm = rainWarningThresholds.last;
 
 /// `測站今日累積雨量` flush card: sort button, county chips + station rows.
-/// Starts on [county] (the current place's county); the chips switch to any county or all.
+/// Starts on [county] (the current place's county; null without a place = all counties); the chips switch to any county or all.
 class StationListCard extends StatefulWidget {
   const StationListCard({super.key, required this.county, required this.stations, required this.nearestId});
 
-  final String county;
+  final String? county;
 
   /// Every station of the dataset (all counties).
   final List<RainStation> stations;
-  final String nearestId;
+
+  /// Nearest station to the current place; null without a place.
+  final String? nearestId;
 
   @override
   State<StationListCard> createState() => _StationListCardState();

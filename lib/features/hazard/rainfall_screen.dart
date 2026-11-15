@@ -39,14 +39,7 @@ class RainfallScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (ref.watch(currentPlaceProvider)) {
       AsyncData(value: PlaceSelected(:final place)) => _placeBody(ref, place),
-      AsyncData(value: NoPlace(:final reason)) => _scaffold(
-        ref,
-        subtitle: '尚無目前地點',
-        children: [
-          AppGridItem.full(child: _noPlaceBanner(ref, reason)),
-          AppGridItem.full(child: _paneWidth(const AccumulationCard(me: null))),
-        ],
-      ),
+      AsyncData(value: NoPlace(:final reason)) => _noPlaceBody(ref, reason),
       AsyncError(:final error) => _scaffold(
         ref,
         subtitle: '無法讀取地點',
@@ -87,29 +80,72 @@ class RainfallScreen extends ConsumerWidget {
     );
   }
 
-  Widget _paneWidth(Widget child) => Align(
-    alignment: Alignment.topLeft,
-    child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: AppLayout.paneMaxWidth), child: child),
-  );
+  /// 最近測站 in its no-place state: why, with the buttons to locate or pick a place.
+  Widget _noPlaceCard(WidgetRef ref, LocationFailure reason) {
+    return AppCard(
+      title: '最近測站',
+      child: StatusBanner(
+        tone: StatusTone.permission,
+        title: '尚無目前地點',
+        text: locationFailureMessage(reason),
+        actions: [
+          AppButton(
+            label: '允許定位',
+            variant: AppButtonVariant.primary,
+            small: true,
+            onPressed: () => ref.read(currentPlaceProvider.notifier).useGps(),
+          ),
+          AppButton(
+            label: '選擇地點',
+            variant: AppButtonVariant.subtle,
+            small: true,
+            onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.settings),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _noPlaceBanner(WidgetRef ref, LocationFailure reason) {
-    return StatusBanner(
-      tone: StatusTone.permission,
-      title: '尚無目前地點',
-      text: locationFailureMessage(reason),
-      actions: [
-        AppButton(
-          label: '允許定位',
-          variant: AppButtonVariant.primary,
-          small: true,
-          onPressed: () => ref.read(currentPlaceProvider.notifier).useGps(),
+  /// No place: the nearest-station card asks for one, the rest needs none (national data).
+  Widget _noPlaceBody(WidgetRef ref, LocationFailure reason) {
+    final stations = ref.watch(rainStationsProvider);
+    final grid = ref.watch(rainForecastGridProvider);
+    void retryStations() => ref.invalidate(rainStationsProvider);
+    void retryGrid() => ref.invalidate(rainForecastGridProvider);
+    Widget? forecastCard(RadarCameraLink? link) => _resultCard(
+      grid,
+      errorTitle: '無法取得降雨預測',
+      skeleton: const AppCard.loading(title: '未來 1hr 預測', skeletonHeight: _mapSkeletonHeight),
+      onRetry: retryGrid,
+      builder: (g) => ForecastMapCard(grid: g, here: null, cameraLink: link),
+    );
+    final list = _resultCard(
+      stations,
+      errorTitle: '無法取得測站列表',
+      skeleton: const AppCard.loading(title: '測站今日累積雨量', skeletonHeight: _listSkeletonHeight),
+      onRetry: retryStations,
+      builder: (all) => StationListCard(county: null, stations: all, nearestId: null),
+    );
+    return _scaffold(
+      ref,
+      subtitle: '尚無目前地點',
+      sourceIds: [
+        if (stations.value is Success) rainObservationDataset,
+        if (grid.value is Success) rainForecast1hDataset,
+      ],
+      onRefresh: stations.isLoading || grid.isLoading
+          ? null
+          : () {
+              retryStations();
+              retryGrid();
+              ref.invalidate(accumLoopProvider);
+            },
+      children: [
+        AppGridItem.full(child: _noPlaceCard(ref, reason)),
+        AppGridItem.full(
+          child: _MapRow(cards: (link) => [?forecastCard(link), AccumulationCard(me: null, cameraLink: link)]),
         ),
-        AppButton(
-          label: '手動選擇',
-          variant: AppButtonVariant.subtle,
-          small: true,
-          onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.settings),
-        ),
+        if (list != null) AppGridItem.full(child: list),
       ],
     );
   }
@@ -138,10 +174,8 @@ class RainfallScreen extends ConsumerWidget {
       skeleton: const AppCard.loading(title: '未來 1hr 預測', skeletonHeight: _mapSkeletonHeight),
       onRetry: retryForecast,
       builder: (f) => ForecastMapCard(
-        forecast: f,
-        placeName: place.name,
-        latitude: place.latitude,
-        longitude: place.longitude,
+        grid: f.grid,
+        here: (name: place.name, point: LatLng(place.latitude, place.longitude), mm: f.mmAtLocation),
         cameraLink: link,
       ),
       showError: !tokenIssue,
