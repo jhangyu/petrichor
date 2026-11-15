@@ -20,22 +20,22 @@
   .doc-section { display: flex; flex-direction: column; gap: var(--space-16); }
   .doc-section > h2 { font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--type-title3-weight); }
   .doc-note { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
-  .doc-note code, .doc code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: var(--type-caption1-size); color: var(--color-brand-fg-strong); background: var(--color-brand-bg-subtle); padding: var(--space-0) var(--space-4); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
-  .doc-stage { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); background: var(--color-bg-3); border: var(--stroke-thin) dashed var(--color-stroke-1); border-radius: var(--radius-md); min-width: 0; }
+  .doc-note code, .doc code { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: var(--type-caption1-size); color: var(--color-brand-fg-strong); background: var(--color-brand-bg-subtle); padding: var(--space-0) var(--space-4); border-radius: var(--shape-extra-small); overflow-wrap: anywhere; }
+  .doc-stage { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); background: var(--color-bg-3); border: var(--stroke-thin) dashed var(--color-stroke-1); border-radius: var(--shape-small); min-width: 0; }
   .doc-stage--white { background: var(--color-bg-1); }
   .doc-wrap { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: center; }
   .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--space-8); }
   .swatch { display: flex; flex-direction: column; gap: var(--space-4); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); overflow-wrap: anywhere; }
-  .swatch__chip { height: var(--size-touch); border-radius: var(--radius-sm); border: var(--stroke-thin) solid var(--color-stroke-2); }
+  .swatch__chip { height: var(--size-touch); border-radius: var(--shape-extra-small); border: var(--stroke-thin) solid var(--color-stroke-2); }
   .phone { display: flex; justify-content: center; }
-  .phone .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-16); }
+  .phone .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; box-shadow: var(--shadow-16); }
   .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--space-8); }
-  .icon-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-12) var(--space-4); background: var(--color-bg-1); border-radius: var(--radius-md); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); }
+  .icon-cell { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); padding: var(--space-12) var(--space-4); background: var(--color-bg-1); border-radius: var(--shape-small); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); }
   .map-demo { height: 280px; }
   .map-demo__land { position: absolute; left: 30%; top: 8%; width: 36%; height: 84%; background: var(--color-map-land); border: var(--stroke-thin) solid var(--color-map-border); border-radius: 48% 52% 40% 60% / 30% 35% 65% 70%; transform: rotate(14deg); }
-  .map-demo__echo { position: absolute; border-radius: var(--radius-circular); opacity: 0.6; }
+  .map-demo__echo { position: absolute; border-radius: var(--shape-full); opacity: 0.6; }
   .map-demo__fab { position: absolute; top: var(--space-12); right: var(--space-12); }
-  .hour { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); width: 72px; padding: var(--space-12) var(--space-8); background: var(--color-bg-1); border-radius: var(--radius-md); box-shadow: var(--shadow-2); }
+  .hour { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); width: 72px; padding: var(--space-12) var(--space-8); background: var(--color-bg-1); border-radius: var(--shape-small); box-shadow: var(--shadow-2); }
   .hour[aria-current="true"] { background: var(--color-brand-bg-subtle); box-shadow: none; }
 </style>
 </head>
@@ -112,7 +112,7 @@
       <p class="text-caption1 text-tertiary">Caption 1 · 12 資料來源：中央氣象署</p>
       <p class="text-caption2 text-tertiary">Caption 2 · 10 dBZ</p>
     </div>
-    <p class="doc-note">類別：<code>.text-display</code> <code>.text-large-title</code> <code>.text-title1–3</code> <code>.text-subtitle1–2</code> <code>.text-body1/2</code> <code>.text-body1-strong</code> <code>.text-caption1/2</code>；數字加 <code>.num</code>（等寬數字）。陰影 <code>--shadow-2/4/8/16/28</code>，圓角 <code>--radius-sm 4 / md 8 / lg 12 / circular</code>。</p>
+    <p class="doc-note">類別：<code>.text-display</code> <code>.text-large-title</code> <code>.text-title1–3</code> <code>.text-subtitle1–2</code> <code>.text-body1/2</code> <code>.text-body1-strong</code> <code>.text-caption1/2</code>；數字加 <code>.num</code>（等寬數字）。陰影 <code>--shadow-2/4/8/16/28</code>，圓角 <code>--shape-extra-small 4 / md 8 / lg 12 / circular</code>。</p>
   </section>
 
   <!-- ============ App shell: app bar + bottom nav ============ -->

@@ -26,7 +26,8 @@ class AppChip extends StatelessWidget {
     final glyph = icon;
     return Material(
       color: selected ? AppPalette.brandBgSubtle : AppPalette.bg1,
-      shape: StadiumBorder(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.small),
         side: BorderSide(
           color: selected ? AppPalette.brandStroke : AppPalette.stroke1,
           width: AppStroke.thin,
@@ -83,7 +84,7 @@ class AppSegmented<T> extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpace.s4),
       decoration: BoxDecoration(
         color: AppPalette.bg4,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: Row(
         spacing: AppSpace.s4,
@@ -119,7 +120,7 @@ class _Segment extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12),
           decoration: BoxDecoration(
             color: active ? AppPalette.bg1 : AppPalette.transparent,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderRadius: BorderRadius.circular(AppRadius.full),
             boxShadow: active ? AppShadows.s2 : null,
           ),
           child: Text(
@@ -132,6 +133,39 @@ class _Segment extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Themed Material [Switch]; null [onChanged] = disabled.
+class AppSwitch extends StatelessWidget {
+  const AppSwitch({super.key, required this.value, required this.onChanged, required this.semanticLabel});
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final String semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: semanticLabel,
+      toggled: value,
+      child: Switch(
+        value: value,
+        onChanged: onChanged,
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppPalette.fgDisabled;
+          return states.contains(WidgetState.selected) ? AppPalette.fgOnBrand : AppPalette.fg2;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) return AppPalette.bgDisabled;
+          return states.contains(WidgetState.selected) ? AppPalette.brandBg : AppPalette.bg1;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return AppPalette.transparent;
+          return states.contains(WidgetState.disabled) ? AppPalette.fgDisabled : AppPalette.strokeAccessible;
+        }),
       ),
     );
   }

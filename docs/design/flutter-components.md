@@ -11,7 +11,7 @@ Rules for page screens: import tokens and widgets from `lib/core/`. Do not write
 | `--dbz-0 … --dbz-60` (data-vis exception) | `AppPalette.dbz0 … dbz60` |
 | transparent | `AppPalette.transparent` |
 | `--space-N` | `AppSpace.sN` (`AppSpace.gutter` = 16) |
-| `--radius-sm/md/lg/circular` | `AppRadius.sm/md/lg/circular` |
+| `--shape-none/extra-small/small/medium/large/extra-large/full` | `AppRadius.none/extraSmall/small/medium/large/extraLarge/full` |
 | `--stroke-thin/thick/thicker` | `AppStroke.thin/thick/thicker` |
 | `--size-*`, `--layout-max-width` | `AppSize.touch, control, controlSm, appBar, bottomNav, icon16…icon64, sliderTrack, sliderThumb, legendBar, spinner, dot, layoutMaxWidth` |
 | `--shadow-2/4/8/16/28` | `AppShadows.s2/s4/s8/s16/s28` (`List<BoxShadow>`) |

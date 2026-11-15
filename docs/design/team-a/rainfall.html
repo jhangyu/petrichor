@@ -35,14 +35,14 @@
   .frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-12); }
   .frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
   .frame__note { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
-  .frame .app-shell { min-height: 812px; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-16); }
+  .frame .app-shell { min-height: 812px; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; box-shadow: var(--shadow-16); }
   .frame .app-bar, .frame .bottom-nav { position: relative; }
   @media (max-width: 420px) {
     .board { padding-inline: var(--space-0); }
     .board__head, .board__group { padding-inline: var(--space-16); }
     .frames { padding-inline: var(--space-0); }
     .board__group > .frames { margin-inline: calc(-1 * var(--space-16)); }
-    .frame .app-shell { border-radius: var(--radius-none); border-inline: none; }
+    .frame .app-shell { border-radius: var(--shape-none); border-inline: none; }
     .frame__caption, .frame__note { padding-inline: var(--space-16); }
   }
 
@@ -54,7 +54,7 @@
   .hero__eyebrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
   .page-foot { text-align: center; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
   .hero .metric { background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-3); }
-  .card--a { border-radius: var(--radius-lg); padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
+  .card--a { border-radius: var(--shape-medium); padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
   .card--a .card__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
   .card--a.card--flush { padding: var(--space-0); gap: var(--space-0); }
   .hero__titles { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
@@ -73,8 +73,8 @@
   .thr { display: flex; flex-direction: column; gap: var(--space-4); }
   .thr__track { position: relative; }
   .thr__bar, .thr__labels { display: grid; grid-template-columns: 16fr 24fr 30fr 30fr; }
-  .thr__bar { height: var(--size-legend-bar); border-radius: var(--radius-circular); overflow: hidden; }
-  .thr__marker { position: absolute; top: calc(-1 * var(--space-4)); width: var(--stroke-thicker); height: var(--space-16); border-radius: var(--radius-circular); background: var(--color-fg-1); box-shadow: 0 0 0 var(--stroke-thin) var(--color-bg-1); transform: translateX(-50%); }
+  .thr__bar { height: var(--size-legend-bar); border-radius: var(--shape-full); overflow: hidden; }
+  .thr__marker { position: absolute; top: calc(-1 * var(--space-4)); width: var(--stroke-thicker); height: var(--space-16); border-radius: var(--shape-full); background: var(--color-fg-1); box-shadow: 0 0 0 var(--stroke-thin) var(--color-bg-1); transform: translateX(-50%); }
   .thr__labels { font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
 
   /* Level fills (alert tokens; level 0 = rain without warning) */
@@ -88,7 +88,7 @@
   .stn { stroke: var(--color-bg-1); stroke-width: 1.5; }
 
   /* Map */
-  .rain-map { aspect-ratio: 5 / 6; border-radius: var(--radius-md); }
+  .rain-map { aspect-ratio: 5 / 6; border-radius: var(--shape-small); }
   .map-svg { width: 100%; height: 100%; }
   .map-land { fill: var(--color-map-land); stroke: var(--color-map-border); stroke-width: 1.5; stroke-linejoin: round; }
   .map-cover { stroke: var(--color-map-border); stroke-width: 1.5; stroke-linejoin: round; fill: none; }
@@ -97,8 +97,8 @@
 
   /* Station rows */
   .stn-row .list-row__content { gap: var(--space-4); }
-  .stn-row__bar { height: var(--size-slider-track); border-radius: var(--radius-circular); background: var(--color-bg-4); overflow: hidden; }
-  .stn-row__fill { display: block; height: 100%; border-radius: var(--radius-circular); }
+  .stn-row__bar { height: var(--size-slider-track); border-radius: var(--shape-full); background: var(--color-bg-4); overflow: hidden; }
+  .stn-row__fill { display: block; height: 100%; border-radius: var(--shape-full); }
   .stn-row__value { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-4); min-width: var(--size-icon-64); }
   .stn-row__mm { font-size: var(--type-body2-size); line-height: var(--type-body2-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); font-variant-numeric: tabular-nums; }
   .stn-row__mm small { font-size: var(--type-caption1-size); font-weight: var(--font-weight-regular); color: var(--color-fg-3); }

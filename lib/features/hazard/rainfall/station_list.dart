@@ -238,7 +238,7 @@ class _LevelBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.circular),
+      borderRadius: BorderRadius.circular(AppRadius.full),
       child: Container(
         height: AppSize.sliderTrack,
         color: AppPalette.bg4,

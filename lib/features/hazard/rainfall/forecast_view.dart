@@ -213,7 +213,7 @@ class _ForecastLegend extends StatelessWidget {
                 Container(
                   width: _swatchSize,
                   height: _swatchSize,
-                  decoration: BoxDecoration(color: _bucketTints[i], borderRadius: BorderRadius.circular(AppRadius.sm)),
+                  decoration: BoxDecoration(color: _bucketTints[i], borderRadius: BorderRadius.circular(AppRadius.extraSmall)),
                 ),
                 Text(_bucketLabels[i], style: AppType.caption1.copyWith(color: AppPalette.fg2)),
               ],

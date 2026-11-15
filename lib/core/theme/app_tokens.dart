@@ -191,13 +191,15 @@ abstract final class AppSpace {
   static const double gutter = s16;
 }
 
-/// `--radius-*` tokens.
+/// Material 3 shape scale (`--shape-*`).
 abstract final class AppRadius {
   static const double none = 0;
-  static const double sm = 4;
-  static const double md = 8;
-  static const double lg = 12;
-  static const double circular = 9999;
+  static const double extraSmall = 4;
+  static const double small = 8;
+  static const double medium = 12;
+  static const double large = 16;
+  static const double extraLarge = 28;
+  static const double full = 9999;
 }
 
 /// `--stroke-*` widths.

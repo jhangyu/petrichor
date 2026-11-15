@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_tokens.dart';
 
 /// `.badge--*` tones. alert1–4 = CWA rain-warning levels 大雨 → 超大豪雨.
-enum BadgeTone { neutral, rain, brand, alert1, alert2, alert3, alert4 }
+enum BadgeTone { neutral, rain, brand, success, danger, warning, alert1, alert2, alert3, alert4 }
 
 /// `.badge`: small pill (min height 20, caption1 semibold, tabular nums).
 class AppBadge extends StatelessWidget {
@@ -19,6 +19,9 @@ class AppBadge extends StatelessWidget {
       BadgeTone.neutral => (AppPalette.bg4, AppPalette.fg2, AppPalette.transparent),
       BadgeTone.rain => (AppPalette.rainBg, AppPalette.rainFg, AppPalette.transparent),
       BadgeTone.brand => (AppPalette.brandBg, AppPalette.fgOnBrand, AppPalette.transparent),
+      BadgeTone.success => (AppPalette.successBg, AppPalette.successFg, AppPalette.successStroke),
+      BadgeTone.danger => (AppPalette.dangerBg, AppPalette.dangerFg, AppPalette.dangerStroke),
+      BadgeTone.warning => (AppPalette.warningBg, AppPalette.warningFg, AppPalette.warningStroke),
       BadgeTone.alert1 => (AppPalette.alert1Bg, AppPalette.alert1Fg, AppPalette.alert1Stroke),
       BadgeTone.alert2 => (AppPalette.alert2Bg, AppPalette.alert2Fg, AppPalette.alert2Stroke),
       BadgeTone.alert3 => (AppPalette.alert3Bg, AppPalette.alert3Fg, AppPalette.alert3Stroke),
@@ -30,7 +33,7 @@ class AppBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s8),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.circular),
+        borderRadius: BorderRadius.circular(AppRadius.full),
         border: Border.all(color: stroke, width: AppStroke.thin),
       ),
       child: Row(
@@ -105,7 +108,7 @@ class MetricTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
       decoration: BoxDecoration(
         color: onHero ? AppPalette.bg1 : AppPalette.bg2,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.small),
         border: onHero ? Border.all(color: AppPalette.stroke3, width: AppStroke.thin) : null,
       ),
       child: Row(
@@ -174,7 +177,7 @@ class MetricGrid extends StatelessWidget {
 class AppList extends StatelessWidget {
   const AppList({super.key, required this.children});
 
-  final List<AppListRow> children;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
@@ -182,7 +185,7 @@ class AppList extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppPalette.bg1,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         boxShadow: AppShadows.s2,
       ),
       child: Column(
@@ -209,6 +212,7 @@ class AppListRow extends StatelessWidget {
     this.trailing,
     this.selected = false,
     this.enabled = true,
+    this.flushTrailing = false,
     this.onTap,
   });
 
@@ -218,6 +222,10 @@ class AppListRow extends StatelessWidget {
   final Widget? trailing;
   final bool selected;
   final bool enabled;
+
+  /// End padding s4 instead of s16 so a trailing [AppIconButton] glyph lines
+  /// up with the other trailing glyphs.
+  final bool flushTrailing;
   final VoidCallback? onTap;
 
   @override
@@ -238,7 +246,12 @@ class AppListRow extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: AppSize.touch),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
+            padding: EdgeInsetsDirectional.only(
+              start: AppSpace.s16,
+              end: flushTrailing ? AppSpace.s4 : AppSpace.s16,
+              top: AppSpace.s12,
+              bottom: AppSpace.s12,
+            ),
             child: Row(
               spacing: AppSpace.s12,
               children: [

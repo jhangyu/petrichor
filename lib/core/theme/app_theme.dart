@@ -40,6 +40,19 @@ abstract final class AppTheme {
         titleLarge: AppType.subtitle1.copyWith(color: AppPalette.fg1),
       ),
       dividerColor: AppPalette.stroke2,
+      dialogTheme: const DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.extraLarge))),
+      ),
+      timePickerTheme: const TimePickerThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.extraLarge))),
+        hourMinuteShape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.small))),
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.extraSmall))),
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.extraSmall))),
+      ),
       navigationBarTheme: NavigationBarThemeData(
         height: AppSize.bottomNav,
         backgroundColor: AppPalette.bg1,

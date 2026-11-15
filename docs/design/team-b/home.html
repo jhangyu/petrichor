@@ -35,8 +35,8 @@
   .tb-frames { width: 100%; max-width: 1200px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
   .tb-frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-8); margin: var(--space-0); }
   .tb-frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
-  .tb-frame__no { display: inline-flex; align-items: center; justify-content: center; min-width: var(--size-icon-20); height: var(--size-icon-20); border-radius: var(--radius-sm); background: var(--color-fg-1); color: var(--color-fg-on-solid); font-variant-numeric: tabular-nums; }
-  .tb-frame .app-shell { max-width: none; min-height: 0; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-1); border-radius: var(--radius-lg); overflow: hidden; }
+  .tb-frame__no { display: inline-flex; align-items: center; justify-content: center; min-width: var(--size-icon-20); height: var(--size-icon-20); border-radius: var(--shape-extra-small); background: var(--color-fg-1); color: var(--color-fg-on-solid); font-variant-numeric: tabular-nums; }
+  .tb-frame .app-shell { max-width: none; min-height: 0; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-1); border-radius: var(--shape-medium); overflow: hidden; }
 
   /* Header = compact app bar + pivot tabs, one sticky block */
   .tb-header { position: sticky; top: var(--space-0); z-index: var(--z-appbar); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
@@ -44,7 +44,7 @@
   .tb-header .tab-list { border-bottom: none; padding: var(--space-0) var(--space-4); }
   .tb-header .tab { text-decoration: none; }
   /* Location switcher inside app bar titles */
-  .tb-loc { display: flex; flex-direction: column; min-width: 0; flex: 1; color: inherit; text-decoration: none; border-radius: var(--radius-sm); }
+  .tb-loc { display: flex; flex-direction: column; min-width: 0; flex: 1; color: inherit; text-decoration: none; border-radius: var(--shape-extra-small); }
   .tb-loc__name { display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
   .tb-loc__chev { transform: rotate(90deg); color: var(--color-fg-3); }
   .tb-loc:hover .app-bar__title { color: var(--color-brand-fg); }
@@ -104,8 +104,8 @@
   /* Hourly table: 時間 | 天氣 | 溫度 | 降雨 */
   .tb-hourly .tb-trow { grid-template-columns: 48px minmax(0, 1fr) 40px 96px; }
   .tb-rain { display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: center; column-gap: var(--space-8); color: var(--color-rain-fg); }
-  .tb-rain__bar { height: var(--size-slider-track); border-radius: var(--radius-circular); background: var(--color-rain-bar-track); overflow: hidden; }
-  .tb-rain__bar i { display: block; height: 100%; background: var(--color-rain-bar); border-radius: var(--radius-circular); }
+  .tb-rain__bar { height: var(--size-slider-track); border-radius: var(--shape-full); background: var(--color-rain-bar-track); overflow: hidden; }
+  .tb-rain__bar i { display: block; height: 100%; background: var(--color-rain-bar); border-radius: var(--shape-full); }
   .tb-rain__pct { text-align: right; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); }
 
   /* Weekly table: 日期 | 天氣 | 降雨 | 低 | 區間 | 高 */
@@ -122,7 +122,7 @@
   .tb-skel-row { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-touch); padding: var(--space-8) var(--space-16); }
   .tb-skel-row .skeleton { flex: 1; }
   .tb-skel-row .skeleton--short { flex: none; width: 48px; }
-  .tb-skel-row .skeleton--icon { flex: none; width: var(--size-icon-24); height: var(--size-icon-24); min-height: 0; border-radius: var(--radius-circular); }
+  .tb-skel-row .skeleton--icon { flex: none; width: var(--size-icon-24); height: var(--size-icon-24); min-height: 0; border-radius: var(--shape-full); }
   .tb-skel-big { height: var(--type-large-title-lh); width: 96px; flex: none; }
   .tb-dim { opacity: 0.4; }
 </style>

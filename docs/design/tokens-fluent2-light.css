@@ -4,7 +4,7 @@
    Rules for consumers:
      - Colors: only var(--color-*) / var(--dbz-*). No literal colors outside this file.
      - Spacing (padding/margin/gap/inset): only var(--space-*), 4px grid.
-     - Radii: var(--radius-*). Shadows: var(--shadow-*). Sizes: var(--size-*).
+     - Shape: var(--shape-*). Shadows: var(--shadow-*). Sizes: var(--size-*).
    Values follow Microsoft Fluent 2 web light theme (neutral, brand "communication blue",
    shared status palettes, type ramp, shadow2–28, motion curves).
    ========================================================================== */
@@ -193,12 +193,14 @@
   --space-48: 48px;
   --space-64: 64px;
 
-  /* ---------- Radii ---------- */
-  --radius-none: 0px;
-  --radius-sm: 4px;      /* buttons, inputs, badges */
-  --radius-md: 8px;      /* cards, banners, list groups */
-  --radius-lg: 12px;     /* sheets, hero card, map panels */
-  --radius-circular: 9999px; /* chips, pills, avatars, icon buttons */
+  /* ---------- Shape (Material 3 scale) ---------- */
+  --shape-none: 0px;
+  --shape-extra-small: 4px;   /* text fields, skeletons, swatches, tooltips, snackbars */
+  --shape-small: 8px;         /* chips, inner panels and tiles inside a card */
+  --shape-medium: 12px;       /* cards, list groups, banners, map clips */
+  --shape-large: 16px;        /* FAB, navigation drawer */
+  --shape-extra-large: 28px;  /* dialogs, time picker, bottom sheets */
+  --shape-full: 9999px;       /* buttons, icon buttons, badges, switches, segmented, nav indicators */
 
   /* ---------- Stroke widths ---------- */
   --stroke-thin: 1px;

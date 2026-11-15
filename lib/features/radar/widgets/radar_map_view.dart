@@ -306,7 +306,7 @@ class _RadarMapViewState extends State<RadarMapView> {
     _preDecodeUpcoming();
     final chipText = widget.chipText;
     final map = ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderRadius: BorderRadius.circular(AppRadius.medium),
       child: AspectRatio(
         aspectRatio: 5 / 6,
         child: LayoutBuilder(
@@ -419,7 +419,7 @@ class _MapChip extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: AppPalette.bgOverlay,
-        borderRadius: BorderRadius.circular(AppRadius.circular),
+        borderRadius: BorderRadius.circular(AppRadius.full),
         boxShadow: AppShadows.s4,
       ),
       child: Row(
@@ -455,7 +455,7 @@ class _Attribution extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: AppPalette.bgOverlay.withValues(alpha: _attributionBackAlpha),
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderRadius: BorderRadius.circular(AppRadius.extraSmall),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),

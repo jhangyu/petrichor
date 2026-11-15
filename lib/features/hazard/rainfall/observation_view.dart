@@ -115,7 +115,7 @@ class _ThresholdBar extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.circular),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                     child: SizedBox(
                       height: AppSize.legendBar,
                       child: Row(
@@ -134,7 +134,7 @@ class _ThresholdBar extends StatelessWidget {
                       height: _markerHeight,
                       decoration: BoxDecoration(
                         color: AppPalette.fg1,
-                        borderRadius: BorderRadius.circular(AppRadius.circular),
+                        borderRadius: BorderRadius.circular(AppRadius.full),
                         border: Border.all(color: AppPalette.bg1, width: AppStroke.thin),
                       ),
                     ),
@@ -221,7 +221,7 @@ class _MapLegend extends StatelessWidget {
                   height: AppSize.icon16,
                   decoration: BoxDecoration(
                     color: AppPalette.rainfallMapScale[i],
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.extraSmall),
                   ),
                 ),
                 Text(rainfallMapScaleLabels[i], style: AppType.caption1.copyWith(color: AppPalette.fg2)),

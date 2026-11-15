@@ -193,7 +193,7 @@ class _TempRange extends StatelessWidget {
                 height: AppSize.sliderTrack,
                 decoration: BoxDecoration(
                   color: AppPalette.bg4,
-                  borderRadius: BorderRadius.circular(AppRadius.circular),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
               if (s != null && lo != null && hi != null)
@@ -203,7 +203,7 @@ class _TempRange extends StatelessWidget {
                   child: Container(
                     height: AppSize.sliderTrack,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.circular),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                       gradient: const LinearGradient(
                         colors: [
                           AppPalette.tempBarCold,

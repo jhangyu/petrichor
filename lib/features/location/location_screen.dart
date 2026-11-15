@@ -614,7 +614,7 @@ class _RowTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppPalette.bg1,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         boxShadow: AppShadows.s2,
       ),
       child: row,
@@ -893,7 +893,7 @@ class _SearchField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
 
   static OutlineInputBorder _border(Color color, double width) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.full),
         borderSide: BorderSide(color: color, width: width),
       );
 

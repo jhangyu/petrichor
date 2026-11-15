@@ -194,7 +194,7 @@ class WeatherScreen extends ConsumerWidget {
       label: '${top.name}，查看詳情',
       child: InkWell(
         onTap: () => ref.read(appTabProvider.notifier).select(AppTab.warnings),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         child: StatusBanner(
           tone: top.level == null || top.level == 1 ? StatusTone.alert1 : StatusTone.alert3,
           title: '${top.name} · ${top.isUpcoming(now) ? '即將生效' : '生效中'}',
@@ -340,7 +340,7 @@ class _PullHint extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s4),
                 decoration: BoxDecoration(
                   color: AppPalette.bg1,
-                  borderRadius: BorderRadius.circular(AppRadius.circular),
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                   boxShadow: AppShadows.s4,
                 ),
                 child: Row(

@@ -134,7 +134,7 @@ class AppCard extends StatelessWidget {
               stops: [0, _heroGradientStop],
             )
           : null,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderRadius: BorderRadius.circular(AppRadius.medium),
       boxShadow: hero ? AppShadows.s8 : AppShadows.s4,
     );
     return Container(

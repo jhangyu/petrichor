@@ -116,7 +116,7 @@ class HeroCard extends StatelessWidget {
     if (text == null) return null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
-      decoration: BoxDecoration(color: AppPalette.rainBg, borderRadius: BorderRadius.circular(AppRadius.md)),
+      decoration: BoxDecoration(color: AppPalette.rainBg, borderRadius: BorderRadius.circular(AppRadius.small)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpace.s8,

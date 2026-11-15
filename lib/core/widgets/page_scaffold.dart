@@ -140,7 +140,7 @@ class AppPageHeader extends StatelessWidget {
     if (titleTap != null) {
       titleWidget = InkWell(
         onTap: titleTap,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderRadius: BorderRadius.circular(AppRadius.small),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

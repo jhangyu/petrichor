@@ -42,7 +42,7 @@ class StatusBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         border: Border.all(color: stroke, width: AppStroke.thin),
       ),
       child: Row(
@@ -145,7 +145,7 @@ class Skeleton extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: AppPalette.bg6,
-        borderRadius: BorderRadius.circular(circle ? AppRadius.circular : AppRadius.sm),
+        borderRadius: BorderRadius.circular(circle ? AppRadius.full : AppRadius.extraSmall),
       ),
     );
   }

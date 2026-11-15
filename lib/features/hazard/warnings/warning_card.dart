@@ -43,7 +43,7 @@ class _WarningCardState extends State<WarningCard> {
     return Container(
       decoration: BoxDecoration(
         color: AppPalette.bg1,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(AppRadius.medium),
         boxShadow: AppShadows.s4,
       ),
       clipBehavior: Clip.antiAlias,

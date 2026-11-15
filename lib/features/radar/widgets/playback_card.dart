@@ -319,7 +319,7 @@ class _TimelineFrame extends StatelessWidget {
       child: Material(
         color: background,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.small),
           side: BorderSide(color: stroke, width: AppStroke.thin),
         ),
         clipBehavior: Clip.antiAlias,
@@ -344,7 +344,7 @@ class _TimelineFrame extends StatelessWidget {
                 Container(
                   width: AppSize.icon24,
                   height: AppSize.sliderTrack,
-                  decoration: BoxDecoration(color: bar, borderRadius: BorderRadius.circular(AppRadius.circular)),
+                  decoration: BoxDecoration(color: bar, borderRadius: BorderRadius.circular(AppRadius.full)),
                 ),
               ],
             ),
@@ -381,14 +381,14 @@ class _SettingsState extends State<_Settings> {
     return Container(
       decoration: BoxDecoration(
         color: AppPalette.bg2,
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        borderRadius: BorderRadius.circular(AppRadius.small),
         border: Border.all(color: AppPalette.stroke3, width: AppStroke.thin),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(AppRadius.md),
+            borderRadius: BorderRadius.circular(AppRadius.small),
             onTap: () => setState(() => _open = !_open),
             child: Container(
               constraints: const BoxConstraints(minHeight: AppSize.touch),
@@ -467,15 +467,7 @@ class _SettingsState extends State<_Settings> {
                           ],
                         ),
                       ),
-                      Switch(
-                        value: f.repeat,
-                        onChanged: f.onRepeat,
-                        activeThumbColor: AppPalette.bg1,
-                        activeTrackColor: AppPalette.brandBg,
-                        inactiveThumbColor: AppPalette.bg1,
-                        inactiveTrackColor: AppPalette.strokeAccessible,
-                        trackOutlineColor: const WidgetStatePropertyAll(AppPalette.transparent),
-                      ),
+                      AppSwitch(value: f.repeat, onChanged: f.onRepeat, semanticLabel: '重複播放'),
                     ],
                   ),
                 ],

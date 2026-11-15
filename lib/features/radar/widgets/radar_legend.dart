@@ -28,7 +28,7 @@ class RadarLegend extends StatelessWidget {
         spacing: AppSpace.s4,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.circular),
+            borderRadius: BorderRadius.circular(AppRadius.full),
             child: SizedBox(
               height: AppSize.legendBar,
               child: Row(

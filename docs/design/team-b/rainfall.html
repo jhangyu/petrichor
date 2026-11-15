@@ -29,7 +29,7 @@
   .frames { width: 100%; max-width: 1200px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
   .frame { width: 100%; max-width: 375px; display: flex; flex-direction: column; gap: var(--space-8); }
   .frame__caption { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
-  .frame .app-shell { min-height: 0; max-width: none; border: var(--stroke-thin) solid var(--color-stroke-1); border-radius: var(--radius-lg); overflow: hidden; background: var(--color-bg-3); }
+  .frame .app-shell { min-height: 0; max-width: none; border: var(--stroke-thin) solid var(--color-stroke-1); border-radius: var(--shape-medium); overflow: hidden; background: var(--color-bg-3); }
   .frame .app-bar, .frame .bottom-nav { position: static; }
 
   /* ---------- Team B shell: compact app bar + pivot ---------- */
@@ -40,9 +40,9 @@
   .group { display: flex; flex-direction: column; gap: var(--space-4); }
   .group__label { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: var(--size-control-sm); padding: var(--space-0) var(--space-16); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
   .group__label > span + span { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-regular); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
-  .list--flat { border-radius: var(--radius-none); box-shadow: none; border-top: var(--stroke-thin) solid var(--color-stroke-2); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
+  .list--flat { border-radius: var(--shape-none); box-shadow: none; border-top: var(--stroke-thin) solid var(--color-stroke-2); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
   .list--flat .list-row + .list-row { border-top-color: var(--color-stroke-3); }
-  .frame__caption .badge { min-width: var(--size-icon-20); justify-content: center; padding: var(--space-0); border-radius: var(--radius-sm); border-color: transparent; background: var(--color-fg-1); color: var(--color-fg-on-solid); }
+  .frame__caption .badge { min-width: var(--size-icon-20); justify-content: center; padding: var(--space-0); border-radius: var(--shape-extra-small); border-color: transparent; background: var(--color-fg-1); color: var(--color-fg-on-solid); }
 
   /* ---------- Filter bar (under pivot) ---------- */
   .filter-bar { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-8) var(--space-0) var(--space-12); background: var(--color-bg-1); border-bottom: var(--stroke-thin) solid var(--color-stroke-2); }
@@ -68,7 +68,7 @@
   .level-dot--none { background: var(--color-bg-6); }
 
   /* ---------- Map (accumulated rainfall / 1h QPF) ---------- */
-  .rain-map { height: 240px; border-radius: var(--radius-none); border-top: var(--stroke-thin) solid var(--color-stroke-2); }
+  .rain-map { height: 240px; border-radius: var(--shape-none); border-top: var(--stroke-thin) solid var(--color-stroke-2); }
   .rain-map > svg { display: block; width: 100%; height: 100%; }
   .tw-water { fill: var(--color-map-water); }
   .tw-land { fill: var(--color-map-land); stroke: var(--color-map-border); stroke-width: 1; }

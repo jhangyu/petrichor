@@ -87,7 +87,7 @@ Team signature (default frame, measured): app bar 56px, padding 16/4, title 20/2
 ### team-b/home.html — verdict: **pass**
 | # | Selector | Viewport | Measured | Severity | Fix |
 |---|---|---|---|---|---|
-| B-H1 | `.tb-frame` | 375 | phone frame rendered 343px wide (16px side margins) instead of 375; Team A goes full-bleed at ≤420px | should-fix | in the narrow media query: `.board{padding-inline:0}` + `.tb-frame .app-shell{border-inline:none;border-radius:var(--radius-none)}` so the 375 frame is really 375 |
+| B-H1 | `.tb-frame` | 375 | phone frame rendered 343px wide (16px side margins) instead of 375; Team A goes full-bleed at ≤420px | should-fix | in the narrow media query: `.board{padding-inline:0}` + `.tb-frame .app-shell{border-inline:none;border-radius:var(--shape-none)}` so the 375 frame is really 375 |
 | B-H2 | `.list-row.tb-alert` leading slot | both | text starts at x=53 (24px leading) vs warnings/location rows at x=61 (32px leading) | should-fix | use the same leading size (32px slot) for all team list rows |
 
 ### team-b/radar.html — verdict: **pass**

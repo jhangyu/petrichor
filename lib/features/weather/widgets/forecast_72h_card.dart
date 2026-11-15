@@ -89,7 +89,7 @@ class Forecast72hCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppPalette.bg2,
           border: Border.all(color: AppPalette.stroke3, width: AppStroke.thin),
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.small),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +141,7 @@ class Forecast72hCard extends StatelessWidget {
           child: CustomPaint(painter: _AxisPainter()),
         ),
         Expanded(
-          child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.sm), child: plot),
+          child: ClipRRect(borderRadius: BorderRadius.circular(AppRadius.extraSmall), child: plot),
         ),
       ],
     );
@@ -177,7 +177,7 @@ class Forecast72hCard extends StatelessWidget {
                   height: AppStroke.thick,
                   decoration: BoxDecoration(
                     color: AppPalette.warningFg,
-                    borderRadius: BorderRadius.circular(AppRadius.circular),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                 ),
                 '溫度',
@@ -196,7 +196,7 @@ class Forecast72hCard extends StatelessWidget {
                   height: AppSize.dot,
                   decoration: BoxDecoration(
                     color: AppPalette.rainBar,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                 ),
                 '3 小時降雨機率',
