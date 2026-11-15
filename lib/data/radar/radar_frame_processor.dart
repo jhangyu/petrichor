@@ -122,8 +122,6 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final echoBits = _colourBits(g.palette);
   final indexOf = {for (final (d, c) in g.palette.indexed) c: d + 1};
   final counts = List<int>.filled(radarEchoPalette.length, 0);
-  final columns = (width / radarStatsCellPixels).ceil();
-  final cells = Uint16List(columns * (height / radarStatsCellPixels).ceil() * radarDbzBands);
   for (var j = 0; j < g.rowMap.length; j++) {
     if (g.rowMap[j] < 0 || g.rowMap[j] >= g.size || (j > 0 && g.rowMap[j] < g.rowMap[j - 1])) {
       throw ArgumentError('radar image: expected a non-decreasing row map within source rows 0..${g.size - 1}, '
@@ -147,12 +145,9 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
     for (final rect in g.decorations) {
       if (y >= rect.top && y < rect.bottom) row.fillRange(rect.left, min(rect.right, width), 0);
     }
-    final cellRow = (y ~/ radarStatsCellPixels) * columns;
     for (var x = 0; x < width; x++) {
       final i = row[x];
-      if (i == 0) continue;
-      counts[i - 1]++;
-      cells[(cellRow + x ~/ radarStatsCellPixels) * radarDbzBands + (i - 1) ~/ radarDbzBandWidth]++;
+      if (i != 0) counts[i - 1]++;
     }
     while (k < outHeight && outRows[k] == y) {
       final o = k * outWidth;
@@ -169,9 +164,6 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
       imageWidth: width,
       imageHeight: height,
       pixelsPerDbz: counts,
-      cellBandPixels: cells,
-      gridColumns: columns,
-      gridRows: (height / radarStatsCellPixels).ceil(),
     ),
   );
 }

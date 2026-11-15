@@ -1,4 +1,3 @@
-import 'radar_echo_stats.dart';
 import 'radar_frame_repository.dart' show RadarFrame;
 import 'radar_source.dart';
 
@@ -37,9 +36,6 @@ class RadarLoop {
   /// cached frames of the window, all ready.
   final List<RadarSlot> slots;
 
-  /// Echo statistics of the newest ready slot; null when no slot is ready.
-  final RadarEchoStats? newestStats;
-
   /// The frame list could not be fetched, or is stale
   /// ([RadarStaleListException]); [slots] then come from the cache.
   final RadarDataException? listError;
@@ -47,5 +43,5 @@ class RadarLoop {
   /// Slots are still being fetched or processed.
   final bool loading;
 
-  const RadarLoop({required this.slots, required this.newestStats, required this.loading, this.listError});
+  const RadarLoop({required this.slots, required this.loading, this.listError});
 }

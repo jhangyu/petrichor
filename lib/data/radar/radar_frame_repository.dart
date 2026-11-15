@@ -21,7 +21,7 @@ export 'radar_loop.dart';
 /// Cache sub-directory (one sub-directory per source); the suffix changes
 /// whenever processing output changes, so frames made by an older pipeline are
 /// never shown.
-const radarFrameCacheDirName = 'radar_webp_2048_v1';
+const radarFrameCacheDirName = 'radar_webp_2048_v2';
 
 /// Frames processed at once (one isolate each). Measured on the Mac
 /// (docs/logs/2026-11-15/radar-perf-handover.md §9): 2 workers are 2.1x
@@ -37,10 +37,10 @@ const radarFetchWorkers = 4;
 /// except in tests.
 typedef RadarFrameProcess = Future<ProcessedRadarFrame> Function(Uint8List png, RadarImageGeometry geometry);
 
-/// Cache files per frame: `<key>.webp` (lossless WebP) and `<key>.stats.gz`
-/// (gzip of [RadarEchoStats.toBytes]; the cell grid is mostly zeros); key =
-/// observation time `yyyyMMddHHmmss` UTC (station frames have irregular seconds).
-final _cacheFilePattern = RegExp(r'^(\d{14})\.(webp|stats\.gz)$');
+/// Cache files per frame: `<key>.webp` (lossless WebP) and `<key>.stats`
+/// ([RadarEchoStats.toBytes]); key = observation time `yyyyMMddHHmmss` UTC
+/// (station frames have irregular seconds).
+final _cacheFilePattern = RegExp(r'^(\d{14})\.(webp|stats)$');
 
 String _cacheKey(DateTime t) {
   final u = t.toUtc();
@@ -52,10 +52,8 @@ DateTime _cacheKeyTime(String k) => DateTime.utc(int.parse(k.substring(0, 4)), i
     int.parse(k.substring(6, 8)), int.parse(k.substring(8, 10)), int.parse(k.substring(10, 12)), int.parse(k.substring(12, 14)));
 
 /// One processed, cached frame: transparent lossless WebP with rows linear in
-/// Web Mercator, shown as one `OverlayImage` over [bounds]. Only the strongest
-/// echo is kept per frame: the full statistics (~560 KB of cell grid each,
-/// ~110 MB for a 200-frame station loop) are held for the newest frame only
-/// ([RadarLoop.newestStats]).
+/// Web Mercator, shown as one `OverlayImage` over [bounds]. Of the echo
+/// statistics only the strongest echo is kept.
 class RadarFrame {
   final DateTime time;
   final File file;
@@ -144,8 +142,8 @@ class RadarFrameRepository {
     final cached = await _pruneCache(dir, now: now, retention: source.maxWindow);
     final ready = <String, RadarFrame>{};
     Future<RadarEchoStats> readStats(String key) async {
-      final file = File('${dir.path}/$key.stats.gz');
-      return RadarEchoStats.fromBytes(Uint8List.fromList(gzip.decode(await file.readAsBytes())), source: file.path);
+      final file = File('${dir.path}/$key.stats');
+      return RadarEchoStats.fromBytes(await file.readAsBytes(), source: file.path);
     }
 
     Future<void> readCached(String key) async {
@@ -156,23 +154,9 @@ class RadarFrameRepository {
       ready[key] = _frame(_cacheKeyTime(key), webp, await readStats(key), size);
     }
 
-    // Events go out in order; each carries the slots as they were when it was
-    // queued and the newest ready frame's statistics (re-read only when the
-    // newest ready frame changes).
-    var sending = Future<void>.value();
-    ({String key, RadarEchoStats stats})? newest;
-    Future<void> send(List<RadarSlot> slots, {required bool loading, RadarDataException? listError}) {
-      final snapshot = List<RadarSlot>.unmodifiable(slots);
-      return sending = sending.then((_) async {
-        final shown = [for (final s in snapshot) ?s.frame].lastOrNull;
-        if (shown != null) {
-          final key = _cacheKey(shown.time);
-          if (newest?.key != key) newest = (key: key, stats: await readStats(key));
-        }
-        emit(RadarLoop(
-            slots: snapshot, newestStats: shown == null ? null : newest!.stats, loading: loading, listError: listError));
-      });
-    }
+    // Each event carries the slots as they were when it was sent.
+    void send(List<RadarSlot> slots, {required bool loading, RadarDataException? listError}) =>
+        emit(RadarLoop(slots: List<RadarSlot>.unmodifiable(slots), loading: loading, listError: listError));
 
     // Cache first: the window span ending at the newest cached frame.
     final cachedSlots = <RadarSlot>[];
@@ -183,13 +167,13 @@ class RadarFrameRepository {
         cachedSlots.add(RadarSlot.ready(ready[key]!));
       }
     }
-    await send(cachedSlots, loading: true);
+    send(cachedSlots, loading: true);
 
     final List<RadarFrameRef> listed;
     try {
       listed = await source.listFrames(now: now, window: window, cancelToken: cancel);
     } on RadarDataException catch (e) {
-      await send(cachedSlots, loading: false, listError: e);
+      send(cachedSlots, loading: false, listError: e);
       return;
     }
 
@@ -201,8 +185,8 @@ class RadarFrameRepository {
       if (cached.contains(key)) await readCached(key);
       slots[key] = switch (ready[key]) { final frame? => RadarSlot.ready(frame), null => RadarSlot.pending(f.time) };
     }
-    Future<void> sendSlots({required bool loading}) => send([...slots.values], loading: loading);
-    await sendSlots(loading: true);
+    void sendSlots({required bool loading}) => send([...slots.values], loading: loading);
+    sendSlots(loading: true);
 
     final pending = [for (final f in byTime) if (slots[_cacheKey(f.time)]!.state == RadarSlotState.pending) f];
     final order = pending.isEmpty ? const <RadarFrameRef>[] : [pending.last, ...pending.sublist(0, pending.length - 1)];
@@ -237,7 +221,7 @@ class RadarFrameRepository {
         if (slot == null) break;
         slots[key] = slot;
         published++;
-        await sendSlots(loading: true);
+        sendSlots(loading: true);
       }
     }
 
@@ -250,7 +234,7 @@ class RadarFrameRepository {
     }
 
     await Future.wait([for (var i = 0; i < radarFetchWorkers; i++) worker()]);
-    await sendSlots(loading: false);
+    sendSlots(loading: false);
   }
 
   /// Deletes every file of [dir] that is not a frame file observed within
@@ -292,10 +276,9 @@ class RadarFrameRepository {
       ]);
     });
     final key = _cacheKey(f.time);
-    final stats = File('${dir.path}/$key.stats.gz');
+    final stats = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
-    await (await File('${stats.path}.tmp').writeAsBytes(gzip.encode(processed.stats.toBytes()), flush: true))
-        .rename(stats.path);
+    await (await File('${stats.path}.tmp').writeAsBytes(processed.stats.toBytes(), flush: true)).rename(stats.path);
     await (await File('${webp.path}.tmp').writeAsBytes(processed.webp, flush: true)).rename(webp.path);
     return _frame(f.time, webp, processed.stats, radarWebpSize(processed.webp));
   }

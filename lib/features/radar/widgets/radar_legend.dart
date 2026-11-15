@@ -3,7 +3,9 @@ import 'dart:math' show min;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
-import '../../../data/radar/radar_echo_stats.dart';
+
+/// dBZ per numbered legend band (0, 10, … 60+).
+const _bandWidth = 10;
 
 int _clampDbz(int dbz) => dbz.clamp(0, AppPalette.dbzScale.length - 1);
 
@@ -37,12 +39,12 @@ class RadarLegend extends StatelessWidget {
           ),
           Row(
             children: [
-              for (var start = 0; start < scale; start += radarDbzBandWidth)
+              for (var start = 0; start < scale; start += _bandWidth)
                 Expanded(
                   // The top band is narrower (60–65): its number reads 「60+」.
-                  flex: min(radarDbzBandWidth, scale - start),
+                  flex: min(_bandWidth, scale - start),
                   child: Text(
-                    scale - start < radarDbzBandWidth ? '$start+' : '$start',
+                    scale - start < _bandWidth ? '$start+' : '$start',
                     textAlign: TextAlign.center,
                     style: caption.copyWith(fontFeatures: AppType.tabular),
                   ),

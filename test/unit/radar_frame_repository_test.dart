@@ -210,10 +210,8 @@ void main() {
     expect([for (final e in events) states(e)], ['', 'pppp', 'pppr', 'rppr', 'rrpr', 'rrrr', 'rrrr']);
     expect([for (final s in events[1].slots) s.time], all, reason: 'slot times are the listed times, oldest first');
     expect([for (final e in events) e.loading], [true, true, true, true, true, true, false]);
-    expect(events[1].newestStats, isNull, reason: 'no ready slot yet');
     expect(stamps(events.last), all);
     expect(frames(events.last).first.bounds, _geometry.bounds);
-    expect(events.last.newestStats!.pixelsPerDbz[30], 1);
     expect(frames(events.last).first.significantDbz, 30, reason: '1 px of an 8 px, 1° image is over the area rule');
     final webp = frames(events.last).first.file.readAsBytesSync();
     expect(decodeRadarWebp(webp)[(3 * 8 + 3) * 4 + 3], 255);
@@ -271,7 +269,7 @@ void main() {
     final last = await load([newer], now: later, maxWindow: maxWindow).last;
     expect(stamps(last), [newer.time]);
     expect(cacheFiles(), [
-      for (final f in [outside, recent, newer]) ...['${_key(f)}.stats.gz', '${_key(f)}.webp'],
+      for (final f in [outside, recent, newer]) ...['${_key(f)}.stats', '${_key(f)}.webp'],
     ]);
   });
 
@@ -293,7 +291,7 @@ void main() {
     expect(gated.requested, [uncached.url]);
     expect(gated.cancelled, [uncached.url], reason: 'the in-flight download was cancelled, not awaited');
     expect(gated.release.isCompleted, isFalse);
-    expect(cacheFiles().where((f) => !f.endsWith('.webp') && !f.endsWith('.stats.gz')), isEmpty);
+    expect(cacheFiles().where((f) => !f.endsWith('.webp') && !f.endsWith('.stats')), isEmpty);
   }, timeout: const Timeout(Duration(seconds: 2)));
 
   test('two overlapping loads: events in order, one load after the other, no partial files', () async {
@@ -319,7 +317,7 @@ void main() {
     expect([stamps(b.first), stamps(b.last)], [recent, recent]);
     expect(b.last.loading, isFalse);
     expect(gated.requested, unorderedEquals([for (final f in window) f.url]), reason: 'the second load reads the cache');
-    expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.stats.gz', '${_key(f)}.webp']]);
+    expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.stats', '${_key(f)}.webp']]);
   });
 
   test('schedule: newest first, then oldest first; 4 downloads, 2 processes; slots published in that order', () async {
