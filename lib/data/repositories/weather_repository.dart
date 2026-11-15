@@ -22,6 +22,16 @@ final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
 // WeatherRepository
 // ============================================================================
 
+/// 縣市交界判定的寬容距離（公里）：另一縣市測站距離 ≤ 本縣市最近鄉鎮距離＋此值，即同時比較該縣市。
+// ponytail: 鄉鎮以中心點代表，交界處仍可能挑到鄰鄉鎮；要精確改用鄉鎮界多邊形。
+const double _countyBorderSlackKm = 1.0;
+
+/// [actual] = the county name as the caller passed it.
+Failure<T> _unsupportedCounty<T>(String actual, {required String location}) => Failure(
+      '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$actual」',
+      location: location,
+    );
+
 /// 天氣資料倉儲
 ///
 /// 負責與 CWA Open Data API 互動，解析天氣資料。
@@ -101,12 +111,7 @@ class WeatherRepository {
   Future<Result<List<Place>>> getTowns(String county) {
     final name = normalizeCwaName(county);
     final ids = AppConstants.townshipForecastDatasets[name];
-    if (ids == null) {
-      return Future.value(Failure(
-        '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$county」',
-        location: county,
-      ));
-    }
+    if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
     return _query(
       dataset: ids.threeDay,
       location: name,
@@ -118,7 +123,7 @@ class WeatherRepository {
 
   /// 取得離 ([latitude], [longitude]) 最近的鄉鎮。
   /// 先以最近的自動氣象站（[AppConstants.countyLookupDataset]）判定縣市，只抓該縣市鄉鎮清單；
-  /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[countyBorderSlackKm]」遠（疑似縣市交界），
+  /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[_countyBorderSlackKm]」遠（疑似縣市交界），
   /// 再抓該縣市清單一併比較。最多 3 次請求（測站＋2 縣市）。任一請求失敗即失敗。
   Future<Result<Place>> nearestTown(double latitude, double longitude) async {
     final where = '($latitude, $longitude)';
@@ -137,7 +142,7 @@ class WeatherRepository {
     if (home is Failure<List<Place>>) return home.retype<Place>();
     var best = _nearestPlace(home.data, latitude, longitude);
     if (other != null &&
-        other.km <= _distanceKm(latitude, longitude, best.latitude, best.longitude) + countyBorderSlackKm) {
+        other.km <= _distanceKm(latitude, longitude, best.latitude, best.longitude) + _countyBorderSlackKm) {
       final neighbour = await getTowns(other.county);
       if (neighbour is Failure<List<Place>>) return neighbour.retype<Place>();
       best = _nearestPlace([best, ...neighbour.data], latitude, longitude);
@@ -145,21 +150,12 @@ class WeatherRepository {
     return Success(best);
   }
 
-  /// 縣市交界判定的寬容距離（公里）：另一縣市測站距離 ≤ 本縣市最近鄉鎮距離＋此值，即同時比較該縣市。
-  // ponytail: 鄉鎮以中心點代表，交界處仍可能挑到鄰鄉鎮；要精確改用鄉鎮界多邊形。
-  static const double countyBorderSlackKm = 1.0;
-
   /// 取得 [city] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
   /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
   Future<Result<DateTime>> getForecastIssueTime(String city) async {
     final county = normalizeCwaName(city);
     final ids = AppConstants.townshipForecastDatasets[county];
-    if (ids == null) {
-      return Failure(
-        '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$city」',
-        location: city,
-      );
-    }
+    if (ids == null) return _unsupportedCounty(city, location: city);
     final dataset = ids.threeDay;
     try {
       // ponytail: 整份 file API 約 1 MB；IssueTime 位於開頭 DatasetInfo（實測位移約 1.7 KB），只取前 [_issueTimeHeadBytes]。
@@ -187,12 +183,7 @@ class WeatherRepository {
     final county = normalizeCwaName(city);
     final township = normalizeCwaName(district);
     final ids = AppConstants.townshipForecastDatasets[county];
-    if (ids == null) {
-      return Failure(
-        '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$city」',
-        location: '$city$district',
-      );
-    }
+    if (ids == null) return _unsupportedCounty(city, location: '$city$district');
     return _query(
       dataset: datasetOf(ids),
       location: '$county$township',
