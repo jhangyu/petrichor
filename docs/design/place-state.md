@@ -22,7 +22,7 @@
 縣市清單（橫向捲動）：`AppConstants.townshipForecastDatasets.keys`，共 22 縣市。搜尋只篩選所選縣市的鄉鎮清單。
 
 ## 頁面讀法
-「手動選擇」切到地點 tab：`ref.read(appTabProvider.notifier).select(AppTab.location)`（`lib/app_shell.dart`）。
+「手動選擇」切到地點 tab：`ref.read(appTabProvider.notifier).select(AppTab.location)`（`lib/core/navigation/app_tab.dart`）。
 
 ```dart
 switch (ref.watch(currentPlaceProvider)) {

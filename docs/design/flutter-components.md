@@ -26,7 +26,7 @@ Theme: `lib/core/theme/app_theme.dart` → `AppTheme.light`. The app is light-on
 | Mockup | Dart |
 |---|---|
 | `.app-shell` (480 column) + `.bottom-nav` | `AppShell()`. It uses a Material `NavigationBar` themed from tokens. The order is 天氣｜雷達｜雨量｜警特報｜地點. A tab is built on first visit, then kept alive in an `IndexedStack`. |
-| switch tab from a page (e.g. 「手動選擇」 → 地點) | `ref.read(appTabProvider.notifier).select(AppTab.location)`. `AppTab` is `weather, radar, rainfall, warnings, location` (bottom-nav order); `appTabProvider` holds the selected tab. |
+| switch tab from a page (e.g. 「手動選擇」 → 地點) | `ref.read(appTabProvider.notifier).select(AppTab.location)`. `AppTab` is `weather, radar, rainfall, warnings, location` (bottom-nav order); `appTabProvider` holds the selected tab. Both live in `lib/core/navigation/app_tab.dart`. |
 
 Each tab screen returns an `AppPageScaffold`. Do not add a `Scaffold` or `bottomNavigationBar` in a tab screen.
 
