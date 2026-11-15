@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -12,29 +11,40 @@ import '../../core/widgets/api_key_notice.dart';
 import '../../core/widgets/buttons.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
-import '../../data/models/hazard_models.dart';
 import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
 import '../../data/repositories/hazard_repository.dart';
 import '../../data/repositories/weather_repository.dart';
 import '../hazard/hazard_provider.dart';
 import '../hazard/warnings/warning_groups.dart';
+import '../hazard/warnings/warnings_section.dart';
 import '../location/place_provider.dart';
 import 'weather_provider.dart';
 import 'widgets/forecast_72h_card.dart';
-import 'widgets/hero_card.dart';
 import 'widgets/home_logic.dart';
-import 'widgets/sun_card.dart';
+import 'widgets/now_card.dart';
 import 'widgets/weekly_card.dart';
 
-/// 天氣 tab (`team-a/home.html`): current observation hero, active-warning entry,
-/// 日出日落, 未來 72 小時預報 and 7 日預報 for the current place. Each card shows
-/// its own loading / error / data state from [WeatherState]'s per-dataset Result.
-class WeatherScreen extends ConsumerWidget {
+/// 天氣 tab (`docs/design/home/final/home-v1.html`): now card (observation on the
+/// sun arc), 7 日預報, 未來 72 小時預報 and the 警特報 section at the bottom, for
+/// the current place. Each card shows its own loading / error / data state from
+/// [WeatherState]'s per-dataset Result; a missing or rejected CWA token replaces
+/// the whole page with one [ApiKeyNotice].
+class WeatherScreen extends ConsumerStatefulWidget {
   const WeatherScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WeatherScreen> createState() => _WeatherScreenState();
+}
+
+class _WeatherScreenState extends ConsumerState<WeatherScreen> {
+  /// The 警特報 section, target of the now card's jump badge.
+  final _warningsKey = GlobalKey();
+
+  static const _jumpDuration = Duration(milliseconds: 300);
+
+  @override
+  Widget build(BuildContext context) {
     final place = ref.watch(currentPlaceProvider);
     final weather = ref.watch(weatherNotifierProvider);
     void openLocationTab() => ref.read(appTabProvider.notifier).select(AppTab.settings);
@@ -83,12 +93,12 @@ class WeatherScreen extends ConsumerWidget {
         header: header,
         children: const [AppGridItem.full(child: _PullHint(loading: true))],
       ),
-      _ => _content(context, ref, header, selected.$1, weather, refresh),
+      _ => _content(context, header, selected.$1, weather, refresh),
     };
   }
 
   /// 「目前位置 · 更新於 14:10」: when the app last finished loading the home data
-  /// ([WeatherState.fetchedAt]); the observation time stays on the hero's 即時觀測 line.
+  /// ([WeatherState.fetchedAt]); the observation time stays on the now card's 即時觀測 line.
   String _subtitle(AsyncValue<CurrentPlace> place, WeatherState weather) {
     final source = switch (place) {
       AsyncData(value: PlaceSelected(source: PlaceSource.gps)) => '目前位置',
@@ -106,19 +116,51 @@ class WeatherScreen extends ConsumerWidget {
 
   Widget _content(
     BuildContext context,
-    WidgetRef ref,
     AppPageHeader header,
     Place place,
     WeatherState weather,
     VoidCallback refresh,
   ) {
-    final now = ref.read(weatherClockProvider)();
+    // Decision 13: the now card's 「現在 HH:mm」, countdown and sun position follow the
+    // minute tick. Until its first event is delivered, the same injected clock is read directly.
+    final now = switch (ref.watch(minuteTickProvider)) {
+      AsyncData(:final value) => value,
+      _ => ref.read(weatherClockProvider)(),
+    };
     final hourly = weather.hourly;
     final current = weather.current;
     final warnings = ref.watch(activeWarningsProvider);
+    final warningsResult = switch (warnings) {
+      AsyncData(:final value) => value,
+      _ => null,
+    };
+    final apiKeyIssue = _apiKeyIssue([
+      current,
+      hourly,
+      weather.weekly,
+      weather.sun,
+      weather.hourlyIssuedAt,
+      warningsResult,
+    ]);
+    if (apiKeyIssue != null) {
+      return AppPageScaffold(
+        header: header,
+        onRefresh: () async => refresh(),
+        children: [
+          AppGridItem.full(child: ApiKeyNotice(issue: apiKeyIssue)),
+          const AppGridItem.full(
+            child: EmptyState(
+              title: '天氣資料需要授權碼',
+              text: '現況、日出日落、7 日、72 小時與警特報都使用同一組授權碼，所以整頁只顯示這一則提示。',
+              icon: Icons.key_outlined,
+            ),
+          ),
+        ],
+      );
+    }
     final datasets = AppConstants.townshipForecastDatasets[place.county];
-    final groups = switch (warnings) {
-      AsyncData(value: Success(:final data)) => groupsForCounty(groupWarnings(data), place.county),
+    final countyWarnings = switch (warningsResult) {
+      Success(:final data) => groupsForCounty(groupWarnings(data), place.county),
       _ => const <WarningGroup>[],
     };
     // Credit only datasets whose data is on screen; none while loading.
@@ -126,10 +168,10 @@ class WeatherScreen extends ConsumerWidget {
         ? const <String>[]
         : [
             if (current is Success) AppConstants.observationDataset,
-            if (hourly is Success && datasets != null) datasets.threeDay,
             if (weather.weekly is Success && datasets != null) datasets.oneWeek,
+            if (hourly is Success && datasets != null) datasets.threeDay,
             if (weather.sun is Success) AppConstants.sunTimesDataset,
-            if (groups.isNotEmpty) ...[warningsByCountyDataset, warningBulletinsDataset],
+            if (warningsResult is Success) ...[warningsByCountyDataset, warningBulletinsDataset],
           ];
     return AppPageScaffold(
       header: header,
@@ -138,189 +180,76 @@ class WeatherScreen extends ConsumerWidget {
       children: [
         if (weather.isLoading || WindowSizeClass.of(context).width == WindowWidthClass.compact)
           AppGridItem.full(child: _PullHint(loading: weather.isLoading)),
-        ?_warningEntry(ref, warnings, groups, now),
         AppGridItem.full(
-          child: _CardFlow(
-            hero: HeroCard(
-              current: current,
-              slot: hourly is Success<List<HourlyForecast>> ? currentSlot(hourly.data, now) : null,
-              onRetry: refresh,
-            ),
-            sun: SunCard(days: weather.sun, now: now, onRetry: refresh),
-            forecast: Forecast72hCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
+          child: NowCard(
+            state: nowCard(weather, now),
+            warning: countyWarnings.firstOrNull,
+            onJumpToWarnings: () =>
+                Scrollable.ensureVisible(_warningsKey.currentContext!, duration: _jumpDuration),
+            onRetry: refresh,
+          ),
+        ),
+        AppGridItem.full(
+          child: _ForecastFlow(
             weekly: WeeklyCard(
               weekly: weather.weekly,
               currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,
               now: now,
               onRetry: refresh,
             ),
+            forecast: Forecast72hCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
           ),
         ),
+        AppGridItem.full(child: WarningsSection(key: _warningsKey, county: place.county)),
       ],
     );
   }
 
-  /// `.warn-entry`: highest active warning for the county → 警特報 tab.
-  /// Loading and 「無特報」 show nothing; a failed fetch shows its error.
-  Widget? _warningEntry(
-    WidgetRef ref,
-    AsyncValue<Result<ActiveWarnings>> warnings,
-    List<WarningGroup> groups,
-    DateTime now,
-  ) {
-    final entry = switch (warnings) {
-      AsyncData(value: Failure(apiKeyIssue: final issue?)) => ApiKeyNotice(issue: issue),
-      AsyncData(value: Failure(:final message)) => _warningError(ref, message),
-      AsyncError(:final error) => _warningError(ref, '$error'),
-      AsyncData(value: Success()) => _activeEntry(ref, groups, now),
-      _ => null,
-    };
-    return entry == null ? null : AppGridItem.full(child: entry);
+  /// The first API-key failure among the page's datasets (they share one CWA token).
+  ApiKeyIssue? _apiKeyIssue(List<Result<Object?>?> results) {
+    for (final result in results) {
+      if (result case Failure(apiKeyIssue: final issue?)) return issue;
+    }
+    return null;
   }
-
-  Widget _warningError(WidgetRef ref, String message) => StatusBanner(
-    tone: StatusTone.error,
-    title: '無法取得警特報',
-    text: message,
-    actions: [RetryButton(onPressed: () => ref.invalidate(activeWarningsProvider))],
-  );
-
-  Widget? _activeEntry(WidgetRef ref, List<WarningGroup> groups, DateTime now) {
-    if (groups.isEmpty) return null;
-    final top = groups.first;
-    final more = groups.length > 1 ? ' · 另有 ${groups.length - 1} 則' : '';
-    return Semantics(
-      button: true,
-      label: '${top.name}，查看詳情',
-      child: InkWell(
-        onTap: () => ref.read(appTabProvider.notifier).select(AppTab.warnings),
-        borderRadius: BorderRadius.circular(AppRadius.medium),
-        child: StatusBanner(
-          tone: top.level == null || top.level == 1 ? StatusTone.alert1 : StatusTone.alert3,
-          title: '${top.name} · ${top.isUpcoming(now) ? '即將生效' : '生效中'}',
-          text: '${_range(top.start, top.end)}$more',
-        ),
-      ),
-    );
-  }
-
-  String _range(DateTime start, DateTime end) =>
-      '${monthDay(taiwanWall(start))} ${clockText(start)} – ${monthDay(taiwanWall(end))} ${clockText(end)}';
 }
 
-/// The four data cards. Cards sit in a row only while each keeps at least a
-/// grid column of width: hero beside sun, then 72 小時 beside 7 日; otherwise
-/// they stack in reading order.
-class _CardFlow extends StatelessWidget {
-  const _CardFlow({required this.hero, required this.sun, required this.forecast, required this.weekly});
+/// 7 日 beside 未來 72 小時 (2 : 3 parts) once three grid columns fit; otherwise
+/// stacked, 7 日 first (reading order).
+class _ForecastFlow extends StatelessWidget {
+  const _ForecastFlow({required this.weekly, required this.forecast});
 
-  final Widget hero;
-  final Widget sun;
-  final Widget forecast;
   final Widget weekly;
+  final Widget forecast;
 
-  /// Share of the lower row taken by the 72 小時 card (3 of 5 parts).
-  static const _forecastFlex = 3;
   static const _weeklyFlex = 2;
-  static const _cardCount = 4;
+  static const _forecastFlex = 3;
+
+  /// Grid columns needed before the two cards share a row.
+  static const _rowColumns = 3;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        final columns = AppGrid.columnsFor(box.maxWidth, spanUnits: _cardCount);
-        Widget pair(Widget a, Widget b, {int aFlex = 1, int bFlex = 1}) => Row(
+        if (AppGrid.columnsFor(box.maxWidth, spanUnits: _rowColumns) < _rowColumns) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppLayout.gridGap,
+            children: [weekly, forecast],
+          );
+        }
+        return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: AppLayout.gridGap,
           children: [
-            Expanded(flex: aFlex, child: a),
-            Expanded(flex: bFlex, child: b),
+            Expanded(flex: _weeklyFlex, child: weekly),
+            Expanded(flex: _forecastFlex, child: forecast),
           ],
-        );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: AppLayout.gridGap,
-          children: switch (columns) {
-            1 => [hero, sun, forecast, weekly],
-            2 => [_EqualHeightPair(gap: AppLayout.gridGap, children: [hero, sun]), forecast, weekly],
-            _ => [
-              _EqualHeightPair(gap: AppLayout.gridGap, children: [hero, sun]),
-              pair(forecast, weekly, aFlex: _forecastFlex, bFlex: _weeklyFlex),
-            ],
-          },
         );
       },
     );
   }
-}
-
-/// Two equal-width cards side by side, both as tall as the taller one. A custom
-/// layout because IntrinsicHeight cannot measure SunCard's LayoutBuilder.
-class _EqualHeightPair extends MultiChildRenderObjectWidget {
-  const _EqualHeightPair({required this.gap, required super.children});
-
-  final double gap;
-
-  @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderEqualHeightPair(gap);
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderEqualHeightPair renderObject,
-  ) => renderObject.gap = gap;
-}
-
-class _PairParentData extends ContainerBoxParentData<RenderBox> {}
-
-class _RenderEqualHeightPair extends RenderBox
-    with
-        ContainerRenderObjectMixin<RenderBox, _PairParentData>,
-        RenderBoxContainerDefaultsMixin<RenderBox, _PairParentData> {
-  _RenderEqualHeightPair(this._gap);
-
-  double _gap;
-  set gap(double value) {
-    if (value == _gap) return;
-    _gap = value;
-    markNeedsLayout();
-  }
-
-  @override
-  void setupParentData(RenderBox child) {
-    if (child.parentData is! _PairParentData) child.parentData = _PairParentData();
-  }
-
-  @override
-  void performLayout() {
-    final first = firstChild!;
-    final second = childAfter(first)!;
-    final width = (constraints.maxWidth - _gap) / 2;
-    final loose = BoxConstraints(minWidth: width, maxWidth: width);
-    first.layout(loose, parentUsesSize: true);
-    second.layout(loose, parentUsesSize: true);
-    final height = first.size.height > second.size.height
-        ? first.size.height
-        : second.size.height;
-    final tight = BoxConstraints.tightFor(width: width, height: height);
-    for (final child in [first, second]) {
-      if (child.size.height != height) {
-        child.layout(tight, parentUsesSize: true);
-      }
-    }
-    (first.parentData! as _PairParentData).offset = Offset.zero;
-    (second.parentData! as _PairParentData).offset = Offset(width + _gap, 0);
-    size = constraints.constrain(Size(constraints.maxWidth, height));
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) =>
-      defaultPaint(context, offset);
-
-  @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
-      defaultHitTestChildren(result, position: position);
 }
 
 /// `.ptr`: pull-to-refresh hint; while loading, the spinner pill 「載入天氣資料…」.

@@ -4,13 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/layout/adaptive.dart';
 import 'core/theme/app_tokens.dart';
 import 'features/hazard/rainfall_screen.dart';
-import 'features/hazard/warnings_screen.dart';
 import 'features/radar/radar_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/weather/weather_screen.dart';
 
-/// The 5 bottom-navigation tabs, in display order.
-enum AppTab { weather, radar, rainfall, warnings, settings }
+/// The 4 bottom-navigation tabs, in display order.
+enum AppTab { weather, radar, rainfall, settings }
 
 /// Selected tab. Pages switch tabs with
 /// `ref.read(appTabProvider.notifier).select(AppTab.settings)` (e.g. 「手動選擇」).
@@ -23,7 +22,7 @@ class AppTabNotifier extends Notifier<AppTab> {
   void select(AppTab tab) => state = tab;
 }
 
-/// Full-window shell with the 5 tabs (天氣｜雷達｜雨量｜警特報｜設定): bottom
+/// Full-window shell with the 4 tabs (天氣｜雷達｜雨量｜設定): bottom
 /// [NavigationBar] on compact-width windows, [NavigationRail] on the left
 /// otherwise ([WindowSizeClass.usesRail]). A tab is built on first visit and
 /// then kept alive in an [IndexedStack], so radar frames are not fetched until
@@ -40,7 +39,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     AppTab.weather: ('天氣', Icons.home_outlined, WeatherScreen()),
     AppTab.radar: ('雷達', Icons.radar, RadarScreen()),
     AppTab.rainfall: ('雨量', Icons.water_drop_outlined, RainfallScreen()),
-    AppTab.warnings: ('警特報', Icons.warning_amber_outlined, WarningsScreen()),
     AppTab.settings: ('設定', Icons.settings_outlined, SettingsScreen()),
   };
 
@@ -75,7 +73,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                 onDestinationSelected: _select,
                 labelType: NavigationRailLabelType.all,
                 groupAlignment: _railGroupAlignment,
-                // Short landscape windows (720x360) cannot fit 5 labelled destinations.
+                // Short landscape windows (720x360) cannot fit every labelled destination.
                 scrollable: true,
                 backgroundColor: AppPalette.bg1,
                 indicatorColor: AppPalette.brandBgSubtle,

@@ -16,15 +16,22 @@ import 'home_logic.dart';
 };
 
 /// Weather icon for a CWA 天氣現象 text; [text] is the semantics label.
+/// [night] swaps the sun glyphs for moon glyphs (sun → moon, partly → moon-partly).
 class WeatherGlyphIcon extends StatelessWidget {
-  const WeatherGlyphIcon({super.key, required this.text, required this.size});
+  const WeatherGlyphIcon({super.key, required this.text, required this.size, this.night = false});
 
   final String? text;
   final double size;
+  final bool night;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, color) = weatherGlyphStyle(weatherGlyph(text));
+    final glyph = weatherGlyph(text);
+    final (icon, color) = switch (glyph) {
+      WeatherGlyph.sun when night => (Icons.nightlight_outlined, AppPalette.brandFg),
+      WeatherGlyph.partly when night => (Icons.nights_stay_outlined, AppPalette.brandFg),
+      _ => weatherGlyphStyle(glyph),
+    };
     return Icon(icon, size: size, color: color, semanticLabel: text);
   }
 }

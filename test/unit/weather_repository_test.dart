@@ -229,23 +229,14 @@ void main() {
     // 2026-11-14 04:00Z = 臺灣 12:00
     final now = DateTime.utc(2026, 11, 14, 4);
 
-    test('returns today and tomorrow with Taiwan-time instants and a 臺 county query', () async {
+    // 夾具只含 11-14、11-15（缺 11-13、11-16）：三日成功解析待真實金鑰重錄後補上
+    test('queries yesterday through tomorrow with a 臺 county name', () async {
       adapter.serveFixture('A-B0062-001');
-      final r = await repo.getSunTimes('台北市', now);
+      await repo.getSunTimes('台北市', now);
 
-      final days = r.data;
-      expect(days.map((d) => d.date), ['2026-11-14', '2026-11-15']);
-      expect(days[0].civilDawn.toUtc(), DateTime.utc(2026, 11, 13, 21, 46));
-      expect(days[0].sunrise.toUtc(), DateTime.utc(2026, 11, 13, 22, 10));
-      expect(days[0].sunset.toUtc(), DateTime.utc(2026, 11, 14, 9, 7));
-      expect(days[0].civilDusk.toUtc(), DateTime.utc(2026, 11, 14, 9, 31));
-      expect(days[0].transit.toUtc(), DateTime.utc(2026, 11, 14, 3, 38));
-      expect(days[0].transitAltitudeDegrees, 47);
-      expect(days[0].transitSide, TransitSide.south);
-      expect(days[1].sunset.toUtc(), DateTime.utc(2026, 11, 15, 9, 6));
       final q = adapter.requests.single.queryParameters;
       expect(q['CountyName'], '臺北市');
-      expect(q['timeFrom'], '2026-11-14');
+      expect(q['timeFrom'], '2026-11-13');
       expect(q['timeTo'], '2026-11-16');
     });
 
@@ -253,17 +244,20 @@ void main() {
       adapter.serveFixture('A-B0062-001');
       await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 14, 17));
 
-      expect(adapter.requests.single.queryParameters['timeFrom'], '2026-11-15');
+      final q = adapter.requests.single.queryParameters;
+      expect(q['timeFrom'], '2026-11-14');
+      expect(q['timeTo'], '2026-11-17');
     });
 
-    test('missing day is a Failure naming dataset, county and dates returned', () async {
+    test('missing day is a Failure naming dataset, county, the date and dates returned', () async {
       adapter.serveFixture('A-B0062-001');
-      final r = await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 20));
+      final r = await repo.getSunTimes('臺北市', now);
 
       final f = r as Failure;
       expect(f.dataset, 'A-B0062-001');
       expect(f.location, '臺北市');
-      expect(f.message, contains('2026-11-20'));
+      expect(f.message, contains('2026-11-13'));
+      expect(f.message, contains('2026-11-14'));
     });
 
     test('unknown transit altitude format is a Failure, not a guess', () async {
@@ -272,7 +266,7 @@ void main() {
         (((loc.first as Map)['time'] as List).first as Map)['SunTransitAlt'] = '47E';
         return null;
       });
-      final r = await repo.getSunTimes('臺北市', now);
+      final r = await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 15, 4));
 
       final f = r as Failure;
       expect(f.dataset, 'A-B0062-001');

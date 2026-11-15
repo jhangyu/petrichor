@@ -85,8 +85,14 @@ class LevelDot extends StatelessWidget {
   }
 }
 
+/// Emphasis of a [MetricTile]'s value: [next] = `.tile--next` (brand-subtle
+/// tile, the coming event), [past] = `.tile--past` (muted value: a passed event
+/// or a low reading), [rain] = `.tile--rain` (rain-coloured value).
+enum MetricTone { normal, next, past, rain }
+
 /// `.metric`: label + value tile. [onHero] = `.hero .metric` (bg-1 with
-/// stroke-3 edge instead of bg-2).
+/// stroke-3 edge instead of bg-2). [dense] = `.tile` (no icon, padding 8,
+/// bg-1 with stroke-3 edge) for 4-column grids.
 class MetricTile extends StatelessWidget {
   const MetricTile({
     super.key,
@@ -94,22 +100,37 @@ class MetricTile extends StatelessWidget {
     required this.value,
     this.icon,
     this.onHero = false,
-  });
+    this.dense = false,
+    this.tone = MetricTone.normal,
+  }) : assert(!dense || icon == null, 'a dense tile has no icon');
 
   final String label;
   final String value;
   final IconData? icon;
   final bool onHero;
+  final bool dense;
+  final MetricTone tone;
 
   @override
   Widget build(BuildContext context) {
     final glyph = icon;
+    final edged = onHero || dense;
+    final next = tone == MetricTone.next;
+    final valueStyle = switch (tone) {
+      MetricTone.past => AppType.body1.copyWith(color: AppPalette.fg3),
+      MetricTone.rain => AppType.body1Strong.copyWith(color: AppPalette.rainFg),
+      MetricTone.normal || MetricTone.next => AppType.body1Strong.copyWith(color: AppPalette.fg1),
+    };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
+      padding: dense
+          ? const EdgeInsets.all(AppSpace.s8)
+          : const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
       decoration: BoxDecoration(
-        color: onHero ? AppPalette.bg1 : AppPalette.bg2,
+        color: next ? AppPalette.brandBgSubtle : (edged ? AppPalette.bg1 : AppPalette.bg2),
         borderRadius: BorderRadius.circular(AppRadius.small),
-        border: onHero ? Border.all(color: AppPalette.stroke3, width: AppStroke.thin) : null,
+        border: next
+            ? Border.all(color: AppPalette.brandStrokeSubtle, width: AppStroke.thin)
+            : (edged ? Border.all(color: AppPalette.stroke3, width: AppStroke.thin) : null),
       ),
       child: Row(
         spacing: AppSpace.s8,
@@ -119,12 +140,17 @@ class MetricTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                Text(
+                  label,
+                  style: next
+                      ? AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600)
+                      : AppType.caption1.copyWith(color: AppPalette.fg3),
+                ),
                 Text(
                   value,
                   softWrap: false,
                   overflow: TextOverflow.ellipsis,
-                  style: AppType.body1Strong.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+                  style: valueStyle.copyWith(fontFeatures: AppType.tabular),
                 ),
               ],
             ),
@@ -136,12 +162,14 @@ class MetricTile extends StatelessWidget {
 }
 
 /// `.metric-grid`: equal columns, gap 8; rows stretch to the taller tile.
-/// Two columns, or every tile in one row once the grid is at least
+/// [columns] fixes the column count (`.tiles`, 4 across); otherwise two
+/// columns, or every tile in one row once the grid is at least
 /// [AppLayout.cardWideWidth] wide.
 class MetricGrid extends StatelessWidget {
-  const MetricGrid({super.key, required this.children});
+  const MetricGrid({super.key, required this.children, this.columns});
 
   final List<MetricTile> children;
+  final int? columns;
 
   static const _narrowColumns = 2;
 
@@ -149,7 +177,8 @@ class MetricGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= AppLayout.cardWideWidth ? children.length : _narrowColumns;
+        final columns =
+            this.columns ?? (constraints.maxWidth >= AppLayout.cardWideWidth ? children.length : _narrowColumns);
         final rows = <Widget>[];
         for (var i = 0; i < children.length; i += columns) {
           final row = children.sublist(i, (i + columns).clamp(0, children.length));

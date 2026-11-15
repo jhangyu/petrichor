@@ -1,6 +1,11 @@
+import 'package:cwb_flutter/data/models/place.dart';
 import 'package:cwb_flutter/data/models/weather_models.dart';
+import 'package:cwb_flutter/data/repositories/weather_repository.dart';
+import 'package:cwb_flutter/features/weather/weather_provider.dart';
 import 'package:cwb_flutter/features/weather/widgets/home_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+const taipei = Place(county: '臺北市', town: '中正區', latitude: 25.0375, longitude: 121.5637);
 
 /// Taiwan wall time 2026-11-14 hh:mm as an instant.
 DateTime tw(int day, int hour, [int minute = 0]) => DateTime.utc(2026, 11, day, hour - 8, minute);
@@ -30,19 +35,86 @@ HourlyForecast slot(DateTime start, {double? t, int? pop}) => HourlyForecast(
 );
 
 void main() {
-  test('sun line counts to sunset by day, to sunrise before dawn, to tomorrow after sunset', () {
-    final today = sunDay(14);
-    final tomorrow = sunDay(15);
-    expect(sunNowLine(today, tomorrow, tw(14, 14)), '現在 14:00 · 距日落 3 小時 7 分');
-    expect(sunNowLine(today, tomorrow, tw(14, 6, 3)), '現在 06:03 · 距日出 7 分');
-    expect(sunNowLine(today, tomorrow, tw(14, 20)), '現在 20:00 · 已日落，距明天日出 10 小時 10 分');
-    expect(sunNowLine(today, null, tw(14, 20)), '現在 20:00 · 已日落');
+  final days = [sunDay(13), sunDay(14), sunDay(15)];
+  SunNow sunAt(DateTime now) => sunNow(days, taipei, now).data;
+  List<SunTileTone> tones(SunNow s) => [for (final t in s.tiles) t.tone];
+  const n = SunTileTone.normal, next = SunTileTone.next, past = SunTileTone.past;
 
-    final noon = sunPosition(today, tw(14, 11, 38));
-    expect(noon.phase, SunPhase.daytime);
-    expect(noon.dayFraction, closeTo(0.5, 0.01));
-    expect(sunPosition(today, tw(14, 5)).dayFraction, 0);
-    expect(sunPosition(today, tw(14, 18)).dayFraction, 1);
+  test('daytime: arc from sunrise to sunset, counts to sunset, sunset tile next', () {
+    final s = sunAt(tw(14, 14));
+    expect(s.phase, SunPhase.daytime);
+    expect(s.arcFraction, closeTo(470 / 657, 1e-9));
+    expect(s.nextEvent, tw(14, 17, 7));
+    expect(s.note, '現在 14:00，距日落 3 小時 7 分');
+    expect(s.elevationDegrees, greaterThan(0));
+    expect(s.tilesAreTomorrow, isFalse);
+    expect(tones(s), [past, past, next, n]);
+    expect(s.tilesMeta, '今天 · 白晝 10 小時 57 分');
+  });
+
+  test('before sunrise: night arc starts at yesterday sunset, today row with sunrise next', () {
+    final s = sunAt(tw(14, 5, 40));
+    expect(s.phase, SunPhase.beforeSunrise);
+    expect(s.arcFraction, closeTo(753 / 783, 1e-9));
+    expect(s.nextEvent, tw(14, 6, 10));
+    expect(s.note, '現在 05:40，日出前，距日出 30 分');
+    expect(s.elevationDegrees, lessThan(0));
+    expect(s.day.date, '2026-11-14');
+    expect(tones(s), [n, next, n, n]);
+  });
+
+  test('after sunset: counts to tomorrow sunrise, tiles switch to tomorrow only after 暮光', () {
+    final dusk = sunAt(tw(14, 17, 20));
+    expect(dusk.phase, SunPhase.afterSunset);
+    expect(dusk.tilesAreTomorrow, isFalse);
+    expect(tones(dusk), [past, past, past, next]);
+
+    final s = sunAt(tw(14, 21, 40));
+    expect(s.arcFraction, closeTo(273 / 783, 1e-9));
+    expect(s.nextEvent, tw(15, 6, 10));
+    expect(s.note, '現在 21:40，已日落，距明天日出 8 小時 30 分');
+    expect(s.day.date, '2026-11-14');
+    expect(s.tilesAreTomorrow, isTrue);
+    expect(s.tilesDay.date, '2026-11-15');
+    expect(tones(s), [n, next, n, n]);
+    expect(s.tilesMeta, '明天 11/15 · 白晝 10 小時 57 分');
+  });
+
+  test('sun data not covering now fails naming the expected and actual dates', () {
+    String message(DateTime now) => (sunNow(days, taipei, now) as Failure<SunNow>).message;
+    expect(message(tw(16, 12)), contains('期望 2026-11-16，實際 2026-11-13–2026-11-15'));
+    expect(message(tw(13, 5)), contains('期望 2026-11-12'));
+    expect(message(tw(15, 20)), contains('期望 2026-11-16'));
+  });
+
+  test('now card keeps the observation when sun data fails', () {
+    final obs = CurrentWeather(
+      stationName: '臺北',
+      countyName: '臺北市',
+      townName: '中正區',
+      distanceKm: 1,
+      observedAt: tw(14, 14),
+      temperature: 22,
+      humidity: null,
+      windSpeed: null,
+      windDirection: null,
+      weather: null,
+      dailyHigh: null,
+      dailyLow: null,
+    );
+    NowCardReady card(Result<List<SunDay>> sun) => nowCard(
+      WeatherState(location: taipei, current: Success(obs), sun: sun, isLoading: false),
+      tw(14, 14),
+    ) as NowCardReady;
+
+    final failed = card(const Failure('逾時', dataset: sunDataset));
+    expect(failed.observation, same(obs));
+    expect((failed.sun as Failure).message, '逾時');
+    expect(failed.slot, isNull);
+
+    final stale = card(Success([sunDay(12)]));
+    expect((stale.sun as Failure).message, contains('期望 2026-11-14'));
+    expect(card(Success(days)).sun, isA<Success<SunNow>>());
   });
 
   test('day labels use the Taiwan calendar date, not UTC', () {

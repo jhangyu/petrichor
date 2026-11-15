@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
@@ -12,7 +14,7 @@ class WeatherState {
   final Result<List<HourlyForecast>>? hourly;
   final Result<List<DailyForecast>>? weekly;
 
-  /// [今天, 明天] 的日出日沒
+  /// [昨天, 今天, 明天] 的日出日沒
   final Result<List<SunDay>>? sun;
 
   /// 72 小時預報（[hourly] 同一資料集）的發布時間
@@ -40,6 +42,38 @@ class WeatherState {
 
 /// 首頁「今天」的時鐘（測試可覆寫）
 final weatherClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// 建立計時器的函式（測試可覆寫為假計時器）
+typedef TimerFactory = Timer Function(Duration delay, void Function() callback);
+
+final minuteTimerFactoryProvider = Provider<TimerFactory>((ref) => Timer.new);
+
+/// 每分鐘整點對齊的時鐘節拍（值為 [weatherClockProvider] 當下時刻）；訂閱即先送出一次。
+/// 首頁「現在 HH:mm」、倒數與太陽位置據此重算；不輪詢資料。
+final minuteTickProvider = StreamProvider<DateTime>((ref) {
+  final clock = ref.watch(weatherClockProvider);
+  final schedule = ref.watch(minuteTimerFactoryProvider);
+  late final StreamController<DateTime> controller;
+  Timer? timer;
+  void arm() {
+    final now = clock();
+    final intoMinute = Duration(seconds: now.second, milliseconds: now.millisecond, microseconds: now.microsecond);
+    timer = schedule(const Duration(minutes: 1) - intoMinute, () {
+      controller.add(clock());
+      arm();
+    });
+  }
+
+  controller = StreamController<DateTime>(
+    onListen: () {
+      controller.add(clock());
+      arm();
+    },
+    onCancel: () => timer?.cancel(),
+  );
+  ref.onDispose(controller.close);
+  return controller.stream;
+});
 
 /// 依目前地點（[currentPlaceProvider]）載入首頁資料；地點變更即重新載入。
 class WeatherNotifier extends Notifier<WeatherState> {
