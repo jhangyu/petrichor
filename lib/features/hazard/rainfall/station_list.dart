@@ -60,7 +60,7 @@ class _StationListCardState extends State<StationListCard> {
   @override
   Widget build(BuildContext context) {
     final counties = countyChipOrder(widget.stations, widget.county);
-    final inScope = _county == null ? widget.stations : widget.stations.where((s) => s.county == _county).toList();
+    final inScope = stationsInScope(widget.stations, _county);
     final sorted = sortStations(inScope, _sort);
     final sortLabel = _sort == StationSort.rainfall ? '雨量高到低' : '站名';
     return AppCard(
@@ -83,51 +83,7 @@ class _StationListCardState extends State<StationListCard> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, AppSpace.s12),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: AppSpace.s12,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            spacing: AppSpace.s4,
-                            children: [
-                              Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
-                              Text(
-                                '${_county ?? '全部縣市'} · ${sorted.length} 站 · 依$sortLabel',
-                                style: AppType.caption1.copyWith(color: AppPalette.fg3),
-                              ),
-                            ],
-                          ),
-                        ),
-                        AppButton(
-                          label: '排序',
-                          icon: Icons.tune,
-                          variant: AppButtonVariant.subtle,
-                          small: true,
-                          onPressed: _toggleSort,
-                        ),
-                      ],
-                    ),
-                    if (wide)
-                      Wrap(spacing: AppSpace.s8, runSpacing: AppSpace.s8, children: chips)
-                    else
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(spacing: AppSpace.s8, children: chips),
-                      ),
-                  ],
-                ),
-              ),
+              _header(wide: wide, chips: chips, count: sorted.length, sortLabel: sortLabel),
               if (columns > 1)
                 Padding(
                   padding: const EdgeInsets.all(AppSpace.s16),
@@ -135,26 +91,77 @@ class _StationListCardState extends State<StationListCard> {
                 )
               else
                 ...rows,
-              if (sorted.length > collapsed)
-                Container(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s16, AppSpace.s12),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: AppButton(
-                    label: _expanded ? '收合' : '顯示全部 ${sorted.length} 站',
-                    icon: _expanded ? Icons.expand_less : Icons.expand_more,
-                    variant: AppButtonVariant.subtle,
-                    small: true,
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                  ),
-                ),
+              if (sorted.length > collapsed) _showAllFooter(sorted.length),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _header({required bool wide, required List<Widget> chips, required int count, required String sortLabel}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, AppSpace.s12),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpace.s12,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: AppSpace.s4,
+                  children: [
+                    Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
+                    Text(
+                      '${_county ?? '全部縣市'} · $count 站 · 依$sortLabel',
+                      style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                    ),
+                  ],
+                ),
+              ),
+              AppButton(
+                label: '排序',
+                icon: Icons.tune,
+                variant: AppButtonVariant.subtle,
+                small: true,
+                onPressed: _toggleSort,
+              ),
+            ],
+          ),
+          if (wide)
+            Wrap(spacing: AppSpace.s8, runSpacing: AppSpace.s8, children: chips)
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(spacing: AppSpace.s8, children: chips),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _showAllFooter(int count) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s16, AppSpace.s12),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: AppButton(
+        label: _expanded ? '收合' : '顯示全部 $count 站',
+        icon: _expanded ? Icons.expand_less : Icons.expand_more,
+        variant: AppButtonVariant.subtle,
+        small: true,
+        onPressed: () => setState(() => _expanded = !_expanded),
       ),
     );
   }

@@ -77,6 +77,10 @@ List<RainStation> sortStations(List<RainStation> stations, StationSort sort) {
   return sorted;
 }
 
+/// Stations of [county]; null = every station.
+List<RainStation> stationsInScope(List<RainStation> stations, String? county) =>
+    county == null ? stations : stations.where((s) => s.county == county).toList();
+
 /// Bucket per grid cell, same order as [RainForecastGrid.values]:
 /// 0 = blank (missing or < 1 mm), 1 = 1–5, 2 = 5–10, 3 = 10–20, 4 = ≥ 20 mm.
 List<int> forecastBuckets(RainForecastGrid grid) {
