@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雨量 — Designer 4：一眼讀完，地圖收成縮圖</title>
+<!--
+  Designer 4 — glanceable. Numbers first; the three map cards are collapsed to tappable
+  "thumbnail rows" (small static map + the value at the current place). Tap → full map view
+  (pushed route) with legend, observation time and, for the two accumulation layers, playback.
+  No tabs / segmented control. Order: 最近測站, 未來1hr預測, 小時累積雨量, 日累積雨量, 測站今日累積雨量.
+  Frames: A 正常 · B 全螢幕地圖（日累積，播放中）· C 全螢幕地圖（未來1hr，無播放）·
+          D 載入中 · E 連線失敗 · F 無 API 授權碼 · G 無地點 · H 無降雨 · I 寬螢幕 1100 px.
+  Maps are static placeholders (Taiwan outline + coloured blobs). Light theme, tokens only, inline SVG.
+  Daily-legend swatches approximate the 17-band CWA scale with tokens; the app uses AppPalette.rainfallMapScale.
+-->
+<link rel="stylesheet" href="../../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../../components.css">
+<style>
+  /* ---------- Document frame (presentation only) ---------- */
+  .doc { width: 100%; max-width: 1400px; margin-inline: auto; padding: var(--space-32) var(--layout-gutter) var(--space-64); display: flex; flex-direction: column; gap: var(--space-40); }
+  .doc-head { display: flex; flex-direction: column; gap: var(--space-4); align-items: center; text-align: center; }
+  .doc-head p { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .doc-section { display: flex; flex-direction: column; gap: var(--space-16); }
+  .doc-section > h2 { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .stage { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .frame-col { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; max-width: 375px; min-width: 0; }
+  .frame-cap { color: var(--color-fg-2); font-weight: var(--font-weight-semibold); padding-inline: var(--space-4); }
+  .frame-cap small { display: block; font-weight: var(--font-weight-regular); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .frame .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; box-shadow: var(--shadow-16); }
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  .frame .page { gap: var(--space-12); padding-top: var(--space-12); }
+  .wide-scroll { overflow-x: auto; padding-bottom: var(--space-8); }
+  .wide-frame { width: 1100px; }
+  .wide-frame .app-shell { max-width: none; }
+
+  /* ---------- Hero numbers ---------- */
+  .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-12); }
+  .hero__num { display: flex; align-items: baseline; gap: var(--space-4); }
+  .hero__unit { color: var(--color-fg-3); font-size: var(--type-body1-size); }
+  .hero__label { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .station-name { display: flex; align-items: center; gap: var(--space-4); color: var(--color-fg-2); }
+
+  /* ---------- Threshold bar (80 / 200 / 350 / 500 mm; widths = rainfall_logic) ---------- */
+  .thresh { display: flex; flex-direction: column; gap: var(--space-4); }
+  .thresh__bar { position: relative; display: flex; height: var(--size-dot); border-radius: var(--shape-full); overflow: hidden; background: var(--color-bg-4); }
+  .thresh__seg--1 { width: 16%; background: var(--color-alert-1-solid); }
+  .thresh__seg--2 { width: 24%; background: var(--color-alert-2-solid); }
+  .thresh__seg--3 { width: 30%; background: var(--color-alert-3-solid); }
+  .thresh__seg--4 { width: 30%; background: var(--color-alert-4-solid); }
+  .thresh__mark { position: absolute; top: calc(-1 * var(--space-4)); width: var(--stroke-thick); height: var(--space-16); background: var(--color-fg-1); }
+  .thresh__scale { display: flex; justify-content: space-between; color: var(--color-fg-3); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); font-variant-numeric: tabular-nums; }
+  .thresh__bar--idle { background: var(--color-bg-4); }
+
+  /* ---------- Thumbnail row (the new component: MapGlanceCard) ---------- */
+  .glance { display: flex; flex-direction: row; align-items: stretch; min-height: 96px; gap: var(--space-12); padding: var(--space-12); width: 100%; text-align: left; border: none; font: inherit; color: inherit; }
+  .glance__thumb { position: relative; flex: none; width: 96px; border-radius: var(--shape-small); overflow: hidden; background: var(--color-map-water); border: var(--stroke-thin) solid var(--color-stroke-2); }
+  .glance__thumb svg { width: 100%; height: 100%; }
+  .glance__zoom { position: absolute; right: var(--space-4); bottom: var(--space-4); display: flex; align-items: center; justify-content: center; width: var(--size-icon-20); height: var(--size-icon-20); border-radius: var(--shape-full); background: var(--color-bg-overlay); color: var(--color-fg-2); }
+  .glance__body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-4); }
+  .glance__title { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
+  .glance__value { display: flex; align-items: baseline; gap: var(--space-4); flex-wrap: wrap; }
+  .glance__sub { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .glance--selected { box-shadow: inset 0 0 0 var(--stroke-thick) var(--color-brand-stroke), var(--shadow-4); }
+  .glance--blocked { cursor: default; }
+
+  /* ---------- Legends ---------- */
+  .swatches { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-8); color: var(--color-fg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .sw { display: inline-flex; align-items: center; gap: var(--space-4); }
+  .sw i { width: var(--size-icon-16); height: var(--size-icon-16); border-radius: var(--shape-extra-small); }
+  .fc-1 { background: var(--color-brand-150); } .fc-2 { background: var(--color-brand-120); }
+  .fc-3 { background: var(--color-brand-90); } .fc-4 { background: var(--color-brand-60); }
+  .ramp { display: flex; flex-direction: column; gap: var(--space-4); }
+  .ramp__bar { display: flex; height: var(--size-legend-bar); border-radius: var(--shape-full); overflow: hidden; }
+  .ramp__bar i { flex: 1; }
+  .ramp__scale { display: flex; justify-content: space-between; color: var(--color-fg-3); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); font-variant-numeric: tabular-nums; }
+  .d-1 { background: var(--color-bg-6); } .d-2 { background: var(--dbz-0); } .d-3 { background: var(--dbz-10); }
+  .d-4 { background: var(--color-success-solid); } .d-5 { background: var(--dbz-20); } .d-6 { background: var(--dbz-30); }
+  .d-7 { background: var(--dbz-40); } .d-8 { background: var(--dbz-50); } .d-9 { background: var(--dbz-60); } .d-10 { background: var(--color-alert-4-solid); }
+
+  /* ---------- Map placeholder (SVG) ---------- */
+  .m-water { fill: var(--color-map-water); }
+  .m-land { fill: var(--color-map-land); stroke: var(--color-map-border); stroke-width: 0.8; }
+  .m-pin { fill: var(--color-map-pin); stroke: var(--color-bg-1); stroke-width: 1.5; }
+  .b-fc1 { fill: var(--color-brand-150); } .b-fc2 { fill: var(--color-brand-120); } .b-fc3 { fill: var(--color-brand-90); }
+  .b-d1 { fill: var(--dbz-0); } .b-d2 { fill: var(--dbz-10); } .b-d3 { fill: var(--dbz-20); }
+  .b-d4 { fill: var(--dbz-30); } .b-d5 { fill: var(--dbz-40); } .b-d6 { fill: var(--dbz-50); }
+  .blobs { opacity: 0.85; }
+
+  /* ---------- Full map view ---------- */
+  .fullmap { position: relative; height: 392px; background: var(--color-map-water); }
+  .fullmap svg.map { width: 100%; height: 100%; }
+  .fullmap--wide { height: 480px; border-radius: var(--shape-medium); overflow: hidden; }
+  .fullmap__top { position: absolute; top: var(--space-8); left: var(--space-8); right: var(--space-8); display: flex; justify-content: space-between; gap: var(--space-8); }
+  .fullmap__chip { display: inline-flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-12); border-radius: var(--shape-full); background: var(--color-bg-overlay); box-shadow: var(--shadow-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-2); }
+  .fullmap__attr { position: absolute; right: var(--space-8); bottom: var(--space-4); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); }
+  .fullmap__fab { position: absolute; right: var(--space-8); bottom: var(--space-24); }
+  .sheet { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-12) var(--space-16) var(--space-16); background: var(--color-bg-1); }
+  .sheet__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+  .skip-ctl { display: flex; align-items: center; }
+  .slider__input.fill-60 { --fill: 60%; }
+
+  /* ---------- Station rows ---------- */
+  .st-mm { font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+  .st-bar { width: 56px; height: var(--space-4); border-radius: var(--shape-full); background: var(--color-bg-4); overflow: hidden; }
+  .st-bar i { display: block; height: 100%; background: var(--color-rain-bar); }
+  .skel-line { height: var(--space-16); border-radius: var(--shape-extra-small); }
+  .skel-thumb { width: 96px; height: 96px; border-radius: var(--shape-small); flex: none; }
+
+  /* ---------- Wide layout: left summary rail + right map workspace ---------- */
+  .wide-grid { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--space-16); align-items: start; padding: var(--space-16); }
+  .wide-col { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
+  .wide-thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-12); }
+  .wide-thumbs .glance { flex-direction: column; }
+  .wide-thumbs .glance__thumb { width: 100%; height: 96px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- icons (24x24 outline) -->
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5.5v13M16 5.5v13"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M7 5.5v13M18 6l-8 6 8 6z"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M17 5.5v13M6 6l8 6-8 6z"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6-5.6 6-10.5a6 6 0 0 0-12 0C6 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></symbol>
+  <symbol id="i-spin" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+
+  <!-- map placeholders: viewBox 0 0 100 140, Taiwan outline, current place pin at Taipei -->
+  <symbol id="tw" viewBox="0 0 100 140"><path class="m-land" d="M62 4 74 12 80 26 78 42 84 52 82 66 78 82 72 100 64 120 54 134 46 130 40 112 34 100 30 84 24 68 26 52 32 38 40 24 50 12z"/></symbol>
+  <symbol id="m-fc" viewBox="0 0 100 140"><rect class="m-water" width="100" height="140"/><use href="#tw"/>
+    <g class="blobs"><ellipse class="b-fc1" cx="60" cy="24" rx="16" ry="10"/><ellipse class="b-fc2" cx="64" cy="26" rx="8" ry="5"/><ellipse class="b-fc1" cx="38" cy="96" rx="12" ry="8"/><ellipse class="b-fc3" cx="40" cy="98" rx="4" ry="3"/></g>
+    <circle class="m-pin" cx="66" cy="22" r="4"/></symbol>
+  <symbol id="m-hr" viewBox="0 0 100 140"><rect class="m-water" width="100" height="140"/><use href="#tw"/>
+    <g class="blobs"><ellipse class="b-d1" cx="62" cy="26" rx="18" ry="12"/><ellipse class="b-d2" cx="64" cy="26" rx="10" ry="7"/><ellipse class="b-d3" cx="66" cy="25" rx="4" ry="3"/><ellipse class="b-d1" cx="42" cy="104" rx="10" ry="8"/></g>
+    <circle class="m-pin" cx="66" cy="22" r="4"/></symbol>
+  <symbol id="m-day" viewBox="0 0 100 140"><rect class="m-water" width="100" height="140"/><use href="#tw"/>
+    <g class="blobs"><ellipse class="b-d1" cx="58" cy="30" rx="26" ry="18"/><ellipse class="b-d2" cx="62" cy="28" rx="16" ry="11"/><ellipse class="b-d3" cx="66" cy="26" rx="8" ry="6"/><ellipse class="b-d4" cx="70" cy="22" rx="4" ry="3"/><ellipse class="b-d1" cx="40" cy="100" rx="14" ry="12"/><ellipse class="b-d3" cx="40" cy="102" rx="6" ry="5"/><ellipse class="b-d5" cx="38" cy="104" rx="2.5" ry="2"/></g>
+    <circle class="m-pin" cx="66" cy="22" r="4"/></symbol>
+  <symbol id="m-none" viewBox="0 0 100 140"><rect class="m-water" width="100" height="140"/><use href="#tw"/><circle class="m-pin" cx="66" cy="22" r="4"/></symbol>
+  <symbol id="m-nopin" viewBox="0 0 100 140"><rect class="m-water" width="100" height="140"/><use href="#tw"/>
+    <g class="blobs"><ellipse class="b-fc1" cx="60" cy="24" rx="16" ry="10"/><ellipse class="b-fc2" cx="64" cy="26" rx="8" ry="5"/></g></symbol>
+</svg>
+
+<main class="doc">
+  <header class="doc-head">
+    <h1 class="text-title2">雨量 — Designer 4：一眼讀完，地圖收成縮圖</h1>
+    <p>先給數字；三張地圖卡收成「縮圖＋目前地點數值」一列，點開才進全螢幕地圖（含圖例、觀測時間、播放）。無分頁、無分段控制。</p>
+  </header>
+
+  <!-- ===================== A. Normal ===================== -->
+  <section class="doc-section">
+    <h2>A　正常（375 px）</h2>
+    <div class="stage">
+      <div class="frame-col frame">
+        <div class="frame-cap">A　五張卡依序顯示<small>下雨中，目前地點 臺北市 中正區</small></div>
+        <div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">臺北市 中正區 · 14:30 更新</span></div></header>
+          <div class="page">
+
+            <!-- 1 最近測站 -->
+            <section class="card">
+              <div class="card__header"><h2 class="card__title">最近測站</h2><span class="badge badge--rain">未達大雨</span></div>
+              <div class="station-name"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg><span class="text-body1-strong">臺北</span><span class="text-tertiary text-caption1">距離 1.2 km</span></div>
+              <div class="hero">
+                <div><div class="hero__num"><span class="text-large-title num">46.5</span><span class="hero__unit">mm</span></div><div class="hero__label">今日累積（自 00:00）</div></div>
+                <div class="metric-grid" style="width:148px">
+                  <div class="metric"><div><div class="metric__label">過去1小時</div><div class="metric__value">8.5 mm</div></div></div>
+                  <div class="metric"><div><div class="metric__label">過去3小時</div><div class="metric__value">21.0 mm</div></div></div>
+                </div>
+              </div>
+              <div class="thresh">
+                <div class="thresh__bar"><span class="thresh__seg--1"></span><span class="thresh__seg--2"></span><span class="thresh__seg--3"></span><span class="thresh__seg--4"></span><span class="thresh__mark" style="left:9%"></span></div>
+                <div class="thresh__scale"><span>0</span><span>80 大雨</span><span>200 豪雨</span><span>350 大豪雨</span><span>500 超大</span></div>
+              </div>
+            </section>
+
+            <!-- 2 未來1hr -->
+            <button class="card card--interactive glance" type="button" aria-label="開啟未來1小時預測地圖">
+              <span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-fc"/></svg><span class="glance__zoom"><svg class="icon icon--16" aria-hidden="true"><use href="#i-expand"/></svg></span></span>
+              <span class="glance__body">
+                <span class="glance__title"><span>未來1小時預測</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+                <span class="glance__value"><span class="text-title3 num">5–10</span><span class="hero__unit">mm</span><span class="badge badge--rain">你的位置</span></span>
+                <span class="swatches"><span class="sw"><i class="fc-1"></i>1–5</span><span class="sw"><i class="fc-2"></i>5–10</span><span class="sw"><i class="fc-3"></i>10–20</span><span class="sw"><i class="fc-4"></i>≥20</span></span>
+                <span class="glance__sub">14:00 發布 · 預報至 15:00</span>
+              </span>
+            </button>
+
+            <!-- 3 小時累積 -->
+            <button class="card card--interactive glance" type="button" aria-label="開啟小時累積雨量地圖">
+              <span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-hr"/></svg><span class="glance__zoom"><svg class="icon icon--16" aria-hidden="true"><use href="#i-expand"/></svg></span></span>
+              <span class="glance__body">
+                <span class="glance__title"><span>小時累積雨量</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+                <span class="glance__value"><span class="text-title3 num">6.5</span><span class="hero__unit">mm</span><span class="badge badge--rain">你的位置</span></span>
+                <span class="ramp"><span class="ramp__bar"><i class="d-1"></i><i class="d-2"></i><i class="d-3"></i><i class="d-4"></i><i class="d-5"></i><i class="d-6"></i><i class="d-7"></i><i class="d-8"></i><i class="d-9"></i><i class="d-10"></i></span><span class="ramp__scale"><span>0</span><span>10</span><span>40</span><span>≥100</span></span></span>
+                <span class="glance__sub">14:30 觀測 · 過去 1 小時 · 可播放</span>
+              </span>
+            </button>
+
+            <!-- 4 日累積 -->
+            <button class="card card--interactive glance" type="button" aria-label="開啟日累積雨量地圖">
+              <span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-day"/></svg><span class="glance__zoom"><svg class="icon icon--16" aria-hidden="true"><use href="#i-expand"/></svg></span></span>
+              <span class="glance__body">
+                <span class="glance__title"><span>日累積雨量</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span>
+                <span class="glance__value"><span class="text-title3 num">40–50</span><span class="hero__unit">mm</span><span class="badge badge--rain">你的位置</span></span>
+                <span class="ramp"><span class="ramp__bar"><i class="d-1"></i><i class="d-2"></i><i class="d-3"></i><i class="d-4"></i><i class="d-5"></i><i class="d-6"></i><i class="d-7"></i><i class="d-8"></i><i class="d-9"></i><i class="d-10"></i></span><span class="ramp__scale"><span>&lt;1</span><span>20</span><span>110</span><span>≥300</span></span></span>
+                <span class="glance__sub">自 00:00 起 · 14:30 觀測 · 可播放</span>
+              </span>
+            </button>
+
+            <!-- 5 測站列表 -->
+            <section class="section">
+              <div class="section__header"><h2 class="section__title">測站今日累積雨量</h2><span class="card__meta">依距離 · 前 6 站</span></div>
+              <div class="list">
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">臺北</span><span class="list-row__secondary">1.2 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:9%"></i></span><span class="st-mm">46.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">公館</span><span class="list-row__secondary">2.8 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:8%"></i></span><span class="st-mm">41.0 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">大安森林</span><span class="list-row__secondary">3.1 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:10%"></i></span><span class="st-mm">52.0 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">板橋</span><span class="list-row__secondary">6.4 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:4%"></i></span><span class="st-mm">22.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">內湖</span><span class="list-row__secondary">7.9 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:14%"></i></span><span class="st-mm">71.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">新店</span><span class="list-row__secondary">9.0 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:2%"></i></span><span class="st-mm">12.0 mm</span></div></div>
+                <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary text-brand">顯示全部 412 站</span></div><div class="list-row__trailing"><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-down"/></svg></div></button>
+              </div>
+            </section>
+          </div>
+          <nav class="bottom-nav" aria-label="主要導覽">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+            <a class="bottom-nav__item" href="#" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+          </nav>
+        </div>
+      </div>
+
+      <!-- B. Full map: daily, playing -->
+      <div class="frame-col frame">
+        <div class="frame-cap">B　全螢幕地圖：日累積（點縮圖進入）<small>地圖在此才可拖曳縮放；播放、圖例、觀測時間都在這裡</small></div>
+        <div class="app-shell">
+          <header class="app-bar app-bar--has-back">
+            <button class="btn btn--icon btn--subtle" type="button" aria-label="返回"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button>
+            <div class="app-bar__titles"><h1 class="app-bar__title">日累積雨量</h1><span class="app-bar__subtitle">自 00:00 起 · 14:30 觀測</span></div>
+          </header>
+          <div class="fullmap">
+            <svg class="map" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-day"/></svg>
+            <div class="fullmap__top"><span class="fullmap__chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>臺北市 中正區　40–50 mm</span></div>
+            <button class="btn btn--icon fab fullmap__fab" type="button" aria-label="回到目前位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            <span class="fullmap__attr">© OpenStreetMap · 中央氣象署</span>
+          </div>
+          <div class="sheet">
+            <div class="playback" style="box-shadow:none;padding:0">
+              <div class="playback__time"><span class="playback__timestamp">12:30</span><span class="playback__frame">第 5 / 30 格 · 每 30 分鐘</span></div>
+              <div class="playback__controls">
+                <button class="btn btn--icon btn--subtle" type="button" aria-label="上一格"><svg class="icon" aria-hidden="true"><use href="#i-prev"/></svg></button>
+                <button class="btn btn--icon playback__play" type="button" aria-label="暫停"><svg class="icon" aria-hidden="true"><use href="#i-pause"/></svg></button>
+                <button class="btn btn--icon btn--subtle" type="button" aria-label="下一格"><svg class="icon" aria-hidden="true"><use href="#i-next"/></svg></button>
+                <input class="slider__input" type="range" min="0" max="29" value="5" style="--fill:20%" aria-label="時間">
+              </div>
+              <div class="playback__ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>14:30</span></div>
+            </div>
+            <div class="ramp"><div class="ramp__bar"><i class="d-1"></i><i class="d-2"></i><i class="d-3"></i><i class="d-4"></i><i class="d-5"></i><i class="d-6"></i><i class="d-7"></i><i class="d-8"></i><i class="d-9"></i><i class="d-10"></i></div><div class="ramp__scale"><span>&lt;1</span><span>10</span><span>30</span><span>70</span><span>110</span><span>200</span><span>≥300 mm</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C. Full map: forecast -->
+      <div class="frame-col frame">
+        <div class="frame-cap">C　全螢幕地圖：未來1hr（無播放）<small>預報只有一格，不顯示播放列，只顯示發布時間與圖例</small></div>
+        <div class="app-shell">
+          <header class="app-bar app-bar--has-back">
+            <button class="btn btn--icon btn--subtle" type="button" aria-label="返回"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button>
+            <div class="app-bar__titles"><h1 class="app-bar__title">未來1小時預測</h1><span class="app-bar__subtitle">14:00 發布 · 預報至 15:00</span></div>
+          </header>
+          <div class="fullmap">
+            <svg class="map" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-fc"/></svg>
+            <div class="fullmap__top"><span class="fullmap__chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>臺北市 中正區　5–10 mm</span></div>
+            <button class="btn btn--icon fab fullmap__fab" type="button" aria-label="回到目前位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+            <span class="fullmap__attr">© OpenStreetMap · 中央氣象署</span>
+          </div>
+          <div class="sheet">
+            <div class="swatches"><span class="sw"><i class="fc-1"></i>1–5 mm</span><span class="sw"><i class="fc-2"></i>5–10</span><span class="sw"><i class="fc-3"></i>10–20</span><span class="sw"><i class="fc-4"></i>≥ 20</span></div>
+            <span class="glance__sub">小於 1 mm 的格點不著色。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== States ===================== -->
+  <section class="doc-section">
+    <h2>狀態集（375 px）</h2>
+    <div class="stage">
+
+      <!-- D loading -->
+      <div class="frame-col frame">
+        <div class="frame-cap">D　載入中<small>骨架：每張卡各自載入，已到的先顯示</small></div>
+        <div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">更新中…</span></div></header>
+          <div class="page">
+            <section class="card"><div class="card__header"><h2 class="card__title">最近測站</h2><svg class="icon icon--20 text-brand" aria-hidden="true"><use href="#i-spin"/></svg></div><div class="skeleton skel-line" style="width:40%"></div><div class="skeleton" style="height:var(--size-icon-48);width:60%"></div><div class="skeleton skel-line"></div></section>
+            <section class="card glance"><span class="skeleton skel-thumb"></span><span class="glance__body"><span class="skeleton skel-line" style="width:70%"></span><span class="skeleton skel-line" style="width:50%"></span><span class="skeleton skel-line"></span></span></section>
+            <section class="card glance"><span class="skeleton skel-thumb"></span><span class="glance__body"><span class="skeleton skel-line" style="width:70%"></span><span class="skeleton skel-line" style="width:50%"></span><span class="skeleton skel-line"></span></span></section>
+            <section class="card glance"><span class="skeleton skel-thumb"></span><span class="glance__body"><span class="skeleton skel-line" style="width:70%"></span><span class="skeleton skel-line" style="width:50%"></span><span class="skeleton skel-line"></span></span></section>
+            <section class="card"><div class="skeleton skel-line" style="width:45%"></div><div class="skeleton skel-line"></div><div class="skeleton skel-line"></div><div class="skeleton skel-line"></div></section>
+          </div>
+        </div>
+      </div>
+
+      <!-- E error -->
+      <div class="frame-col frame">
+        <div class="frame-cap">E　連線失敗<small>失敗的卡就地顯示錯誤＋重試，其餘卡不受影響（此例：未來1hr 與日累積失敗）</small></div>
+        <div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">臺北市 中正區</span></div></header>
+          <div class="page">
+            <section class="card"><div class="card__header"><h2 class="card__title">最近測站</h2><span class="badge badge--rain">未達大雨</span></div><div class="hero"><div class="hero__num"><span class="text-title1 num">46.5</span><span class="hero__unit">mm 今日</span></div><span class="text-tertiary text-caption1">臺北 · 1.2 km</span></div></section>
+            <div class="status-banner status-banner--error"><span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><span class="status-banner__title">未來1小時預測 無法載入</span><span class="status-banner__text">連線逾時（F-B0046-001，已等 15 秒）。</span><div class="status-banner__actions"><button class="btn btn--secondary btn--sm" type="button"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div></div></div>
+            <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-hr"/></svg></span><span class="glance__body"><span class="glance__title"><span>小時累積雨量</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span><span class="glance__value"><span class="text-title3 num">6.5</span><span class="hero__unit">mm</span></span><span class="glance__sub">14:30 觀測</span></span></button>
+            <div class="status-banner status-banner--error"><span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><span class="status-banner__title">日累積雨量 無法載入</span><span class="status-banner__text">伺服器回應 503（O-A0040-003）。</span><div class="status-banner__actions"><button class="btn btn--secondary btn--sm" type="button"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F no key -->
+      <div class="frame-col frame">
+        <div class="frame-cap">F　未設定 API 授權碼<small>整頁換成一則通知＋前往設定（既有 ApiKeyNotice）；不渲染任何卡</small></div>
+        <div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">尚未設定 API 授權碼</span></div></header>
+          <div class="page">
+            <div class="status-banner status-banner--permission"><span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-key"/></svg></span><div class="status-banner__body"><span class="status-banner__title">需要 CWA API 授權碼</span><span class="status-banner__text">雨量資料來自中央氣象署開放資料，請先到設定頁輸入授權碼。</span><div class="status-banner__actions"><button class="btn btn--primary btn--sm" type="button">前往設定</button></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- G no place -->
+      <div class="frame-col frame">
+        <div class="frame-cap">G　無地點／定位被拒<small>與地點相關的數字顯示「—」；全台地圖與測站列表（改依今日雨量排序）仍可看</small></div>
+        <div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">未選擇地點</span></div></header>
+          <div class="page">
+            <div class="status-banner status-banner--permission"><span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></span><div class="status-banner__body"><span class="status-banner__title">定位權限未開啟</span><span class="status-banner__text">開啟定位或到設定新增地點，即可看到最近測站與你的位置雨量。</span><div class="status-banner__actions"><button class="btn btn--primary btn--sm" type="button">前往設定</button></div></div></div>
+            <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-nopin"/></svg><span class="glance__zoom"><svg class="icon icon--16" aria-hidden="true"><use href="#i-expand"/></svg></span></span><span class="glance__body"><span class="glance__title"><span>未來1小時預測</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span><span class="glance__value"><span class="text-title3 num">—</span></span><span class="glance__sub">14:00 發布 · 點開看全台</span></span></button>
+            <section class="section"><div class="section__header"><h2 class="section__title">測站今日累積雨量</h2><span class="card__meta">依雨量 · 前 6 站</span></div>
+              <div class="list">
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">阿里山</span></div><div class="list-row__trailing"><span class="st-mm">188.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">竹子湖</span></div><div class="list-row__trailing"><span class="st-mm">142.0 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">宜蘭</span></div><div class="list-row__trailing"><span class="st-mm">96.5 mm</span></div></div>
+              </div></section>
+          </div>
+        </div>
+      </div>
+
+      <!-- H no rain -->
+      <div class="frame-col frame">
+        <div class="frame-cap">H　無降雨（全部為 0）<small>數字照常顯示 0；縮圖只剩底圖；列表收成一句話</small></div>
+        <div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">臺北市 中正區 · 14:30 更新</span></div></header>
+          <div class="page">
+            <section class="card">
+              <div class="card__header"><h2 class="card__title">最近測站</h2><span class="badge">無降雨</span></div>
+              <div class="station-name"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg><span class="text-body1-strong">臺北</span><span class="text-tertiary text-caption1">距離 1.2 km</span></div>
+              <div class="hero"><div><div class="hero__num"><span class="text-large-title num">0</span><span class="hero__unit">mm</span></div><div class="hero__label">今日累積（自 00:00）</div></div>
+                <div class="metric-grid" style="width:148px"><div class="metric"><div><div class="metric__label">過去1小時</div><div class="metric__value">0 mm</div></div></div><div class="metric"><div><div class="metric__label">過去3小時</div><div class="metric__value">0 mm</div></div></div></div></div>
+              <div class="thresh"><div class="thresh__bar thresh__bar--idle"></div><div class="thresh__scale"><span>0</span><span>80 大雨</span><span>200</span><span>350</span><span>500</span></div></div>
+            </section>
+            <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-none"/></svg></span><span class="glance__body"><span class="glance__title"><span>未來1小時預測</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span><span class="glance__value"><span class="text-title3 num">0</span><span class="hero__unit">mm</span></span><span class="glance__sub">14:00 發布 · 全台預報無雨</span></span></button>
+            <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-none"/></svg></span><span class="glance__body"><span class="glance__title"><span>小時累積雨量</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span><span class="glance__value"><span class="text-title3 num">0</span><span class="hero__unit">mm</span></span><span class="glance__sub">14:30 觀測 · 過去 1 小時</span></span></button>
+            <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-none"/></svg></span><span class="glance__body"><span class="glance__title"><span>日累積雨量</span><svg class="icon icon--20" aria-hidden="true"><use href="#i-chevron"/></svg></span><span class="glance__value"><span class="text-title3 num">&lt;1</span><span class="hero__unit">mm</span></span><span class="glance__sub">自 00:00 起 · 14:30 觀測</span></span></button>
+            <div class="status-banner status-banner--empty"><span class="status-banner__icon"><svg class="icon" aria-hidden="true"><use href="#i-sun"/></svg></span><div class="status-banner__body"><span class="status-banner__title">測站今日累積雨量</span><span class="status-banner__text">今天全台測站皆為 0 mm。</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Wide ===================== -->
+  <section class="doc-section">
+    <h2>I　寬螢幕（≥ 1024 px，此處 1100 px）</h2>
+    <div class="wide-scroll"><div class="frame wide-frame">
+      <div class="frame-cap">左欄＝數字（最近測站＋測站列表）；右欄＝一個共用地圖工作區，三張縮圖卡當選擇器（非分頁），選中者在下方展開為大地圖<small>同一時間只掛載一張地圖；縮圖卡不用分段控制或分頁元件</small></div>
+      <div class="app-shell">
+        <header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><span class="app-bar__subtitle">臺北市 中正區 · 14:30 更新</span></div></header>
+        <div class="wide-grid">
+          <div class="wide-col">
+            <section class="card">
+              <div class="card__header"><h2 class="card__title">最近測站</h2><span class="badge badge--rain">未達大雨</span></div>
+              <div class="station-name"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg><span class="text-body1-strong">臺北</span><span class="text-tertiary text-caption1">距離 1.2 km</span></div>
+              <div class="hero"><div><div class="hero__num"><span class="text-large-title num">46.5</span><span class="hero__unit">mm</span></div><div class="hero__label">今日累積（自 00:00）</div></div>
+                <div class="metric-grid" style="width:148px"><div class="metric"><div><div class="metric__label">過去1小時</div><div class="metric__value">8.5 mm</div></div></div><div class="metric"><div><div class="metric__label">過去3小時</div><div class="metric__value">21.0 mm</div></div></div></div></div>
+              <div class="thresh"><div class="thresh__bar"><span class="thresh__seg--1"></span><span class="thresh__seg--2"></span><span class="thresh__seg--3"></span><span class="thresh__seg--4"></span><span class="thresh__mark" style="left:9%"></span></div><div class="thresh__scale"><span>0</span><span>80</span><span>200</span><span>350</span><span>500</span></div></div>
+            </section>
+            <section class="section">
+              <div class="section__header"><h2 class="section__title">測站今日累積雨量</h2><span class="card__meta">依距離</span></div>
+              <div class="list">
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">臺北</span><span class="list-row__secondary">1.2 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:9%"></i></span><span class="st-mm">46.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">公館</span><span class="list-row__secondary">2.8 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:8%"></i></span><span class="st-mm">41.0 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">大安森林</span><span class="list-row__secondary">3.1 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:10%"></i></span><span class="st-mm">52.0 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">板橋</span><span class="list-row__secondary">6.4 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:4%"></i></span><span class="st-mm">22.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">內湖</span><span class="list-row__secondary">7.9 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:14%"></i></span><span class="st-mm">71.5 mm</span></div></div>
+                <div class="list-row"><div class="list-row__content"><span class="list-row__primary">新店</span><span class="list-row__secondary">9.0 km</span></div><div class="list-row__trailing"><span class="st-bar"><i style="width:2%"></i></span><span class="st-mm">12.0 mm</span></div></div>
+                <button class="list-row" type="button"><div class="list-row__content"><span class="list-row__primary text-brand">顯示全部 412 站</span></div><div class="list-row__trailing"><svg class="icon icon--20 icon--brand" aria-hidden="true"><use href="#i-down"/></svg></div></button>
+              </div>
+            </section>
+          </div>
+          <div class="wide-col">
+            <div class="wide-thumbs">
+              <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-fc"/></svg></span><span class="glance__body"><span class="glance__title"><span>未來1小時預測</span></span><span class="glance__value"><span class="text-title3 num">5–10</span><span class="hero__unit">mm</span></span><span class="glance__sub">14:00 發布</span></span></button>
+              <button class="card card--interactive glance" type="button"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-hr"/></svg></span><span class="glance__body"><span class="glance__title"><span>小時累積雨量</span></span><span class="glance__value"><span class="text-title3 num">6.5</span><span class="hero__unit">mm</span></span><span class="glance__sub">14:30 觀測 · 可播放</span></span></button>
+              <button class="card card--interactive glance glance--selected" type="button" aria-pressed="true"><span class="glance__thumb"><svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-day"/></svg></span><span class="glance__body"><span class="glance__title"><span>日累積雨量</span></span><span class="glance__value"><span class="text-title3 num">40–50</span><span class="hero__unit">mm</span></span><span class="glance__sub">自 00:00 起 · 14:30 觀測</span></span></button>
+            </div>
+            <div class="card card--flush">
+              <div class="fullmap fullmap--wide">
+                <svg class="map" viewBox="0 0 100 140" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="#m-day"/></svg>
+                <div class="fullmap__top"><span class="fullmap__chip"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>臺北市 中正區　40–50 mm</span></div>
+                <button class="btn btn--icon fab fullmap__fab" type="button" aria-label="回到目前位置"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+                <span class="fullmap__attr">© OpenStreetMap · 中央氣象署</span>
+              </div>
+              <div class="sheet">
+                <div class="playback" style="box-shadow:none;padding:0">
+                  <div class="playback__time"><span class="playback__timestamp">12:30</span><span class="playback__frame">第 5 / 30 格 · 每 30 分鐘</span></div>
+                  <div class="playback__controls">
+                    <button class="btn btn--icon btn--subtle" type="button" aria-label="上一格"><svg class="icon" aria-hidden="true"><use href="#i-prev"/></svg></button>
+                    <button class="btn btn--icon playback__play" type="button" aria-label="播放"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg></button>
+                    <button class="btn btn--icon btn--subtle" type="button" aria-label="下一格"><svg class="icon" aria-hidden="true"><use href="#i-next"/></svg></button>
+                    <input class="slider__input" type="range" min="0" max="29" value="5" style="--fill:20%" aria-label="時間">
+                  </div>
+                  <div class="playback__ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>14:30</span></div>
+                </div>
+                <div class="ramp"><div class="ramp__bar"><i class="d-1"></i><i class="d-2"></i><i class="d-3"></i><i class="d-4"></i><i class="d-5"></i><i class="d-6"></i><i class="d-7"></i><i class="d-8"></i><i class="d-9"></i><i class="d-10"></i></div><div class="ramp__scale"><span>&lt;1</span><span>10</span><span>30</span><span>70</span><span>110</span><span>200</span><span>≥300 mm</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+</main>
+</body>
+</html>
