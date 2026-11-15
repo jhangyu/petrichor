@@ -220,8 +220,8 @@ Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
   final Result<SunDay> todayResult = lookup(todayWall);
   final SunDay today;
   switch (todayResult) {
-    case Failure(:final message, :final dataset):
-      return Failure(message, dataset: dataset);
+    case Failure():
+      return todayResult.retype<SunNow>();
     case Success(:final data):
       today = data;
   }
@@ -239,7 +239,7 @@ Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
     phase = SunPhase.afterSunset;
     neighbour = lookup(todayWall.add(const Duration(days: 1)));
   }
-  if (neighbour case Failure(:final message, :final dataset)) return Failure(message, dataset: dataset);
+  if (neighbour case final Failure<SunDay> failure) return failure.retype<SunNow>();
   final other = (neighbour as Success<SunDay>?)?.data;
 
   double fraction(DateTime from, DateTime to) => now.difference(from).inSeconds / to.difference(from).inSeconds;
@@ -348,7 +348,7 @@ NowCardState nowCard(WeatherState state, DateTime now) {
   }
   final place = state.location;
   final Result<SunNow> sunState = switch (sun) {
-    Failure(:final message, :final dataset) => Failure(message, dataset: dataset),
+    final Failure<List<SunDay>> failure => failure.retype<SunNow>(),
     Success(:final data) when place != null => sunNow(data, place, now),
     // Invariant: WeatherState carries data only for a loaded place; surface the break instead of hiding the arc.
     Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: AppConstants.sunTimesDataset),

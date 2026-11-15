@@ -117,6 +117,31 @@ void main() {
     expect(card(Success(days)).sun, isA<Success<SunNow>>());
   });
 
+  test('now card keeps the sun failure location when re-wrapping it', () {
+    final obs = CurrentWeather(
+      stationName: '臺北',
+      countyName: '臺北市',
+      townName: '中正區',
+      observedAt: tw(14, 14),
+      temperature: 22,
+      humidity: null,
+      windSpeed: null,
+      windDirection: null,
+      weather: null,
+      dailyHigh: null,
+      dailyLow: null,
+    );
+    final state = WeatherState(
+      location: taipei,
+      current: Success(obs),
+      sun: const Failure('逾時', dataset: AppConstants.sunTimesDataset, location: '臺北市中正區'),
+      isLoading: false,
+    );
+    final sun = (nowCard(state, tw(14, 14)) as NowCardReady).sun as Failure;
+    expect(sun.location, '臺北市中正區');
+    expect(sun.dataset, AppConstants.sunTimesDataset);
+  });
+
   test('day labels use the Taiwan calendar date, not UTC', () {
     // 2026-11-14 00:30 Taiwan is still 11-13 in UTC.
     final now = tw(14, 0, 30);
