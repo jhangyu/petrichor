@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>天氣 — Designer 4：資訊層級</title>
+<!--
+  Designer 4 — information hierarchy for the 天氣 tab (home).
+  Contract: docs/logs/home-page-contract.md. Brief: docs/design/home/brief.md. Spec + widget map: home.md.
+  Page order: 1 現在 (merged now card: weather glyph on the sun arc, temperature, two labelled tile
+  groups 「體感與環境」/「太陽」, one callout list 天氣建議 + 日照), 2 7 日預報, 3 未來 72 小時預報,
+  4 特警報 = WarningsSection (the former 警特報 tab body; tab removed, arch-warnings.md option B).
+  Decision: 7 日 and 72 小時 stay separate (home.md §6). Frame G shows the explored merge, not adopted.
+  Frames — phone 375: A 白天＋有特警報；B 夜間＋無特警報；C 載入中；D 部分失敗；E 無 API key；
+  F 無地點（定位被拒）；G 探索：合併預報（未採用）。Wide 1280: W.
+  Light theme only; colours, type, spacing from tokens only; inline SVG only; no external assets.
+  Literal px below appear only in presentation chrome (frame widths) and SVG geometry.
+-->
+<link rel="stylesheet" href="../../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../../components.css">
+<style>
+  /* ---------- Document frame (presentation only) ---------- */
+  .doc { width: 100%; max-width: 1400px; margin-inline: auto; padding: var(--space-32) var(--layout-gutter) var(--space-64); display: flex; flex-direction: column; gap: var(--space-40); }
+  .doc-head { display: flex; flex-direction: column; gap: var(--space-8); align-items: center; text-align: center; }
+  .doc-head h1 { font-size: var(--type-title2-size); line-height: var(--type-title2-lh); font-weight: var(--type-title2-weight); }
+  .doc-head p, .doc-note { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); max-width: 720px; }
+  .doc-section { display: flex; flex-direction: column; gap: var(--space-16); }
+  .doc-section > h2 { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .stage { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .frame-col { display: flex; flex-direction: column; gap: var(--space-8); width: 375px; max-width: 100%; min-width: 0; }
+  .frame-cap { color: var(--color-fg-2); font-weight: var(--font-weight-semibold); padding-inline: var(--space-4); }
+  .frame-cap small { display: block; font-weight: var(--font-weight-regular); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .frame .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-large); overflow: hidden; box-shadow: var(--shadow-16); }
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  .frame .page { gap: var(--space-16); padding-top: var(--space-8); }
+  .wide-scroll { overflow-x: auto; padding-bottom: var(--space-8); }
+  .page-source { text-align: center; color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .cut { text-align: center; color: var(--color-fg-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); border-top: var(--stroke-thin) dashed var(--color-stroke-1); padding-top: var(--space-8); }
+  .badge--success { background: var(--color-success-bg); color: var(--color-success-fg); border-color: var(--color-success-stroke); }
+
+  /* ---------- App bar subtitle with place icon ---------- */
+  .app-bar__subtitle { display: inline-flex; align-items: center; gap: var(--space-4); }
+  .app-bar__subtitle .icon { color: var(--color-brand-fg); }
+  .ptr { display: flex; justify-content: center; align-items: center; gap: var(--space-8); min-height: var(--size-control-sm); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .ptr__pill { display: inline-flex; align-items: center; gap: var(--space-8); padding: var(--space-4) var(--space-12); background: var(--color-bg-1); border-radius: var(--shape-full); box-shadow: var(--shadow-4); color: var(--color-brand-fg-strong); }
+
+  /* ---------- AppCard (normalised: radius 12, padding 16/16/20, gap 16) ---------- */
+  .card { padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
+  .card__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .card--hero { padding: var(--space-16) var(--space-16) var(--space-20); background: linear-gradient(to bottom, var(--color-brand-160), var(--color-bg-1) 64%); box-shadow: var(--shadow-8); }
+  .card__titles { display: flex; flex-direction: column; min-width: 0; }
+
+  /* ---------- 1. Now card ---------- */
+  .now__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+  .now__obs { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .now__jump { text-decoration: none; }
+  .now__hero { display: flex; flex-direction: column; gap: var(--space-8); }
+  .arc { display: block; width: 100%; max-width: 360px; height: auto; margin-inline: auto; overflow: visible; }
+  .arc__label { font-size: var(--type-caption1-size); fill: var(--color-fg-2); font-variant-numeric: tabular-nums; }
+  .arc__label--strong { fill: var(--color-fg-1); font-weight: var(--font-weight-semibold); }
+  .arc__glyph { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .now__temp { display: flex; align-items: center; gap: var(--space-16); }
+  .now__deg { font-family: var(--font-family-display); font-size: var(--type-display-size); line-height: var(--type-display-lh); font-weight: var(--type-display-weight); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .now__cond { display: flex; flex-direction: column; gap: var(--space-4); }
+  .now__wx { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .hilo { display: flex; gap: var(--space-12); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .hilo b { font-size: var(--type-subtitle2-size); line-height: var(--type-subtitle2-lh); font-weight: var(--type-subtitle2-weight); font-variant-numeric: tabular-nums; margin-left: var(--space-4); }
+  .hilo .hot { color: var(--color-temp-hot); }
+  .hilo .cold { color: var(--color-temp-cold); }
+
+  /* Tile groups: caption label + MetricGrid (onHero tiles) */
+  .tile-groups { display: flex; flex-direction: column; gap: var(--space-16); }
+  .tile-group { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
+  .tile-group__label { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-8); color: var(--color-fg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); }
+  .tile-group__meta { color: var(--color-fg-3); font-weight: var(--font-weight-regular); font-variant-numeric: tabular-nums; }
+  .metric { background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-3); }
+  .metric > .icon { width: var(--size-icon-20); height: var(--size-icon-20); color: var(--color-fg-2); }
+  .metric__body { display: flex; flex-direction: column; min-width: 0; }
+  .metric__value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .metric--muted .metric__value { color: var(--color-fg-3); }
+  .metric--next { border-color: var(--color-brand-stroke-subtle); background: var(--color-brand-bg-subtle); }
+  .metric--next .metric__label { color: var(--color-brand-fg-strong); }
+
+  /* Callout list: one bordered group, one row per note */
+  .callouts { list-style: none; padding: var(--space-0); display: flex; flex-direction: column; background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-3); border-radius: var(--shape-small); }
+  .callout { display: flex; align-items: flex-start; gap: var(--space-12); padding: var(--space-12); }
+  .callout + .callout { border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+  .callout > .icon { width: var(--size-icon-20); height: var(--size-icon-20); }
+  .callout__body { display: flex; flex-direction: column; min-width: 0; }
+  .callout__label { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); }
+  .callout__text { color: var(--color-fg-1); font-variant-numeric: tabular-nums; }
+  .callout--advice > .icon { color: var(--color-rain-fg); }
+  .callout--sun > .icon { color: var(--color-brand-fg); }
+
+  /* Card-internal error (observation failed, sun data present) */
+  .inline-error { display: flex; gap: var(--space-12); align-items: flex-start; padding: var(--space-12); border-radius: var(--shape-small); background: var(--color-danger-bg); border: var(--stroke-thin) solid var(--color-danger-stroke); }
+  .inline-error > .icon { color: var(--color-danger-fg); width: var(--size-icon-20); height: var(--size-icon-20); }
+
+  /* ---------- 2. 7 日預報 (WeeklyCard, unchanged) ---------- */
+  .days { display: flex; flex-direction: column; }
+  .day { display: grid; grid-template-columns: var(--size-icon-64) var(--size-icon-24) calc(var(--size-icon-32) + var(--space-4)) calc(var(--size-icon-24) + var(--space-4)) minmax(var(--size-icon-48), 1fr) calc(var(--size-icon-24) + var(--space-4)); align-items: center; gap: var(--space-8); min-height: calc(var(--size-touch) + var(--space-12)); padding-block: var(--space-8); }
+  .day + .day { border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+  .day__name { display: flex; flex-direction: column; font-weight: var(--font-weight-semibold); }
+  .day__name small { font-weight: var(--font-weight-regular); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .day__pop { text-align: right; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .day__pop--hi { color: var(--color-rain-fg); font-weight: var(--font-weight-semibold); }
+  .day__lo { text-align: right; color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .day__hi { font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+  .temp-range { min-width: 0; }
+  .temp-range__now { position: absolute; top: 50%; width: var(--size-dot); height: var(--size-dot); margin-left: calc(var(--size-dot) / -2); transform: translateY(-50%); border-radius: var(--shape-full); background: var(--color-bg-1); border: var(--stroke-thick) solid var(--color-fg-1); box-sizing: border-box; }
+  .legend-row { display: flex; justify-content: space-between; gap: var(--space-8); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .legend-row span { display: inline-flex; align-items: center; gap: var(--space-4); }
+  .legend-row .icon { color: var(--color-rain-fg); }
+  .dot-now { width: var(--size-dot); height: var(--size-dot); border-radius: var(--shape-full); border: var(--stroke-thick) solid var(--color-fg-1); box-sizing: border-box; display: inline-block; }
+
+  /* ---------- 3. 未來 72 小時 (Forecast72hCard, unchanged) ---------- */
+  .fc-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-8); }
+  .fc-stat { display: flex; flex-direction: column; padding: var(--space-8); background: var(--color-bg-2); border: var(--stroke-thin) solid var(--color-stroke-3); border-radius: var(--shape-small); min-width: 0; }
+  .fc-stat__label { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .fc-stat__value { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); font-variant-numeric: tabular-nums; }
+  .fc-stat__sub { color: var(--color-fg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+  .fc-chart { display: flex; }
+  .fc-axis { flex: none; width: var(--space-40); }
+  .fc-plot { flex: 1; min-width: 0; overflow-x: auto; border-radius: var(--shape-extra-small); }
+  .fc-plot svg { display: block; }
+  .fc text { font-size: var(--type-caption1-size); fill: var(--color-fg-2); text-anchor: middle; font-variant-numeric: tabular-nums; }
+  .fc .day-l { fill: var(--color-fg-1); font-weight: var(--font-weight-semibold); text-anchor: start; }
+  .fc .now-l { fill: var(--color-brand-fg); font-weight: var(--font-weight-semibold); }
+  .fc .t text { fill: var(--color-fg-1); font-weight: var(--font-weight-semibold); }
+  .fc .pl text { fill: var(--color-fg-3); }
+  .fc .pl text.hi { fill: var(--color-rain-fg); font-weight: var(--font-weight-semibold); }
+  .fc .axis-l { fill: var(--color-fg-3); text-anchor: start; }
+  .fc .bt { fill: var(--color-rain-bar-track); }
+  .fc .bf { fill: var(--color-rain-bar); }
+  .fc .tline { fill: none; stroke: var(--color-warning-fg); stroke-width: 2.5; stroke-linejoin: round; }
+  .fc .aline { fill: none; stroke: var(--color-fg-4); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .fc .dots circle { fill: var(--color-bg-1); stroke: var(--color-warning-fg); stroke-width: 2; }
+  .fc .daysep { stroke: var(--color-stroke-1); stroke-dasharray: 4 4; }
+  .fc .nowline { stroke: var(--color-brand-fg); stroke-width: 2; }
+  .fc-legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-4) var(--space-16); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .fc-legend span { display: inline-flex; align-items: center; gap: var(--space-4); }
+  .key { width: var(--size-icon-16); height: var(--stroke-thick); border-radius: var(--shape-full); background: var(--color-warning-fg); display: inline-block; }
+  .key--at { background: none; border-top: var(--stroke-thick) dashed var(--color-fg-4); }
+  .key--pop { width: var(--size-dot); height: var(--size-dot); background: var(--color-rain-bar); }
+
+  /* ---------- 4. 特警報: WarningsSection (former 警特報 tab body; 4 tabs remain) ---------- */
+  .bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .board { display: flex; flex-direction: column; gap: var(--space-12); }
+  .board__header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: var(--size-control-sm); }
+  .board__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .board__meta { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .whero { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16) var(--space-16) var(--space-20); border-radius: var(--shape-medium); box-shadow: var(--shadow-8); }
+  .whero--l1 { background: var(--color-alert-1-bg); }
+  .whero--ok { background: var(--color-success-bg); }
+  .whero__top { display: flex; align-items: center; gap: var(--space-12); }
+  .whero__text { flex: 1; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+  .whero__label { font-weight: var(--font-weight-semibold); }
+  .whero--l1 .whero__label { color: var(--color-alert-1-fg); }
+  .whero--ok .whero__label { color: var(--color-success-fg); }
+  .whero__count { display: flex; align-items: baseline; gap: var(--space-8); }
+  .whero__count b { font-family: var(--font-family-display); font-size: var(--type-display-size); line-height: var(--type-display-lh); font-weight: var(--type-display-weight); color: var(--color-alert-1-fg); font-variant-numeric: tabular-nums; }
+  .whero__count span { font-size: var(--type-subtitle2-size); line-height: var(--type-subtitle2-lh); font-weight: var(--type-subtitle2-weight); }
+  .whero__body { color: var(--color-fg-2); }
+  .whero__badge { flex: none; width: var(--size-icon-64); height: var(--size-icon-64); border-radius: var(--shape-full); background: var(--color-bg-1); box-shadow: var(--shadow-4); display: flex; align-items: center; justify-content: center; }
+  .whero__badge .icon { width: var(--size-icon-32); height: var(--size-icon-32); }
+  .whero--l1 .whero__badge .icon { color: var(--color-alert-1-solid); }
+  .whero--ok .whero__badge .icon { color: var(--color-success-solid); }
+  .whero__chips { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+  .whero__foot { display: flex; align-items: center; gap: var(--space-8); color: var(--color-fg-2); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .warn-list { display: flex; flex-direction: column; gap: var(--space-12); }
+  .warn { background: var(--color-bg-1); border-radius: var(--shape-medium); box-shadow: var(--shadow-4); overflow: hidden; border-left: var(--stroke-thicker) solid var(--color-info-solid); }
+  .warn--l1 { border-left-color: var(--color-alert-1-solid); }
+  .warn__sum { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-16); }
+  .warn__icon { flex: none; width: var(--size-touch); height: var(--size-touch); border-radius: var(--shape-full); display: flex; align-items: center; justify-content: center; background: var(--color-info-bg); border: var(--stroke-thin) solid var(--color-info-stroke); color: var(--color-info-fg); }
+  .warn--l1 .warn__icon { background: var(--color-alert-1-bg); border-color: var(--color-alert-1-stroke); color: var(--color-alert-1-fg); }
+  .warn__head { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+  .warn__name { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-body2-size); line-height: var(--type-body2-lh); font-weight: var(--font-weight-semibold); }
+  .warn__meta { display: flex; align-items: center; gap: var(--space-4); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; }
+  .warn__chev { color: var(--color-fg-3); }
+  .warn__chev--open { transform: rotate(90deg); }
+  .warn__body { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-0) var(--space-16) var(--space-16); }
+  .warn__desc { color: var(--color-fg-2); }
+  .warn__facts { display: flex; flex-direction: column; gap: var(--space-8); }
+  .warn__counties { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+  .warn__actions { display: flex; justify-content: flex-end; }
+
+  /* ---------- Loading skeletons ---------- */
+  .sk-line { height: var(--space-16); }
+  .sk-arc { height: calc(var(--size-icon-64) * 2); }
+  .sk-temp { width: calc(var(--size-icon-64) * 2); height: var(--type-display-lh); }
+  .sk-tiles { height: calc(var(--size-touch) * 2 + var(--space-8)); }
+  .sk-block { height: calc(var(--size-icon-64) * 4); }
+
+  /* ---------- Explored merge (frame G) ---------- */
+  .xday { display: flex; flex-direction: column; }
+  .xday + .xday { border-top: var(--stroke-thin) solid var(--color-stroke-3); }
+  .xday .day { border: none; }
+  .xday__toggle { color: var(--color-fg-3); }
+  .xday--open { background: var(--color-bg-2); border-radius: var(--shape-small); }
+  .xhours { display: flex; gap: var(--space-8); overflow-x: auto; padding: var(--space-0) var(--space-8) var(--space-12); }
+  .xhour { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); min-width: var(--size-touch); padding: var(--space-8) var(--space-4); background: var(--color-bg-1); border-radius: var(--shape-small); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-variant-numeric: tabular-nums; color: var(--color-fg-2); }
+  .xhour b { color: var(--color-fg-1); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); }
+  .xhour .rain { color: var(--color-rain-fg); font-weight: var(--font-weight-semibold); }
+  .xnote { color: var(--color-fg-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); padding: var(--space-0) var(--space-8) var(--space-8); }
+  .reject { border: var(--stroke-thick) dashed var(--color-danger-stroke); border-radius: var(--shape-large); padding: var(--space-8); }
+  .reject__tag { color: var(--color-danger-fg); font-weight: var(--font-weight-semibold); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+
+  /* ---------- Wide (1280): NavigationRail + grid ---------- */
+  .wide { width: 1280px; display: grid; grid-template-columns: calc(var(--size-icon-64) + var(--space-16)) 1fr; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-large); overflow: hidden; box-shadow: var(--shadow-16); margin-inline: auto; }
+  .rail { display: flex; flex-direction: column; align-items: center; gap: var(--space-12); padding-block: var(--space-16); background: var(--color-bg-1); border-right: var(--stroke-thin) solid var(--color-stroke-2); }
+  .rail .bottom-nav__item { width: 100%; }
+  .wide__main { display: flex; flex-direction: column; min-width: 0; }
+  .wide__main .app-bar { position: relative; padding-inline: var(--space-24) var(--space-8); }
+  .wide__page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16); padding: var(--space-16) var(--space-24) var(--space-24); align-items: start; }
+  .span-2 { grid-column: 1 / -1; }
+  .wide .now__body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-16); align-items: center; }
+  .wide .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .wide .eq { align-self: stretch; }
+  .wide .warn-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-near" viewBox="0 0 24 24"><path d="M20 4 4 11l7 2 2 7z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+  <symbol id="i-partly" viewBox="0 0 24 24"><path d="M8 4.5v1.5M3.5 9H5M4.8 5.8l1 1M11.2 5.8l-1 1"/><path d="M5.6 11.5A3.5 3.5 0 0 1 11.4 8"/><path d="M8 19.5h9.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6 1.2A3 3 0 0 0 8 19.5z"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10.5a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.6A3.3 3.3 0 0 0 7 18.5z"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M7 14.5h10.5a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.6A3.3 3.3 0 0 0 7 14.5z"/><path d="M8.5 17.5l-1 2.5M12.5 17.5l-1 2.5M16.5 17.5l-1 2.5"/></symbol>
+  <symbol id="i-umbrella" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 18 0z"/><path d="M12 12v6.5a2 2 0 0 1-4 0"/><path d="M12 3v-.5"/></symbol>
+  <symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3M3 12h7"/></symbol>
+  <symbol id="i-dawn" viewBox="0 0 24 24"><path d="M3 18h18M7 18a5 5 0 0 1 10 0"/><path d="M12 8.5v-1M5.6 11.6l-.8-.8M18.4 11.6l.8-.8" stroke-dasharray="1 2"/></symbol>
+  <symbol id="i-sunrise" viewBox="0 0 24 24"><path d="M3 18h18M7 18a5 5 0 0 1 10 0"/><path d="M12 3v6M9.5 5.5 12 3l2.5 2.5"/></symbol>
+  <symbol id="i-sunset" viewBox="0 0 24 24"><path d="M3 18h18M7 18a5 5 0 0 1 10 0"/><path d="M12 3v6M9.5 6.5 12 9l2.5-2.5"/></symbol>
+  <symbol id="i-dusk" viewBox="0 0 24 24"><path d="M3 18h18M7 18a5 5 0 0 1 10 0"/><path d="M5 21h14" stroke-dasharray="1 2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-grain" viewBox="0 0 24 24"><circle cx="7" cy="7" r="1.2"/><circle cx="13" cy="5" r="1.2"/><circle cx="17" cy="10" r="1.2"/><circle cx="9" cy="13" r="1.2"/><circle cx="15" cy="16" r="1.2"/><circle cx="7" cy="19" r="1.2"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.3v.1"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2"/></symbol>
+  <symbol id="i-loc-off" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 10.8-4.9M18.4 9.3c.1.2.1.5.1.7 0 5.4-6.5 11-6.5 11"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></symbol>
+</svg>
+
+<main class="doc">
+  <header class="doc-head">
+    <h1>天氣 tab — Designer 4：資訊層級</h1>
+    <p>一張「現在」卡依意義分層：天氣狀態騎在太陽軌跡上 → 溫度 → 「體感與環境」「太陽」兩組小磚 → 一組提示清單（天氣建議、日照）。下接 7 日預報、未來 72 小時預報，最底是 WarningsSection——原「警特報」分頁的內容整段搬來（我的縣市／全部切換），分頁本身移除。規格與 widget 對照見 home.md。</p>
+  </header>
+
+  <!-- ===================================================== PHONE A / B ===================================================== -->
+  <section class="doc-section">
+    <h2>手機 375 — 主要狀態</h2>
+    <div class="stage">
+
+      <!-- ===== A: daytime + active warnings ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">A 白天＋有特警報<small>11/15（日）14:10，臺北市中正區；天氣圖示在軌跡上（仰角 33°），過中天 11:38；特警報 2 項在頁底</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar">
+            <div class="app-bar__titles">
+              <div class="app-bar__title">臺北市 中正區</div>
+              <div class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-near"/></svg>目前位置 · 更新於 14:10</div>
+            </div>
+            <div class="app-bar__actions">
+              <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+              <button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button>
+            </div>
+          </header>
+          <div class="page">
+            <div class="ptr"><svg class="icon icon--16" aria-hidden="true"><use href="#i-down"/></svg>下拉即可重新整理</div>
+
+            <!-- 1. Now card -->
+            <section class="card card--hero" aria-label="現在">
+              <div class="now__head">
+                <span class="now__obs">即時觀測 14:10 · 臺北測站 1.2 km</span>
+                <a class="badge badge--alert-1 now__jump" href="#warnA"><svg class="icon icon--16" aria-hidden="true"><use href="#i-warning"/></svg>特警報 2</a>
+              </div>
+              <div class="now__hero">
+                <svg class="arc" viewBox="0 0 320 148" role="img" aria-label="太陽位置：目前仰角 33 度，過中天 11:38，現在多雲時晴">
+                  <line x1="16" y1="108" x2="304" y2="108" style="stroke:var(--color-stroke-2);stroke-width:1.5"/>
+                  <path d="M243.1 45.7 A124 84 0 0 1 284 108" style="fill:none;stroke:var(--color-stroke-1);stroke-width:2;stroke-dasharray:4 4"/>
+                  <path d="M36 108 A124 84 0 0 1 243.1 45.7" style="fill:none;stroke:var(--color-icon-sun);stroke-width:3;stroke-linecap:round"/>
+                  <path d="M36.8 117.3 A124 84 0 0 1 36 108 M284 108 A124 84 0 0 1 283.2 117.3" style="fill:none;stroke:var(--color-icon-sun);stroke-opacity:.4;stroke-width:2;stroke-dasharray:2 3"/>
+                  <circle cx="36.8" cy="117.3" r="3" style="fill:var(--color-bg-1);stroke:var(--color-fg-4);stroke-width:1.5"/>
+                  <circle cx="283.2" cy="117.3" r="3" style="fill:var(--color-bg-1);stroke:var(--color-fg-4);stroke-width:1.5"/>
+                  <circle cx="36" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                  <circle cx="284" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                  <line x1="160" y1="24" x2="160" y2="108" style="stroke:var(--color-stroke-3);stroke-width:1;stroke-dasharray:2 3"/>
+                  <circle cx="160" cy="24" r="3" style="fill:var(--color-bg-1);stroke:var(--color-icon-sun);stroke-width:2"/>
+                  <text class="arc__label" x="160" y="13" text-anchor="middle">過中天 11:38</text>
+                  <circle cx="243.1" cy="45.7" r="17" style="fill:var(--color-bg-1);stroke:var(--color-icon-sun);stroke-width:2"/>
+                  <use href="#i-partly" class="arc__glyph" x="231.1" y="33.7" width="24" height="24" style="color:var(--color-icon-sun)"/>
+                  <text class="arc__label arc__label--strong" x="264" y="22" text-anchor="start">仰角 33°</text>
+                </svg>
+                <div class="now__temp">
+                  <span class="now__deg">24°</span>
+                  <div class="now__cond">
+                    <span class="now__wx">多雲時晴</span>
+                    <span class="hilo"><span>高<b class="hot">26°</b></span><span>低<b class="cold">20°</b></span></span>
+                  </div>
+                </div>
+              </div>
+              <div class="tile-groups">
+                <div class="tile-group">
+                  <div class="tile-group__label">體感與環境</div>
+                  <div class="metric-grid">
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-thermo"/></svg><div class="metric__body"><span class="metric__label">體感</span><span class="metric__value">25°</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-drop"/></svg><div class="metric__body"><span class="metric__label">濕度</span><span class="metric__value">68%</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg><div class="metric__body"><span class="metric__label">風 · 東北</span><span class="metric__value">3.4 m/s</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg><div class="metric__body"><span class="metric__label">降雨機率</span><span class="metric__value">20%</span></div></div>
+                  </div>
+                </div>
+                <div class="tile-group">
+                  <div class="tile-group__label">太陽<span class="tile-group__meta">白晝 10 小時 51 分</span></div>
+                  <div class="metric-grid">
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-dawn"/></svg><div class="metric__body"><span class="metric__label">曙光</span><span class="metric__value">05:49</span></div></div>
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-sunrise"/></svg><div class="metric__body"><span class="metric__label">日出</span><span class="metric__value">06:12</span></div></div>
+                    <div class="metric metric--next"><svg class="icon" aria-hidden="true"><use href="#i-sunset"/></svg><div class="metric__body"><span class="metric__label">日落 · 下一個</span><span class="metric__value">17:03</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-dusk"/></svg><div class="metric__body"><span class="metric__label">暮光</span><span class="metric__value">17:26</span></div></div>
+                  </div>
+                </div>
+              </div>
+              <ul class="callouts">
+                <li class="callout callout--advice"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg><div class="callout__body"><span class="callout__label">天氣建議</span><span class="callout__text">多雲時晴。降雨機率 20%。溫度攝氏 24 度。舒適。偏東風 平均風速 2-3 級。</span></div></li>
+                <li class="callout callout--sun"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><div class="callout__body"><span class="callout__label">日照</span><span class="callout__text">現在 14:10，距日落 2 小時 53 分</span></div></li>
+              </ul>
+            </section>
+
+            <!-- 2. 7 日預報 -->
+            <section class="card" aria-label="7 日預報">
+              <div class="card__header"><div class="card__titles"><span class="card__title">7 日預報</span><span class="card__meta">11/15 – 11/21</span></div></div>
+              <div class="days">
+                <div class="day"><span class="day__name">今天<small>週日 11/15</small></span><svg class="icon icon--rain" aria-label="多雲短暫雨"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">30%</span><span class="day__lo">20°</span><span class="temp-range"><span class="temp-range__fill" style="left:25%;width:75%"></span><span class="temp-range__now" style="left:75%"></span></span><span class="day__hi">26°</span></div>
+                <div class="day"><span class="day__name">明天<small>週一 11/16</small></span><svg class="icon icon--rain" aria-label="陰短暫雨"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">60%</span><span class="day__lo">19°</span><span class="temp-range"><span class="temp-range__fill" style="left:12.5%;width:50%"></span></span><span class="day__hi">23°</span></div>
+                <div class="day"><span class="day__name">週二<small>11/17</small></span><svg class="icon icon--cloud" aria-label="陰時多雲"><use href="#i-cloud"/></svg><span class="day__pop">20%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:50%"></span></span><span class="day__hi">22°</span></div>
+                <div class="day"><span class="day__name">週三<small>11/18</small></span><svg class="icon icon--sun" aria-label="多雲時晴"><use href="#i-partly"/></svg><span class="day__pop">10%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:87.5%"></span></span><span class="day__hi">25°</span></div>
+                <div class="day"><span class="day__name">週四<small>11/19</small></span><svg class="icon icon--sun" aria-label="晴時多雲"><use href="#i-partly"/></svg><span class="day__pop">10%</span><span class="day__lo">19°</span><span class="temp-range"><span class="temp-range__fill" style="left:12.5%;width:87.5%"></span></span><span class="day__hi">26°</span></div>
+                <div class="day"><span class="day__name">週五<small>11/20</small></span><svg class="icon icon--cloud" aria-label="多雲"><use href="#i-cloud"/></svg><span class="day__pop">20%</span><span class="day__lo">20°</span><span class="temp-range"><span class="temp-range__fill" style="left:25%;width:75%"></span></span><span class="day__hi">26°</span></div>
+                <div class="day"><span class="day__name">週六<small>11/21</small></span><svg class="icon icon--rain" aria-label="陰短暫雨"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">50%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:50%"></span></span><span class="day__hi">22°</span></div>
+              </div>
+              <div class="legend-row"><span><svg class="icon icon--16" aria-hidden="true"><use href="#i-umbrella"/></svg>降雨機率</span><span><i class="dot-now"></i>目前溫度　區間 18°–26°</span></div>
+            </section>
+
+            <!-- 3. 未來 72 小時 -->
+            <section class="card fc" aria-label="未來 72 小時預報">
+              <div class="card__header"><div class="card__titles"><span class="card__title">未來 72 小時預報</span><span class="card__meta">發布 11/15 11:00</span></div></div>
+              <div class="fc-sum">
+                <div class="fc-stat"><span class="fc-stat__label">最高溫</span><span class="fc-stat__value text-temp-hot">25°</span><span class="fc-stat__sub">今天 12:00</span></div>
+                <div class="fc-stat"><span class="fc-stat__label">最低溫</span><span class="fc-stat__value text-temp-cold">18°</span><span class="fc-stat__sub">週三 06:00</span></div>
+                <div class="fc-stat"><span class="fc-stat__label">降雨機率</span><span class="fc-stat__value text-rain">60%</span><span class="fc-stat__sub">明天 06:00</span></div>
+              </div>
+              <div class="fc-chart">
+                <svg class="fc-axis" viewBox="0 0 40 222" height="222" aria-hidden="true"><text class="axis-l" x="0" y="40">時段</text><text class="axis-l" x="0" y="98">溫度</text><text class="axis-l" x="0" y="180">降雨</text></svg>
+                <div class="fc-plot">
+                  <svg width="1024" height="222" viewBox="0 0 1024 222" role="img" aria-label="未來 72 小時逐時溫度、體感溫度與降雨機率，可左右捲動。最高溫 25°、最低溫 18°、降雨機率最高 60%">
+                    <line class="daysep" x1="192" y1="4" x2="192" y2="218"/><line class="daysep" x1="512" y1="4" x2="512" y2="218"/><line class="daysep" x1="832" y1="4" x2="832" y2="218"/>
+                    <line class="nowline" x1="61" y1="48" x2="61" y2="200"/>
+                    <text class="now-l" x="61" y="16">現在</text>
+                    <text class="day-l" x="85" y="16">今天 11/15（日）</text><text class="day-l" x="200" y="16">明天 11/16（一）</text><text class="day-l" x="520" y="16">後天 11/17（二）</text><text class="day-l" x="840" y="16">週三 11/18</text>
+                    <g><text x="52" y="40">12</text><text x="92" y="40">15</text><text x="132" y="40">18</text><text x="172" y="40">21</text><text x="212" y="40">00</text><text x="252" y="40">03</text><text x="292" y="40">06</text><text x="332" y="40">09</text><text x="372" y="40">12</text><text x="412" y="40">15</text><text x="452" y="40">18</text><text x="492" y="40">21</text><text x="532" y="40">00</text><text x="572" y="40">03</text><text x="612" y="40">06</text><text x="652" y="40">09</text><text x="692" y="40">12</text><text x="732" y="40">15</text><text x="772" y="40">18</text><text x="812" y="40">21</text><text x="852" y="40">00</text><text x="892" y="40">03</text><text x="932" y="40">06</text><text x="972" y="40">09</text></g>
+                    <polyline class="aline" points="52,64.0 92,64.0 132,70.7 172,90.7 212,97.3 252,104.0 292,110.7 332,110.7 372,104.0 412,90.7 452,90.7 492,97.3 532,110.7 572,110.7 612,117.3 652,117.3 692,110.7 732,97.3 772,97.3 812,104.0 852,117.3 892,117.3 932,124.0 972,117.3"/>
+                    <polyline class="tline" points="52,70.7 92,70.7 132,77.3 172,90.7 212,97.3 252,97.3 292,104.0 332,104.0 372,97.3 412,90.7 452,90.7 492,97.3 532,104.0 572,104.0 612,110.7 652,110.7 692,104.0 732,97.3 772,97.3 812,104.0 852,110.7 892,110.7 932,117.3 972,110.7"/>
+                    <g class="dots"><circle cx="52" cy="70.7" r="3"/><circle cx="92" cy="70.7" r="3"/><circle cx="132" cy="77.3" r="3"/><circle cx="172" cy="90.7" r="3"/><circle cx="212" cy="97.3" r="3"/><circle cx="252" cy="97.3" r="3"/><circle cx="292" cy="104.0" r="3"/><circle cx="332" cy="104.0" r="3"/><circle cx="372" cy="97.3" r="3"/><circle cx="412" cy="90.7" r="3"/><circle cx="452" cy="90.7" r="3"/><circle cx="492" cy="97.3" r="3"/><circle cx="532" cy="104.0" r="3"/><circle cx="572" cy="104.0" r="3"/><circle cx="612" cy="110.7" r="3"/><circle cx="652" cy="110.7" r="3"/><circle cx="692" cy="104.0" r="3"/><circle cx="732" cy="97.3" r="3"/><circle cx="772" cy="97.3" r="3"/><circle cx="812" cy="104.0" r="3"/><circle cx="852" cy="110.7" r="3"/><circle cx="892" cy="110.7" r="3"/><circle cx="932" cy="117.3" r="3"/><circle cx="972" cy="110.7" r="3"/></g>
+                    <g class="t"><text x="52" y="62.7">25°</text><text x="92" y="62.7">25°</text><text x="132" y="69.3">24°</text><text x="172" y="82.7">22°</text><text x="212" y="89.3">21°</text><text x="252" y="89.3">21°</text><text x="292" y="96.0">20°</text><text x="332" y="96.0">20°</text><text x="372" y="89.3">21°</text><text x="412" y="82.7">22°</text><text x="452" y="82.7">22°</text><text x="492" y="89.3">21°</text><text x="532" y="96.0">20°</text><text x="572" y="96.0">20°</text><text x="612" y="102.7">19°</text><text x="652" y="102.7">19°</text><text x="692" y="96.0">20°</text><text x="732" y="89.3">21°</text><text x="772" y="89.3">21°</text><text x="812" y="96.0">20°</text><text x="852" y="102.7">19°</text><text x="892" y="102.7">19°</text><text x="932" y="109.3">18°</text><text x="972" y="102.7">19°</text></g>
+                    <g><rect class="bt" x="39" y="156" width="26" height="40" rx="4"/><rect class="bf" x="39" y="188" width="26" height="8" rx="4"/><rect class="bt" x="79" y="156" width="26" height="40" rx="4"/><rect class="bf" x="79" y="188" width="26" height="8" rx="4"/><rect class="bt" x="119" y="156" width="26" height="40" rx="4"/><rect class="bf" x="119" y="184" width="26" height="12" rx="4"/><rect class="bt" x="159" y="156" width="26" height="40" rx="4"/><rect class="bf" x="159" y="184" width="26" height="12" rx="4"/><rect class="bt" x="199" y="156" width="26" height="40" rx="4"/><rect class="bf" x="199" y="184" width="26" height="12" rx="4"/><rect class="bt" x="239" y="156" width="26" height="40" rx="4"/><rect class="bf" x="239" y="180" width="26" height="16" rx="4"/><rect class="bt" x="279" y="156" width="26" height="40" rx="4"/><rect class="bf" x="279" y="172" width="26" height="24" rx="4"/><rect class="bt" x="319" y="156" width="26" height="40" rx="4"/><rect class="bf" x="319" y="172" width="26" height="24" rx="4"/><rect class="bt" x="359" y="156" width="26" height="40" rx="4"/><rect class="bf" x="359" y="172" width="26" height="24" rx="4"/><rect class="bt" x="399" y="156" width="26" height="40" rx="4"/><rect class="bf" x="399" y="176" width="26" height="20" rx="4"/><rect class="bt" x="439" y="156" width="26" height="40" rx="4"/><rect class="bf" x="439" y="180" width="26" height="16" rx="4"/><rect class="bt" x="479" y="156" width="26" height="40" rx="4"/><rect class="bf" x="479" y="184" width="26" height="12" rx="4"/><rect class="bt" x="519" y="156" width="26" height="40" rx="4"/><rect class="bf" x="519" y="184" width="26" height="12" rx="4"/><rect class="bt" x="559" y="156" width="26" height="40" rx="4"/><rect class="bf" x="559" y="188" width="26" height="8" rx="4"/><rect class="bt" x="599" y="156" width="26" height="40" rx="4"/><rect class="bf" x="599" y="188" width="26" height="8" rx="4"/><rect class="bt" x="639" y="156" width="26" height="40" rx="4"/><rect class="bf" x="639" y="188" width="26" height="8" rx="4"/><rect class="bt" x="679" y="156" width="26" height="40" rx="4"/><rect class="bf" x="679" y="188" width="26" height="8" rx="4"/><rect class="bt" x="719" y="156" width="26" height="40" rx="4"/><rect class="bf" x="719" y="192" width="26" height="4" rx="4"/><rect class="bt" x="759" y="156" width="26" height="40" rx="4"/><rect class="bf" x="759" y="192" width="26" height="4" rx="4"/><rect class="bt" x="799" y="156" width="26" height="40" rx="4"/><rect class="bf" x="799" y="192" width="26" height="4" rx="4"/><rect class="bt" x="839" y="156" width="26" height="40" rx="4"/><rect class="bf" x="839" y="192" width="26" height="4" rx="4"/><rect class="bt" x="879" y="156" width="26" height="40" rx="4"/><rect class="bf" x="879" y="192" width="26" height="4" rx="4"/><rect class="bt" x="919" y="156" width="26" height="40" rx="4"/><rect class="bf" x="919" y="188" width="26" height="8" rx="4"/><rect class="bt" x="959" y="156" width="26" height="40" rx="4"/><rect class="bf" x="959" y="188" width="26" height="8" rx="4"/></g>
+                    <g class="pl"><text x="52" y="214">20%</text><text x="92" y="214">20%</text><text x="132" y="214" class="hi">30%</text><text x="172" y="214" class="hi">30%</text><text x="212" y="214" class="hi">30%</text><text x="252" y="214" class="hi">40%</text><text x="292" y="214" class="hi">60%</text><text x="332" y="214" class="hi">60%</text><text x="372" y="214" class="hi">60%</text><text x="412" y="214" class="hi">50%</text><text x="452" y="214" class="hi">40%</text><text x="492" y="214" class="hi">30%</text><text x="532" y="214" class="hi">30%</text><text x="572" y="214">20%</text><text x="612" y="214">20%</text><text x="652" y="214">20%</text><text x="692" y="214">20%</text><text x="732" y="214">10%</text><text x="772" y="214">10%</text><text x="812" y="214">10%</text><text x="852" y="214">10%</text><text x="892" y="214">10%</text><text x="932" y="214">20%</text><text x="972" y="214">20%</text></g>
+                  </svg>
+                </div>
+              </div>
+              <div class="fc-legend"><span><i class="key"></i>溫度</span><span><i class="key key--at"></i>體感</span><span><i class="key key--pop"></i>3 小時降雨機率</span><span>左右滑動看 72 小時</span></div>
+            </section>
+
+            <!-- 4. 特警報: WarningsSection (county scope) -->
+            <section class="board" id="warnA" aria-label="特警報">
+              <div class="board__header"><span class="board__title">特警報 · 臺北市</span><span class="board__meta">更新於 14:05</span></div>
+              <div class="whero whero--l1">
+                <div class="whero__top">
+                  <div class="whero__text"><span class="whero__label">臺北市目前生效</span><span class="whero__count"><b>2</b><span>項警特報</span></span></div>
+                  <span class="whero__badge"><svg class="icon" aria-hidden="true"><use href="#i-grain"/></svg></span>
+                </div>
+                <div class="whero__chips"><span class="badge badge--alert-1">大雨特報 1</span><span class="badge badge--rain">陸上強風特報 1</span></div>
+                <div class="whero__foot"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 08:40 起生效 · 至 11/16 05:00</div>
+              </div>
+              <div class="chip-group" role="radiogroup" aria-label="範圍"><button class="chip" role="radio" aria-checked="true"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>我的縣市 臺北市 2</button><button class="chip" role="radio" aria-checked="false">全部 5</button></div>
+              <div class="warn-list">
+                <article class="warn warn--l1">
+                  <div class="warn__sum">
+                    <span class="warn__icon"><svg class="icon" aria-hidden="true"><use href="#i-grain"/></svg></span>
+                    <div class="warn__head">
+                      <span class="warn__name">大雨特報 <span class="badge badge--alert-1">生效中</span></span>
+                      <span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>基隆市、臺北市、新北市</span>
+                      <span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 08:40 – 11/15 23:00</span>
+                    </div>
+                    <svg class="icon warn__chev warn__chev--open" aria-hidden="true"><use href="#i-chevron"/></svg>
+                  </div>
+                  <div class="warn__body">
+                    <p class="warn__desc">東北季風影響，今（15）日基隆北海岸、大臺北山區有局部大雨發生的機率，請注意瞬間大雨、落石及溪水暴漲。</p>
+                    <div class="warn__facts"><span class="warn__meta">影響縣市</span><div class="warn__counties"><span class="badge badge--alert-1">基隆市</span><span class="badge badge--alert-1">臺北市</span><span class="badge badge--alert-1">新北市</span></div><span class="warn__meta">發布時間 11/15 08:35</span></div>
+                    <div class="warn__actions"><button class="btn btn--secondary btn--sm">查看雨量<svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></button></div>
+                  </div>
+                </article>
+                <article class="warn">
+                  <div class="warn__sum">
+                    <span class="warn__icon"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg></span>
+                    <div class="warn__head">
+                      <span class="warn__name">陸上強風特報 <span class="badge badge--rain">即將生效</span></span>
+                      <span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>基隆市、臺北市、新北市、宜蘭縣</span>
+                      <span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 20:00 – 11/16 05:00</span>
+                    </div>
+                    <svg class="icon warn__chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+                  </div>
+                </article>
+              </div>
+            </section>
+            <div class="page-source">資料來源：中央氣象署 O-A0003-001、F-D0047-063、F-D0047-061、A-B0062-001、W-C0033-001、W-C0033-002</div>
+          </div>
+          <nav class="bottom-nav" aria-label="主要分頁">
+            <a class="bottom-nav__item" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+            <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+            <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+            <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+          </nav>
+        </div></div>
+      </div>
+
+      <!-- ===== B: night + no warnings ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">B 夜間＋無特警報<small>21:40 已日落：天氣圖示沉到地平線下（仰角 −62°），整條軌跡改虛線；下一個事件改為明天日出；頁底為空狀態的 WarningsSection（本縣市 0、全部 2）</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar">
+            <div class="app-bar__titles">
+              <div class="app-bar__title">臺北市 中正區</div>
+              <div class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-near"/></svg>目前位置 · 更新於 21:40</div>
+            </div>
+            <div class="app-bar__actions">
+              <button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+              <button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button>
+            </div>
+          </header>
+          <div class="page">
+            <div class="ptr"><svg class="icon icon--16" aria-hidden="true"><use href="#i-down"/></svg>下拉即可重新整理</div>
+            <section class="card card--hero" aria-label="現在">
+              <div class="now__head"><span class="now__obs">即時觀測 21:30 · 臺北測站 1.2 km</span></div>
+              <div class="now__hero">
+                <svg class="arc" viewBox="0 0 320 148" role="img" aria-label="太陽位置：已日落，目前仰角負 62 度，過中天 11:38，現在多雲">
+                  <rect x="16" y="108" width="288" height="40" rx="6" style="fill:var(--color-bg-4);fill-opacity:.6"/>
+                  <line x1="16" y1="108" x2="304" y2="108" style="stroke:var(--color-stroke-2);stroke-width:1.5"/>
+                  <path d="M36 108 A124 84 0 0 1 284 108" style="fill:none;stroke:var(--color-stroke-1);stroke-width:2;stroke-dasharray:4 4"/>
+                  <circle cx="36" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                  <circle cx="284" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                  <circle cx="160" cy="24" r="3" style="fill:var(--color-bg-1);stroke:var(--color-fg-4);stroke-width:2"/>
+                  <text class="arc__label" x="160" y="13" text-anchor="middle">過中天 11:38</text>
+                  <path d="M284 108 Q240 140 197 128" style="fill:none;stroke:var(--color-fg-4);stroke-width:1.5;stroke-dasharray:2 3"/>
+                  <circle cx="197" cy="127" r="15" style="fill:var(--color-bg-1);stroke:var(--color-icon-cloud);stroke-width:2"/>
+                  <use href="#i-cloud" class="arc__glyph" x="186" y="116" width="22" height="22" style="color:var(--color-icon-cloud)"/>
+                  <text class="arc__label arc__label--strong" x="174" y="132" text-anchor="end">仰角 −62°</text>
+                </svg>
+                <div class="now__temp">
+                  <span class="now__deg">21°</span>
+                  <div class="now__cond"><span class="now__wx">多雲</span><span class="hilo"><span>高<b class="hot">26°</b></span><span>低<b class="cold">20°</b></span></span></div>
+                </div>
+              </div>
+              <div class="tile-groups">
+                <div class="tile-group">
+                  <div class="tile-group__label">體感與環境</div>
+                  <div class="metric-grid">
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-thermo"/></svg><div class="metric__body"><span class="metric__label">體感</span><span class="metric__value">21°</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-drop"/></svg><div class="metric__body"><span class="metric__label">濕度</span><span class="metric__value">82%</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg><div class="metric__body"><span class="metric__label">風 · 東北</span><span class="metric__value">2.1 m/s</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg><div class="metric__body"><span class="metric__label">降雨機率</span><span class="metric__value">30%</span></div></div>
+                  </div>
+                </div>
+                <div class="tile-group">
+                  <div class="tile-group__label">太陽<span class="tile-group__meta">白晝 10 小時 51 分</span></div>
+                  <div class="metric-grid">
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-dawn"/></svg><div class="metric__body"><span class="metric__label">曙光</span><span class="metric__value">05:49</span></div></div>
+                    <div class="metric metric--next"><svg class="icon" aria-hidden="true"><use href="#i-sunrise"/></svg><div class="metric__body"><span class="metric__label">明天日出</span><span class="metric__value">06:13</span></div></div>
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-sunset"/></svg><div class="metric__body"><span class="metric__label">日落</span><span class="metric__value">17:03</span></div></div>
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-dusk"/></svg><div class="metric__body"><span class="metric__label">暮光</span><span class="metric__value">17:26</span></div></div>
+                  </div>
+                </div>
+              </div>
+              <ul class="callouts">
+                <li class="callout callout--advice"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg><div class="callout__body"><span class="callout__label">天氣建議</span><span class="callout__text">多雲。降雨機率 30%。溫度攝氏 21 度。稍有寒意。東北風 平均風速 2-3 級。</span></div></li>
+                <li class="callout callout--sun"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><div class="callout__body"><span class="callout__label">日照</span><span class="callout__text">現在 21:40，已日落，距明天日出 8 小時 33 分</span></div></li>
+              </ul>
+            </section>
+            <div class="cut">7 日預報、未來 72 小時預報同 A</div>
+            <section class="board" aria-label="特警報">
+              <div class="board__header"><span class="board__title">特警報 · 臺北市</span><span class="board__meta">最近檢查 21:35</span></div>
+              <div class="whero whero--ok">
+                <div class="whero__top">
+                  <div class="whero__text"><span class="whero__label">臺北市目前無警特報</span><span class="whero__body">臺北市目前沒有生效中的警特報。</span></div>
+                  <span class="whero__badge"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+                </div>
+                <div class="whero__foot"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>其他縣市有 2 項，切換到「全部」查看 · 最近檢查 21:35</div>
+              </div>
+              <div class="chip-group" role="radiogroup" aria-label="範圍"><button class="chip" role="radio" aria-checked="true"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>我的縣市 臺北市 0</button><button class="chip" role="radio" aria-checked="false">全部 2</button></div>
+            </section>
+            <div class="page-source">資料來源：中央氣象署 O-A0003-001、F-D0047-063、F-D0047-061、A-B0062-001</div>
+          </div>
+          <nav class="bottom-nav" aria-label="主要分頁">
+            <a class="bottom-nav__item" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+            <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+            <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+            <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+          </nav>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== PHONE C–F ===================================================== -->
+  <section class="doc-section">
+    <h2>手機 375 — 載入、錯誤、無 API key、無地點</h2>
+    <div class="stage">
+
+      <!-- ===== C: loading ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">C 載入中<small>每張卡用與資料同高的骨架；特警報區也顯示骨架（原本首頁載入時不顯示）</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><div class="app-bar__title">臺北市 中正區</div><div class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-near"/></svg>目前位置 · 更新中…</div></div>
+            <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理" disabled><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button></div></header>
+          <div class="page">
+            <div class="ptr"><span class="ptr__pill"><span class="spinner"></span>載入天氣資料…</span></div>
+            <section class="card card--hero" aria-busy="true">
+              <div class="skeleton sk-line" style="width:50%"></div>
+              <div class="skeleton sk-arc"></div>
+              <div class="skeleton sk-temp"></div>
+              <div class="skeleton sk-tiles"></div>
+              <div class="skeleton sk-tiles"></div>
+            </section>
+            <section class="card" aria-busy="true"><div class="card__header"><span class="card__title">7 日預報</span></div><div class="skeleton sk-block"></div></section>
+            <section class="card" aria-busy="true"><div class="card__header"><span class="card__title">未來 72 小時預報</span></div><div class="skeleton sk-block"></div></section>
+            <section class="board" aria-busy="true"><div class="board__header"><span class="board__title">特警報 · 臺北市</span></div><div class="skeleton sk-tiles"></div></section>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== D: partial failure ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">D 部分失敗<small>觀測失敗但日出日落成功：現在卡保留軌跡（只畫太陽點，無天氣圖示）、太陽磚與日照提示，觀測區換成卡內錯誤；72 小時失敗；特警報失敗明說「不代表沒有特警報」</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><div class="app-bar__title">臺北市 中正區</div><div class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-near"/></svg>目前位置 · 更新於 14:10</div></div>
+            <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button></div></header>
+          <div class="page">
+            <section class="card card--hero" aria-label="現在">
+              <div class="now__head"><span class="now__obs">即時觀測 · 無法取得</span></div>
+              <svg class="arc" viewBox="0 0 320 148" role="img" aria-label="太陽位置：目前仰角 33 度，過中天 11:38">
+                <line x1="16" y1="108" x2="304" y2="108" style="stroke:var(--color-stroke-2);stroke-width:1.5"/>
+                <path d="M243.1 45.7 A124 84 0 0 1 284 108" style="fill:none;stroke:var(--color-stroke-1);stroke-width:2;stroke-dasharray:4 4"/>
+                <path d="M36 108 A124 84 0 0 1 243.1 45.7" style="fill:none;stroke:var(--color-icon-sun);stroke-width:3;stroke-linecap:round"/>
+                <circle cx="36" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                <circle cx="284" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                <circle cx="160" cy="24" r="3" style="fill:var(--color-bg-1);stroke:var(--color-icon-sun);stroke-width:2"/>
+                <text class="arc__label" x="160" y="13" text-anchor="middle">過中天 11:38</text>
+                <circle cx="243.1" cy="45.7" r="8" style="fill:var(--color-icon-sun);stroke:var(--color-bg-1);stroke-width:3"/>
+                <text class="arc__label arc__label--strong" x="256" y="30" text-anchor="start">仰角 33°</text>
+              </svg>
+              <div class="inline-error" role="alert">
+                <svg class="icon" aria-hidden="true"><use href="#i-error"/></svg>
+                <div class="status-banner__body"><span class="status-banner__title">無法取得目前天氣</span><span class="status-banner__text">連線逾時（O-A0003-001），請稍後再試。</span><div class="status-banner__actions"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div></div>
+              </div>
+              <div class="tile-group">
+                <div class="tile-group__label">太陽<span class="tile-group__meta">白晝 10 小時 51 分</span></div>
+                <div class="metric-grid">
+                  <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-dawn"/></svg><div class="metric__body"><span class="metric__label">曙光</span><span class="metric__value">05:49</span></div></div>
+                  <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-sunrise"/></svg><div class="metric__body"><span class="metric__label">日出</span><span class="metric__value">06:12</span></div></div>
+                  <div class="metric metric--next"><svg class="icon" aria-hidden="true"><use href="#i-sunset"/></svg><div class="metric__body"><span class="metric__label">日落 · 下一個</span><span class="metric__value">17:03</span></div></div>
+                  <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-dusk"/></svg><div class="metric__body"><span class="metric__label">暮光</span><span class="metric__value">17:26</span></div></div>
+                </div>
+              </div>
+              <ul class="callouts"><li class="callout callout--sun"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><div class="callout__body"><span class="callout__label">日照</span><span class="callout__text">現在 14:10，距日落 2 小時 53 分</span></div></li></ul>
+            </section>
+            <div class="cut">7 日預報同 A</div>
+            <div class="status-banner status-banner--error" role="alert"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><span class="status-banner__title">無法取得 72 小時預報</span><span class="status-banner__text">伺服器回應 503（F-D0047-061）。</span><div class="status-banner__actions"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div></div></div>
+            <section class="board" aria-label="特警報">
+              <div class="board__header"><span class="board__title">特警報 · 臺北市</span><span class="board__meta">更新失敗</span></div>
+              <div class="status-banner status-banner--error" role="alert"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><span class="status-banner__title">無法取得警特報</span><span class="status-banner__text">這不代表目前沒有警特報。連線逾時（W-C0033-001）。</span><div class="status-banner__actions"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-refresh"/></svg>重試</button></div></div></div>
+            </section>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== E: no API key ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">E 無 API key<small>五組資料共用同一把 token：整頁只出一則 ApiKeyNotice，不再每張卡各一則</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><div class="app-bar__title">臺北市 中正區</div><div class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-near"/></svg>目前位置</div></div>
+            <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button></div></header>
+          <div class="page">
+            <div class="status-banner status-banner--error"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg></span><div class="status-banner__body"><span class="status-banner__title">需要 CWA token</span><span class="status-banner__text">尚未設定 CWA token，請到「設定」輸入後即可取得資料。</span><div class="status-banner__actions"><button class="btn btn--primary btn--sm">前往設定</button></div></div></div>
+            <div class="empty-state"><svg class="icon icon--48 empty-state__icon" aria-hidden="true"><use href="#i-cloud"/></svg><span class="empty-state__title">設定 token 後顯示天氣</span><span>現在天氣、日出日落、7 日與 72 小時預報、特警報都需要 token。</span></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== F: no place / location denied ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">F 無地點（定位權限被永久拒絕）<small>沒有地點就沒有縣市，特警報區也不顯示；不放預設地點的資料</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><div class="app-bar__title">尚未選擇地點</div><div class="app-bar__subtitle" style="color:var(--color-fg-3)"><svg class="icon icon--16" aria-hidden="true" style="color:var(--color-warning-fg)"><use href="#i-pin"/></svg>請選擇地點</div></div>
+            <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理" disabled><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button></div></header>
+          <div class="page">
+            <div class="status-banner status-banner--permission"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-loc-off"/></svg></span><div class="status-banner__body"><span class="status-banner__title">未取得位置權限</span><span class="status-banner__text">定位權限已被拒絕。請到系統設定允許定位，或手動選擇地點。</span><div class="status-banner__actions"><button class="btn btn--primary btn--sm">前往設定</button><button class="btn btn--secondary btn--sm">手動選擇</button></div></div></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== G: explored merge ===================================================== -->
+  <section class="doc-section">
+    <h2>探索：7 日＋72 小時合併卡（未採用，理由見 home.md §6）</h2>
+    <div class="stage">
+      <div class="frame-col reject">
+        <span class="reject__tag">G 未採用 — 資訊層級不同</span>
+        <section class="card" aria-label="預報（探索）">
+          <div class="card__header"><div class="card__titles"><span class="card__title">預報</span><span class="card__meta">點選日期展開逐 3 小時</span></div></div>
+          <div class="days">
+            <div class="xday xday--open">
+              <div class="day"><span class="day__name">今天<small>週日 11/15</small></span><svg class="icon icon--rain" aria-hidden="true"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">30%</span><span class="day__lo">20°</span><span class="temp-range"><span class="temp-range__fill" style="left:25%;width:75%"></span></span><span class="day__hi">26°</span></div>
+              <div class="xhours">
+                <div class="xhour">12–15<b>25°</b><svg class="icon icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span>20%</span></div>
+                <div class="xhour">15–18<b>25°</b><svg class="icon icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span>20%</span></div>
+                <div class="xhour">18–21<b>24°</b><svg class="icon icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg><span class="rain">30%</span></div>
+                <div class="xhour">21–24<b>22°</b><svg class="icon icon--rain" aria-hidden="true"><use href="#i-rain"/></svg><span class="rain">30%</span></div>
+              </div>
+              <div class="xnote">逐時只剩 4 格；體感、風向、溫度曲線與跨日趨勢都看不到</div>
+            </div>
+            <div class="xday"><div class="day"><span class="day__name">明天<small>週一 11/16</small></span><svg class="icon icon--rain" aria-hidden="true"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">60%</span><span class="day__lo">19°</span><span class="temp-range"><span class="temp-range__fill" style="left:12.5%;width:50%"></span></span><span class="day__hi">23°</span></div></div>
+            <div class="xday"><div class="day"><span class="day__name">週二<small>11/17</small></span><svg class="icon icon--cloud" aria-hidden="true"><use href="#i-cloud"/></svg><span class="day__pop">20%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:50%"></span></span><span class="day__hi">22°</span></div></div>
+            <div class="xday"><div class="day"><span class="day__name">週三<small>11/18</small></span><svg class="icon icon--sun" aria-hidden="true"><use href="#i-partly"/></svg><span class="day__pop">10%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:87.5%"></span></span><span class="day__hi">25°</span></div><div class="xnote">週三起沒有逐時資料，無法展開</div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================== WIDE ===================================================== -->
+  <section class="doc-section">
+    <h2>寬版 1280 — 白天＋有特警報</h2>
+    <p class="doc-note">AppGrid 兩欄（內容寬約 1160）：現在卡 | 7 日預報 同高並排；72 小時與特警報整列。卡內寬 ≥ 520（AppLayout.cardWideWidth）時，軌跡與溫度並排、每組四磚一列。</p>
+    <div class="wide-scroll">
+      <div class="wide">
+        <nav class="rail" aria-label="主要分頁">
+          <a class="bottom-nav__item" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="bottom-nav__item"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+        </nav>
+        <div class="wide__main">
+          <header class="app-bar"><div class="app-bar__titles"><div class="app-bar__title">臺北市 中正區</div><div class="app-bar__subtitle"><svg class="icon icon--16" aria-hidden="true"><use href="#i-near"/></svg>目前位置 · 更新於 14:10</div></div>
+            <div class="app-bar__actions"><button class="btn btn--subtle btn--icon" aria-label="重新整理"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="切換地點"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg></button></div></header>
+          <div class="wide__page">
+            <section class="card card--hero eq" aria-label="現在">
+              <div class="now__head"><span class="now__obs">即時觀測 14:10 · 臺北測站 1.2 km</span><a class="badge badge--alert-1 now__jump" href="#warnW"><svg class="icon icon--16" aria-hidden="true"><use href="#i-warning"/></svg>特警報 2</a></div>
+              <div class="now__body">
+                <div class="now__temp">
+                  <span class="now__deg">24°</span>
+                  <div class="now__cond"><span class="now__wx">多雲時晴</span><span class="hilo"><span>高<b class="hot">26°</b></span><span>低<b class="cold">20°</b></span></span></div>
+                </div>
+                <svg class="arc" viewBox="0 0 320 148" role="img" aria-label="太陽位置：目前仰角 33 度，過中天 11:38，現在多雲時晴">
+                  <line x1="16" y1="108" x2="304" y2="108" style="stroke:var(--color-stroke-2);stroke-width:1.5"/>
+                  <path d="M243.1 45.7 A124 84 0 0 1 284 108" style="fill:none;stroke:var(--color-stroke-1);stroke-width:2;stroke-dasharray:4 4"/>
+                  <path d="M36 108 A124 84 0 0 1 243.1 45.7" style="fill:none;stroke:var(--color-icon-sun);stroke-width:3;stroke-linecap:round"/>
+                  <circle cx="36" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                  <circle cx="284" cy="108" r="4" style="fill:var(--color-bg-1);stroke:var(--color-fg-3);stroke-width:1.5"/>
+                  <line x1="160" y1="24" x2="160" y2="108" style="stroke:var(--color-stroke-3);stroke-width:1;stroke-dasharray:2 3"/>
+                  <circle cx="160" cy="24" r="3" style="fill:var(--color-bg-1);stroke:var(--color-icon-sun);stroke-width:2"/>
+                  <text class="arc__label" x="160" y="13" text-anchor="middle">過中天 11:38</text>
+                  <circle cx="243.1" cy="45.7" r="17" style="fill:var(--color-bg-1);stroke:var(--color-icon-sun);stroke-width:2"/>
+                  <use href="#i-partly" class="arc__glyph" x="231.1" y="33.7" width="24" height="24" style="color:var(--color-icon-sun)"/>
+                  <text class="arc__label arc__label--strong" x="264" y="22" text-anchor="start">仰角 33°</text>
+                </svg>
+              </div>
+              <div class="tile-groups">
+                <div class="tile-group">
+                  <div class="tile-group__label">體感與環境</div>
+                  <div class="metric-grid">
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-thermo"/></svg><div class="metric__body"><span class="metric__label">體感</span><span class="metric__value">25°</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-drop"/></svg><div class="metric__body"><span class="metric__label">濕度</span><span class="metric__value">68%</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg><div class="metric__body"><span class="metric__label">風 · 東北</span><span class="metric__value">3.4 m/s</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg><div class="metric__body"><span class="metric__label">降雨機率</span><span class="metric__value">20%</span></div></div>
+                  </div>
+                </div>
+                <div class="tile-group">
+                  <div class="tile-group__label">太陽<span class="tile-group__meta">白晝 10 小時 51 分</span></div>
+                  <div class="metric-grid">
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-dawn"/></svg><div class="metric__body"><span class="metric__label">曙光</span><span class="metric__value">05:49</span></div></div>
+                    <div class="metric metric--muted"><svg class="icon" aria-hidden="true"><use href="#i-sunrise"/></svg><div class="metric__body"><span class="metric__label">日出</span><span class="metric__value">06:12</span></div></div>
+                    <div class="metric metric--next"><svg class="icon" aria-hidden="true"><use href="#i-sunset"/></svg><div class="metric__body"><span class="metric__label">日落 · 下一個</span><span class="metric__value">17:03</span></div></div>
+                    <div class="metric"><svg class="icon" aria-hidden="true"><use href="#i-dusk"/></svg><div class="metric__body"><span class="metric__label">暮光</span><span class="metric__value">17:26</span></div></div>
+                  </div>
+                </div>
+              </div>
+              <ul class="callouts">
+                <li class="callout callout--advice"><svg class="icon" aria-hidden="true"><use href="#i-umbrella"/></svg><div class="callout__body"><span class="callout__label">天氣建議</span><span class="callout__text">多雲時晴。降雨機率 20%。溫度攝氏 24 度。舒適。偏東風 平均風速 2-3 級。</span></div></li>
+                <li class="callout callout--sun"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><div class="callout__body"><span class="callout__label">日照</span><span class="callout__text">現在 14:10，距日落 2 小時 53 分</span></div></li>
+              </ul>
+            </section>
+
+            <section class="card eq" aria-label="7 日預報">
+              <div class="card__header"><div class="card__titles"><span class="card__title">7 日預報</span><span class="card__meta">11/15 – 11/21</span></div></div>
+              <div class="days">
+                <div class="day"><span class="day__name">今天<small>週日 11/15</small></span><svg class="icon icon--rain" aria-label="多雲短暫雨"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">30%</span><span class="day__lo">20°</span><span class="temp-range"><span class="temp-range__fill" style="left:25%;width:75%"></span><span class="temp-range__now" style="left:75%"></span></span><span class="day__hi">26°</span></div>
+                <div class="day"><span class="day__name">明天<small>週一 11/16</small></span><svg class="icon icon--rain" aria-label="陰短暫雨"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">60%</span><span class="day__lo">19°</span><span class="temp-range"><span class="temp-range__fill" style="left:12.5%;width:50%"></span></span><span class="day__hi">23°</span></div>
+                <div class="day"><span class="day__name">週二<small>11/17</small></span><svg class="icon icon--cloud" aria-label="陰時多雲"><use href="#i-cloud"/></svg><span class="day__pop">20%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:50%"></span></span><span class="day__hi">22°</span></div>
+                <div class="day"><span class="day__name">週三<small>11/18</small></span><svg class="icon icon--sun" aria-label="多雲時晴"><use href="#i-partly"/></svg><span class="day__pop">10%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:87.5%"></span></span><span class="day__hi">25°</span></div>
+                <div class="day"><span class="day__name">週四<small>11/19</small></span><svg class="icon icon--sun" aria-label="晴時多雲"><use href="#i-partly"/></svg><span class="day__pop">10%</span><span class="day__lo">19°</span><span class="temp-range"><span class="temp-range__fill" style="left:12.5%;width:87.5%"></span></span><span class="day__hi">26°</span></div>
+                <div class="day"><span class="day__name">週五<small>11/20</small></span><svg class="icon icon--cloud" aria-label="多雲"><use href="#i-cloud"/></svg><span class="day__pop">20%</span><span class="day__lo">20°</span><span class="temp-range"><span class="temp-range__fill" style="left:25%;width:75%"></span></span><span class="day__hi">26°</span></div>
+                <div class="day"><span class="day__name">週六<small>11/21</small></span><svg class="icon icon--rain" aria-label="陰短暫雨"><use href="#i-rain"/></svg><span class="day__pop day__pop--hi">50%</span><span class="day__lo">18°</span><span class="temp-range"><span class="temp-range__fill" style="left:0;width:50%"></span></span><span class="day__hi">22°</span></div>
+              </div>
+              <div class="legend-row"><span><svg class="icon icon--16" aria-hidden="true"><use href="#i-umbrella"/></svg>降雨機率</span><span><i class="dot-now"></i>目前溫度　區間 18°–26°</span></div>
+            </section>
+
+            <section class="card fc span-2" aria-label="未來 72 小時預報">
+              <div class="card__header"><div class="card__titles"><span class="card__title">未來 72 小時預報</span><span class="card__meta">發布 11/15 11:00</span></div></div>
+              <div class="fc-sum">
+                <div class="fc-stat"><span class="fc-stat__label">最高溫</span><span class="fc-stat__value text-temp-hot">25°</span><span class="fc-stat__sub">今天 12:00</span></div>
+                <div class="fc-stat"><span class="fc-stat__label">最低溫</span><span class="fc-stat__value text-temp-cold">18°</span><span class="fc-stat__sub">週三 06:00</span></div>
+                <div class="fc-stat"><span class="fc-stat__label">降雨機率</span><span class="fc-stat__value text-rain">60%</span><span class="fc-stat__sub">明天 06:00</span></div>
+              </div>
+              <div class="fc-chart">
+                <svg class="fc-axis" viewBox="0 0 40 222" height="222" aria-hidden="true"><text class="axis-l" x="0" y="40">時段</text><text class="axis-l" x="0" y="98">溫度</text><text class="axis-l" x="0" y="180">降雨</text></svg>
+                <div class="fc-plot">
+                  <svg width="100%" height="222" viewBox="0 0 1024 222" preserveAspectRatio="xMinYMid meet" role="img" aria-label="未來 72 小時逐時溫度、體感溫度與降雨機率。最高溫 25°、最低溫 18°、降雨機率最高 60%">
+                    <line class="daysep" x1="192" y1="4" x2="192" y2="218"/><line class="daysep" x1="512" y1="4" x2="512" y2="218"/><line class="daysep" x1="832" y1="4" x2="832" y2="218"/>
+                    <line class="nowline" x1="61" y1="48" x2="61" y2="200"/>
+                    <text class="now-l" x="61" y="16">現在</text>
+                    <text class="day-l" x="85" y="16">今天 11/15（日）</text><text class="day-l" x="200" y="16">明天 11/16（一）</text><text class="day-l" x="520" y="16">後天 11/17（二）</text><text class="day-l" x="840" y="16">週三 11/18</text>
+                    <g><text x="52" y="40">12</text><text x="92" y="40">15</text><text x="132" y="40">18</text><text x="172" y="40">21</text><text x="212" y="40">00</text><text x="252" y="40">03</text><text x="292" y="40">06</text><text x="332" y="40">09</text><text x="372" y="40">12</text><text x="412" y="40">15</text><text x="452" y="40">18</text><text x="492" y="40">21</text><text x="532" y="40">00</text><text x="572" y="40">03</text><text x="612" y="40">06</text><text x="652" y="40">09</text><text x="692" y="40">12</text><text x="732" y="40">15</text><text x="772" y="40">18</text><text x="812" y="40">21</text><text x="852" y="40">00</text><text x="892" y="40">03</text><text x="932" y="40">06</text><text x="972" y="40">09</text></g>
+                    <polyline class="aline" points="52,64.0 92,64.0 132,70.7 172,90.7 212,97.3 252,104.0 292,110.7 332,110.7 372,104.0 412,90.7 452,90.7 492,97.3 532,110.7 572,110.7 612,117.3 652,117.3 692,110.7 732,97.3 772,97.3 812,104.0 852,117.3 892,117.3 932,124.0 972,117.3"/>
+                    <polyline class="tline" points="52,70.7 92,70.7 132,77.3 172,90.7 212,97.3 252,97.3 292,104.0 332,104.0 372,97.3 412,90.7 452,90.7 492,97.3 532,104.0 572,104.0 612,110.7 652,110.7 692,104.0 732,97.3 772,97.3 812,104.0 852,110.7 892,110.7 932,117.3 972,110.7"/>
+                    <g class="dots"><circle cx="52" cy="70.7" r="3"/><circle cx="92" cy="70.7" r="3"/><circle cx="132" cy="77.3" r="3"/><circle cx="172" cy="90.7" r="3"/><circle cx="212" cy="97.3" r="3"/><circle cx="252" cy="97.3" r="3"/><circle cx="292" cy="104.0" r="3"/><circle cx="332" cy="104.0" r="3"/><circle cx="372" cy="97.3" r="3"/><circle cx="412" cy="90.7" r="3"/><circle cx="452" cy="90.7" r="3"/><circle cx="492" cy="97.3" r="3"/><circle cx="532" cy="104.0" r="3"/><circle cx="572" cy="104.0" r="3"/><circle cx="612" cy="110.7" r="3"/><circle cx="652" cy="110.7" r="3"/><circle cx="692" cy="104.0" r="3"/><circle cx="732" cy="97.3" r="3"/><circle cx="772" cy="97.3" r="3"/><circle cx="812" cy="104.0" r="3"/><circle cx="852" cy="110.7" r="3"/><circle cx="892" cy="110.7" r="3"/><circle cx="932" cy="117.3" r="3"/><circle cx="972" cy="110.7" r="3"/></g>
+                    <g class="t"><text x="52" y="62.7">25°</text><text x="92" y="62.7">25°</text><text x="132" y="69.3">24°</text><text x="172" y="82.7">22°</text><text x="212" y="89.3">21°</text><text x="252" y="89.3">21°</text><text x="292" y="96.0">20°</text><text x="332" y="96.0">20°</text><text x="372" y="89.3">21°</text><text x="412" y="82.7">22°</text><text x="452" y="82.7">22°</text><text x="492" y="89.3">21°</text><text x="532" y="96.0">20°</text><text x="572" y="96.0">20°</text><text x="612" y="102.7">19°</text><text x="652" y="102.7">19°</text><text x="692" y="96.0">20°</text><text x="732" y="89.3">21°</text><text x="772" y="89.3">21°</text><text x="812" y="96.0">20°</text><text x="852" y="102.7">19°</text><text x="892" y="102.7">19°</text><text x="932" y="109.3">18°</text><text x="972" y="102.7">19°</text></g>
+                    <g><rect class="bt" x="39" y="156" width="26" height="40" rx="4"/><rect class="bf" x="39" y="188" width="26" height="8" rx="4"/><rect class="bt" x="79" y="156" width="26" height="40" rx="4"/><rect class="bf" x="79" y="188" width="26" height="8" rx="4"/><rect class="bt" x="119" y="156" width="26" height="40" rx="4"/><rect class="bf" x="119" y="184" width="26" height="12" rx="4"/><rect class="bt" x="159" y="156" width="26" height="40" rx="4"/><rect class="bf" x="159" y="184" width="26" height="12" rx="4"/><rect class="bt" x="199" y="156" width="26" height="40" rx="4"/><rect class="bf" x="199" y="184" width="26" height="12" rx="4"/><rect class="bt" x="239" y="156" width="26" height="40" rx="4"/><rect class="bf" x="239" y="180" width="26" height="16" rx="4"/><rect class="bt" x="279" y="156" width="26" height="40" rx="4"/><rect class="bf" x="279" y="172" width="26" height="24" rx="4"/><rect class="bt" x="319" y="156" width="26" height="40" rx="4"/><rect class="bf" x="319" y="172" width="26" height="24" rx="4"/><rect class="bt" x="359" y="156" width="26" height="40" rx="4"/><rect class="bf" x="359" y="172" width="26" height="24" rx="4"/><rect class="bt" x="399" y="156" width="26" height="40" rx="4"/><rect class="bf" x="399" y="176" width="26" height="20" rx="4"/><rect class="bt" x="439" y="156" width="26" height="40" rx="4"/><rect class="bf" x="439" y="180" width="26" height="16" rx="4"/><rect class="bt" x="479" y="156" width="26" height="40" rx="4"/><rect class="bf" x="479" y="184" width="26" height="12" rx="4"/><rect class="bt" x="519" y="156" width="26" height="40" rx="4"/><rect class="bf" x="519" y="184" width="26" height="12" rx="4"/><rect class="bt" x="559" y="156" width="26" height="40" rx="4"/><rect class="bf" x="559" y="188" width="26" height="8" rx="4"/><rect class="bt" x="599" y="156" width="26" height="40" rx="4"/><rect class="bf" x="599" y="188" width="26" height="8" rx="4"/><rect class="bt" x="639" y="156" width="26" height="40" rx="4"/><rect class="bf" x="639" y="188" width="26" height="8" rx="4"/><rect class="bt" x="679" y="156" width="26" height="40" rx="4"/><rect class="bf" x="679" y="188" width="26" height="8" rx="4"/><rect class="bt" x="719" y="156" width="26" height="40" rx="4"/><rect class="bf" x="719" y="192" width="26" height="4" rx="4"/><rect class="bt" x="759" y="156" width="26" height="40" rx="4"/><rect class="bf" x="759" y="192" width="26" height="4" rx="4"/><rect class="bt" x="799" y="156" width="26" height="40" rx="4"/><rect class="bf" x="799" y="192" width="26" height="4" rx="4"/><rect class="bt" x="839" y="156" width="26" height="40" rx="4"/><rect class="bf" x="839" y="192" width="26" height="4" rx="4"/><rect class="bt" x="879" y="156" width="26" height="40" rx="4"/><rect class="bf" x="879" y="192" width="26" height="4" rx="4"/><rect class="bt" x="919" y="156" width="26" height="40" rx="4"/><rect class="bf" x="919" y="188" width="26" height="8" rx="4"/><rect class="bt" x="959" y="156" width="26" height="40" rx="4"/><rect class="bf" x="959" y="188" width="26" height="8" rx="4"/></g>
+                    <g class="pl"><text x="52" y="214">20%</text><text x="92" y="214">20%</text><text x="132" y="214" class="hi">30%</text><text x="172" y="214" class="hi">30%</text><text x="212" y="214" class="hi">30%</text><text x="252" y="214" class="hi">40%</text><text x="292" y="214" class="hi">60%</text><text x="332" y="214" class="hi">60%</text><text x="372" y="214" class="hi">60%</text><text x="412" y="214" class="hi">50%</text><text x="452" y="214" class="hi">40%</text><text x="492" y="214" class="hi">30%</text><text x="532" y="214" class="hi">30%</text><text x="572" y="214">20%</text><text x="612" y="214">20%</text><text x="652" y="214">20%</text><text x="692" y="214">20%</text><text x="732" y="214">10%</text><text x="772" y="214">10%</text><text x="812" y="214">10%</text><text x="852" y="214">10%</text><text x="892" y="214">10%</text><text x="932" y="214">20%</text><text x="972" y="214">20%</text></g>
+                  </svg>
+                </div>
+              </div>
+              <div class="fc-legend"><span><i class="key"></i>溫度</span><span><i class="key key--at"></i>體感</span><span><i class="key key--pop"></i>3 小時降雨機率</span></div>
+            </section>
+
+            <section class="board span-2" id="warnW" aria-label="特警報">
+              <div class="board__header"><span class="board__title">特警報 · 臺北市</span><span class="board__meta">更新於 14:05</span></div>
+              <div class="whero whero--l1">
+                <div class="whero__top">
+                  <div class="whero__text"><span class="whero__label">臺北市目前生效</span><span class="whero__count"><b>2</b><span>項警特報</span></span></div>
+                  <span class="whero__badge"><svg class="icon" aria-hidden="true"><use href="#i-grain"/></svg></span>
+                </div>
+                <div class="whero__chips"><span class="badge badge--alert-1">大雨特報 1</span><span class="badge badge--rain">陸上強風特報 1</span></div>
+                <div class="whero__foot"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 08:40 起生效 · 至 11/16 05:00</div>
+              </div>
+              <div class="chip-group" role="radiogroup" aria-label="範圍"><button class="chip" role="radio" aria-checked="true"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>我的縣市 臺北市 2</button><button class="chip" role="radio" aria-checked="false">全部 5</button></div>
+              <div class="warn-list">
+                <article class="warn warn--l1">
+                  <div class="warn__sum"><span class="warn__icon"><svg class="icon" aria-hidden="true"><use href="#i-grain"/></svg></span><div class="warn__head"><span class="warn__name">大雨特報 <span class="badge badge--alert-1">生效中</span></span><span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>基隆市、臺北市、新北市</span><span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 08:40 – 11/15 23:00</span></div><svg class="icon warn__chev warn__chev--open" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                  <div class="warn__body"><p class="warn__desc">東北季風影響，今（15）日基隆北海岸、大臺北山區有局部大雨發生的機率，請注意瞬間大雨、落石及溪水暴漲。</p><div class="warn__facts"><span class="warn__meta">影響縣市</span><div class="warn__counties"><span class="badge badge--alert-1">基隆市</span><span class="badge badge--alert-1">臺北市</span><span class="badge badge--alert-1">新北市</span></div><span class="warn__meta">發布時間 11/15 08:35</span></div><div class="warn__actions"><button class="btn btn--secondary btn--sm">查看雨量<svg class="icon icon--16" aria-hidden="true"><use href="#i-chevron"/></svg></button></div></div>
+                </article>
+                <article class="warn">
+                  <div class="warn__sum"><span class="warn__icon"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg></span><div class="warn__head"><span class="warn__name">陸上強風特報 <span class="badge badge--rain">即將生效</span></span><span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-pin"/></svg>基隆市、臺北市、新北市、宜蘭縣</span><span class="warn__meta"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg>11/15 20:00 – 11/16 05:00</span></div><svg class="icon warn__chev" aria-hidden="true"><use href="#i-chevron"/></svg></div>
+                </article>
+              </div>
+            </section>
+            <div class="page-source span-2">資料來源：中央氣象署 O-A0003-001、F-D0047-063、F-D0047-061、A-B0062-001、W-C0033-001、W-C0033-002</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

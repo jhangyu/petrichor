@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>設定 — designer-2 · Bento 狀態儀表板</title>
+<!--
+  designer-2 "Bento dashboard" — 設定 tab (replaces 地點). Spec: docs/logs/settings-tab-contract.md.
+  Every card opens with a status lead (icon + one-line state + caption, badge in the header), controls below.
+  Cards (reading order): 1 儲存的地點 · 2 地點設定 · 3 token 設定 · 4 通知設定.
+  Wide grid: bento capped at 3 columns — row 1 = 儲存的地點 (span 2) + 地點設定 (1);
+  row 2 = token 設定 (1) + 通知設定 (span 2).
+  Frames: phone 390 default · token 未設定 (first run) · token 驗證中 / 無效 · GPS 權限被拒 / 服務關閉 / 自動定位關閉 ·
+  通知總開關關閉 · 設定資料損毀 · 天氣頁缺授權碼 · wide 1280 · wide 1280 with token 無效.
+  Light theme only; tokens only (no colour literals); no network assets.
+-->
+<link rel="stylesheet" href="../../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../../components.css">
+<style>
+  /* ---------- Doc chrome ---------- */
+  .doc { width: 100%; max-width: 1400px; margin-inline: auto; padding: var(--space-32) var(--layout-gutter) var(--space-64); display: flex; flex-direction: column; gap: var(--space-48); }
+  .doc-head { display: flex; flex-direction: column; gap: var(--space-8); align-items: center; text-align: center; }
+  .doc-head p, .doc-note { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); max-width: 720px; }
+  .doc-section { display: flex; flex-direction: column; gap: var(--space-20); }
+  .doc-section > h2 { font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--type-title3-weight); }
+  .stage { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .frame-col { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; max-width: 390px; min-width: 0; }
+  .frame-cap { color: var(--color-fg-2); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); padding-inline: var(--space-4); }
+  .frame-cap small { display: block; color: var(--color-fg-3); font-weight: var(--font-weight-regular); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .frame .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; box-shadow: var(--shadow-16); }
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  .frame .page { gap: var(--space-16); padding-top: var(--space-8); }
+  .solo { padding: var(--space-16); background: var(--color-bg-3); border: var(--stroke-thin) dashed var(--color-stroke-1); border-radius: var(--shape-medium); display: flex; flex-direction: column; gap: var(--space-16); }
+  .wide-scroll { overflow-x: auto; padding-bottom: var(--space-16); }
+  @media (max-width: 420px) { .doc { padding-inline: var(--space-0); } .doc-head, .doc-section > h2, .doc-note { padding-inline: var(--layout-gutter); } .frame .app-shell { border-radius: var(--shape-none); border-inline: none; } }
+
+  /* ---------- Cards = AppCard (radius lg, padding 16/16/20, gap 16) ---------- */
+  .card--a { border-radius: var(--shape-medium); padding: var(--space-16) var(--space-16) var(--space-20); gap: var(--space-16); }
+  .card--a .card__title { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .badge--success { background: var(--color-success-bg); color: var(--color-success-fg); border-color: var(--color-success-stroke); } /* proposed BadgeTone.success */
+
+  /* Status lead (new page-local _StatusLead) */
+  .lead { display: flex; align-items: center; gap: var(--space-12); }
+  .lead__icon { flex: none; display: flex; align-items: center; justify-content: center; width: var(--size-touch); height: var(--size-touch); border-radius: var(--shape-full); background: var(--color-brand-bg-subtle); color: var(--color-brand-fg); }
+  .lead__icon--ok { background: var(--color-success-bg); color: var(--color-success-fg); }
+  .lead__icon--warn { background: var(--color-warning-bg); color: var(--color-warning-fg); }
+  .lead__icon--bad { background: var(--color-danger-bg); color: var(--color-danger-fg); }
+  .lead__icon--off { background: var(--color-bg-4); color: var(--color-fg-3); }
+  .lead__text { display: flex; flex-direction: column; min-width: 0; }
+  .lead__value { font-family: var(--font-family-display); font-size: var(--type-title3-size); line-height: var(--type-title3-lh); font-weight: var(--type-title3-weight); color: var(--color-fg-1); overflow-wrap: anywhere; }
+  .lead__caption { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); overflow-wrap: anywhere; }
+  .lead__caption--bad { color: var(--color-danger-fg); }
+  .divider { border: none; border-top: var(--stroke-thin) solid var(--color-stroke-3); margin: var(--space-0); }
+
+  /* Switch row (proposed shared AppSwitchRow; same look as radar 重複播放 Switch) */
+  .srow { display: flex; align-items: center; gap: var(--space-12); min-height: var(--size-touch); cursor: pointer; }
+  .srow__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .srow__label { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-1); }
+  .srow__hint { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .srow--disabled { cursor: not-allowed; }
+  .srow--disabled .srow__label, .srow--disabled .srow__hint { color: var(--color-fg-disabled); }
+  .switch { appearance: none; flex: none; margin: var(--space-0); position: relative; width: calc(var(--size-icon-20) * 2); height: var(--size-icon-20); border-radius: var(--shape-full); background: var(--color-stroke-accessible); cursor: inherit; transition: background var(--duration-fast, 150ms); }
+  .switch::after { content: ""; position: absolute; top: var(--space-4); left: var(--space-4); width: var(--space-12); height: var(--space-12); border-radius: var(--shape-full); background: var(--color-bg-1); transition: transform var(--duration-fast, 150ms); }
+  .switch:checked { background: var(--color-brand-bg); }
+  .switch:checked::after { transform: translateX(var(--size-icon-20)); }
+  .switch:disabled { background: var(--color-bg-disabled); box-shadow: inset 0 0 0 var(--stroke-thin) var(--color-stroke-disabled); }
+  .switch:disabled::after { background: var(--color-fg-disabled); }
+  .switch:focus-visible { outline: var(--stroke-thick) solid var(--color-stroke-focus-outer); outline-offset: var(--space-4); }
+
+  /* Labelled text field (search / token): page-local TextField, same decoration as location _SearchField */
+  .fld { display: flex; flex-direction: column; gap: var(--space-4); }
+  .fld__label { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .fld__help { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .fld__help--bad { color: var(--color-danger-fg); display: flex; gap: var(--space-4); align-items: flex-start; }
+  .field { display: flex; align-items: center; gap: var(--space-8); min-height: var(--size-control); padding: var(--space-0) var(--space-4) var(--space-0) var(--space-12); background: var(--color-bg-1); border: var(--stroke-thin) solid var(--color-stroke-1); border-bottom-color: var(--color-stroke-accessible); border-radius: var(--shape-extra-small); color: var(--color-fg-3); }
+  .field:focus-within { border-bottom: var(--stroke-thick) solid var(--color-brand-stroke); }
+  .field--bad { border-color: var(--color-danger-stroke); border-bottom: var(--stroke-thick) solid var(--color-danger-fg); }
+  .field input { padding: var(--space-0); flex: 1; min-width: 0; min-height: var(--size-control); border: none; background: transparent; outline: none; color: var(--color-fg-1); font: inherit; letter-spacing: 0.08em; }
+  .field input::placeholder { color: var(--color-fg-4); letter-spacing: normal; }
+  .field input:disabled { color: var(--color-fg-disabled); }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: var(--space-8); }
+  .btn-row--end { justify-content: flex-end; }
+  .btn-row .btn--grow { flex: 1; }
+  .plain { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); user-select: text; }
+  .plain strong { color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
+  .sub-title { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+
+  /* Saved places list tint */
+  .tint { display: flex; align-items: center; justify-content: center; width: var(--size-control-sm); height: var(--size-control-sm); border-radius: var(--shape-full); background: var(--color-bg-4); color: var(--color-fg-2); }
+  .list-row--selected .tint { background: var(--color-bg-1); color: var(--color-brand-fg); }
+  .list--card { box-shadow: none; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-small); overflow: hidden; }
+  .place-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-8); } /* = AppGrid(minColumnWidth: paneMinWidth 320) */
+  .place-tiles .list-row { border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-small); }
+
+  /* Quiet hours */
+  .times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); }
+  .time-btn { justify-content: flex-start; font-variant-numeric: tabular-nums; width: 100%; }
+  .time-btn__k { color: var(--color-fg-3); font-weight: var(--font-weight-regular); }
+  .day-bar { display: flex; flex-direction: column; gap: var(--space-4); }
+  .day-bar__track { position: relative; height: var(--space-8); border-radius: var(--shape-full); background: var(--color-bg-4); overflow: hidden; }
+  .day-bar__fill { position: absolute; top: var(--space-0); bottom: var(--space-0); background: var(--color-brand-120, var(--color-brand-bg)); }
+  .day-bar__ticks { display: flex; justify-content: space-between; font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .day-bar--off .day-bar__fill { background: var(--color-fg-disabled); }
+  .note { display: flex; gap: var(--space-8); align-items: flex-start; padding: var(--space-8) var(--space-12); border-radius: var(--shape-small); background: var(--color-bg-2); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+
+  .notif-wide { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-24); align-items: start; }
+  .notif-col { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
+
+  /* ---------- Wide shell (NavigationRail + scrolling grid) ---------- */
+  .wide { width: 1280px; height: auto; display: flex; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; box-shadow: var(--shadow-16); margin-inline: auto; }
+  .rail { flex: none; width: 80px; background: var(--color-bg-1); border-right: var(--stroke-thin) solid var(--color-stroke-2); display: flex; flex-direction: column; align-items: center; gap: var(--space-12); padding-top: var(--space-12); }
+  .rail__item { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); text-decoration: none; }
+  .rail__icon { display: flex; align-items: center; justify-content: center; width: 56px; height: var(--space-32); border-radius: var(--shape-full); }
+  .rail__item[aria-current="page"] { color: var(--color-brand-fg-strong); font-weight: var(--font-weight-semibold); }
+  .rail__item[aria-current="page"] .rail__icon { background: var(--color-brand-bg-subtle); }
+  .wide__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .wide__main .app-bar { position: relative; padding-inline: var(--space-32); }
+  .wide__page { padding: var(--space-8) var(--space-32) var(--space-32); display: flex; flex-direction: column; gap: var(--space-16); }
+  .bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-16); align-items: start; } /* AppGrid(maxColumns: 3) */
+  .span-2 { grid-column: span 2; }
+  .reading { max-width: 640px; } /* AppLayout.readingWidth */
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l1.6 2.3 2.7-.7.7 2.7 2.6 1-1 2.6 1.6 2.3-2.3 1.6.3 2.8-2.8.3-1.3 2.5-2.5-1.3-2.5 1.3-1.3-2.5-2.8-.3.3-2.8-2.3-1.6 1.6-2.3-1-2.6 2.6-1 .7-2.7 2.7.7z"/></symbol>
+  <symbol id="i-place" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></symbol>
+  <symbol id="i-locate-off" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5M4 4l16 16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l.8 12.5h8.4L17 7M10.5 11v5M13.5 11v5"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.5L7 20z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16 6l2 2M14 8l2 2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 9.5-4.9M18 11v5.5l1.5 2H8"/><path d="M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+</svg>
+
+<main class="doc">
+  <header class="doc-head">
+    <h1 class="text-title2">設定 · designer-2 · Bento 狀態儀表板</h1>
+    <p>每張卡片先給一句狀態（目前地點、定位狀態、授權碼是否有效、通知開了幾區），控制項放在下面。手機為單欄；寬版用最多 3 欄的 bento：上排「儲存的地點」佔 2 欄＋「地點設定」1 欄，下排「token 設定」1 欄＋「通知設定」佔 2 欄。</p>
+  </header>
+
+  <!-- =============================== PHONE =============================== -->
+  <section class="doc-section" aria-labelledby="s-phone">
+    <h2 id="s-phone">手機 390 px</h2>
+    <div class="stage">
+
+      <!-- ===== P1: default, everything OK, quiet hours crossing midnight ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">預設：授權碼有效・已定位・通知 3 區開啟<small>靜音時段 22:00 → 隔天 07:00（跨日）</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar">
+            <div class="app-bar__titles"><h2 class="app-bar__title">設定</h2><p class="app-bar__subtitle">變更會自動儲存</p></div>
+          </header>
+          <div class="page">
+
+            <!-- Card 1: 儲存的地點 -->
+            <section class="card card--a" aria-labelledby="p1-c1">
+              <div class="card__header"><h3 class="card__title" id="p1-c1">儲存的地點</h3><span class="badge">4 個地點</span></div>
+              <div class="lead">
+                <span class="lead__icon"><svg class="icon" aria-hidden="true"><use href="#i-place"/></svg></span>
+                <div class="lead__text"><span class="lead__value">新北市 樹林區</span><span class="lead__caption">目前地點 · 來自 GPS 定位</span></div>
+              </div>
+              <div class="list list--card" role="list" aria-label="已儲存的地點">
+                <div class="list-row list-row--selected" role="listitem" aria-current="true">
+                  <span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span>
+                  <div class="list-row__content"><span class="list-row__primary">新北市 樹林區</span><span class="list-row__secondary">多雲時晴</span></div>
+                  <div class="list-row__trailing"><span class="badge badge--brand">使用中</span><span>24°</span><button class="btn btn--subtle btn--icon" aria-label="移除新北市 樹林區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+                </div>
+                <div class="list-row" role="listitem">
+                  <span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span>
+                  <div class="list-row__content"><span class="list-row__primary">臺北市 信義區</span><span class="list-row__secondary">多雲</span></div>
+                  <div class="list-row__trailing"><span>25°</span><button class="btn btn--subtle btn--icon" aria-label="移除臺北市 信義區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+                </div>
+                <div class="list-row" role="listitem">
+                  <span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span>
+                  <div class="list-row__content"><span class="list-row__primary">臺中市 西屯區</span><span class="list-row__secondary">晴</span></div>
+                  <div class="list-row__trailing"><span>27°</span><button class="btn btn--subtle btn--icon" aria-label="移除臺中市 西屯區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+                </div>
+                <div class="list-row" role="listitem">
+                  <span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span>
+                  <div class="list-row__content"><span class="list-row__primary">花蓮縣 花蓮市</span><span class="list-row__secondary">短暫陣雨</span></div>
+                  <div class="list-row__trailing"><span>23°</span><button class="btn btn--subtle btn--icon" aria-label="移除花蓮縣 花蓮市"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div>
+                </div>
+              </div>
+              <p class="plain">點一下地點設為目前地點；要新增地點，請在下方「地點設定」搜尋。</p>
+            </section>
+
+            <!-- Card 2: 地點設定 -->
+            <section class="card card--a" aria-labelledby="p1-c2">
+              <div class="card__header"><h3 class="card__title" id="p1-c2">地點設定</h3><span class="badge badge--success">已定位</span></div>
+              <div class="lead">
+                <span class="lead__icon lead__icon--ok"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></span>
+                <div class="lead__text"><span class="lead__value">自動定位開啟</span><span class="lead__caption num">新北市 樹林區 · 14:10 定位</span></div>
+              </div>
+              <label class="srow"><span class="srow__text"><span class="srow__label">自動定位</span><span class="srow__hint">以裝置位置作為目前地點</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="自動定位"></label>
+              <div class="btn-row btn-row--end"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-locate"/></svg>重新定位</button></div>
+              <hr class="divider">
+              <div class="fld">
+                <label class="fld__label" for="p1-search">手動搜尋地點</label>
+                <div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg><input id="p1-search" type="search" placeholder="輸入縣市或鄉鎮市區，例如 板橋"></div>
+                <span class="fld__help">選擇搜尋結果會設為目前地點並關閉自動定位；按書籤可儲存。</span>
+              </div>
+            </section>
+
+            <!-- Card 3: token 設定 -->
+            <section class="card card--a" aria-labelledby="p1-c3">
+              <div class="card__header"><h3 class="card__title" id="p1-c3">token 設定</h3><span class="badge badge--success">有效</span></div>
+              <div class="lead">
+                <span class="lead__icon lead__icon--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+                <div class="lead__text"><span class="lead__value">授權碼有效</span><span class="lead__caption num">11/15 14:02 驗證通過</span></div>
+              </div>
+              <div class="fld">
+                <label class="fld__label" for="p1-token">中央氣象署 API 授權碼</label>
+                <div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg><input id="p1-token" type="password" value="CWA-1A2B3C4D-5E6F-7A8B" autocomplete="off"><button class="btn btn--subtle btn--icon" aria-label="顯示授權碼" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+                <span class="fld__help">授權碼只存在這台裝置。</span>
+              </div>
+              <div class="btn-row"><button class="btn btn--primary btn--grow" disabled>儲存</button><button class="btn btn--secondary btn--grow">驗證</button><button class="btn btn--subtle">清除</button></div>
+              <p class="plain"><strong>如何取得授權碼：</strong>到中央氣象署「氣象資料開放平臺」opendata.cwa.gov.tw 註冊並登入，在會員頁面的「取得授權碼」複製後貼到上方。</p>
+            </section>
+
+            <!-- Card 4: 通知設定 -->
+            <section class="card card--a" aria-labelledby="p1-c4">
+              <div class="card__header"><h3 class="card__title" id="p1-c4">通知設定</h3><span class="badge">僅儲存偏好</span></div>
+              <div class="lead">
+                <span class="lead__icon"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg></span>
+                <div class="lead__text"><span class="lead__value">3 區開啟</span><span class="lead__caption num">降雨提醒開 · 靜音 22:00–07:00</span></div>
+              </div>
+              <p class="note"><svg class="icon icon--16" aria-hidden="true"><use href="#i-info"/></svg><span>此版本只會儲存你的通知偏好，尚未發送任何通知。</span></p>
+              <label class="srow"><span class="srow__text"><span class="srow__label">啟用通知</span><span class="srow__hint">總開關；關閉時保留下方設定</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="啟用通知"></label>
+              <hr class="divider">
+              <span class="sub-title">分區警特報通知（每個儲存的地點為一區）</span>
+              <label class="srow"><span class="srow__text"><span class="srow__label">新北市 樹林區</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="新北市 樹林區 警特報通知"></label>
+              <label class="srow"><span class="srow__text"><span class="srow__label">臺北市 信義區</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="臺北市 信義區 警特報通知"></label>
+              <label class="srow"><span class="srow__text"><span class="srow__label">臺中市 西屯區</span></span><input class="switch" type="checkbox" role="switch" aria-label="臺中市 西屯區 警特報通知"></label>
+              <label class="srow"><span class="srow__text"><span class="srow__label">花蓮縣 花蓮市</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="花蓮縣 花蓮市 警特報通知"></label>
+              <hr class="divider">
+              <label class="srow"><span class="srow__text"><span class="srow__label">降雨提醒</span><span class="srow__hint">目前地點即將下雨時提醒</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="降雨提醒"></label>
+              <hr class="divider">
+              <label class="srow"><span class="srow__text"><span class="srow__label">靜音時段</span><span class="srow__hint">這段時間內不提醒</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="靜音時段"></label>
+              <div class="times">
+                <button class="btn btn--secondary time-btn" aria-label="開始時間 22:00，點一下修改"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg><span class="time-btn__k">開始</span>22:00</button>
+                <button class="btn btn--secondary time-btn" aria-label="結束時間 隔天 07:00，點一下修改"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg><span class="time-btn__k">結束</span>07:00</button>
+              </div>
+              <div class="day-bar" aria-label="靜音時段：22:00 至隔天 07:00，共 9 小時">
+                <div class="day-bar__track"><span class="day-bar__fill" style="left:0;width:29.17%"></span><span class="day-bar__fill" style="left:91.67%;width:8.33%"></span></div>
+                <div class="day-bar__ticks" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+              </div>
+              <span class="fld__help">跨日：22:00 至隔天 07:00，共 9 小時</span>
+            </section>
+
+          </div>
+          <nav class="bottom-nav" aria-label="主要導覽">
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+            <a class="bottom-nav__item" href="#" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+          </nav>
+        </div></div>
+      </div>
+
+      <!-- ===== P2: first run, token 未設定 ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">首次使用：token 未設定<small>頁首整列橫幅；按「前往輸入」捲到 token 卡並聚焦輸入框。其他卡片照常顯示在下方（省略）。</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar">
+            <div class="app-bar__titles"><h2 class="app-bar__title">設定</h2><p class="app-bar__subtitle">變更會自動儲存</p></div>
+          </header>
+          <div class="page">
+            <div class="status-banner status-banner--error" role="alert">
+              <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg></span>
+              <div class="status-banner__body">
+                <span class="status-banner__title">尚未設定 API 授權碼</span>
+                <span class="status-banner__text">天氣、雷達、雨量、警特報都需要中央氣象署授權碼才能載入資料。</span>
+                <div class="status-banner__actions"><button class="btn btn--primary btn--sm">前往輸入</button></div>
+              </div>
+            </div>
+            <section class="card card--a" aria-labelledby="p2-c3">
+              <div class="card__header"><h3 class="card__title" id="p2-c3">token 設定</h3><span class="badge">未設定</span></div>
+              <div class="lead">
+                <span class="lead__icon lead__icon--off"><svg class="icon" aria-hidden="true"><use href="#i-key"/></svg></span>
+                <div class="lead__text"><span class="lead__value">尚未設定授權碼</span><span class="lead__caption">貼上授權碼後按「儲存」，會自動驗證一次</span></div>
+              </div>
+              <div class="fld">
+                <label class="fld__label" for="p2-token">中央氣象署 API 授權碼</label>
+                <div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg><input id="p2-token" type="password" placeholder="CWA-XXXXXXXX-XXXX-XXXX" autocomplete="off"><button class="btn btn--subtle btn--icon" aria-label="顯示授權碼" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+              </div>
+              <div class="btn-row"><button class="btn btn--primary btn--grow" disabled>儲存</button><button class="btn btn--secondary btn--grow" disabled>驗證</button><button class="btn btn--subtle" disabled>清除</button></div>
+              <p class="plain"><strong>如何取得授權碼：</strong>到中央氣象署「氣象資料開放平臺」opendata.cwa.gov.tw 註冊並登入，在會員頁面的「取得授權碼」複製後貼到上方。</p>
+            </section>
+            <section class="card card--a" aria-label="儲存的地點（摘要）">
+              <div class="card__header"><h3 class="card__title">儲存的地點</h3><span class="badge">0 個地點</span></div>
+              <div class="lead">
+                <span class="lead__icon lead__icon--off"><svg class="icon" aria-hidden="true"><use href="#i-place"/></svg></span>
+                <div class="lead__text"><span class="lead__value">尚無目前地點</span><span class="lead__caption">開啟自動定位或在「地點設定」搜尋</span></div>
+              </div>
+            </section>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- ===== P3: token states ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">token：驗證中 / 無效<small>驗證＝打一次中央氣象署 API；無效時原因寫在輸入框下方</small></div>
+        <div class="solo">
+          <section class="card card--a" aria-labelledby="p3a" aria-busy="true">
+            <div class="card__header"><h3 class="card__title" id="p3a">token 設定</h3><span class="badge badge--brand">驗證中</span></div>
+            <div class="lead">
+              <span class="lead__icon"><span class="spinner" role="status" aria-label="驗證中"></span></span>
+              <div class="lead__text"><span class="lead__value">驗證中…</span><span class="lead__caption">正在向中央氣象署確認授權碼</span></div>
+            </div>
+            <div class="fld">
+              <label class="fld__label" for="p3a-t">中央氣象署 API 授權碼</label>
+              <div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg><input id="p3a-t" type="password" value="CWA-1A2B3C4D-5E6F-7A8B" disabled><button class="btn btn--subtle btn--icon" aria-label="顯示授權碼" disabled><svg class="icon icon--20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+            </div>
+            <div class="btn-row"><button class="btn btn--primary btn--grow" disabled>儲存</button><button class="btn btn--secondary btn--grow" disabled>驗證中…</button><button class="btn btn--subtle" disabled>清除</button></div>
+          </section>
+          <section class="card card--a" aria-labelledby="p3b">
+            <div class="card__header"><h3 class="card__title" id="p3b">token 設定</h3><span class="badge badge--alert-3">無效</span></div>
+            <div class="lead">
+              <span class="lead__icon lead__icon--bad"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span>
+              <div class="lead__text"><span class="lead__value">授權碼無效</span><span class="lead__caption num">11/15 14:05 驗證失敗</span></div>
+            </div>
+            <div class="fld">
+              <label class="fld__label" for="p3b-t">中央氣象署 API 授權碼</label>
+              <div class="field field--bad"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg><input id="p3b-t" type="text" value="CWA-1A2B3C4D-5E6F-0000" aria-invalid="true" aria-describedby="p3b-err"><button class="btn btn--subtle btn--icon" aria-label="隱藏授權碼" aria-pressed="true"><svg class="icon icon--20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+              <span class="fld__help fld__help--bad" id="p3b-err"><svg class="icon icon--16" aria-hidden="true"><use href="#i-error"/></svg>中央氣象署回應 401：授權碼不存在或已停用。請確認是否完整複製。</span>
+            </div>
+            <div class="btn-row"><button class="btn btn--primary btn--grow">儲存</button><button class="btn btn--secondary btn--grow">重新驗證</button><button class="btn btn--subtle">清除</button></div>
+            <p class="plain"><strong>如何取得授權碼：</strong>到中央氣象署「氣象資料開放平臺」opendata.cwa.gov.tw 註冊並登入，在會員頁面的「取得授權碼」複製後貼到上方。</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ===== P4: GPS states ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">地點設定：權限被拒 / 定位服務關閉 / 自動定位關閉<small>失敗時不改目前地點，沿用上次手動選擇的地點</small></div>
+        <div class="solo">
+          <section class="card card--a" aria-labelledby="p4a">
+            <div class="card__header"><h3 class="card__title" id="p4a">地點設定</h3><span class="badge badge--alert-2">權限被拒</span></div>
+            <div class="lead">
+              <span class="lead__icon lead__icon--warn"><svg class="icon" aria-hidden="true"><use href="#i-locate-off"/></svg></span>
+              <div class="lead__text"><span class="lead__value">無法自動定位</span><span class="lead__caption">目前沿用：臺北市 信義區</span></div>
+            </div>
+            <label class="srow"><span class="srow__text"><span class="srow__label">自動定位</span><span class="srow__hint">以裝置位置作為目前地點</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="自動定位"></label>
+            <div class="status-banner status-banner--permission">
+              <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate-off"/></svg></span>
+              <div class="status-banner__body"><span class="status-banner__title">未取得位置權限</span><span class="status-banner__text">請到系統設定允許「CWA 天氣」使用位置，或用下方搜尋手動選擇。</span>
+                <div class="status-banner__actions"><button class="btn btn--primary btn--sm">前往系統設定</button></div></div>
+            </div>
+            <hr class="divider">
+            <div class="fld"><label class="fld__label" for="p4a-s">手動搜尋地點</label><div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg><input id="p4a-s" type="search" placeholder="輸入縣市或鄉鎮市區，例如 板橋"></div></div>
+          </section>
+          <section class="card card--a" aria-labelledby="p4b">
+            <div class="card__header"><h3 class="card__title" id="p4b">地點設定</h3><span class="badge badge--alert-2">定位服務關閉</span></div>
+            <div class="lead">
+              <span class="lead__icon lead__icon--warn"><svg class="icon" aria-hidden="true"><use href="#i-locate-off"/></svg></span>
+              <div class="lead__text"><span class="lead__value">定位服務未開啟</span><span class="lead__caption">目前沿用：臺北市 信義區</span></div>
+            </div>
+            <label class="srow"><span class="srow__text"><span class="srow__label">自動定位</span><span class="srow__hint">以裝置位置作為目前地點</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="自動定位"></label>
+            <div class="status-banner status-banner--permission">
+              <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate-off"/></svg></span>
+              <div class="status-banner__body"><span class="status-banner__title">裝置的定位服務已關閉</span><span class="status-banner__text">開啟後按「重試」。</span>
+                <div class="status-banner__actions"><button class="btn btn--primary btn--sm">前往系統設定</button><button class="btn btn--secondary btn--sm">重試</button></div></div>
+            </div>
+          </section>
+          <section class="card card--a" aria-labelledby="p4c">
+            <div class="card__header"><h3 class="card__title" id="p4c">地點設定</h3><span class="badge">手動</span></div>
+            <div class="lead">
+              <span class="lead__icon lead__icon--off"><svg class="icon" aria-hidden="true"><use href="#i-place"/></svg></span>
+              <div class="lead__text"><span class="lead__value">自動定位關閉</span><span class="lead__caption">目前地點：臺北市 信義區（手動選擇）</span></div>
+            </div>
+            <label class="srow"><span class="srow__text"><span class="srow__label">自動定位</span><span class="srow__hint">以裝置位置作為目前地點</span></span><input class="switch" type="checkbox" role="switch" aria-label="自動定位"></label>
+            <hr class="divider">
+            <div class="fld"><label class="fld__label" for="p4c-s">手動搜尋地點</label><div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg><input id="p4c-s" type="search" value="板橋"></div></div>
+            <div class="list list--card" role="list" aria-label="搜尋結果">
+              <div class="list-row" role="listitem"><div class="list-row__content"><span class="list-row__primary">新北市 板橋區</span><span class="list-row__secondary">點一下設為目前地點</span></div><div class="list-row__trailing"><button class="btn btn--subtle btn--icon" aria-label="儲存新北市 板橋區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></button></div></div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ===== P5: notifications master off + corrupt stored settings ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">通知總開關關閉 / 儲存資料損毀<small>總開關關閉時下方設定保留但停用；讀到格式錯誤的設定時整張卡改為錯誤橫幅，不套預設值</small></div>
+        <div class="solo">
+          <section class="card card--a" aria-labelledby="p5a">
+            <div class="card__header"><h3 class="card__title" id="p5a">通知設定</h3><span class="badge">僅儲存偏好</span></div>
+            <div class="lead">
+              <span class="lead__icon lead__icon--off"><svg class="icon" aria-hidden="true"><use href="#i-bell-off"/></svg></span>
+              <div class="lead__text"><span class="lead__value">通知已關閉</span><span class="lead__caption">下方設定已保留，重新開啟即恢復</span></div>
+            </div>
+            <label class="srow"><span class="srow__text"><span class="srow__label">啟用通知</span><span class="srow__hint">總開關；關閉時保留下方設定</span></span><input class="switch" type="checkbox" role="switch" aria-label="啟用通知"></label>
+            <hr class="divider">
+            <span class="sub-title">分區警特報通知（每個儲存的地點為一區）</span>
+            <label class="srow srow--disabled"><span class="srow__text"><span class="srow__label">新北市 樹林區</span></span><input class="switch" type="checkbox" role="switch" checked disabled aria-label="新北市 樹林區 警特報通知"></label>
+            <label class="srow srow--disabled"><span class="srow__text"><span class="srow__label">臺北市 信義區</span></span><input class="switch" type="checkbox" role="switch" checked disabled aria-label="臺北市 信義區 警特報通知"></label>
+            <hr class="divider">
+            <label class="srow srow--disabled"><span class="srow__text"><span class="srow__label">降雨提醒</span><span class="srow__hint">目前地點即將下雨時提醒</span></span><input class="switch" type="checkbox" role="switch" checked disabled aria-label="降雨提醒"></label>
+            <label class="srow srow--disabled"><span class="srow__text"><span class="srow__label">靜音時段</span><span class="srow__hint">22:00 至隔天 07:00</span></span><input class="switch" type="checkbox" role="switch" checked disabled aria-label="靜音時段"></label>
+            <div class="times">
+              <button class="btn btn--secondary time-btn" disabled><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg><span class="time-btn__k">開始</span>22:00</button>
+              <button class="btn btn--secondary time-btn" disabled><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg><span class="time-btn__k">結束</span>07:00</button>
+            </div>
+          </section>
+          <div class="status-banner status-banner--error" role="alert">
+            <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span>
+            <div class="status-banner__body"><span class="status-banner__title">無法讀取通知設定</span><span class="status-banner__text">儲存的通知設定格式錯誤（quietStart: "25:00"）。</span>
+              <div class="status-banner__actions"><button class="btn btn--secondary btn--sm">重設通知設定</button></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== P6: data page without token ===== -->
+      <div class="frame-col">
+        <div class="frame-cap">其他資料頁：缺少或無效授權碼<small>天氣／雷達／雨量／警特報共用同一個整頁狀態；不顯示預設資料</small></div>
+        <div class="frame"><div class="app-shell">
+          <header class="app-bar"><div class="app-bar__titles"><h2 class="app-bar__title">天氣</h2></div></header>
+          <div class="page">
+            <div class="empty-state">
+              <span class="empty-state__icon"><svg class="icon icon--48" aria-hidden="true"><use href="#i-key"/></svg></span>
+              <p class="empty-state__title">需要中央氣象署授權碼</p>
+              <p class="text-body1">尚未設定授權碼，無法載入天氣資料。請到「設定」輸入授權碼。</p>
+              <button class="btn btn--primary">前往設定</button>
+            </div>
+          </div>
+          <nav class="bottom-nav" aria-label="主要導覽">
+            <a class="bottom-nav__item" href="#" aria-current="page"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+            <a class="bottom-nav__item" href="#"><span class="bottom-nav__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+          </nav>
+        </div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =============================== WIDE =============================== -->
+  <section class="doc-section" aria-labelledby="s-wide">
+    <h2 id="s-wide">寬版 1280 px（NavigationRail，3 欄 bento）</h2>
+    <p class="doc-note">內容寬 1136 px。bento 固定最多 3 欄（在 AppGridItem.full 內放 AppGrid(maxColumns: 3)），所以 1920 寬也維持兩排、不會出現 5 欄後的空洞。960 寬（2 欄）時：儲存的地點整排 → 地點設定＋token 並排 → 通知設定整排。</p>
+    <div class="wide-scroll">
+      <div class="wide">
+        <nav class="rail" aria-label="主要導覽">
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="rail__item" href="#" aria-current="page"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+        </nav>
+        <div class="wide__main">
+          <header class="app-bar"><div class="app-bar__titles"><h2 class="app-bar__title">設定</h2><p class="app-bar__subtitle">變更會自動儲存</p></div></header>
+          <div class="wide__page">
+            <div class="bento">
+
+              <!-- 儲存的地點: span 2, tiles in 2 columns -->
+              <section class="card card--a span-2" aria-labelledby="w-c1">
+                <div class="card__header"><h3 class="card__title" id="w-c1">儲存的地點</h3><span class="badge">4 個地點</span></div>
+                <div class="lead">
+                  <span class="lead__icon"><svg class="icon" aria-hidden="true"><use href="#i-place"/></svg></span>
+                  <div class="lead__text"><span class="lead__value">新北市 樹林區</span><span class="lead__caption">目前地點 · 來自 GPS 定位</span></div>
+                </div>
+                <div class="place-tiles" role="list" aria-label="已儲存的地點">
+                  <div class="list-row list-row--selected" role="listitem" aria-current="true"><span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span><div class="list-row__content"><span class="list-row__primary">新北市 樹林區</span><span class="list-row__secondary">多雲時晴</span></div><div class="list-row__trailing"><span class="badge badge--brand">使用中</span><span>24°</span><button class="btn btn--subtle btn--icon" aria-label="移除新北市 樹林區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div></div>
+                  <div class="list-row" role="listitem"><span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span><div class="list-row__content"><span class="list-row__primary">臺北市 信義區</span><span class="list-row__secondary">多雲</span></div><div class="list-row__trailing"><span>25°</span><button class="btn btn--subtle btn--icon" aria-label="移除臺北市 信義區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div></div>
+                  <div class="list-row" role="listitem"><span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span><div class="list-row__content"><span class="list-row__primary">臺中市 西屯區</span><span class="list-row__secondary">晴</span></div><div class="list-row__trailing"><span>27°</span><button class="btn btn--subtle btn--icon" aria-label="移除臺中市 西屯區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div></div>
+                  <div class="list-row" role="listitem"><span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span><div class="list-row__content"><span class="list-row__primary">花蓮縣 花蓮市</span><span class="list-row__secondary">短暫陣雨</span></div><div class="list-row__trailing"><span>23°</span><button class="btn btn--subtle btn--icon" aria-label="移除花蓮縣 花蓮市"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div></div>
+                </div>
+                <p class="plain">點一下地點設為目前地點；要新增地點，請在「地點設定」搜尋。</p>
+              </section>
+
+              <!-- 地點設定 -->
+              <section class="card card--a" aria-labelledby="w-c2">
+                <div class="card__header"><h3 class="card__title" id="w-c2">地點設定</h3><span class="badge badge--success">已定位</span></div>
+                <div class="lead">
+                  <span class="lead__icon lead__icon--ok"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></span>
+                  <div class="lead__text"><span class="lead__value">自動定位開啟</span><span class="lead__caption num">新北市 樹林區 · 14:10 定位</span></div>
+                </div>
+                <label class="srow"><span class="srow__text"><span class="srow__label">自動定位</span><span class="srow__hint">以裝置位置作為目前地點</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="自動定位"></label>
+                <div class="btn-row btn-row--end"><button class="btn btn--secondary btn--sm"><svg class="icon icon--16" aria-hidden="true"><use href="#i-locate"/></svg>重新定位</button></div>
+                <hr class="divider">
+                <div class="fld"><label class="fld__label" for="w-search">手動搜尋地點</label><div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-search"/></svg><input id="w-search" type="search" value="板橋"></div></div>
+                <div class="list list--card" role="list" aria-label="搜尋結果">
+                  <div class="list-row" role="listitem"><div class="list-row__content"><span class="list-row__primary">新北市 板橋區</span><span class="list-row__secondary">點一下設為目前地點</span></div><div class="list-row__trailing"><button class="btn btn--subtle btn--icon" aria-label="儲存新北市 板橋區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-bookmark"/></svg></button></div></div>
+                </div>
+              </section>
+
+              <!-- token 設定 -->
+              <section class="card card--a" aria-labelledby="w-c3">
+                <div class="card__header"><h3 class="card__title" id="w-c3">token 設定</h3><span class="badge badge--success">有效</span></div>
+                <div class="lead">
+                  <span class="lead__icon lead__icon--ok"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+                  <div class="lead__text"><span class="lead__value">授權碼有效</span><span class="lead__caption num">11/15 14:02 驗證通過</span></div>
+                </div>
+                <div class="fld">
+                  <label class="fld__label" for="w-token">中央氣象署 API 授權碼</label>
+                  <div class="field"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg><input id="w-token" type="password" value="CWA-1A2B3C4D-5E6F-7A8B" autocomplete="off"><button class="btn btn--subtle btn--icon" aria-label="顯示授權碼" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+                  <span class="fld__help">授權碼只存在這台裝置。</span>
+                </div>
+                <div class="btn-row"><button class="btn btn--primary btn--grow" disabled>儲存</button><button class="btn btn--secondary btn--grow">驗證</button><button class="btn btn--subtle">清除</button></div>
+                <p class="plain"><strong>如何取得授權碼：</strong>到中央氣象署「氣象資料開放平臺」opendata.cwa.gov.tw 註冊並登入，在會員頁面的「取得授權碼」複製後貼到上方。</p>
+              </section>
+
+              <!-- 通知設定: span 2, wide interior (two columns) -->
+              <section class="card card--a span-2" aria-labelledby="w-c4">
+                <div class="card__header"><h3 class="card__title" id="w-c4">通知設定</h3><span class="badge">僅儲存偏好</span></div>
+                <div class="lead">
+                  <span class="lead__icon"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg></span>
+                  <div class="lead__text"><span class="lead__value">3 區開啟</span><span class="lead__caption num">降雨提醒開 · 靜音 22:00–07:00</span></div>
+                </div>
+                <p class="note reading"><svg class="icon icon--16" aria-hidden="true"><use href="#i-info"/></svg><span>此版本只會儲存你的通知偏好，尚未發送任何通知。</span></p>
+                <div class="notif-wide">
+                  <div class="notif-col">
+                    <label class="srow"><span class="srow__text"><span class="srow__label">啟用通知</span><span class="srow__hint">總開關；關閉時保留其他設定</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="啟用通知"></label>
+                    <hr class="divider">
+                    <label class="srow"><span class="srow__text"><span class="srow__label">降雨提醒</span><span class="srow__hint">目前地點即將下雨時提醒</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="降雨提醒"></label>
+                    <hr class="divider">
+                    <label class="srow"><span class="srow__text"><span class="srow__label">靜音時段</span><span class="srow__hint">這段時間內不提醒</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="靜音時段"></label>
+                    <div class="times">
+                      <button class="btn btn--secondary time-btn" aria-label="開始時間 22:00，點一下修改"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg><span class="time-btn__k">開始</span>22:00</button>
+                      <button class="btn btn--secondary time-btn" aria-label="結束時間 隔天 07:00，點一下修改"><svg class="icon icon--16" aria-hidden="true"><use href="#i-clock"/></svg><span class="time-btn__k">結束</span>07:00</button>
+                    </div>
+                    <div class="day-bar" aria-label="靜音時段：22:00 至隔天 07:00，共 9 小時">
+                      <div class="day-bar__track"><span class="day-bar__fill" style="left:0;width:29.17%"></span><span class="day-bar__fill" style="left:91.67%;width:8.33%"></span></div>
+                      <div class="day-bar__ticks" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+                    </div>
+                    <span class="fld__help">跨日：22:00 至隔天 07:00，共 9 小時</span>
+                  </div>
+                  <div class="notif-col">
+                    <span class="sub-title">分區警特報通知（每個儲存的地點為一區）</span>
+                    <label class="srow"><span class="srow__text"><span class="srow__label">新北市 樹林區</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="新北市 樹林區 警特報通知"></label>
+                    <label class="srow"><span class="srow__text"><span class="srow__label">臺北市 信義區</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="臺北市 信義區 警特報通知"></label>
+                    <label class="srow"><span class="srow__text"><span class="srow__label">臺中市 西屯區</span></span><input class="switch" type="checkbox" role="switch" aria-label="臺中市 西屯區 警特報通知"></label>
+                    <label class="srow"><span class="srow__text"><span class="srow__label">花蓮縣 花蓮市</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="花蓮縣 花蓮市 警特報通知"></label>
+                  </div>
+                </div>
+              </section>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2>寬版 1280 px：token 無效</h2>
+    <p class="doc-note">整列橫幅放在 bento 之上（AppGridItem.full）；token 卡維持原位置，不重排，以免版面跳動。</p>
+    <div class="wide-scroll">
+      <div class="wide">
+        <nav class="rail" aria-label="主要導覽">
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg></span>天氣</a>
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-radar"/></svg></span>雷達</a>
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-rainfall"/></svg></span>雨量</a>
+          <a class="rail__item" href="#"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-warning"/></svg></span>警特報</a>
+          <a class="rail__item" href="#" aria-current="page"><span class="rail__icon"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></span>設定</a>
+        </nav>
+        <div class="wide__main">
+          <header class="app-bar"><div class="app-bar__titles"><h2 class="app-bar__title">設定</h2><p class="app-bar__subtitle">變更會自動儲存</p></div></header>
+          <div class="wide__page">
+            <div class="status-banner status-banner--error" role="alert">
+              <span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg></span>
+              <div class="status-banner__body reading"><span class="status-banner__title">API 授權碼無效</span><span class="status-banner__text">中央氣象署拒絕了目前的授權碼，所有資料頁暫停載入。</span>
+                <div class="status-banner__actions"><button class="btn btn--primary btn--sm">前往修正</button></div></div>
+            </div>
+            <div class="bento">
+              <section class="card card--a span-2" aria-label="儲存的地點">
+                <div class="card__header"><h3 class="card__title">儲存的地點</h3><span class="badge">4 個地點</span></div>
+                <div class="lead"><span class="lead__icon"><svg class="icon" aria-hidden="true"><use href="#i-place"/></svg></span><div class="lead__text"><span class="lead__value">新北市 樹林區</span><span class="lead__caption">目前地點 · 溫度需有效授權碼才會顯示</span></div></div>
+                <div class="place-tiles" role="list">
+                  <div class="list-row list-row--selected" role="listitem"><span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span><div class="list-row__content"><span class="list-row__primary">新北市 樹林區</span><span class="list-row__secondary">需要授權碼</span></div><div class="list-row__trailing"><span class="badge badge--brand">使用中</span><span>—</span><button class="btn btn--subtle btn--icon" aria-label="移除新北市 樹林區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div></div>
+                  <div class="list-row" role="listitem"><span class="tint"><svg class="icon icon--20" aria-hidden="true"><use href="#i-place"/></svg></span><div class="list-row__content"><span class="list-row__primary">臺北市 信義區</span><span class="list-row__secondary">需要授權碼</span></div><div class="list-row__trailing"><span>—</span><button class="btn btn--subtle btn--icon" aria-label="移除臺北市 信義區"><svg class="icon icon--20" aria-hidden="true"><use href="#i-trash"/></svg></button></div></div>
+                </div>
+              </section>
+              <section class="card card--a" aria-label="地點設定">
+                <div class="card__header"><h3 class="card__title">地點設定</h3><span class="badge badge--success">已定位</span></div>
+                <div class="lead"><span class="lead__icon lead__icon--ok"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></span><div class="lead__text"><span class="lead__value">自動定位開啟</span><span class="lead__caption num">新北市 樹林區 · 14:10 定位</span></div></div>
+                <label class="srow"><span class="srow__text"><span class="srow__label">自動定位</span><span class="srow__hint">以裝置位置作為目前地點</span></span><input class="switch" type="checkbox" role="switch" checked aria-label="自動定位"></label>
+              </section>
+              <section class="card card--a" aria-label="token 設定">
+                <div class="card__header"><h3 class="card__title">token 設定</h3><span class="badge badge--alert-3">無效</span></div>
+                <div class="lead"><span class="lead__icon lead__icon--bad"><svg class="icon" aria-hidden="true"><use href="#i-error"/></svg></span><div class="lead__text"><span class="lead__value">授權碼無效</span><span class="lead__caption num">11/15 14:05 驗證失敗</span></div></div>
+                <div class="fld">
+                  <label class="fld__label" for="w2-t">中央氣象署 API 授權碼</label>
+                  <div class="field field--bad"><svg class="icon icon--20" aria-hidden="true"><use href="#i-key"/></svg><input id="w2-t" type="password" value="CWA-1A2B3C4D-5E6F-0000" aria-invalid="true" aria-describedby="w2-err"><button class="btn btn--subtle btn--icon" aria-label="顯示授權碼" aria-pressed="false"><svg class="icon icon--20" aria-hidden="true"><use href="#i-eye"/></svg></button></div>
+                  <span class="fld__help fld__help--bad" id="w2-err"><svg class="icon icon--16" aria-hidden="true"><use href="#i-error"/></svg>中央氣象署回應 401：授權碼不存在或已停用。</span>
+                </div>
+                <div class="btn-row"><button class="btn btn--primary btn--grow">儲存</button><button class="btn btn--secondary btn--grow">重新驗證</button><button class="btn btn--subtle">清除</button></div>
+              </section>
+              <section class="card card--a span-2" aria-label="通知設定">
+                <div class="card__header"><h3 class="card__title">通知設定</h3><span class="badge">僅儲存偏好</span></div>
+                <div class="lead"><span class="lead__icon lead__icon--off"><svg class="icon" aria-hidden="true"><use href="#i-bell-off"/></svg></span><div class="lead__text"><span class="lead__value">通知已關閉</span><span class="lead__caption">下方設定已保留，重新開啟即恢復</span></div></div>
+                <label class="srow reading"><span class="srow__text"><span class="srow__label">啟用通知</span><span class="srow__hint">總開關；關閉時保留其他設定</span></span><input class="switch" type="checkbox" role="switch" aria-label="啟用通知"></label>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
