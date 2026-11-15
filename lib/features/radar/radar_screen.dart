@@ -228,7 +228,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           AppButton(
             label: '選擇地點',
             small: true,
-            onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
+            onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.settings),
           ),
         ],
       ),

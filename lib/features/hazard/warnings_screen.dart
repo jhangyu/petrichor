@@ -67,7 +67,7 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
               tone: StatusTone.permission,
               title: '尚未選定地點',
               text: locationFailureMessage(reason),
-              actions: [AppButton(label: '手動選擇', small: true, onPressed: () => _openTab(AppTab.location))],
+              actions: [AppButton(label: '手動選擇', small: true, onPressed: () => _openTab(AppTab.settings))],
             ),
           ),
         ],

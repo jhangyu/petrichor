@@ -121,7 +121,7 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
           label: '手動選擇',
           variant: AppButtonVariant.subtle,
           small: true,
-          onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
+          onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.settings),
         ),
       ],
     );

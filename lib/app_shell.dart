@@ -5,15 +5,15 @@ import 'core/layout/adaptive.dart';
 import 'core/theme/app_tokens.dart';
 import 'features/hazard/rainfall_screen.dart';
 import 'features/hazard/warnings_screen.dart';
-import 'features/location/location_screen.dart';
 import 'features/radar/radar_screen.dart';
+import 'features/settings/settings_screen.dart';
 import 'features/weather/weather_screen.dart';
 
 /// The 5 bottom-navigation tabs, in display order.
-enum AppTab { weather, radar, rainfall, warnings, location }
+enum AppTab { weather, radar, rainfall, warnings, settings }
 
 /// Selected tab. Pages switch tabs with
-/// `ref.read(appTabProvider.notifier).select(AppTab.location)` (e.g. 「手動選擇」).
+/// `ref.read(appTabProvider.notifier).select(AppTab.settings)` (e.g. 「手動選擇」).
 final appTabProvider = NotifierProvider<AppTabNotifier, AppTab>(AppTabNotifier.new);
 
 class AppTabNotifier extends Notifier<AppTab> {
@@ -23,7 +23,7 @@ class AppTabNotifier extends Notifier<AppTab> {
   void select(AppTab tab) => state = tab;
 }
 
-/// Full-window shell with the 5 tabs (天氣｜雷達｜雨量｜警特報｜地點): bottom
+/// Full-window shell with the 5 tabs (天氣｜雷達｜雨量｜警特報｜設定): bottom
 /// [NavigationBar] on compact-width windows, [NavigationRail] on the left
 /// otherwise ([WindowSizeClass.usesRail]). A tab is built on first visit and
 /// then kept alive in an [IndexedStack], so radar frames are not fetched until
@@ -41,7 +41,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     AppTab.radar: ('雷達', Icons.radar, RadarScreen()),
     AppTab.rainfall: ('雨量', Icons.water_drop_outlined, RainfallScreen()),
     AppTab.warnings: ('警特報', Icons.warning_amber_outlined, WarningsScreen()),
-    AppTab.location: ('地點', Icons.location_on_outlined, LocationScreen()),
+    AppTab.settings: ('設定', Icons.settings_outlined, SettingsScreen()),
   };
 
   /// Destinations start at the top of the rail (Fluent / M3 rail default).

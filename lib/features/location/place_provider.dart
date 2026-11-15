@@ -49,9 +49,6 @@ final class NoPlace extends CurrentPlace {
 
   const NoPlace(this.error) : kind = NoPlaceKind.locationFailed;
 
-  /// Temporary: the frontend package removes this getter and switches callers to [kind].
-  bool get firstRun => kind == NoPlaceKind.firstRun;
-
   @override
   bool get autoLocate => kind == NoPlaceKind.locationFailed;
 

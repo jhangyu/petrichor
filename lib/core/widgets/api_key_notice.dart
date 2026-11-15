@@ -28,7 +28,7 @@ class ApiKeyNotice extends ConsumerWidget {
           label: '前往設定',
           variant: AppButtonVariant.primary,
           small: true,
-          onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
+          onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.settings),
         ),
       ],
     );

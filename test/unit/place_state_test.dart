@@ -60,7 +60,7 @@ void main() {
   test('first run without a stored choice: no place, no location request', () async {
     final current = await newContainer().read(currentPlaceProvider.future);
 
-    expect(current, isA<NoPlace>().having((p) => p.firstRun, 'firstRun', true));
+    expect(current, isA<NoPlace>().having((p) => p.kind, 'kind', NoPlaceKind.firstRun));
     verifyNever(() => location.getCurrentLocation());
   });
 
@@ -95,7 +95,7 @@ void main() {
     expect(
       container.read(currentPlaceProvider).value,
       isA<NoPlace>()
-          .having((p) => p.firstRun, 'firstRun', false)
+          .having((p) => p.kind, 'kind', NoPlaceKind.locationFailed)
           .having((p) => p.reason, 'reason', LocationFailure.permissionDenied)
           .having((p) => p.cause, 'cause', 'denied'),
     );

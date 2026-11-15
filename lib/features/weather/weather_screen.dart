@@ -37,7 +37,7 @@ class WeatherScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final place = ref.watch(currentPlaceProvider);
     final weather = ref.watch(weatherNotifierProvider);
-    void openLocationTab() => ref.read(appTabProvider.notifier).select(AppTab.location);
+    void openLocationTab() => ref.read(appTabProvider.notifier).select(AppTab.settings);
     void refresh() {
       ref.invalidate(weatherNotifierProvider);
       ref.invalidate(activeWarningsProvider);
