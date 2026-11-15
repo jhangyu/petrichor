@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../layout/adaptive.dart';
 import '../theme/app_tokens.dart';
 import 'buttons.dart';
 
 /// `.app-bar` + `.page` + bottom `資料來源` line. One per tab screen.
 ///
-/// [children] are laid out with the page gap (16) and gutter (16). Pass
-/// [source] only on frames that show CWA data (loading / error frames have
-/// none); it is pinned at the bottom of the viewport on short pages and
-/// follows the content on long ones.
+/// [children] are laid out in an [AppGrid] that fills the window width (gap
+/// 16, page margin from [WindowSizeClass.pageMargin]); wrap a child in
+/// [AppGridItem] / [AppGridItem.full] to span columns. Pass [source] only on
+/// frames that show CWA data (loading / error frames have none); it is pinned
+/// at the bottom of the viewport on short pages and follows the content on
+/// long ones.
 class AppPageScaffold extends StatelessWidget {
   const AppPageScaffold({
     super.key,
@@ -25,28 +28,21 @@ class AppPageScaffold extends StatelessWidget {
   /// Enables pull-to-refresh when set.
   final Future<void> Function()? onRefresh;
 
-  static const _pagePadding =
-      EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s8, AppSpace.gutter, AppSpace.s0);
-  static const _footPadding =
-      EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.s16, AppSpace.gutter, AppSpace.s24);
-
   @override
   Widget build(BuildContext context) {
+    final margin = WindowSizeClass.of(context).pageMargin;
+    // ponytail: the grid is built eagerly (pages hold < 20 cards); go lazy if a page grows long lists.
     final scroll = CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: _pagePadding,
-          sliver: SliverList.separated(
-            itemCount: children.length,
-            itemBuilder: (_, i) => children[i],
-            separatorBuilder: (_, _) => const SizedBox(height: AppSpace.s16),
-          ),
+          padding: EdgeInsets.fromLTRB(margin, AppSpace.s8, margin, AppSpace.s0),
+          sliver: SliverToBoxAdapter(child: AppGrid(children: children)),
         ),
         SliverFillRemaining(
           hasScrollBody: false,
           child: Padding(
-            padding: _footPadding,
+            padding: EdgeInsets.fromLTRB(margin, AppSpace.s16, margin, AppSpace.s24),
             child: Align(alignment: Alignment.bottomCenter, child: source),
           ),
         ),

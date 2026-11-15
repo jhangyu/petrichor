@@ -207,7 +207,7 @@ abstract final class AppStroke {
   static const double thicker = 3;
 }
 
-/// `--size-*` tokens and `--layout-max-width`.
+/// `--size-*` tokens.
 abstract final class AppSize {
   static const double touch = 44;
   static const double control = 44;
@@ -225,7 +225,30 @@ abstract final class AppSize {
   static const double legendBar = 8;
   static const double spinner = 20;
   static const double dot = 8;
-  static const double layoutMaxWidth = 480;
+}
+
+/// Window size-class thresholds (logical px, lower bound of each class).
+/// Width: Material 3 window size classes. Height: compact < 480 catches short
+/// landscape windows (720x360 at 2x). Read through `WindowSizeClass`, never
+/// compare sizes against these directly in screens.
+abstract final class AppBreakpoint {
+  static const double medium = 600;
+  static const double expanded = 840;
+  static const double large = 1200;
+  static const double heightMedium = 480;
+  static const double heightExpanded = 900;
+}
+
+/// Fluid page grid (`AppGrid`) and reading width.
+abstract final class AppLayout {
+  /// Narrowest page column: the phone card width the cards were designed at.
+  static const double gridMinColumn = 340;
+  static const int gridMaxColumns = 6;
+  static const double gridGap = AppSpace.s16;
+
+  /// Max width of a running-text block inside a card (~70 CJK/Latin chars at
+  /// body1). Cards fill their cell; only long text is capped.
+  static const double readingWidth = 640;
 }
 
 /// `--shadow-*` tokens (Fluent elevation, light theme).
