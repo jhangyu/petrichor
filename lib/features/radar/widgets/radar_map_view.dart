@@ -61,15 +61,15 @@ const _rgbaBytes = 4;
 
 /// GPU bytes for [_rasterCacheScreens] of finished tiles over a [card] at
 /// [dpr], as the scaled layer sees them: a surface of card / scale at
-/// dpr × scale (tiles land 1:1 on device pixels after the shrink). A 340×408
-/// card at scale 0.5 is a 680×816 surface, 6×7 tiles of 384 px at dpr 3:
-/// 23.6 MiB (unscaled it was 5×5 tiles of 768 px, 56.25 MiB); 10.5 MiB at
-/// dpr 2.
+/// [ContentScaledLayer.rasterPixelRatio]. A 340×408 card at scale 0.5 is a
+/// 680×816 surface, 6×7 tiles of 768 px at dpr 3: 94.5 MiB (unscaled it was
+/// 5×5 tiles of 768 px, 56.25 MiB); 6×7 tiles of 512 px, 42 MiB, at dpr 2.
 int _rasterCacheBytes(Size card, double dpr) {
   final surface = card / _basemapContentScale;
   final tilesX = (surface.width / _displayTilePx).ceil() + _gridExtraTiles;
   final tilesY = (surface.height / _displayTilePx).ceil() + _gridExtraTiles;
-  final tileEdge = (_displayTilePx * dpr * _basemapContentScale).ceilToDouble();
+  final rasterDpr = ContentScaledLayer.rasterPixelRatio(dpr, _basemapContentScale);
+  final tileEdge = (_displayTilePx * rasterDpr).ceilToDouble();
   return (tilesX * tilesY * tileEdge * tileEdge * _rgbaBytes * _rasterCacheScreens).round();
 }
 
@@ -265,7 +265,8 @@ class _RadarMapViewState extends State<RadarMapView> {
       appLog(
         _logTag,
         'raster cache ${(bytes / (1 << 20)).toStringAsFixed(1)} MiB for card '
-        '${card.width.round()}x${card.height.round()} dpr $dpr content scale $_basemapContentScale',
+        '${card.width.round()}x${card.height.round()} dpr $dpr content scale $_basemapContentScale '
+        'raster dpr ${ContentScaledLayer.rasterPixelRatio(dpr, _basemapContentScale)}',
       );
     }
     return bytes;

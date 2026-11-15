@@ -15,15 +15,30 @@ import 'package:flutter_map/src/map/inherited_model.dart';
 /// higher zoom and the larger size; everything outside [child] (gestures,
 /// other layers, the map's own camera) is untouched.
 ///
-/// The subtree's device pixel ratio is multiplied by [scale] too, so tiles
-/// rasterized at the larger logical size land 1:1 on device pixels after
-/// the shrink instead of costing 1/scale² the GPU memory.
+/// The subtree sees the device pixel ratio [rasterPixelRatio], so its
+/// rasters stay at least as sharp as the screen after the shrink.
 class ContentScaledLayer extends StatelessWidget {
   const ContentScaledLayer({super.key, required this.scale, required this.child})
     : assert(scale > 0 && scale <= 1, 'scale must be in (0, 1], got $scale');
 
   final double scale;
   final Widget child;
+
+  /// How far a tile layer stretches its rasters: the vector tile layer
+  /// draws tiles of zoom `floor(camera zoom)`, so at camera zoom z + f a
+  /// tile is drawn 2^f times its raster's logical size, f in [0, 1)
+  /// (flutter_map_vector_tiles 2.11.0 grid_layout.dart:29, :99).
+  static const _maxTileStretch = 2.0;
+
+  /// The device pixel ratio the subtree rasterizes at for a screen of
+  /// [devicePixelRatio]: a raster is stretched up to [_maxTileStretch]
+  /// times, then shrunk by [scale], so `dpr × scale × 2` keeps at least one
+  /// raster pixel per device pixel at every fractional zoom (two at integer
+  /// zoom). Scale 0.5 gives the screen's own ratio; plain `dpr × scale`
+  /// left half a raster pixel per device pixel just below the next zoom,
+  /// upsampled 2× and blurred.
+  static double rasterPixelRatio(double devicePixelRatio, double scale) =>
+      devicePixelRatio * scale * _maxTileStretch;
 
   /// The camera [child] sees for the map's [camera]: same centre and
   /// rotation, zoom raised by `log2(1 / scale)`, size divided by [scale].
@@ -48,7 +63,7 @@ class ContentScaledLayer extends StatelessWidget {
       child: Transform.scale(
         scale: scale,
         child: MediaQuery(
-          data: media.copyWith(devicePixelRatio: media.devicePixelRatio * scale),
+          data: media.copyWith(devicePixelRatio: rasterPixelRatio(media.devicePixelRatio, scale)),
           child: MapInheritedModel(
             camera: _scaledCamera(camera, scale),
             controller: MapController.of(context),
