@@ -29,11 +29,6 @@ void expectCorrupt(Object? outcome, String key) {
   expect(outcome, isA<StoredSettingException>().having((e) => e.key, 'key', key));
 }
 
-DateTime at(int h, int m) => DateTime(2026, 1, 1, h, m);
-
-bool quiet(int start, int end, DateTime t, {bool enabled = true}) =>
-    isQuietAt(enabled: enabled, startMinute: start, endMinute: end, at: t);
-
 void main() {
   test('fresh install: everything off, quiet hours 22:00-07:00, no warning areas', () async {
     SharedPreferences.setMockInitialValues({});
@@ -129,17 +124,5 @@ void main() {
 
     const unsaved = Place(county: '高雄市', town: '前金區', latitude: 22.63, longitude: 120.29);
     await expectLater(c.read(warningAreasProvider.notifier).setPlace(unsaved, true), throwsArgumentError);
-  });
-
-  test('isQuietAt window table', () {
-    expect(quiet(1320, 420, at(3, 0), enabled: false), false);
-    expect([for (final t in [at(21, 59), at(22, 0), at(3, 0), at(6, 59), at(7, 0)]) quiet(1320, 420, t)],
-        [false, true, true, true, false]);
-    expect([for (final t in [at(8, 59), at(9, 0), at(16, 59), at(17, 0)]) quiet(540, 1020, t)],
-        [false, true, true, false]);
-    expect(quiet(480, 480, at(8, 0)), false);
-    expect(quiet(480, 480, at(20, 0)), false);
-    expect(() => quiet(1440, 420, at(3, 0)), throwsArgumentError);
-    expect(() => quiet(1320, -1, at(3, 0)), throwsArgumentError);
   });
 }

@@ -115,18 +115,3 @@ class WarningAreas extends AsyncNotifier<Set<String>> {
     return keys;
   }
 }
-
-/// Whether [at] (its local wall-clock hour:minute) falls in the quiet window
-/// [startMinute, endMinute). The window crosses midnight when start > end.
-/// start == end is an empty window (never quiet). No clock is read: the caller passes [at].
-/// Throws ArgumentError when a minute is outside 0..1439.
-bool isQuietAt({required bool enabled, required int startMinute, required int endMinute, required DateTime at}) {
-  for (final (name, minute) in [('startMinute', startMinute), ('endMinute', endMinute)]) {
-    if (minute < 0 || minute >= minutesPerDay) {
-      throw ArgumentError.value(minute, name, 'expected 0..${minutesPerDay - 1}');
-    }
-  }
-  if (!enabled || startMinute == endMinute) return false;
-  final m = at.hour * 60 + at.minute;
-  return startMinute < endMinute ? startMinute <= m && m < endMinute : m >= startMinute || m < endMinute;
-}
