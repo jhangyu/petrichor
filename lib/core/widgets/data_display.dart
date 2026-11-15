@@ -244,20 +244,19 @@ class AppListRow extends StatelessWidget {
         onTap: enabled ? onTap : null,
         hoverColor: AppPalette.bgHover,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSize.touch),
+          constraints: BoxConstraints(minHeight: sub == null ? AppSize.listRowOneLine : AppSize.listRowTwoLine),
           child: Padding(
-            padding: EdgeInsetsDirectional.only(
-              start: AppSpace.s16,
-              end: flushTrailing ? AppSpace.s4 : AppSpace.s16,
-              top: AppSpace.s12,
-              bottom: AppSpace.s12,
-            ),
+            padding: flushTrailing
+                ? const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s4, AppSpace.s8)
+                : const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               spacing: AppSpace.s12,
               children: [
                 ?lead,
                 Expanded(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(primary, style: AppType.body1Strong.copyWith(color: primaryColor)),

@@ -57,11 +57,16 @@ class AppButton extends StatelessWidget {
     final textStyle = (small ? AppType.caption1 : AppType.body1).copyWith(fontWeight: FontWeight.w600);
     final height = small ? AppSize.controlSm : AppSize.control;
     final glyph = icon;
+    final textSidePad = small ? AppSpace.s16 : AppSpace.s24;
+    final iconSidePad = small ? AppSpace.s12 : AppSpace.s16;
 
     final style = ButtonStyle(
       minimumSize: WidgetStatePropertyAll(Size(block ? double.infinity : AppSize.touch, height)),
       padding: WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: small ? AppSpace.s12 : AppSpace.s16),
+        EdgeInsetsDirectional.only(
+          start: glyph != null ? iconSidePad : textSidePad,
+          end: textSidePad,
+        ),
       ),
       shape: const WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.full))),

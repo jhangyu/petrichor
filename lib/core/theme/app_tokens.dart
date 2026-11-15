@@ -214,6 +214,8 @@ abstract final class AppSize {
   static const double touch = 44;
   static const double control = 44;
   static const double controlSm = 32;
+  static const double listRowOneLine = 56;
+  static const double listRowTwoLine = 64;
   static const double appBar = 56;
   static const double bottomNav = 64;
   static const double icon16 = 16;
@@ -317,22 +319,23 @@ abstract final class AppMotion {
 abstract final class AppType {
   static const _regular = FontWeight.w400;
   static const _semibold = FontWeight.w600;
+  static const _even = TextLeadingDistribution.even;
 
-  static const caption2 = TextStyle(fontSize: 10, height: 14 / 10, fontWeight: _regular);
-  static const caption1 = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: _regular);
-  static const body1 = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: _regular);
-  static const body1Strong = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: _semibold);
-  static const body2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _regular);
-  static const subtitle2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _semibold);
-  static const subtitle1 = TextStyle(fontSize: 20, height: 28 / 20, fontWeight: _semibold);
-  static const title3 = TextStyle(fontSize: 24, height: 32 / 24, fontWeight: _semibold);
-  static const title2 = TextStyle(fontSize: 28, height: 36 / 28, fontWeight: _semibold);
-  static const title1 = TextStyle(fontSize: 32, height: 40 / 32, fontWeight: _semibold);
-  static const largeTitle = TextStyle(fontSize: 40, height: 52 / 40, fontWeight: _semibold);
+  static const caption2 = TextStyle(fontSize: 10, height: 14 / 10, fontWeight: _regular, leadingDistribution: _even);
+  static const caption1 = TextStyle(fontSize: 12, height: 16 / 12, fontWeight: _regular, leadingDistribution: _even);
+  static const body1 = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: _regular, leadingDistribution: _even);
+  static const body1Strong = TextStyle(fontSize: 14, height: 20 / 14, fontWeight: _semibold, leadingDistribution: _even);
+  static const body2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _regular, leadingDistribution: _even);
+  static const subtitle2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _semibold, leadingDistribution: _even);
+  static const subtitle1 = TextStyle(fontSize: 20, height: 28 / 20, fontWeight: _semibold, leadingDistribution: _even);
+  static const title3 = TextStyle(fontSize: 24, height: 32 / 24, fontWeight: _semibold, leadingDistribution: _even);
+  static const title2 = TextStyle(fontSize: 28, height: 36 / 28, fontWeight: _semibold, leadingDistribution: _even);
+  static const title1 = TextStyle(fontSize: 32, height: 40 / 32, fontWeight: _semibold, leadingDistribution: _even);
+  static const largeTitle = TextStyle(fontSize: 40, height: 52 / 40, fontWeight: _semibold, leadingDistribution: _even);
 
   /// Current temperature. CSS letter-spacing -0.02em at 68px.
   static const display =
-      TextStyle(fontSize: 68, height: 92 / 68, fontWeight: _semibold, letterSpacing: -1.36);
+      TextStyle(fontSize: 68, height: 92 / 68, fontWeight: _semibold, letterSpacing: -1.36, leadingDistribution: _even);
 
   /// `font-variant-numeric: tabular-nums`; apply via `style.copyWith(fontFeatures: AppType.tabular)`.
   static const tabular = [FontFeature.tabularFigures()];

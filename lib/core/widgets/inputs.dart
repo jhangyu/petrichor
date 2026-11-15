@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 
-enum AppTextFieldVariant { outlined, search }
+enum AppTextFieldVariant { filled, search }
 
-/// Labelled M3 outlined text field; [AppTextFieldVariant.search] = M3 search
-/// bar (full radius, s16 horizontal padding).
+/// Labelled M3 filled text field (top corners 4, bottom indicator);
+/// [AppTextFieldVariant.search] = M3 search bar (full radius, s16 horizontal padding).
 class AppTextField extends StatelessWidget {
   const AppTextField({
     super.key,
-    this.variant = AppTextFieldVariant.outlined,
+    this.variant = AppTextFieldVariant.filled,
     this.label,
     this.hint,
     this.prefixIcon,
@@ -40,20 +40,28 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextEditingController? controller;
 
-  OutlineInputBorder _border(Color color, double width) => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(variant == AppTextFieldVariant.search ? AppRadius.full : AppRadius.extraSmall),
-    borderSide: BorderSide(color: color, width: width),
-  );
+  bool get _isSearch => variant == AppTextFieldVariant.search;
+
+  InputBorder _border(Color color, double width) => _isSearch
+      ? OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          borderSide: BorderSide(color: color, width: width),
+        )
+      : UnderlineInputBorder(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.extraSmall)),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+  static const _iconBox = BoxConstraints.tightFor(width: AppSize.touch, height: AppSize.control);
 
   @override
   Widget build(BuildContext context) {
     final head = label;
     final help = helperText;
     final icon = prefixIcon;
-    final isSearch = variant == AppTextFieldVariant.search;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpace.s4,
+      spacing: AppSpace.s8,
       children: [
         if (head != null) Text(head, style: AppType.body1Strong.copyWith(color: AppPalette.fg1)),
         TextField(
@@ -64,20 +72,23 @@ class AppTextField extends StatelessWidget {
           onTap: onTap,
           onChanged: onChanged,
           style: AppType.body1.copyWith(color: AppPalette.fg1),
+          textAlignVertical: TextAlignVertical.center,
           decoration: InputDecoration(
             isDense: true,
             filled: true,
-            fillColor: AppPalette.bg1,
+            fillColor: _isSearch ? AppPalette.bg1 : AppPalette.bg4,
             hintText: hint,
             hintStyle: AppType.body1.copyWith(color: AppPalette.fg3),
             errorText: errorText,
             errorStyle: AppType.caption1.copyWith(color: AppPalette.dangerFg),
             prefixIcon: icon == null ? null : Icon(icon, size: AppSize.icon20, color: AppPalette.fg3),
             suffixIcon: suffix,
+            prefixIconConstraints: _iconBox,
+            suffixIconConstraints: _iconBox,
             constraints: const BoxConstraints(minHeight: AppSize.control),
-            contentPadding: isSearch
+            contentPadding: _isSearch
                 ? const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12)
-                : null,
+                : const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s12),
             enabledBorder: _border(AppPalette.strokeAccessible, AppStroke.thin),
             disabledBorder: _border(AppPalette.strokeAccessible, AppStroke.thin),
             focusedBorder: _border(AppPalette.brandStroke, AppStroke.thick),

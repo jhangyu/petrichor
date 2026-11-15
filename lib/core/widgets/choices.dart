@@ -154,14 +154,16 @@ class AppSwitch extends StatelessWidget {
       child: Switch(
         value: value,
         onChanged: onChanged,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) return AppPalette.fgDisabled;
-          return states.contains(WidgetState.selected) ? AppPalette.fgOnBrand : AppPalette.fg2;
+          return states.contains(WidgetState.selected) ? AppPalette.fgOnBrand : AppPalette.strokeAccessible;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) return AppPalette.bgDisabled;
-          return states.contains(WidgetState.selected) ? AppPalette.brandBg : AppPalette.bg1;
+          return states.contains(WidgetState.selected) ? AppPalette.brandBg : AppPalette.bg4;
         }),
+        trackOutlineWidth: const WidgetStatePropertyAll(AppStroke.thick),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return AppPalette.transparent;
           return states.contains(WidgetState.disabled) ? AppPalette.fgDisabled : AppPalette.strokeAccessible;

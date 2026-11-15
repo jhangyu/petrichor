@@ -188,7 +188,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  min-height: var(--size-touch);
+  min-height: var(--size-list-row-1);
   padding: var(--space-12) var(--space-16);
   color: var(--color-fg-1);
   text-decoration: none;
@@ -242,7 +242,7 @@ button.list-row { width: 100%; border: none; text-align: left; }
   gap: var(--space-8);
   min-height: var(--size-control);
   min-width: var(--size-touch);
-  padding: var(--space-0) var(--space-16);
+  padding: var(--space-0) var(--space-24);
   border-radius: var(--shape-full);
   border: var(--stroke-thin) solid transparent;
   font-size: var(--type-body1-size);

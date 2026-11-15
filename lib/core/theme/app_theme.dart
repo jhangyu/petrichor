@@ -51,7 +51,9 @@ abstract final class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.extraSmall))),
       ),
       inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.extraSmall))),
+        filled: true,
+        fillColor: AppPalette.bg4,
+        border: UnderlineInputBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraSmall))),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: AppSize.bottomNav,

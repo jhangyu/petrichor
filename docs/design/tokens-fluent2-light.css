@@ -220,6 +220,8 @@
   --size-touch: 44px;          /* minimum hit target */
   --size-control: 44px;        /* button height */
   --size-control-sm: 32px;     /* compact button / chip */
+  --size-list-row-1: 56px;      /* one-line list row min height */
+  --size-list-row-2: 64px;      /* two-line list row min height */
   --size-appbar: 56px;
   --size-bottomnav: 64px;
   --size-icon-16: 16px;

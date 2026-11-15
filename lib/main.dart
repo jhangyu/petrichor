@@ -21,6 +21,10 @@ class CwaWeatherApp extends StatelessWidget {
     return MaterialApp(
       title: 'CWA Weather',
       theme: AppTheme.light,
+      builder: (context, child) => DefaultTextHeightBehavior(
+        textHeightBehavior: const TextHeightBehavior(leadingDistribution: TextLeadingDistribution.even),
+        child: child!,
+      ),
       home: const AppShell(),
       debugShowCheckedModeBanner: false,
     );
