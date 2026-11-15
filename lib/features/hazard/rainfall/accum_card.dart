@@ -20,6 +20,7 @@ import '../../radar/radar_provider.dart';
 import '../../radar/widgets/playback_card.dart';
 import '../../radar/widgets/radar_map_view.dart';
 import 'accum_provider.dart';
+import 'rain_map_card.dart';
 
 const _cardTitle = '累積雨量';
 const _group = RadarGroup.rainfall;
@@ -87,11 +88,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     if (kIsWeb) {
       return const AppCard(
         title: _cardTitle,
-        child: StatusBanner(
-          tone: StatusTone.error,
-          title: '網頁版無法取得此資料',
-          text: '累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。',
-        ),
+        child: StatusBanner(tone: StatusTone.error, title: '網頁版無法取得此資料', text: '累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。'),
       );
     }
     final window = ref.watch(rainAccumWindowProvider);
@@ -103,7 +100,9 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
         child: StatusBanner(
           tone: StatusTone.error,
           title: '累積雨量設定無法讀取',
-          text: [for (final e in [window.error, fps.error, repeat.error]) ?e].join('；'),
+          text: [
+            for (final e in [window.error, fps.error, repeat.error]) ?e,
+          ].join('；'),
           actions: [AppButton(label: '重設設定', small: true, onPressed: () => _resetSettings(window, fps, repeat))],
         ),
       );
@@ -119,43 +118,42 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       AsyncValue(:final value?) => _loopBody(hours, value, fps.requireValue, repeat.requireValue),
       _ => ('載入中', _loadingBody(hours)),
     };
-    return AppCard(
+    return RainMapCard(
       title: _cardTitle,
       meta: meta,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s16,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpace.s8,
-            children: [
-              Text('累積時距（小時）', style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
-              Semantics(
-                label: '累積時距',
-                container: true,
-                child: Wrap(
-                  spacing: AppSpace.s8,
-                  runSpacing: AppSpace.s8,
-                  children: [
-                    for (final h in accumWindowHours)
-                      AppChip(label: '$h', selected: h == hours, onTap: () => _setWindow(h)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          ...body,
-          Text(
-            '資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。',
-            style: AppType.caption1.copyWith(color: AppPalette.fg3),
-          ),
-        ],
+      legend: RainLegend(
+        title: '$hours 小時累積 mm',
+        semanticsLabel: '$hours 小時累積雨量圖例（毫米）',
+        colours: AppPalette.rainfallMapScale,
+        marks: _legendMarks,
       ),
+      note: '資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。',
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpace.s8,
+          children: [
+            Text(
+              '累積時距（小時）',
+              style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600),
+            ),
+            Semantics(
+              label: '累積時距',
+              container: true,
+              child: Wrap(
+                spacing: AppSpace.s8,
+                runSpacing: AppSpace.s8,
+                children: [for (final h in accumWindowHours) AppChip(label: '$h', selected: h == hours, onTap: () => _setWindow(h))],
+              ),
+            ),
+          ],
+        ),
+        ...body,
+      ],
     );
   }
 
-  RadarMapView _map({
+  RainMapView _map({
     bool loading = false,
     bool muted = false,
     IconData? chipIcon,
@@ -164,8 +162,8 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     List<RadarFrame> upcoming = const [],
     List<OverlayImage> overlayImages = const [],
   }) {
-    final link = widget.cameraLink;
-    return RadarMapView(
+    return RainMapView(
+      cameraLink: widget.cameraLink,
       me: widget.me,
       loading: loading,
       muted: muted,
@@ -174,17 +172,10 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       semanticsLabel: semanticsLabel,
       upcoming: upcoming,
       overlayImages: overlayImages,
-      aspectRatio: link == null ? 1 : radarMapDefaultAspectRatio,
-      startLocked: link == null,
-      cameraLink: link,
     );
   }
 
-  List<Widget> _loadingBody(int hours) => [
-    _map(loading: true, muted: true),
-    const PlaybackBody(playback: null, loading: true),
-    _Legend(hours: hours),
-  ];
+  List<Widget> _loadingBody(int hours) => [_map(loading: true, muted: true), const PlaybackBody(playback: null, loading: true)];
 
   List<Widget> _failureBody(int hours, String error) => [
     StatusBanner(
@@ -193,18 +184,15 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       text: error,
       actions: [RetryButton(onPressed: () => _retry(hours))],
     ),
-    _map(
-      muted: true,
-      chipIcon: Icons.cloud_off_outlined,
-      chipText: '無累積雨量資料',
-      semanticsLabel: '地圖，無累積雨量資料',
-    ),
-    _Legend(hours: hours),
+    _map(muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無累積雨量資料', semanticsLabel: '地圖，無累積雨量資料'),
   ];
 
   (String, List<Widget>) _loopBody(int hours, RadarLoop loop, int fps, bool repeat) {
     final slots = loop.slots;
-    final failed = [for (final s in slots) if (s.state == RadarSlotState.failed) s];
+    final failed = [
+      for (final s in slots)
+        if (s.state == RadarSlotState.failed) s,
+    ];
     final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
       if (loop.loading) return ('載入中', _loadingBody(hours));
@@ -281,51 +269,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
           ),
         ),
-        _Legend(hours: hours),
       ],
-    );
-  }
-}
-
-/// The 17-colour accumulation scale with six numbers under it.
-class _Legend extends StatelessWidget {
-  const _Legend({required this.hours});
-
-  final int hours;
-
-  @override
-  Widget build(BuildContext context) {
-    final caption = AppType.caption2.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular);
-    final colours = AppPalette.rainfallMapScale;
-    return Semantics(
-      label: '$hours 小時累積雨量圖例（毫米）',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s4,
-        children: [
-          Text('$hours 小時累積 mm', style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            child: SizedBox(
-              height: AppSize.legendBar,
-              child: Row(children: [for (final c in colours) Expanded(child: ColoredBox(color: c))]),
-            ),
-          ),
-          Row(
-            children: [
-              for (var i = 0; i < _legendMarks.length; i++)
-                Expanded(
-                  flex: (i + 1 < _legendMarks.length ? _legendMarks[i + 1].$1 : colours.length) - _legendMarks[i].$1,
-                  child: OverflowBox(
-                    alignment: Alignment.centerLeft,
-                    maxWidth: double.infinity,
-                    child: Text(_legendMarks[i].$2, softWrap: false, style: caption),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

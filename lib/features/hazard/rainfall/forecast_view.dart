@@ -11,6 +11,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../data/models/hazard_models.dart';
 import '../../radar/radar_playback.dart';
 import '../../radar/widgets/radar_map_view.dart';
+import 'rain_map_card.dart';
 import 'rainfall_logic.dart';
 
 /// Forecast window length (F-B0046-001 is the next 1 hour).
@@ -23,7 +24,7 @@ const _gridOpacity = 0.8;
 
 /// Bucket 1–4 colours (light → dark = more rain) and legend labels.
 const _bucketTints = [AppPalette.brand150, AppPalette.brand120, AppPalette.brand90, AppPalette.brand60];
-const _bucketLabels = ['1–5 mm', '5–10', '10–20', '≥ 20'];
+const _bucketMarks = [(0, '1–5 mm'), (1, '5–10'), (2, '10–20'), (3, '≥ 20')];
 
 const _rgbaChannels = 4;
 const _channelMax = 255;
@@ -92,12 +93,7 @@ Future<ImageProvider> _gridImage(RainForecastGrid grid) async {
 
 /// `未來 1hr 預測` grid map with the value at the user's place and the legend.
 class ForecastMapCard extends StatefulWidget {
-  const ForecastMapCard({
-    super.key,
-    required this.grid,
-    required this.here,
-    this.cameraLink,
-  });
+  const ForecastMapCard({super.key, required this.grid, required this.here, this.cameraLink});
 
   final RainForecastGrid grid;
 
@@ -138,83 +134,31 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
       builder: (context, snapshot) {
         final error = snapshot.error;
         if (error != null) {
-          return AppCard.error(
-            title: '無法繪製雨量網格圖',
-            message: '$error',
-            onRetry: () => setState(() => _image = _gridImage(widget.grid)),
-          );
+          return AppCard.error(title: '無法繪製雨量網格圖', message: '$error', onRetry: () => setState(() => _image = _gridImage(widget.grid)));
         }
         final image = snapshot.data;
-        return AppCard(
+        return RainMapCard(
           title: '未來 1hr 預測',
           meta: range,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: AppSpace.s16,
-            children: [
-              RadarMapView(
-                loading: image == null,
-                muted: image == null,
-                chipIcon: image == null ? null : Icons.schedule,
-                chipText: image == null ? null : range,
-                semanticsLabel: '未來 1 小時雨量網格圖',
-                aspectRatio: widget.cameraLink == null ? 1 : radarMapDefaultAspectRatio,
-                startLocked: widget.cameraLink == null,
-                cameraLink: widget.cameraLink,
-                overlayImages: image == null
-                    ? const []
-                    : [
-                        OverlayImage(
-                          bounds: _bounds,
-                          imageProvider: image,
-                          opacity: _gridOpacity,
-                          filterQuality: FilterQuality.none,
-                        ),
-                      ],
-                me: here?.point,
-              ),
-              if (here != null) _HereRow(mm: here.mm, placeName: here.name),
-              const _ForecastLegend(),
-              Text(
-                '空白格表示預估雨量小於 1 mm 或無資料。',
-                style: AppType.caption1.copyWith(color: AppPalette.fg3),
-              ),
-            ],
-          ),
+          legend: const RainLegend(title: '1 小時預估雨量 mm', semanticsLabel: '1 小時雨量圖例（毫米）', colours: _bucketTints, marks: _bucketMarks),
+          note: '空白格表示預估雨量小於 1 mm 或無資料。',
+          children: [
+            RainMapView(
+              cameraLink: widget.cameraLink,
+              loading: image == null,
+              muted: image == null,
+              chipIcon: image == null ? null : Icons.schedule,
+              chipText: image == null ? null : range,
+              semanticsLabel: '未來 1 小時雨量網格圖',
+              overlayImages: image == null
+                  ? const []
+                  : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: _gridOpacity, filterQuality: FilterQuality.none)],
+              me: here?.point,
+            ),
+            if (here != null) _HereRow(mm: here.mm, placeName: here.name),
+          ],
         );
       },
-    );
-  }
-}
-
-class _ForecastLegend extends StatelessWidget {
-  const _ForecastLegend();
-
-  static const _swatchSize = AppSize.icon16;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: '1 小時雨量圖例（毫米）',
-      child: Wrap(
-        spacing: AppSpace.s12,
-        runSpacing: AppSpace.s8,
-        children: [
-          for (var i = 0; i < _bucketTints.length; i++)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpace.s4,
-              children: [
-                Container(
-                  width: _swatchSize,
-                  height: _swatchSize,
-                  decoration: BoxDecoration(color: _bucketTints[i], borderRadius: BorderRadius.circular(AppRadius.extraSmall)),
-                ),
-                Text(_bucketLabels[i], style: AppType.caption1.copyWith(color: AppPalette.fg2)),
-              ],
-            ),
-        ],
-      ),
     );
   }
 }

@@ -31,7 +31,7 @@ const _mapSkeletonHeight = 300.0;
 const _listSkeletonHeight = 240.0;
 const _thresholdHint = '警戒等級依 24 小時累積雨量：大雨 80、豪雨 200、大豪雨 350、超大豪雨 500 mm。';
 
-/// 雨量 tab: 最近測站, 未來1hr預測, 累積雨量, 測站今日累積雨量.
+/// 雨量 tab: 最近測站, 累積雨量, 未來1hr預測, 測站今日累積雨量.
 class RainfallScreen extends ConsumerWidget {
   const RainfallScreen({super.key});
 
@@ -45,11 +45,7 @@ class RainfallScreen extends ConsumerWidget {
         subtitle: '無法讀取地點',
         children: [
           AppGridItem.full(
-            child: AppCard.error(
-              title: '無法讀取已儲存的地點',
-              message: '$error',
-              onRetry: () => ref.invalidate(currentPlaceProvider),
-            ),
+            child: AppCard.error(title: '無法讀取已儲存的地點', message: '$error', onRetry: () => ref.invalidate(currentPlaceProvider)),
           ),
         ],
       ),
@@ -129,10 +125,7 @@ class RainfallScreen extends ConsumerWidget {
     return _scaffold(
       ref,
       subtitle: '尚無目前地點',
-      sourceIds: [
-        if (stations.value is Success) rainObservationDataset,
-        if (grid.value is Success) rainForecast1hDataset,
-      ],
+      sourceIds: [if (stations.value is Success) rainObservationDataset, if (grid.value is Success) rainForecast1hDataset],
       onRefresh: stations.isLoading || grid.isLoading
           ? null
           : () {
@@ -143,7 +136,7 @@ class RainfallScreen extends ConsumerWidget {
       children: [
         AppGridItem.full(child: _noPlaceCard(ref, reason)),
         AppGridItem.full(
-          child: _MapRow(cards: (link) => [?forecastCard(link), AccumulationCard(me: null, cameraLink: link)]),
+          child: _MapRow(cards: (link) => [AccumulationCard(me: null, cameraLink: link), ?forecastCard(link)]),
         ),
         if (list != null) AppGridItem.full(child: list),
       ],
@@ -188,10 +181,7 @@ class RainfallScreen extends ConsumerWidget {
       builder: (r) => StationListCard(county: r.county, stations: r.allStations, nearestId: r.nearest.id),
       showError: false,
     );
-    final sourceIds = [
-      if (result is Success) rainObservationDataset,
-      if (forecastResult is Success) rainForecast1hDataset,
-    ];
+    final sourceIds = [if (result is Success) rainObservationDataset, if (forecastResult is Success) rainForecast1hDataset];
     final me = LatLng(place.latitude, place.longitude);
     return _scaffold(
       ref,
@@ -210,7 +200,11 @@ class RainfallScreen extends ConsumerWidget {
             },
       children: [
         if (hero != null) AppGridItem.full(child: hero),
-        AppGridItem.full(child: _MapRow(cards: (link) => [?forecastCard(link), AccumulationCard(me: me, cameraLink: link)])),
+        AppGridItem.full(
+          child: _MapRow(
+            cards: (link) => [AccumulationCard(me: me, cameraLink: link), ?forecastCard(link)],
+          ),
+        ),
         if (list != null) AppGridItem.full(child: list),
         if (result is Success)
           AppGridItem.full(
@@ -233,8 +227,7 @@ class RainfallScreen extends ConsumerWidget {
     return switch (async) {
       AsyncData(value: Success(:final data)) => builder(data),
       AsyncData(value: Failure(apiKeyIssue: final issue?)) => showError ? ApiKeyNotice(issue: issue) : null,
-      AsyncData(value: Failure(:final message)) =>
-        showError ? AppCard.error(title: errorTitle, message: message, onRetry: onRetry) : null,
+      AsyncData(value: Failure(:final message)) => showError ? AppCard.error(title: errorTitle, message: message, onRetry: onRetry) : null,
       AsyncError(:final error) => AppCard.error(title: errorTitle, message: '$error', onRetry: onRetry),
       _ => skeleton,
     };
@@ -267,11 +260,7 @@ class _MapRowState extends State<_MapRow> {
     return LayoutBuilder(
       builder: (context, box) {
         if (!AppTwoPane.fits(box.maxWidth)) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: AppLayout.gridGap,
-            children: widget.cards(null),
-          );
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppLayout.gridGap, children: widget.cards(null));
         }
         final cards = widget.cards(_link);
         return Row(
