@@ -218,16 +218,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       _ => null,
     };
     final slots = loop.slots;
-    final failed = [for (final s in slots) if (s.state == RadarSlotState.failed) s];
+    final failed = radarFailedSlots(slots);
     final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
       return loop.loading
           ? _loadingView(listed: slots.length)
-          : _errorView(loop.listError ?? failed.map((s) => s.error).join('；'));
+          : _errorView(radarNoFrameError(loop, failed));
     }
     final frame = slots[index].frame!;
     final newest = slots[radarShownIndex(slots, null)!].frame!;
-    final readyCount = slots.where((s) => s.state == RadarSlotState.ready).length;
+    final readyCount = radarReadyCount(slots);
     final name = _stationNames[_source];
     final listError = loop.listError;
     final banner = listError != null
@@ -278,13 +278,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           PlaybackCard(meta: '僅有最新影格', opacity: opacityControl)
         else
           PlaybackCard(
-            meta: _player.waitingOn != null
-                ? '緩衝中 · 已就緒 $readyCount / ${slots.length} 張'
-                : _player.playing
-                    ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
-                    : loop.loading
-                        ? '載入中 $readyCount / ${slots.length} 張'
-                        : '過去 ${window.inHours} 小時 · ${slots.length} 張',
+            meta: radarPlaybackMeta(
+              buffering: _player.waitingOn != null,
+              playing: _player.playing,
+              loading: loop.loading,
+              ready: readyCount,
+              total: slots.length,
+              fps: fps,
+              repeat: repeat,
+              idle: '過去 ${window.inHours} 小時 · ${slots.length} 張',
+            ),
             playback: PlaybackFrames(
               slots: slots,
               index: index,

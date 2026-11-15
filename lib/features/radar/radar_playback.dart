@@ -141,3 +141,34 @@ List<RadarFrame> radarUpcomingFrames(List<RadarSlot> slots, DateTime? after, {re
         frame,
   ].take(count).toList();
 }
+
+/// Slots that could not be loaded, oldest first.
+List<RadarSlot> radarFailedSlots(List<RadarSlot> slots) => [
+  for (final s in slots)
+    if (s.state == RadarSlotState.failed) s,
+];
+
+/// Number of slots ready to show.
+int radarReadyCount(List<RadarSlot> slots) => slots.where((s) => s.state == RadarSlotState.ready).length;
+
+/// Why no slot can be shown: the list error, else every failed slot's error joined by 「；」.
+Object radarNoFrameError(RadarLoop loop, List<RadarSlot> failed) =>
+    loop.listError ?? failed.map((s) => s.error).join('；');
+
+/// Playback card meta line: buffering, playing, loading, else [idle].
+String radarPlaybackMeta({
+  required bool buffering,
+  required bool playing,
+  required bool loading,
+  required int ready,
+  required int total,
+  required int fps,
+  required bool repeat,
+  required String idle,
+}) => buffering
+    ? '緩衝中 · 已就緒 $ready / $total 張'
+    : playing
+    ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
+    : loading
+    ? '載入中 $ready / $total 張'
+    : idle;

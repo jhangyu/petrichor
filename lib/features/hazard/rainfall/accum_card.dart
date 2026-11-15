@@ -203,14 +203,11 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
 
   (String, _Body) _loopBody(int hours, RadarLoop loop, int fps, bool repeat) {
     final slots = loop.slots;
-    final failed = [
-      for (final s in slots)
-        if (s.state == RadarSlotState.failed) s,
-    ];
+    final failed = radarFailedSlots(slots);
     final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
       if (loop.loading) return ('載入中', _loadingBody(hours));
-      return ('無法取得', _failureBody(hours, '${loop.listError ?? failed.map((s) => s.error).join('；')}'));
+      return ('無法取得', _failureBody(hours, '${radarNoFrameError(loop, failed)}'));
     }
     final frame = slots[index].frame!;
     // Contract decision 12: the window starts at S = newest slot - window and each frame accumulates from S.
@@ -219,15 +216,18 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final isLast = index == slots.length - 1;
     final noRain = (frame.peakMm ?? double.infinity) < _noRainBelowMm;
     final accumulated = isLast ? '過去 $hours 小時' : span(frame.time);
-    final readyCount = slots.where((s) => s.state == RadarSlotState.ready).length;
+    final readyCount = radarReadyCount(slots);
     final waiting = _player.waitingOn != null;
-    final meta = waiting
-        ? '緩衝中 · 已就緒 $readyCount / ${slots.length} 張'
-        : _player.playing
-        ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
-        : loop.loading
-        ? '載入中 $readyCount / ${slots.length} 張'
-        : '${slots.length} 張';
+    final meta = radarPlaybackMeta(
+      buffering: waiting,
+      playing: _player.playing,
+      loading: loop.loading,
+      ready: readyCount,
+      total: slots.length,
+      fps: fps,
+      repeat: repeat,
+      idle: '${slots.length} 張',
+    );
     final listError = loop.listError;
     return (
       meta,
