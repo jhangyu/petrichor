@@ -11,9 +11,6 @@ class CurrentWeather {
   final String countyName;
   final String townName;
 
-  /// 使用者位置到觀測站的距離（公里）
-  final double distanceKm;
-
   /// 觀測時間（絕對時刻）
   final DateTime observedAt;
 
@@ -40,7 +37,6 @@ class CurrentWeather {
     required this.stationName,
     required this.countyName,
     required this.townName,
-    required this.distanceKm,
     required this.observedAt,
     required this.temperature,
     required this.humidity,
@@ -74,9 +70,6 @@ final class WindFrom extends ObservedWind {
   const WindFrom(this.degrees);
 }
 
-/// 太陽過中天時位於天頂的哪一側（資料以 N／S 後綴表示）
-enum TransitSide { north, south }
-
 /// 縣市單日日出日沒時刻（A-B0062-001）；時刻為絕對時刻（資料為臺灣時間 UTC+8）。
 class SunDay {
   /// 臺灣曆日（yyyy-MM-dd）
@@ -88,10 +81,9 @@ class SunDay {
   final DateTime sunset;
   final DateTime civilDusk;
 
-  /// 太陽過中天時刻，及當時仰角（度）與所在側（如 47S → 47°、南）
+  /// 太陽過中天時刻，及當時仰角（度）（如 47S → 47°）
   final DateTime transit;
   final int transitAltitudeDegrees;
-  final TransitSide transitSide;
 
   const SunDay({
     required this.date,
@@ -101,7 +93,6 @@ class SunDay {
     required this.civilDusk,
     required this.transit,
     required this.transitAltitudeDegrees,
-    required this.transitSide,
   });
 }
 
@@ -169,11 +160,5 @@ class DailyForecast {
     required this.weather,
     required this.weatherCode,
   });
-
-  /// 星期名稱
-  String get weekdayName {
-    const names = ['週一', '週二', '週三', '週四', '週五', '週六', '週日'];
-    return names[DateTime.parse(date).weekday - 1];
-  }
 }
 

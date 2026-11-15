@@ -346,7 +346,6 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
     stationName: _text(best['StationName']) ?? '',
     countyName: _text(_dig(best, ['GeoInfo', 'CountyName'])) ?? '',
     townName: _text(_dig(best, ['GeoInfo', 'TownName'])) ?? '',
-    distanceKm: bestKm,
     observedAt: _time(_dig(best, ['ObsTime', 'DateTime']), 'ObsTime.DateTime'),
     temperature: _num(we['AirTemperature'], 'AirTemperature')!,
     humidity: _int(we['RelativeHumidity'], 'RelativeHumidity'),
@@ -634,15 +633,15 @@ List<SunDay> _parseSunTimes(Map<String, dynamic> body, String county, List<Strin
   );
 }
 
-/// 過中天仰角「47S」→ (47, 南)；格式不符即 FormatException。
-(int, TransitSide) _transitAltitude(Object? raw, String date) {
+/// 過中天仰角「47S」→ 47（N/S 只驗證格式）；格式不符即 FormatException。
+int _transitAltitude(Object? raw, String date) {
   final match = _transitAltitudePattern.firstMatch(_text(raw) ?? '');
   if (match == null) throw FormatException('SunTransitAlt@$date：期望「度數+N/S」（如 47S），實際「$raw」');
-  return (int.parse(match.group(1)!), match.group(2) == 'S' ? TransitSide.south : TransitSide.north);
+  return int.parse(match.group(1)!);
 }
 
 SunDay _sunDay(Map<String, dynamic> day, String date) {
-  final (altitude, side) = _transitAltitude(day['SunTransitAlt'], date);
+  final altitude = _transitAltitude(day['SunTransitAlt'], date);
   return SunDay(
       date: date,
       civilDawn: _sunTime(day['BeginCivilTwilightTime'], date, 'BeginCivilTwilightTime'),
@@ -651,6 +650,5 @@ SunDay _sunDay(Map<String, dynamic> day, String date) {
       civilDusk: _sunTime(day['EndCivilTwilightTime'], date, 'EndCivilTwilightTime'),
       transit: _sunTime(day['SunTransitTime'], date, 'SunTransitTime'),
       transitAltitudeDegrees: altitude,
-      transitSide: side,
     );
 }

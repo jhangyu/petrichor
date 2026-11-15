@@ -20,7 +20,6 @@ SunDay sunDay(int day) => SunDay(
   civilDusk: tw(day, 17, 31),
   transit: tw(day, 11, 38),
   transitAltitudeDegrees: 47,
-  transitSide: TransitSide.south,
 );
 
 HourlyForecast slot(DateTime start, {double? t, int? pop}) => HourlyForecast(
@@ -94,7 +93,6 @@ void main() {
       stationName: '臺北',
       countyName: '臺北市',
       townName: '中正區',
-      distanceKm: 1,
       observedAt: tw(14, 14),
       temperature: 22,
       humidity: null,

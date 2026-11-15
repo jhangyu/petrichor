@@ -46,7 +46,6 @@ void main() {
       expect(w.dailyHigh, 25.5);
       expect(w.dailyLow, 21.1);
       expect(w.observedAt.toUtc(), DateTime.utc(2026, 11, 14, 12, 30));
-      expect(w.distanceKm, lessThan(2));
     });
 
     test('wind direction: 0 is calm, 990 is variable, -99 is missing, out of range is a Failure', () async {
@@ -198,7 +197,6 @@ void main() {
       expect(days[2].maxTemperature, 23);
       expect(days[2].minTemperature, 19);
       expect(days[2].pop, 30);
-      expect(days[1].weekdayName, '週日');
     });
 
     test('-99 temperature is missing, never a fabricated number', () async {
