@@ -1,4 +1,4 @@
-package com.example.cwbweather.cwb_flutter
+package us.jhangy.petrichor
 
 import io.flutter.embedding.android.FlutterActivity
 
