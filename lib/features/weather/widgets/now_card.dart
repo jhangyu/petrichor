@@ -159,7 +159,7 @@ class NowCard extends StatelessWidget {
     final pop = slot?.pop;
     return [
       MetricTile(label: '體感', value: tempText(slot?.apparentTemperature), dense: true),
-      MetricTile(label: '濕度', value: c.humidity == null ? '—' : '${c.humidity}%', dense: true),
+      MetricTile(label: '濕度', value: percentText(c.humidity), dense: true),
       MetricTile(
         label: switch (c.windDirection) {
           null => '風',
