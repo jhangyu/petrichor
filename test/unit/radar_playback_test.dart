@@ -18,8 +18,7 @@ void main() {
     expect(() => radarNextTick(index: 24, count: 24, fps: 4, repeat: true), throwsRangeError);
   });
 
-  test('window hours map to frames and times render as Taiwan time', () {
-    expect(radarFramesPerHour, 6);
+  test('times render as Taiwan time', () {
     expect(formatTaiwanMonthDayClock(DateTime.utc(2026, 11, 14, 6, 0)), '11/14 14:00');
     expect(formatTaiwanFull(DateTime.utc(2026, 11, 14, 18, 5)), '2026-11-15 02:05');
   });

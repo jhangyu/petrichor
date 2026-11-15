@@ -138,12 +138,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     if (_playing) _scheduleTick();
   }
 
-  void _setWindow(int frames) {
+  void _setWindow(Duration window) {
     setState(() {
       _stop();
       _index = null;
     });
-    ref.read(radarWindowFramesProvider.notifier).set(frames);
+    ref.read(radarWindowProvider.notifier).set(window);
   }
 
   void _selectSource(String id) {
@@ -164,8 +164,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final windowFrames = ref.watch(radarWindowFramesProvider);
-    final view = _sourceView(ref.watch(radarLoopProvider(_source)), windowFrames);
+    final source = ref.watch(radarSourceProvider(_source));
+    final window = radarEffectiveWindow(ref.watch(radarWindowProvider), source);
+    final view = _sourceView(ref.watch(radarLoopProvider(_source)), window, source.maxWindow);
     return AppPageScaffold(
       header: AppPageHeader(
         title: '雷達回波',
@@ -199,24 +200,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   // ---- views (one path for every source) ----
 
-  _RadarView _sourceView(AsyncValue<RadarLoop> async, int windowFrames) {
-    if (!_isComposite && !AppConstants.hasApiKey) {
-      return _RadarView(
-        subtitle: _unreachableSubtitle,
-        hero: AppCard(
-          hero: true,
-          child: EmptyState(title: '尚未設定 API 金鑰', text: '雷達圖需要中央氣象署開放資料金鑰。設定後即可顯示回波。'),
-        ),
-      );
-    }
+  _RadarView _sourceView(AsyncValue<RadarLoop> async, Duration window, Duration maxWindow) {
     return switch (async) {
       AsyncError(:final error) => _errorView(error),
-      AsyncValue(:final value?) => _loopView(value, windowFrames),
+      AsyncValue(:final value?) => _loopView(value, window, maxWindow),
       _ => _loadingView(),
     };
   }
 
-  _RadarView _loopView(RadarLoop loop, int windowFrames) {
+  _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow) {
     final frames = loop.frames;
     if (frames.isEmpty) {
       return loop.loading ? _loadingView(windowSize: loop.windowSize) : _errorView(loop.listError ?? loop.failures.join('；'));
@@ -226,7 +218,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final newest = frames.last;
     final name = _stationNames[_source];
     final summary = radarEchoSummary(
-      newest.stats,
+      loop.newestStats!,
       coverage: name == null ? '臺灣本島及周邊海域' : '$name雷達站涵蓋範圍內',
       place: _place,
     );
@@ -250,7 +242,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       subtitle: name == null
           ? '觀測 ${formatTaiwanFull(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
           : '$name站 · 觀測 ${formatTaiwanFull(newest.time)}',
-      sourceIds: _isComposite ? const ['雷達回波：官網時間戳記圖', AppConstants.radarTaiwan] : [_source],
+      sourceIds: ['雷達回波：官網時間戳記圖', _source],
       loading: loop.loading,
       hero: _heroCard(
         eyebrow: name == null ? '全台合成回波' : '$name雷達站',
@@ -259,10 +251,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         banner: banner,
         map: RadarMapView(
           me: _me,
-          playing: _playing,
           chipIcon: Icons.schedule,
           chipText: formatTaiwanMonthDayClock(frame.time),
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
+          loop: (
+            frameCount: frames.length,
+            aspect: frame.aspect,
+            next: (decodeWidth) => frames[(index + 1) % frames.length].imageProvider(decodeWidth: decodeWidth),
+          ),
           overlayBuilder: (decodeWidth) => [
             OverlayImage(
               bounds: frame.bounds,
@@ -284,20 +280,21 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           PlaybackCard(
             meta: _playing
                 ? '播放中 · $_fps fps${_repeat ? ' · 重複' : ''}'
-                : '過去 ${windowFrames ~/ radarFramesPerHour} 小時 · ${frames.length} 張',
+                : '過去 ${window.inHours} 小時 · ${frames.length} 張',
             frames: PlaybackFrames(
               times: [for (final f in frames) f.time],
-              strongestDbz: [for (final f in frames) f.stats.hasSignificantEcho ? f.stats.strongestDbz : null],
+              strongestDbz: [for (final f in frames) f.significantDbz],
               index: index,
               playing: _playing,
               fps: _fps,
               repeat: _repeat,
-              windowFrames: windowFrames,
+              window: window,
+              windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
               onTogglePlay: () => _togglePlay(frames.length),
               onSeek: _seek,
               onFps: _setFps,
               onRepeat: (v) => setState(() => _repeat = v),
-              onWindowFrames: _setWindow,
+              onWindow: _setWindow,
             ),
           ),
       ],

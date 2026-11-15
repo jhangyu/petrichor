@@ -17,15 +17,17 @@ class PlaybackFrames {
     required this.playing,
     required this.fps,
     required this.repeat,
-    required this.windowFrames,
+    required this.window,
+    required this.windowOptions,
     required this.onTogglePlay,
     required this.onSeek,
     required this.onFps,
     required this.onRepeat,
-    required this.onWindowFrames,
+    required this.onWindow,
   });
 
-  /// Observation time of every frame, oldest first.
+  /// Observation time of every frame, oldest first (the source's native
+  /// cadence; regular or not, one timeline slot per frame).
   final List<DateTime> times;
 
   /// Strongest echo of every frame (timeline colour bar); null = no
@@ -35,12 +37,15 @@ class PlaybackFrames {
   final bool playing;
   final int fps;
   final bool repeat;
-  final int windowFrames;
+  final Duration window;
+
+  /// Look-back choices this source offers.
+  final List<Duration> windowOptions;
   final VoidCallback onTogglePlay;
   final ValueChanged<int> onSeek;
   final ValueChanged<int> onFps;
   final ValueChanged<bool> onRepeat;
-  final ValueChanged<int> onWindowFrames;
+  final ValueChanged<Duration> onWindow;
 }
 
 /// `動畫播放` card. [frames] null = controls disabled (loading, or a source
@@ -71,7 +76,7 @@ class PlaybackCard extends StatelessWidget {
               _Timeline(f),
               _Settings(f),
               Text(
-                '影格為中央氣象署網站帶時間戳的雷達圖，每 10 分鐘一張，最多可回看 24 小時（144 張）。每格下方色條為該影格最強回波。',
+                '影格為中央氣象署網站帶時間戳的雷達圖，最多可回看 ${f.windowOptions.last.inHours} 小時。每格下方色條為該影格最強回波。',
                 style: AppType.caption1.copyWith(color: AppPalette.fg3),
               ),
             ],
@@ -91,7 +96,7 @@ class _TimeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = f.times.length;
     final isLatest = f.index == count - 1;
-    final hours = f.windowFrames ~/ radarFramesPerHour;
+    final hours = f.window.inHours;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -313,7 +318,7 @@ class _SettingsState extends State<_Settings> {
   @override
   Widget build(BuildContext context) {
     final f = widget.f;
-    final hours = f.windowFrames ~/ radarFramesPerHour;
+    final hours = f.window.inHours;
     return Container(
       decoration: BoxDecoration(
         color: AppPalette.bg2,
@@ -369,11 +374,11 @@ class _SettingsState extends State<_Settings> {
                       spacing: AppSpace.s8,
                       runSpacing: AppSpace.s8,
                       children: [
-                        for (final h in radarWindowHourOptions)
+                        for (final w in f.windowOptions)
                           AppChip(
-                            label: '$h 小時',
-                            selected: f.windowFrames == h * radarFramesPerHour,
-                            onTap: () => f.onWindowFrames(h * radarFramesPerHour),
+                            label: '${w.inHours} 小時',
+                            selected: f.window == w,
+                            onTap: () => f.onWindow(w),
                           ),
                       ],
                     ),

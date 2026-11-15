@@ -41,7 +41,13 @@ void main() {
   );
   RadarEchoStats cropStats({List<PixelRect> decorations = const []}) => processRadarFrame(
         png,
-        RadarImageGeometry(size: 64, bounds: cropFrame, rowMap: List.generate(64, (i) => i), decorations: decorations),
+        RadarImageGeometry(
+          size: 64,
+          bounds: cropFrame,
+          rowMap: List.generate(64, (i) => i),
+          decorations: decorations,
+          palette: radarEchoPalette,
+        ),
       ).stats;
 
   test('per-dBZ counts, per-cell band counts and strongest level of a real frame crop', () {

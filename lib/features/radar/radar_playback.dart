@@ -1,17 +1,22 @@
-import '../../data/radar/radar_frame_list.dart';
-
 /// Playback speeds offered in 播放設定 and the default.
 const radarFpsOptions = [2, 4, 8];
 const radarDefaultFps = 4;
 
-/// Look-back choices in hours (default 4 h = [radarDefaultWindowFrames] frames).
-const radarWindowHourOptions = [1, 2, 4, 6, 12, 24];
+/// Look-back choices; a source offers those up to its `maxWindow`.
+const radarWindowOptions = [
+  Duration(hours: 1),
+  Duration(hours: 2),
+  Duration(hours: 4),
+  Duration(hours: 6),
+  Duration(hours: 12),
+  Duration(hours: 24),
+];
+
+/// Look-back when the page opens.
+const radarDefaultWindow = Duration(hours: 4);
 
 /// Fixed wait after the last frame before the loop restarts (repeat on).
 const radarRepeatPause = Duration(seconds: 3);
-
-/// Frames in one hour of the loop (10-minute cadence).
-final radarFramesPerHour = Duration.minutesPerHour ~/ radarFrameStep.inMinutes;
 
 /// What the playback clock does after showing frame [index].
 class RadarTick {

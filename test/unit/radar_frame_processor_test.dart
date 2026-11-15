@@ -15,7 +15,8 @@ void main() {
   final bounds = LatLngBounds(const LatLng(26.59, 119.9), const LatLng(26.8, 120.11));
   final identityRows = List<int>.generate(64, (i) => i);
   RadarImageGeometry geometry({List<int>? rowMap, List<PixelRect> decorations = const []}) =>
-      RadarImageGeometry(size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations);
+      RadarImageGeometry(
+        size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations, palette: radarEchoPalette);
   img.Image decode(ProcessedRadarFrame p) => img.decodePng(p.png)!;
   final keyed = decode(processRadarFrame(png, geometry()));
 
@@ -67,7 +68,7 @@ void main() {
   });
 
   test('wrong size or a row map that skips source rows fails loudly', () {
-    expect(() => processRadarFrame(png, RadarImageGeometry(size: 3600, bounds: bounds, rowMap: identityRows, decorations: const [])),
+    expect(() => processRadarFrame(png, RadarImageGeometry(size: 3600, bounds: bounds, rowMap: identityRows, decorations: const [], palette: radarEchoPalette)),
         throwsFormatException);
     expect(() => processRadarFrame(png, geometry(rowMap: [0, 2, 1])), throwsArgumentError);
   });

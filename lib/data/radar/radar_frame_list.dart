@@ -1,9 +1,14 @@
-/// Frame list of the CWA website radar loop (www.cwa.gov.tw/V8/C/W/OBS_Radar.html).
+/// Frame lists of the CWA website radar loops.
 ///
-/// The page loads [radarFrameListUrl], a JS object listing ~24 h of 10-minute
-/// frames per image set. The app uses the set `CV1_3600_`: wide area, no terrain,
-/// 3600x3600, pixel-identical to open-data O-A0058-001 (see
-/// docs/logs/2026-11-14/radar-impl-notes.md).
+/// Composite (www.cwa.gov.tw/V8/C/W/OBS_Radar.html): [radarFrameListUrl], a JS
+/// object listing ~24 h of 10-minute frames per image set. The app uses the set
+/// `CV1_3600_`: wide area, no terrain, 3600x3600, pixel-identical to open-data
+/// O-A0058-001 (see docs/logs/2026-11-14/radar-impl-notes.md).
+///
+/// Stations (www.cwa.gov.tw/V8/C/W/OBS_Radar_rain.html): [radarStationListUrl]
+/// lists ~6.2 h of frames per station at irregular ~108 s intervals; file names
+/// carry the time to the second and a hash that cannot be derived, so URLs come
+/// from the list only (checked 2026-11-15, radar-perf-contract.md item 6).
 library;
 
 import 'radar_bounds.dart';
@@ -16,10 +21,14 @@ const radarFrameSetPrefix = 'CV1_3600_';
 /// Website frame cadence.
 const radarFrameStep = Duration(minutes: 10);
 
-/// Look-back window in frames (user setting): default 4 h, max 24 h (all the
-/// site lists).
-const radarDefaultWindowFrames = 24;
-const radarMaxWindowFrames = 144;
+/// Longest look-back of the website loop: all the site lists (144 frames).
+const radarWebsiteMaxWindow = Duration(hours: 24);
+
+const radarStationListUrl = 'https://www.cwa.gov.tw/Data/js/obs_img/Observe_radar_rain.js';
+const radarStationBaseUrl = 'https://www.cwa.gov.tw/Data/radar_rain/';
+
+/// Longest look-back of a station loop: what the station list covers (~6.2 h).
+const radarStationMaxWindow = Duration(hours: 6);
 
 /// File names carry Taiwan local time (UTC+8, no DST).
 const _taiwanUtcOffset = Duration(hours: 8);
@@ -39,9 +48,6 @@ class RadarFrameRef {
   RadarFrameRef.website(String stamp)
       : this(time: radarStampTime(stamp), url: '$radarFrameBaseUrl$radarFrameSetPrefix$stamp.png', geometry: websiteRadarGeometry);
 
-  /// [time] as `yyyyMMddHHmm` Taiwan time (website file names, cache file names).
-  String get stamp => radarStamp(time);
-
   @override
   bool operator ==(Object other) => other is RadarFrameRef && other.url == url;
 
@@ -49,28 +55,22 @@ class RadarFrameRef {
   int get hashCode => url.hashCode;
 
   @override
-  String toString() => 'RadarFrameRef($stamp, $url)';
+  String toString() => 'RadarFrameRef($time, $url)';
 }
 
-final _stampPattern = RegExp(r'^\d{12}$');
+final _stampPattern = RegExp(r'^\d{12}(\d{2})?$');
 
-/// Time of a `yyyyMMddHHmm` Taiwan-time stamp, in UTC.
+/// Time of a `yyyyMMddHHmm[ss]` Taiwan-time stamp, in UTC.
 DateTime radarStampTime(String s) {
-  if (!_stampPattern.hasMatch(s)) throw FormatException('radar stamp: expected yyyyMMddHHmm, got "$s"');
+  if (!_stampPattern.hasMatch(s)) throw FormatException('radar stamp: expected yyyyMMddHHmm[ss], got "$s"');
   return DateTime.utc(
     int.parse(s.substring(0, 4)),
     int.parse(s.substring(4, 6)),
     int.parse(s.substring(6, 8)),
     int.parse(s.substring(8, 10)),
     int.parse(s.substring(10, 12)),
+    s.length == 14 ? int.parse(s.substring(12, 14)) : 0,
   ).subtract(_taiwanUtcOffset);
-}
-
-/// Inverse of [radarStampTime] (seconds dropped).
-String radarStamp(DateTime t) {
-  final l = t.toUtc().add(_taiwanUtcOffset);
-  String two(int v) => v.toString().padLeft(2, '0');
-  return '${l.year}${two(l.month)}${two(l.day)}${two(l.hour)}${two(l.minute)}';
 }
 
 /// Parses every `CV1_3600_` frame in [js] (the content of Observe_radar.js).
@@ -85,22 +85,36 @@ List<RadarFrameRef> parseRadarFrameList(String js) {
   return frames;
 }
 
-/// The frames of the [windowFrames] x [radarFrameStep] span ending at the
-/// newest listed frame (at most [windowFrames], oldest first = playback order).
-/// Missing slots stay missing. Returns nothing when the newest frame is older
-/// than that span before [now] (stale list).
+/// Parses every 3600 px frame of the station with image-name code [code]
+/// (RCSL, RCNT, RCLY) in [js] (the content of Observe_radar_rain.js).
+List<RadarFrameRef> parseRadarStationList(String js, {required String code, required RadarImageGeometry geometry}) {
+  final pattern = RegExp("'(CV1_${code}_3600/CV1_${code}_3600_(\\d{14})_[0-9a-f]{64}\\.png)'");
+  final frames = pattern
+      .allMatches(js)
+      .map((m) => RadarFrameRef(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}', geometry: geometry))
+      .toSet()
+      .toList();
+  if (frames.isEmpty) {
+    throw FormatException(
+      "Observe_radar_rain.js: expected entries matching 'CV1_${code}_3600/CV1_${code}_3600_<yyyyMMddHHmmss>_<hash>.png', "
+      'found none (${js.length} chars)',
+    );
+  }
+  return frames;
+}
+
+/// The frames of the [window] span ending at the newest listed frame, oldest
+/// first = playback order; any source, any cadence (regular or not). Missing
+/// frames stay missing. Returns nothing when the newest frame is older than
+/// [window] before [now] (stale list).
 List<RadarFrameRef> selectRadarFrameWindow(
   List<RadarFrameRef> frames, {
   required DateTime now,
-  required int windowFrames,
+  required Duration window,
 }) {
-  if (windowFrames < 1 || windowFrames > radarMaxWindowFrames) {
-    throw RangeError.range(windowFrames, 1, radarMaxWindowFrames, 'windowFrames');
-  }
-  final span = radarFrameStep * windowFrames;
+  if (window <= Duration.zero) throw ArgumentError.value(window, 'window', 'expected a positive duration');
   final sorted = [...frames]..sort((a, b) => a.time.compareTo(b.time));
-  if (sorted.isEmpty || sorted.last.time.isBefore(now.toUtc().subtract(span))) return const [];
-  final start = sorted.last.time.subtract(span);
-  final window = sorted.where((f) => f.time.isAfter(start)).toList();
-  return window.length <= windowFrames ? window : window.sublist(window.length - windowFrames);
+  if (sorted.isEmpty || sorted.last.time.isBefore(now.toUtc().subtract(window))) return const [];
+  final start = sorted.last.time.subtract(window);
+  return sorted.where((f) => f.time.isAfter(start)).toList();
 }

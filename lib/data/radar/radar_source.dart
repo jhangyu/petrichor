@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -18,67 +16,55 @@ class RadarDataException implements Exception {
   String toString() => 'RadarDataException($source): expected $expected, got $actual';
 }
 
-/// A radar image source. Every source's frames go through the same pipeline
-/// (download → `processRadarFrame` → cache → stream) and the same screen; a
-/// source only says which frames exist and how to process them.
-abstract interface class RadarSource {
+/// A CWA website radar loop. Every source's frames go through the same
+/// pipeline (download → `processRadarFrame` → cache → stream) and the same
+/// screen; a source only differs in its frame list (native cadence, regular
+/// or not) and its longest look-back.
+class RadarSource {
   /// Dataset id; also the source's cache sub-directory.
-  String get id;
-
-  /// Frames of the [windowFrames] x [radarFrameStep] window ending at the
-  /// newest frame, any order. Throws when the list cannot be obtained.
-  Future<List<RadarFrameRef>> listFrames({required DateTime now, required int windowFrames});
-}
-
-/// Website `CV1_3600_` loop (全台合成): ~24 h of 10-minute frames.
-class WebsiteRadarSource implements RadarSource {
-  final Dio _dio;
-
-  WebsiteRadarSource(this._dio);
-
-  @override
-  String get id => AppConstants.radarTaiwan;
-
-  @override
-  Future<List<RadarFrameRef>> listFrames({required DateTime now, required int windowFrames}) async {
-    final response = await _dio.get<String>(radarFrameListUrl, options: Options(responseType: ResponseType.plain));
-    final js = response.data ??
-        (throw RadarDataException(radarFrameListUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
-    final window = selectRadarFrameWindow(parseRadarFrameList(js), now: now, windowFrames: windowFrames);
-    if (window.isEmpty) {
-      throw RadarDataException(radarFrameListUrl,
-          expected: 'frames newer than ${now.toUtc().subtract(radarFrameStep * windowFrames)}', actual: 'none');
-    }
-    return window;
-  }
-}
-
-/// Open-data station radar (O-A0084-00x): the file API publishes only the
-/// latest image, so the list is that one frame.
-class StationRadarSource implements RadarSource {
-  final Dio _dio;
-
-  @override
   final String id;
+  final String listUrl;
 
-  StationRadarSource(this._dio, this.id);
+  /// Longest look-back the source offers (what its frame list covers).
+  final Duration maxWindow;
 
-  @override
-  Future<List<RadarFrameRef>> listFrames({required DateTime now, required int windowFrames}) async {
-    if (!AppConstants.hasApiKey) {
-      throw RadarDataException(id, expected: 'CWA_API_KEY via --dart-define', actual: 'none');
+  /// Frames (time + URL + processing) listed in the JS at [listUrl].
+  final List<RadarFrameRef> Function(String js) parse;
+  final Dio _dio;
+
+  RadarSource(this._dio, {required this.id, required this.listUrl, required this.maxWindow, required this.parse});
+
+  /// Composite (全台合成): website `CV1_3600_` loop, 10-minute frames, 24 h.
+  factory RadarSource.composite(Dio dio) => RadarSource(dio,
+      id: AppConstants.radarTaiwan, listUrl: radarFrameListUrl, maxWindow: radarWebsiteMaxWindow, parse: parseRadarFrameList);
+
+  /// Station radar: website station list, ~108 s frames, 6 h.
+  factory RadarSource.station(Dio dio, RadarStation station) {
+    final geometry = stationRadarGeometry(stationRadarBounds(station.site, radiusKm: radarStationRangeKm));
+    return RadarSource(dio,
+        id: station.datasetId,
+        listUrl: radarStationListUrl,
+        maxWindow: radarStationMaxWindow,
+        parse: (js) => parseRadarStationList(js, code: station.code, geometry: geometry));
+  }
+
+  /// Frames of the [window] ending at the newest listed frame, oldest first.
+  /// Throws when the list cannot be obtained or has no frame that recent.
+  Future<List<RadarFrameRef>> listFrames({required DateTime now, required Duration window}) async {
+    final Response<String> response;
+    try {
+      response = await _dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain));
+    } on DioException catch (e) {
+      throw RadarDataException(listUrl,
+          expected: 'HTTP 200 with the frame list',
+          actual: switch (e.response) { final r? => 'HTTP ${r.statusCode}', null => '${e.type.name}: ${e.message}' });
     }
-    final response = await _dio.get<String>(
-      AppConstants.radarApiUrl(id, AppConstants.cwaApiKey),
-      options: Options(responseType: ResponseType.plain),
-    );
-    final text = response.data ??
-        (throw RadarDataException(id, expected: 'JSON body', actual: 'HTTP ${response.statusCode} without body'));
-    final body = jsonDecode(text);
-    if (body is! Map<String, dynamic>) {
-      throw RadarDataException(id, expected: 'JSON object', actual: body.runtimeType);
+    final js = response.data ??
+        (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
+    final frames = selectRadarFrameWindow(parse(js), now: now, window: window);
+    if (frames.isEmpty) {
+      throw RadarDataException(listUrl, expected: 'frames newer than ${now.toUtc().subtract(window)} for $id', actual: 'none');
     }
-    final image = OpenDataRadarImage.fromJson(id, body);
-    return [RadarFrameRef(time: image.time, url: image.imageUrl, geometry: stationRadarGeometry(image.bounds))];
+    return frames;
   }
 }

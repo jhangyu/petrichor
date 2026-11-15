@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/constants/app_constants.dart';
 import 'radar_frame_processor.dart';
 
 /// Extent of the website `CV1_3600_` frames ([radarFrameWest] etc.). Same grid as open-data O-A0058-001
@@ -19,6 +20,7 @@ final websiteRadarGeometry = RadarImageGeometry(
   bounds: websiteRadarFrameBounds,
   rowMap: radarFrameRowMap,
   decorations: websiteFrameDecorations,
+  palette: radarEchoPalette,
 );
 
 /// Processing of one station image covering [bounds]: rows kept as they are
@@ -28,47 +30,26 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
       bounds: bounds,
       rowMap: List<int>.generate(radarFrameSize, (i) => i),
       decorations: stationFrameDecorations,
+      palette: radarEchoPalette,
     );
 
 const _earthRadiusKm = 6371.0088;
-final _radiusKmPattern = RegExp(r'(\d+(?:\.\d+)?)\s*公里');
 
-/// One open-data station radar image (O-A0084-001..003). The composite
-/// (全台) layer is not taken from open data: O-A0058-001 is pixel-identical to
-/// the newest website frame, which is shown reprojected instead.
-class OpenDataRadarImage {
-  final String imageUrl;
-  final LatLngBounds bounds;
-  final DateTime time;
+/// A station radar: image-name code in the website station list, open-data
+/// dataset id (the app's source id) and site. Sites from the O-A0084-00x
+/// metadata (StationLongitude/StationLatitude, 2026-11-15).
+typedef RadarStation = ({String code, String datasetId, LatLng site});
 
-  const OpenDataRadarImage({required this.imageUrl, required this.bounds, required this.time});
+const radarStations = <RadarStation>[
+  (code: 'RCSL', datasetId: AppConstants.radarShulin, site: LatLng(25.00, 121.40)), // 樹林
+  (code: 'RCNT', datasetId: AppConstants.radarNantun, site: LatLng(24.14, 120.58)), // 南屯
+  (code: 'RCLY', datasetId: AppConstants.radarLinyuan, site: LatLng(22.53, 120.38)), // 林園
+];
 
-  /// Parses a `fileapi/v1/opendataapi/<id>?format=JSON` response: corners from
-  /// `StationLongitude`/`StationLatitude` and a radius such as 「距雷達150公里」.
-  factory OpenDataRadarImage.fromJson(String datasetId, Map<String, dynamic> json) {
-    Never fail(String what, Object? actual) =>
-        throw FormatException('$datasetId: expected $what, got ${actual ?? 'nothing'}');
-
-    final dataset = (json['cwaopendata'] as Map?)?['dataset'] as Map? ?? fail('cwaopendata.dataset', json.keys);
-    final url = (dataset['resource'] as Map?)?['ProductURL'];
-    if (url is! String || url.isEmpty) fail('resource.ProductURL', url);
-    final time = DateTime.tryParse('${dataset['DateTime']}') ?? fail('DateTime (ISO 8601)', dataset['DateTime']);
-    final params = (dataset['datasetInfo'] as Map?)?['parameterSet'] as Map? ??
-        fail('datasetInfo.parameterSet', dataset['datasetInfo']);
-    double number(String key) => double.tryParse('${params[key]}') ?? fail('numeric $key', params[key]);
-    final radiusText = (params['parameter'] as Map?)?['parameterValue'];
-    final radius = _radiusKmPattern.firstMatch('$radiusText') ??
-        fail('parameter.parameterValue like 「距雷達150公里」', radiusText);
-    return OpenDataRadarImage(
-      imageUrl: url,
-      time: time,
-      bounds: stationRadarBounds(
-        LatLng(number('StationLatitude'), number('StationLongitude')),
-        radiusKm: double.parse(radius.group(1)!),
-      ),
-    );
-  }
-}
+/// Station images reach this far from the radar (O-A0084 「距雷達150公里」). The
+/// website station frames have the open-data images' layout (98 % of pixels
+/// identical, same legend bar at x 3462-3525, y 2541-3572; checked 2026-11-15).
+const radarStationRangeKm = 150.0;
 
 /// Square around a station radar whose half-side is [radiusKm] (the image's
 /// range ring touches the image edges). ponytail: equirectangular offsets and

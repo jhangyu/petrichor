@@ -66,18 +66,28 @@ class RadarImageGeometry {
   /// Rectangles (source px) drawn in legend colours that are not echo.
   final List<PixelRect> decorations;
 
-  const RadarImageGeometry({required this.size, required this.bounds, required this.rowMap, required this.decorations});
+  /// Colour table of the source (0xRRGGBB, index = dBZ 0..65, as
+  /// [radarEchoPalette]); pixels in other colours are background.
+  final List<int> palette;
+
+  const RadarImageGeometry({
+    required this.size,
+    required this.bounds,
+    required this.rowMap,
+    required this.decorations,
+    required this.palette,
+  });
 }
 
-/// A processed frame: indexed PNG (palette [radarIndexedPalette]) and the
-/// echo statistics of the source image.
+/// A processed frame: indexed PNG (palette [radarIndexedPalette] of the
+/// source colours) and the echo statistics of the source image.
 typedef ProcessedRadarFrame = ({Uint8List png, RadarEchoStats stats});
 
 /// Palette of the processed PNG: index 0 = transparent, index d + 1 = dBZ d
-/// ([radarEchoPalette]), opaque.
-img.PaletteUint8 radarIndexedPalette() {
-  final palette = img.PaletteUint8(radarEchoPalette.length + 1, 4);
-  for (final (d, c) in radarEchoPalette.indexed) {
+/// ([colours], index = dBZ), opaque.
+img.PaletteUint8 radarIndexedPalette(List<int> colours) {
+  final palette = img.PaletteUint8(colours.length + 1, 4);
+  for (final (d, c) in colours.indexed) {
     palette.setRgba(d + 1, c >> 16, (c >> 8) & 0xFF, c & 0xFF, 0xFF);
   }
   return palette;
@@ -99,13 +109,17 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
       '${src.format}, palette=${src.hasPalette}',
     );
   }
+  if (g.palette.length != radarEchoPalette.length) {
+    throw ArgumentError('radar image: expected a colour table of ${radarEchoPalette.length} dBZ levels '
+        '(echo statistics are 0..65 dBZ), got ${g.palette.length}');
+  }
   final width = src.width;
-  final echoBits = _radarEchoColourBits();
-  final indexOf = {for (final (d, c) in radarEchoPalette.indexed) c: d + 1};
+  final echoBits = _colourBits(g.palette);
+  final indexOf = {for (final (d, c) in g.palette.indexed) c: d + 1};
   final counts = List<int>.filled(radarEchoPalette.length, 0);
   final columns = (width / radarStatsCellPixels).ceil();
   final cells = Uint16List(columns * (src.height / radarStatsCellPixels).ceil() * radarDbzBands);
-  final out = img.Image(width: width, height: g.rowMap.length, numChannels: 1, palette: radarIndexedPalette());
+  final out = img.Image(width: width, height: g.rowMap.length, numChannels: 1, palette: radarIndexedPalette(g.palette));
   final s = src.toUint8List();
   final d = out.toUint8List();
   final row = Uint8List(width);
@@ -151,11 +165,11 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   );
 }
 
-/// One bit per 24-bit colour, set for the [radarEchoPalette] colours (2 MB):
-/// test `bits[c >> 5] & (1 << (c & 31))`.
-Uint32List _radarEchoColourBits() {
+/// One bit per 24-bit colour, set for the [colours] (2 MB): test
+/// `bits[c >> 5] & (1 << (c & 31))`.
+Uint32List _colourBits(List<int> colours) {
   final bits = Uint32List(1 << 19);
-  for (final c in radarEchoPalette) {
+  for (final c in colours) {
     bits[c >> 5] |= 1 << (c & 31);
   }
   return bits;
