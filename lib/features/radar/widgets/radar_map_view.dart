@@ -236,7 +236,10 @@ class _RadarMapViewState extends State<RadarMapView> {
   @override
   void initState() {
     super.initState();
-    retryRadarBasemap();
+    // After this frame: a retry notifies every mounted map, and notifying
+    // the other maps' builders while this one mounts (during build) would
+    // mark them dirty mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => retryRadarBasemap());
   }
 
   /// Logs the zoom once the camera has rested for [_zoomLogDebounce]; pans
