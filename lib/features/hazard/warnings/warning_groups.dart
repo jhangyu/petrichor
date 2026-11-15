@@ -1,8 +1,9 @@
 import '../../../data/models/hazard_models.dart';
+import '../rainfall/rainfall_logic.dart' show rainLevelNames;
 
 /// Rain-warning names, highest first: the level (1–4) is the first entry contained in the name.
 /// CWA names no other warning by level, so every other warning has level null.
-const _rainLevelNames = [('超大豪雨', 4), ('大豪雨', 3), ('豪雨', 2), ('大雨', 1)];
+final _rainLevelNames = [for (var level = rainLevelNames.length - 1; level >= 1; level--) (rainLevelNames[level], level)];
 
 /// One warning (same kind, same validity) with every county it applies to.
 class WarningGroup {
