@@ -10,7 +10,6 @@ const _headerLine = '441,561,c,118.00,20.00,123.50,27.00,int16,0,0,EPSG:4326';
 const _transformLine = 'linearTransform(0.2500,0.0000)';
 
 /// Lower edges (mm) of colours 1.. of `AppPalette.rainfallMapScale`; colour 0 is below the first edge.
-/// Same boundaries as `rainfallMapScaleLabels`.
 const accumScaleEdgesMm = [
   1,
   2,
@@ -125,13 +124,30 @@ AccumGrid parseAccumGrid(String text, {required String url}) {
   return AccumGrid(raw);
 }
 
-/// Cell-wise sum in raw units.
-Int32List sumAccumGrids(List<AccumGrid> grids) {
-  if (grids.isEmpty) {
-    throw ArgumentError.value(grids, 'grids', 'expected at least one grid');
+/// First partial hour of a 10-min frame (contract decision 12): the rain from
+/// S to S + [minutes], estimated per cell as [end] − [start]·(60 − [minutes])/60,
+/// where [end] and [start] are the 1 h grids ending at S + [minutes] and at S.
+typedef AccumPartialHour = ({AccumGrid end, AccumGrid start, int minutes});
+
+/// Cell-wise frame total in raw units: [partial] (the scaled subtraction
+/// rounded to the nearest raw unit, halves up; a negative estimate is 0) plus
+/// every [whole] grid.
+Int32List accumFrameSum(List<AccumGrid> whole, {AccumPartialHour? partial}) {
+  if (whole.isEmpty && partial == null) {
+    throw ArgumentError.value(whole, 'whole', 'expected at least one grid or a partial hour');
   }
   final sum = Int32List(accumGridWidth * accumGridHeight);
-  for (final g in grids) {
+  if (partial case (:final end, :final start, :final minutes)) {
+    if (minutes <= 0 || minutes >= 60) {
+      throw ArgumentError.value(minutes, 'minutes', 'expected 1..59');
+    }
+    final keep = 60 - minutes;
+    for (var i = 0; i < sum.length; i++) {
+      final c = end.raw[i] - (start.raw[i] * keep + 30) ~/ 60;
+      if (c > 0) sum[i] = c;
+    }
+  }
+  for (final g in whole) {
     for (var i = 0; i < sum.length; i++) {
       sum[i] += g.raw[i];
     }

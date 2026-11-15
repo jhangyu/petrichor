@@ -36,6 +36,7 @@ const radarLegacyCacheDirNames = [
   'radar_webp_2048_v1',
   'radar_webp_2048_v2',
   'rain_accum_frames_v1',
+  'rain_accum_frames_v2',
 ];
 
 /// Deletes the [radarLegacyCacheDirNames] directories under [root]; anything
@@ -237,6 +238,19 @@ class RadarFrameRepository {
         }
       }
       slots[key] = switch (ready[key]) { final frame? => RadarSlot.ready(frame), null => RadarSlot.pending(f.time) };
+    }
+    // Cached frames the next cache-first view would show but the list does not
+    // list (an accumulation window that moved by 10 min lists other times):
+    // deleted, WebP first (a frame without its WebP is not a cached frame).
+    if (byTime.isNotEmpty) {
+      final from = byTime.last.time.subtract(window);
+      for (final key in cached) {
+        final t = _cacheKeyTime(key);
+        if (t.isAfter(from) && !t.isAfter(byTime.last.time) && !slots.containsKey(key)) {
+          await File('${dir.path}/$key.webp').delete();
+          await File('${dir.path}/$key.stats').delete();
+        }
+      }
     }
     void sendSlots({required bool loading}) => send([...slots.values], loading: loading);
     sendSlots(loading: true);

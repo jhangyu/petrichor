@@ -17,16 +17,16 @@ import '../radar/radar_webp.dart';
 import 'accum_grid.dart';
 import 'accum_pieces.dart';
 
-/// 累積雨量 frames as a [RadarSource]: each frame is the rolling [accumPieces]
-/// sum of QPEplus native gauge grids ending at the frame time
-/// (docs/design/rainfall/arch-accumulation.md §6, contract decisions 10–11).
+/// 累積雨量 frames as a [RadarSource]: frame k of a W-hour window shows the
+/// rain from the window start S to S + k·step, summed from QPEplus gauge grids
+/// (contract decisions 10–12), so playback grows from 0 to the W-hour total.
 
 /// Downloaded grids (gzipped), shared by every window:
 /// `<root>/rain_accum_pieces_v1/<WW>h/<yyyyMMddHHmm>.dat.gz` (+ `.etag`).
 const accumPieceCacheDirName = 'rain_accum_pieces_v1';
 
-/// Rendered frames: `<root>/rain_accum_frames_v2/<W>h` (the repository's cache).
-const accumFrameCacheDirName = 'rain_accum_frames_v2';
+/// Rendered frames: `<root>/rain_accum_frames_v3/<W>h` (the repository's cache).
+const accumFrameCacheDirName = 'rain_accum_frames_v3';
 
 /// QPEplus publishes every native grid every 10 min.
 const accumGridInterval = Duration(minutes: 10);
@@ -39,8 +39,9 @@ const accumPublishDelay = Duration(minutes: 6);
 /// QPEplus rewrites a grid once, 4–10 min after it first appears.
 const accumRevalidateAge = Duration(minutes: 20);
 
-/// Grids kept on disk: the 168 h window over a 168 h span, plus one hour.
-const accumPieceRetention = Duration(hours: 168 + 168 + 1);
+/// Grids kept on disk: the longest window (168 h) plus one hour of slack for
+/// the newest slot.
+const accumPieceRetention = Duration(hours: 168 + 1);
 
 /// Grid extent (lon 118–123.5, lat 20–27, linear in degrees).
 final accumBounds = LatLngBounds(const LatLng(20, 118), const LatLng(27, 123.5));
@@ -53,22 +54,50 @@ Duration accumFrameStep(int windowHours) => switch (windowHours) {
       _ => throw ArgumentError.value(windowHours, 'windowHours', 'expected one of $accumWindowHours'),
     };
 
+/// Native grid summed by a window: 3 h for 168 h, else 1 h.
+int _gridHours(int windowHours) => accumFrameStep(windowHours) == const Duration(hours: 3) ? 3 : 1;
+
+/// Start S of the [windowHours] window whose newest frame is [newest] (the UI
+/// labels a frame "S – frame time"; [newest] is the loop's last slot time).
+DateTime accumWindowStart(DateTime newest, int windowHours) => newest.subtract(Duration(hours: windowHours));
+
 DateTime _floor(DateTime t, Duration step) {
   final us = t.toUtc().microsecondsSinceEpoch;
   return DateTime.fromMicrosecondsSinceEpoch(us - us % step.inMicroseconds, isUtc: true);
 }
 
-/// The [window] span of frames ending at [newest], [step] apart, oldest first.
-List<DateTime> accumFrameTimes(DateTime newest, {required Duration step, required Duration window}) => [
-      for (var i = window.inMicroseconds ~/ step.inMicroseconds - 1; i >= 0; i--) newest.subtract(step * i),
-    ];
+/// A listed accumulation frame: the rain from [start] to [time]. Frames at the
+/// same time but another [start] differ, so [start] is part of what a cached
+/// frame was made from.
+class AccumFrameRef extends RadarFrameRef {
+  AccumFrameRef({required super.time, required super.url, required DateTime start}) : start = start.toUtc();
+
+  final DateTime start;
+}
+
+/// Grids of the frame at [time] of a window starting at [start] (decision 12):
+/// the [nativeHours] grids ending at [ends], summed; for a 10-min frame between
+/// whole hours, first the partial hour from S to [partialEnd]
+/// ([AccumPartialHour], from the 1 h grids ending at [partialEnd] and at S).
+typedef AccumFramePlan = ({int nativeHours, DateTime? partialEnd, List<DateTime> ends});
+
+AccumFramePlan accumFramePlan({required DateTime start, required DateTime time, required int windowHours}) {
+  final grid = Duration(hours: _gridHours(windowHours));
+  final into = time.difference(start).inMicroseconds % grid.inMicroseconds;
+  final partialEnd = into == 0 ? null : start.add(Duration(microseconds: into));
+  return (
+    nativeHours: grid.inHours,
+    partialEnd: partialEnd,
+    ends: [for (var e = (partialEnd ?? start).add(grid); !e.isAfter(time); e = e.add(grid)) e],
+  );
+}
 
 /// The accumulated-rainfall source of a [windowHours] window (one of
-/// [accumWindowHours]); playback span = window. Frames are step-aligned, plus
-/// the newest grid slot as a last frame when it is newer than the last aligned
-/// one (so the newest frame is at most [accumGridInterval] behind). [cacheRoot]
-/// holds the piece cache; [clock] decides which cached grids are young enough
-/// to revalidate.
+/// [accumWindowHours]); playback span = window. The newest frame is the newest
+/// published grid slot, S = newest − window and frames are S + step·k for
+/// k = 1..window/step (a shorter `window` lists the newest of them).
+/// [cacheRoot] holds the piece cache; [clock] decides which cached grids are
+/// young enough to revalidate.
 RadarSource accumRadarSource(
   Dio dio, {
   required int windowHours,
@@ -76,9 +105,8 @@ RadarSource accumRadarSource(
   DateTime Function() clock = DateTime.now,
 }) {
   final step = accumFrameStep(windowHours);
-  final pieces = accumPieces(windowHours);
+  final native = _gridHours(windowHours);
   final cache = _PieceCache(dio, cacheRoot, clock);
-  String frameUrl(DateTime t) => accumPieceUrl(pieces.first.nativeHours, t);
   return RadarSource(
     id: 'rain_accum_${windowHours}h',
     cachePath: '$accumFrameCacheDirName/${windowHours}h',
@@ -87,37 +115,50 @@ RadarSource accumRadarSource(
       await cache.prune(now);
       var newest = _floor(now.toUtc().subtract(accumPublishDelay), accumGridInterval);
       // Not published yet: one slot back, once (a second miss is a failed slot).
-      if (await cache.get(pieces.first.nativeHours, newest, cancelToken) == null) {
+      if (await cache.get(native, newest, cancelToken) == null) {
         newest = newest.subtract(accumGridInterval);
       }
-      final aligned = _floor(newest, step);
+      final start = accumWindowStart(newest, windowHours);
+      final count = Duration(hours: windowHours).inMicroseconds ~/ step.inMicroseconds;
+      final listed = window.inMicroseconds ~/ step.inMicroseconds;
       return [
-        for (final t in [...accumFrameTimes(aligned, step: step, window: window), if (newest.isAfter(aligned)) newest])
-          RadarFrameRef(time: t, url: frameUrl(t)),
+        for (var k = count - listed + 1; k <= count; k++)
+          AccumFrameRef(time: start.add(step * k), url: accumPieceUrl(native, start.add(step * k)), start: start),
       ];
     },
-    // Only the offset-0 grid can change once its frame exists: the others ended
-    // an hour or more before the frame, past [accumRevalidateAge]. Stale when
-    // that grid's ETag (revalidated if young; another window may have done it)
-    // is not the one the frame was made from.
+    // Of a frame's grids only the one ending at the frame time can change once
+    // the frame exists: the others ended 10 min or more before it and were
+    // past [accumRevalidateAge] at render time (a frame is made at least
+    // [accumPublishDelay] after its time). Stale when that grid's ETag
+    // (revalidated if young; another window may have done it) or S is not what
+    // the frame was made from.
     cachedFrameStale: (frame, cancel) async {
-      final first = pieces.first.nativeHours;
-      if (cache.young(frame.time)) await cache.get(first, frame.time, cancel);
-      return await cache.etag(first, frame.time) != await cache.renderedEtag(windowHours, frame.time);
+      final start = (frame as AccumFrameRef).start;
+      if (cache.young(frame.time)) await cache.get(native, frame.time, cancel);
+      return await cache.signature(native, start, frame.time) != await cache.renderedSignature(windowHours, frame.time);
     },
     step: RadarComposedStep((frame, cancel, processSlot) async {
-      final inputs = <AccumPieceInput>[];
-      String? firstEtag;
-      for (final p in pieces) {
-        final end = frame.time.subtract(Duration(hours: p.offsetHours));
-        final url = accumPieceUrl(p.nativeHours, end);
-        final gz = await cache.get(p.nativeHours, end, cancel) ??
+      final start = (frame as AccumFrameRef).start;
+      final plan = accumFramePlan(start: start, time: frame.time, windowHours: windowHours);
+      Future<AccumPieceInput> input(int nativeHours, DateTime end) async {
+        final url = accumPieceUrl(nativeHours, end);
+        final gz = await cache.get(nativeHours, end, cancel) ??
             (throw RadarDataException(url, expected: 'HTTP 200 with the QPEplus grid', actual: 'HTTP 404'));
-        if (p.offsetHours == 0) firstEtag = await cache.etag(p.nativeHours, end);
-        inputs.add((url: url, gz: gz));
+        return (url: url, gz: gz);
       }
-      final processed = await processSlot(() => _renderOffUiIsolate(inputs));
-      await cache.setRenderedEtag(windowHours, frame.time, firstEtag);
+
+      final partialEnd = plan.partialEnd;
+      final [partial, whole] = await Future.wait([
+        Future.wait([if (partialEnd != null) ...[input(1, partialEnd), input(1, start)]]),
+        Future.wait([for (final end in plan.ends) input(plan.nativeHours, end)]),
+      ]);
+      final signature = await cache.signature(native, start, frame.time);
+      final processed = await processSlot(() => _renderOffUiIsolate(
+          whole,
+          partialEnd == null
+              ? null
+              : (end: partial[0], start: partial[1], minutes: partialEnd.difference(start).inMinutes)));
+      await cache.setRenderedSignature(windowHours, frame.time, signature);
       return processed;
     }),
   );
@@ -126,9 +167,12 @@ RadarSource accumRadarSource(
 /// One downloaded grid: its URL (named in errors) and its gzipped text.
 typedef AccumPieceInput = ({String url, Uint8List gz});
 
-/// Top-level so the isolate closure captures only [inputs].
-Future<ProcessedRadarFrame> _renderOffUiIsolate(List<AccumPieceInput> inputs) =>
-    Isolate.run(() => renderAccumFrame(inputs));
+/// The 1 h grids of a frame's first partial hour ([AccumPartialHour]).
+typedef AccumPartialInput = ({AccumPieceInput end, AccumPieceInput start, int minutes});
+
+/// Top-level so the isolate closure captures only its arguments.
+Future<ProcessedRadarFrame> _renderOffUiIsolate(List<AccumPieceInput> whole, AccumPartialInput? partial) =>
+    Isolate.run(() => renderAccumFrame(whole, partial: partial));
 
 /// RGBA words (bytes R, G, B, A in memory) of `AppPalette.rainfallMapScale`, opaque.
 final _rgba = Uint32List.fromList([
@@ -138,12 +182,16 @@ final _rgba = Uint32List.fromList([
 
 final _rowMap = mercatorRowMap(srcHeight: accumGridHeight, south: accumBounds.south, north: accumBounds.north);
 
-/// Parses and sums [pieces], colours the sum ([accumColorIndex]), reprojects
-/// rows to Web Mercator and encodes one lossless WebP (441 px wide). Pure and
+/// Parses the grids and totals them ([accumFrameSum]), colours the total
+/// ([accumColorIndex]), reprojects rows to Web Mercator and encodes one
+/// lossless WebP (441 px wide); peakMm is the highest total. Pure and
 /// synchronous: run it in a background isolate. A grid that does not parse
 /// throws [RadarDataException] naming its URL.
-ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> pieces) {
-  final sum = sumAccumGrids([for (final p in pieces) _parse(p)]);
+ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialInput? partial}) {
+  final sum = accumFrameSum([for (final p in whole) _parse(p)],
+      partial: partial == null
+          ? null
+          : (end: _parse(partial.end), start: _parse(partial.start), minutes: partial.minutes));
   var peak = 0;
   for (final v in sum) {
     if (v > peak) peak = v;
@@ -180,7 +228,7 @@ AccumGrid _parse(AccumPieceInput p) {
   }
 }
 
-final _pieceFilePattern = RegExp(r'^(\d{12})\.(dat\.gz|etag)$');
+final _pieceFilePattern = RegExp(r'^(\d{12})\.(dat\.gz|etag|sig)$');
 
 /// Gzipped grid files, written once (temp file renamed into place); a grid
 /// younger than [accumRevalidateAge] is revalidated by ETag on each read.
@@ -225,21 +273,26 @@ class _PieceCache {
   Future<String> etag(int nativeHours, DateTime end) async =>
       _readOrEmpty(File('${(await _dir()).path}/${_subdir(nativeHours)}/${_key(end)}.etag'));
 
-  /// `rendered/<W>h/<key>.etag`: the offset-0 grid ETag a rendered frame of the
+  /// What a frame from [start] to [end] is made from: S and the ETag of the
+  /// [nativeHours] grid ending at [end].
+  Future<String> signature(int nativeHours, DateTime start, DateTime end) async =>
+      '${_key(start)} ${await etag(nativeHours, end)}';
+
+  /// `rendered/<W>h/<key>.sig`: the [signature] a rendered frame of the
   /// [windowHours] window was made from.
   Future<File> _renderedFile(int windowHours, DateTime frame) async =>
-      File('${(await _dir()).path}/rendered/${windowHours}h/${_key(frame)}.etag');
+      File('${(await _dir()).path}/rendered/${windowHours}h/${_key(frame)}.sig');
 
-  /// The ETag [setRenderedEtag] stored for the frame; null when none is stored.
-  Future<String?> renderedEtag(int windowHours, DateTime frame) async {
+  /// The signature [setRenderedSignature] stored for the frame; null when none is stored.
+  Future<String?> renderedSignature(int windowHours, DateTime frame) async {
     final file = await _renderedFile(windowHours, frame);
     return await file.exists() ? file.readAsString() : null;
   }
 
-  Future<void> setRenderedEtag(int windowHours, DateTime frame, String? etag) async {
+  Future<void> setRenderedSignature(int windowHours, DateTime frame, String signature) async {
     final file = await _renderedFile(windowHours, frame);
     await file.parent.create(recursive: true);
-    await (await File('${file.path}.${_tmpSeq++}.tmp').writeAsString(etag ?? '', flush: true)).rename(file.path);
+    await (await File('${file.path}.${_tmpSeq++}.tmp').writeAsString(signature, flush: true)).rename(file.path);
   }
 
   static Future<String> _readOrEmpty(File file) async => await file.exists() ? file.readAsString() : '';

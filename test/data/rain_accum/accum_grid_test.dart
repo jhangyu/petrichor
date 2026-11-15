@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cwb_flutter/core/theme/app_tokens.dart';
@@ -20,38 +21,31 @@ void main() {
   final g1050 = load('g01_20261115_1050');
   final g0950 = load('g01_20261115_0950');
   final g0850 = load('g01_20261115_0850');
-  final g0750 = load('g01_20261115_0750');
   final g3h = load('g03_20261115_1050');
 
   test('3 x 1h equals native 3h', () {
-    final sum = sumAccumGrids([g1050, g0950, g0850]);
+    final sum = accumFrameSum([g1050, g0950, g0850]);
     expect(sum.any((v) => v > 0), isTrue);
     expect(sum, orderedEquals(g3h.raw));
   });
 
-  test('3h + 1h composition equals 4 x 1h', () {
-    final pieces = accumPieces(4);
-    final byKey = {(3, 0): g3h, (1, 3): g0750};
-    final composed = sumAccumGrids([
-      for (final p in pieces) byKey[(p.nativeHours, p.offsetHours)]!,
-    ]);
-    expect(
-      composed,
-      orderedEquals(sumAccumGrids([g1050, g0950, g0850, g0750])),
-    );
+  test('partial hour: R1(S+m) - R1(S)(60-m)/60 per cell, rounded, clamped at 0, then whole grids', () {
+    for (final m in [10, 20, 30, 40, 50]) {
+      // Earlier hour 09:50 as R1(S), 10:50 as R1(S+m); 08:50 as a whole grid.
+      final sum = accumFrameSum([g0850], partial: (end: g1050, start: g0950, minutes: m));
+      var clamped = 0;
+      for (var i = 0; i < sum.length; i++) {
+        final estimate = g1050.raw[i] - (g0950.raw[i] * (60 - m) / 60).round();
+        if (estimate < 0) clamped++;
+        expect(sum[i], max(0, estimate) + g0850.raw[i], reason: 'm $m cell $i');
+      }
+      expect(clamped, greaterThan(0), reason: 'm $m: the fixtures have negative estimates');
+    }
   });
 
-  test('accumPieces for every window', () {
-    expect(accumWindowHours, [4, 6, 12, 24, 48, 168]);
-    String show(int w) => accumPieces(
-      w,
-    ).map((p) => '${p.nativeHours}@${p.offsetHours}').join(' ');
-    expect(show(4), '3@0 1@3');
-    expect(show(6), '6@0');
-    expect(show(12), '12@0');
-    expect(show(24), '24@0');
-    expect(show(48), '24@0 24@24');
-    expect(show(168), List.generate(7, (i) => '24@${i * 24}').join(' '));
+  test('accumFrameSum rejects nothing to sum and a whole-hour partial', () {
+    expect(() => accumFrameSum([]), throwsArgumentError);
+    expect(() => accumFrameSum([], partial: (end: g1050, start: g0950, minutes: 60)), throwsArgumentError);
   });
 
   test('accumPieceUrl matches a real URL', () {
