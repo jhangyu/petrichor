@@ -17,6 +17,7 @@ import '../../core/widgets/choices.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
+import '../../data/radar/radar_bounds.dart' show radarStations;
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../data/radar/radar_loop.dart';
@@ -30,14 +31,9 @@ import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';
 import 'widgets/station_layers.dart';
 
-const _stationNames = {AppConstants.radarShulin: '樹林', AppConstants.radarNantun: '南屯', AppConstants.radarLinyuan: '林園'};
+String? _stationName(String id) => radarStations.where((s) => s.datasetId == id).firstOrNull?.name;
 
-const _radarSources = [
-  (AppConstants.radarTaiwan, '全台合成'),
-  (AppConstants.radarShulin, '樹林'),
-  (AppConstants.radarNantun, '南屯'),
-  (AppConstants.radarLinyuan, '林園'),
-];
+final _radarSources = [(AppConstants.radarTaiwan, '全台合成'), for (final s in radarStations) (s.datasetId, s.name)];
 
 const _loadingSubtitle = '正在取得最新觀測…';
 const _unreachableSubtitle = '無法連線中央氣象署';
@@ -222,7 +218,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     }
     final frame = slots[index].frame!;
     final newest = slots[radarShownIndex(slots, null)!].frame!;
-    final name = _stationNames[_source];
+    final name = _stationName(_source);
     return _RadarView(
       subtitle: _loopSubtitle(name, newest),
       sourceIds: [_source],
