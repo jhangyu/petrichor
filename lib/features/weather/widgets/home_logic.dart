@@ -9,6 +9,9 @@ import '../weather_provider.dart';
 /// Below this 降雨機率 the value is shown muted (`.day__rain--low`, `.fc-t--pop-low`).
 const rainLowThresholdPercent = 30;
 
+/// Whether a 降雨機率 is shown muted; unknown (null) counts as low.
+bool isLowRain(int? pop) => pop == null || pop < rainLowThresholdPercent;
+
 const _weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
 
 /// `11/14（六）` for a wall date (see [taiwanWall] / [taiwanDate]).

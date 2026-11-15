@@ -476,7 +476,7 @@ class _ChartPainter extends CustomPainter {
           Paint()..color = AppPalette.rainBar,
         );
       }
-      final low = pop == null || pop < rainLowThresholdPercent;
+      final low = isLowRain(pop);
       paintLabel(
         canvas,
         percentText(pop),

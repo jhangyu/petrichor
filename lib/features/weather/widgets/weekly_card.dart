@@ -69,7 +69,7 @@ class WeeklyCard extends StatelessWidget {
     final offset = dayOffset(wall, now);
     final label = offset <= 1 ? relativeDay(wall, now) : weekdayName(wall);
     final date = offset <= 1 ? '${weekdayName(wall)} ${monthDay(wall)}' : monthDay(wall);
-    final low = d.pop == null || d.pop! < rainLowThresholdPercent;
+    final low = isLowRain(d.pop);
     final num = AppType.body1.copyWith(fontFeatures: AppType.tabular);
     return Container(
       constraints: const BoxConstraints(minHeight: _rowMinHeight),
