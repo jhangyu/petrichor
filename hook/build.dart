@@ -51,6 +51,7 @@ void main(List<String> args) async {
       script,
       input.packageRoot.resolve('native/radar_webp/radar_webp.h'),
       input.packageRoot.resolve('native/radar_webp/radar_webp.c'),
+      input.packageRoot.resolve('native/radar_webp/libwebp_alloc.h'),
     ]);
     output.assets.code.add(
       CodeAsset(

@@ -193,6 +193,15 @@ def source_files(libwebp: Path) -> list[Path]:
     return files + [SHIM_DIR / "radar_webp.c"]
 
 
+def allocator_include(libwebp: Path, src: Path) -> list[str]:
+    """Forced-include file for src, if any. src/utils/utils.c holds libwebp's
+    only malloc/calloc/free calls on the encode/decode path; libwebp_alloc.h
+    routes them to the shim's per-call arena (see radar_webp.c).
+    ponytail: sharpyuv/sharpyuv.c also calls malloc/free, but only for lossy
+    sharp-YUV encoding, which radar never uses."""
+    return [str(SHIM_DIR / "libwebp_alloc.h")] if src == libwebp / "src" / "utils" / "utils.c" else []
+
+
 def object_name(src: Path) -> str:
     return f"{src.parent.name}_{src.stem}"
 
@@ -232,9 +241,11 @@ def build(args) -> Path:
         if not args.vcvars:
             raise BuildError("--os windows needs --vcvars (Visual Studio vcvars script)")
         env = vcvars_env(args.vcvars)
-        base = ["/nologo", "/O2", "/c"] + [f"/D{d}" for d in defines] + [f"/I{i}" for i in includes]
+        # /std:c11 for _Thread_local and _Alignof in radar_webp.c.
+        base = ["/nologo", "/std:c11", "/O2", "/c"] + [f"/D{d}" for d in defines] + [f"/I{i}" for i in includes]
         objs = [obj_dir / f"{object_name(s)}.obj" for s in sources]
-        compile_all([[cc, *base, str(s), f"/Fo{o}"] for s, o in zip(sources, objs)], env)
+        compile_all([[cc, *base, *(f"/FI{h}" for h in allocator_include(libwebp, s)), str(s), f"/Fo{o}"]
+                     for s, o in zip(sources, objs)], env)
         run([cc, "/nologo", "/LD", *map(str, objs), f"/Fe{library}",
              "/link", f"/IMPLIB:{obj_dir / (LIBRARY_BASENAME + '.lib')}"], env)
         return library
@@ -243,12 +254,15 @@ def build(args) -> Path:
     base = [*target, "-O2", "-fPIC", "-fvisibility=hidden", "-c"]
     base += [f"-D{d}" for d in defines] + [f"-I{i}" for i in includes]
     objs = [obj_dir / f"{object_name(s)}.o" for s in sources]
-    compile_all([[cc, *base, str(s), "-o", str(o)] for s, o in zip(sources, objs)], None)
+    compile_all([[cc, *base, *(f for h in allocator_include(libwebp, s) for f in ("-include", h)),
+                  str(s), "-o", str(o)] for s, o in zip(sources, objs)], None)
     link = [cc, *target, "-shared", *map(str, objs), "-o", str(library)]
     if args.os in ("macos", "ios"):
         link += ["-install_name", f"@rpath/{library.name}", "-headerpad_max_install_names"]
     else:
-        link += ["-lm", "-Wl,--no-undefined"]
+        # --exclude-libs: Android below API 29 emulates the shim's thread-local
+        # with compiler-rt's emutls; keep its helper out of the export list.
+        link += ["-lm", "-Wl,--no-undefined", "-Wl,--exclude-libs,ALL"]
     run(link)
     return library
 

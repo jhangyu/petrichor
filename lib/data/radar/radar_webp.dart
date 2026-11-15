@@ -76,8 +76,7 @@ Uint8List encodeRadarWebp(int width, int height, void Function(Uint32List pixels
   return using((arena) {
     final out = arena<Pointer<Uint8>>();
     final outSize = arena<Size>();
-    // The pixels are freed before radar_webp_free (below), which hands freed
-    // heap pages back to the OS.
+    // The pixels are freed as soon as the encode returns.
     final code = using((pixels) {
       final input = pixels<Uint32>(pixelCount); // calloc: zero = transparent
       paint(input.asTypedList(pixelCount));
