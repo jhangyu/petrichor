@@ -5,12 +5,7 @@ import 'package:petrichor/features/radar/radar_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-ProviderContainer newContainer() {
-  final container = ProviderContainer();
-  addTearDown(container.dispose);
-  return container;
-}
+import '../support/container.dart';
 
 Future<(Duration, int, bool, int)> read(ProviderContainer c, RadarGroup g) async => (
       await c.read(radarWindowProvider(g).future),

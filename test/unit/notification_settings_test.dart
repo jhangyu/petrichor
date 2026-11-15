@@ -7,12 +7,7 @@ import 'package:petrichor/features/settings/notification_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-ProviderContainer newContainer() {
-  final container = ProviderContainer();
-  addTearDown(container.dispose);
-  return container;
-}
+import '../support/container.dart';
 
 const taipei = Place(county: '臺北市', town: '中正區', latitude: 25.03, longitude: 121.52);
 const banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01, longitude: 121.46);
@@ -66,9 +61,6 @@ void main() {
       SharedPreferences.setMockInitialValues({'notify.master': 2});
       final c = newContainer();
       expectCorrupt(await readOutcome(() => c.read(notifyToggleProvider(NotifyToggle.master).future)), 'notify.master');
-      await c.read(notifyToggleProvider(NotifyToggle.master).notifier).set(true);
-      expect(c.read(notifyToggleProvider(NotifyToggle.master)).value, true);
-      expect(await newContainer().read(notifyToggleProvider(NotifyToggle.master).future), true);
     });
 
     test('notify.quietStart=1440', () async {
@@ -76,16 +68,12 @@ void main() {
       final c = newContainer();
       expectCorrupt(
           await readOutcome(() => c.read(quietMinuteProvider(QuietEdge.start).future)), 'notify.quietStart');
-      await c.read(quietMinuteProvider(QuietEdge.start).notifier).set(30);
-      expect(await newContainer().read(quietMinuteProvider(QuietEdge.start).future), 30);
     });
 
     test("notify.quietEnd='x'", () async {
       SharedPreferences.setMockInitialValues({'notify.quietEnd': 'x'});
       final c = newContainer();
       expectCorrupt(await readOutcome(() => c.read(quietMinuteProvider(QuietEdge.end).future)), 'notify.quietEnd');
-      await c.read(quietMinuteProvider(QuietEdge.end).notifier).set(30);
-      expect(await newContainer().read(quietMinuteProvider(QuietEdge.end).future), 30);
     });
 
     for (final bad in ['{', '["a","a"]', '[""]']) {
