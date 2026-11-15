@@ -119,6 +119,21 @@ void main() {
       expect((r as Failure).message, contains('W-C0033-002'));
     });
 
+    test('lifted bulletin without hazardConditions is skipped, active ones still join', () async {
+      final w2 = _fixtureJson('W-C0033-002');
+      final lifted = jsonDecode(_fixture('W-C0033-002-lifted-record'));
+      (w2['records']['record'] as List).insert(0, lifted);
+      final repo = _repo({
+        'W-C0033-001': _ok(_fixture('W-C0033-001')),
+        'W-C0033-002': _ok(w2),
+      });
+      final r = await repo.getActiveWarnings();
+      expect(r.isSuccess, isTrue);
+      expect(r.data.bulletins.length, 2);
+      expect(r.data.bulletins.any((b) => b.description.contains('解除')), isFalse);
+      expect(r.data.forCounty('澎湖縣').single.bulletin!.title, '陸上強風特報');
+    });
+
     test('-001 without records.location is Failure, not empty', () async {
       final repo = _repo({
         'W-C0033-001': _ok({'success': 'true', 'records': <String, dynamic>{}}),

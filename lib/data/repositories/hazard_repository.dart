@@ -162,8 +162,14 @@ class HazardRepository {
     if (record is! List<dynamic>) {
       throw FormatException('expected array at records.record, got ${record.runtimeType}');
     }
-    return [for (var i = 0; i < record.length; i++) WarningBulletin.fromJson(record[i], 'records.record[$i]')];
+    return [
+      for (var i = 0; i < record.length; i++)
+        // 無 hazardConditions ＝ 已解除的公告（API 正常狀態），不是生效特報
+        if (!_isLifted(record[i])) WarningBulletin.fromJson(record[i], 'records.record[$i]'),
+    ];
   }
+
+  bool _isLifted(Object? record) => record is Map<String, dynamic> && record['hazardConditions'] == null;
 
   Failure<T> _dioFailure<T>(String dataset, DioException e) {
     final status = e.response?.statusCode;

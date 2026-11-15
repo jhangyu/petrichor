@@ -1,0 +1,15 @@
+{
+  "datasetInfo": {
+    "datasetDescription": "大雨特報",
+    "datasetLanguage": "zh-TW",
+    "validTime": {"startTime": "2026-11-15 06:40:00", "endTime": "2026-11-15 14:40:00"},
+    "issueTime": "2026-11-15 06:40:00",
+    "update": "2026-11-15 10:31:31"
+  },
+  "contents": {
+    "content": {
+      "contentLanguage": "zh-TW",
+      "contentText": "由於降雨趨於緩和，發生大雨的機率降低，故解除大雨特報。"
+    }
+  }
+}
