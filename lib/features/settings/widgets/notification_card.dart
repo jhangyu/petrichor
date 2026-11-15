@@ -11,6 +11,7 @@ import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
 import '../../location/place_provider.dart';
 import '../notification_settings.dart';
+import 'settings_parts.dart';
 
 /// 通知設定 group (settings only: nothing is delivered yet).
 class NotificationSettingsCard extends ConsumerStatefulWidget {
@@ -19,9 +20,6 @@ class NotificationSettingsCard extends ConsumerStatefulWidget {
   @override
   ConsumerState<NotificationSettingsCard> createState() => _NotificationSettingsCardState();
 }
-
-String _clock(int minute) =>
-    '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
 
 class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsCard> {
   /// Set when a picked time equals the other edge; the previous value is kept.
@@ -38,7 +36,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     final minute = picked.hour * 60 + picked.minute;
     if (minute == other) {
       final (start, end) = edge == QuietEdge.start ? (minute, other) : (other, minute);
-      setState(() => _quietError = '開始與結束時間相同，靜音時段無效。實際：${_clock(start)} 至 ${_clock(end)}');
+      setState(() => _quietError = '開始與結束時間相同，靜音時段無效。實際：${clockOfMinute(start)} 至 ${clockOfMinute(end)}');
       return;
     }
     setState(() => _quietError = null);
@@ -71,7 +69,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     if (scalars.any((s) => s.hasError)) {
       final causes = scalars.where((s) => s.hasError).map((s) => '${s.error}').toSet().join('\n');
       body = AppList(children: [
-        _Block(children: [
+        SettingsBlock(children: [
           StatusBanner(
             tone: StatusTone.error,
             title: '無法讀取通知設定',
@@ -86,23 +84,11 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
       body = AppList(children: _rows(toggles, edges, masterOn));
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: AppSpace.s12,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
-          child: SectionHeader(
-            title: '通知設定',
-            trailing: Text(masterOn ? '偏好已儲存' : '已關閉', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-          ),
-        ),
-        body,
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpace.s16),
-          child: _Note(icon: Icons.info_outline, text: '目前只儲存通知偏好，App 尚未發送任何通知。'),
-        ),
-      ],
+    return SettingsGroup(
+      title: '通知設定',
+      meta: masterOn ? '偏好已儲存' : '已關閉',
+      body: body,
+      note: const SettingsNote(icon: Icons.info_outline, text: '目前只儲存通知偏好，App 尚未發送任何通知。'),
     );
   }
 
@@ -116,7 +102,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     final start = edges[QuietEdge.start]!.requireValue;
     final end = edges[QuietEdge.end]!.requireValue;
     final crosses = start > end;
-    final window = '${_clock(start)} 至 ${crosses ? '隔日 ' : ''}${_clock(end)}';
+    final window = '${clockOfMinute(start)} 至 ${crosses ? '隔日 ' : ''}${clockOfMinute(end)}';
 
     return [
       _SwitchRow(
@@ -161,7 +147,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
           onTap: () => _pickTime(QuietEdge.end, end, start),
         ),
         if (_quietError case final error?)
-          _Block(children: [StatusBanner(tone: StatusTone.error, title: error)]),
+          SettingsBlock(children: [StatusBanner(tone: StatusTone.error, title: error)]),
         _QuietHoursBar(start: start, end: end, label: '靜音時段：$window'),
       ],
     ];
@@ -176,7 +162,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     if (error != null) {
       if (error is StoredSettingException) {
         return [
-          _Block(children: [
+          SettingsBlock(children: [
             StatusBanner(
               tone: StatusTone.error,
               title: '無法讀取分區警特報設定',
@@ -195,7 +181,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
           ]),
         ];
       }
-      return [_Block(children: [StatusBanner(tone: StatusTone.error, title: '無法讀取已儲存的地點', text: '$error')])];
+      return [SettingsBlock(children: [StatusBanner(tone: StatusTone.error, title: '無法讀取已儲存的地點', text: '$error')])];
     }
     final places = saved.value;
     final on = areas.value;
@@ -237,7 +223,7 @@ class _SwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppListRow(
-      leading: _Tint(icon: icon, brand: brand),
+      leading: SettingsTint(icon: icon, brand: brand),
       primary: title,
       secondary: subtitle,
       enabled: enabled,
@@ -265,11 +251,11 @@ class _TimeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '靜音$title時間 ${nextDay ? '隔日 ' : ''}${_clock(minute)}',
+      label: '靜音$title時間 ${nextDay ? '隔日 ' : ''}${clockOfMinute(minute)}',
       button: true,
       excludeSemantics: true,
       child: AppListRow(
-        leading: const _Tint(icon: Icons.schedule),
+        leading: const SettingsTint(icon: Icons.schedule),
         primary: title,
         enabled: enabled,
         onTap: onTap,
@@ -282,7 +268,7 @@ class _TimeRow extends StatelessWidget {
               spacing: AppSpace.s4,
               children: [
                 if (nextDay) const AppBadge(label: '隔日'),
-                Text(_clock(minute),
+                Text(clockOfMinute(minute),
                     style: AppType.body1Strong.copyWith(
                       color: enabled ? AppPalette.fg1 : AppPalette.fgDisabled,
                       fontFeatures: AppType.tabular,
@@ -354,21 +340,6 @@ class _QuietHoursBar extends StatelessWidget {
   }
 }
 
-/// Padded block inside a group: padding s16, items s16 apart.
-class _Block extends StatelessWidget {
-  const _Block({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpace.s16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s16, children: children),
-    );
-  }
-}
-
 /// Sub-label band (32 high, text centred).
 class _GroupLabel extends StatelessWidget {
   const _GroupLabel(this.text);
@@ -387,38 +358,3 @@ class _GroupLabel extends StatelessWidget {
   }
 }
 
-class _Tint extends StatelessWidget {
-  const _Tint({required this.icon, this.brand = false});
-
-  final IconData icon;
-  final bool brand;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: AppSize.icon32,
-      height: AppSize.icon32,
-      decoration: BoxDecoration(color: brand ? AppPalette.brandBgSubtle : AppPalette.bg3, shape: BoxShape.circle),
-      child: Icon(icon, size: AppSize.icon20, color: brand ? AppPalette.brandFg : AppPalette.fg2),
-    );
-  }
-}
-
-class _Note extends StatelessWidget {
-  const _Note({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpace.s8,
-      children: [
-        Icon(icon, size: AppSize.icon16, color: AppPalette.fg3),
-        Expanded(child: Text(text, style: AppType.caption1.copyWith(color: AppPalette.fg3))),
-      ],
-    );
-  }
-}

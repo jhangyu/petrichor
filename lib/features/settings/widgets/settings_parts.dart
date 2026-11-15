@@ -7,6 +7,10 @@ import '../../../data/models/place.dart';
 /// 「臺北市 中正區」
 String placeLabel(Place p) => '${p.county} ${p.town}';
 
+/// 「07:00」 for a minute of day.
+String clockOfMinute(int minute) =>
+    '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+
 /// One settings group (spec §4): section title + meta above [body], optional [note] below.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({super.key, required this.title, this.meta, required this.body, this.note});

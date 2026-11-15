@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_key.dart';
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/inputs.dart';
 import '../../../core/widgets/status.dart';
+import 'settings_parts.dart';
 
 /// Token 設定 group: five states (未設定 / 驗證中 / 有效 / 無效 / 無法驗證) plus an unreadable-key reset.
 class TokenSettingsCard extends ConsumerStatefulWidget {
@@ -28,8 +28,6 @@ typedef _StatusView = ({
   bool unreadable,
 });
 
-String _clock(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-
 _StatusView _view(ApiKeyStatus status) {
   const unverifiedHelp = '授權碼已儲存，但尚未確認是否有效。請確認網路後按「重新驗證」。';
   return switch (status) {
@@ -43,7 +41,7 @@ _StatusView _view(ApiKeyStatus status) {
       ),
     ApiKeyValid(:final checkedAt) => (
         label: '有效', tone: BadgeTone.success, icon: Icons.check_circle_outline,
-        secondary: '驗證於 ${_clock(checkedAt)} · 測試請求成功',
+        secondary: '驗證於 ${clockOfMinute(checkedAt.hour * 60 + checkedAt.minute)} · 測試請求成功',
         fieldError: null, fieldHelper: null, unreadable: false,
       ),
     ApiKeyUnchecked() => (
@@ -161,30 +159,14 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
       ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: AppSpace.s12,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
-          child: SectionHeader(
-            title: 'Token 設定',
-            trailing: Text(view.label, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-          ),
-        ),
-        AppList(children: [
+    return SettingsGroup(
+      title: 'Token 設定',
+      meta: view.label,
+      body: AppList(children: [
           Semantics(
             liveRegion: true,
             child: AppListRow(
-              leading: Container(
-                width: AppSize.icon32,
-                height: AppSize.icon32,
-                decoration: BoxDecoration(
-                  color: brand ? AppPalette.brandBgSubtle : AppPalette.bg3,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.key_outlined, size: AppSize.icon20, color: brand ? AppPalette.brandFg : AppPalette.fg2),
-              ),
+              leading: SettingsTint(icon: Icons.key_outlined, brand: brand),
               primary: '中央氣象署 API 授權碼',
               secondary: view.secondary,
               trailing: Row(
@@ -197,12 +179,7 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(AppSpace.s16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: AppSpace.s16,
-              children: [
+          SettingsBlock(children: [
                 if (view.unreadable)
                   StatusBanner(
                     tone: StatusTone.error,
@@ -247,27 +224,9 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
                   '在會員資訊頁取得「API 授權碼」，複製後貼到上方欄位。',
                   style: AppType.caption1.copyWith(color: AppPalette.fg3),
                 ),
-              ],
-            ),
-          ),
+          ]),
         ]),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpace.s8,
-            children: [
-              const Icon(Icons.lock_outline, size: AppSize.icon16, color: AppPalette.fg3),
-              Expanded(
-                child: Text(
-                  '授權碼只存在這台裝置，只用來向中央氣象署請求資料。',
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      note: const SettingsNote(icon: Icons.lock_outline, text: '授權碼只存在這台裝置，只用來向中央氣象署請求資料。'),
     );
   }
 }
