@@ -176,6 +176,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       _stop();
       _playhead = null;
     });
+    retryRadarBasemap();
     ref.invalidate(radarLoopProvider(_source));
   }
 
