@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/logging/logging.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/status.dart';
@@ -20,28 +23,89 @@ const _styleUrl = 'https://vector.openstreetmap.org/styles/svwd/svwd03style.json
 /// OSMF vector tile policy: a User-Agent that identifies the app.
 const _userAgent = 'com.example.cwbweather.cwb_flutter';
 const _attribution = '© OpenStreetMap contributors';
-const _styleFailedText = '底圖載入失敗';
+const _styleFailedText = '底圖載入失敗，點按重試';
+const _logTag = 'basemap';
 
-/// GPU budget for finished basemap tiles. The plugin's own default is at
-/// least 64 MB; radar frames already take most of the memory budget. A
-/// 256-logical-px tile costs about 2.25 MB at devicePixelRatio 3, and the
-/// 5:6 map card shows at most 3×3 tiles, so 32 MB holds one full card plus
-/// part of a zoom level; anything evicted re-renders from decoded geometry
-/// without network.
-const _basemapRasterCacheBytes = 32 * 1024 * 1024;
+/// Map detail: [vt.TileOffset.none] fetches data tiles and evaluates the
+/// style at the camera zoom, one level more than the plugin's default
+/// ([vt.TileOffset.maplibre], camera zoom - 1), so the same camera zoom
+/// draws the next level's roads, places and labels instead of enlarging the
+/// coarser level. One level is the plugin's ceiling: `TileOffset` asserts
+/// `zoomOffset <= 0`, and a data zoom above the display zoom resolves to no
+/// tile at all (flutter_map_vector_tiles 2.11.0 tile_zoom.dart:28). The GPU
+/// tile grid follows the camera zoom, so GPU memory is unchanged.
+/// Measured on the 340×408 card (features drawn, default → this):
+/// located zoom 8: 3462 → 7523, style layers 11 → 14, tiles fetched 9 → 25;
+/// overview zoom 6.5: 3358 → 3359 (Shortbread carries the same data at
+/// zooms 5 and 6, so the overview gains almost nothing).
+const _basemapDetail = vt.TileOffset.none;
 
-Future<vt.Style>? _sharedStyle;
+/// GPU budget for finished basemap tiles, in screenfuls of the plugin's tile
+/// grid. One screenful keeps every tile on screen cached, so panning back is
+/// free; a zoom round trip re-renders the level left behind from decoded
+/// geometry (no network). Radar frames already hold up to ~100 MiB of
+/// decoded images, so this stays below the plugin's own 2.5 screenfuls.
+const _rasterCacheScreens = 1;
 
-/// The basemap style, loaded once and shared by every map. A failed load is
-/// reported and forgotten, so the next map that mounts tries again.
-// ponytail: the loaded style is never disposed; it lives as long as the app.
-Future<vt.Style> _basemapStyle() => _sharedStyle ??= _loadStyle();
+/// The plugin's display tile edge in logical pixels and its buffer ring: a
+/// level spans `ceil(extent / 256) + 1` tiles per axis plus one each side
+/// (flutter_map_vector_tiles 2.11.0 vector_tile_layer.dart:286-303,
+/// GridLayout.forCamera(buffer: 1)).
+const _displayTilePx = 256.0;
+const _gridExtraTiles = 3;
+const _rgbaBytes = 4;
 
-Future<vt.Style> _loadStyle() async {
+/// GPU bytes for [_rasterCacheScreens] of finished tiles over a [card] at
+/// [dpr]. A 340×408 card is 5×5 tiles: 56.25 MiB at dpr 3, 25 MiB at dpr 2.
+int _rasterCacheBytes(Size card, double dpr) {
+  final tilesX = (card.width / _displayTilePx).ceil() + _gridExtraTiles;
+  final tilesY = (card.height / _displayTilePx).ceil() + _gridExtraTiles;
+  final tileEdge = _displayTilePx * dpr;
+  return (tilesX * tilesY * tileEdge * tileEdge * _rgbaBytes * _rasterCacheScreens).round();
+}
+
+/// How long the camera has to rest before its zoom is written to the log.
+const _zoomLogDebounce = Duration(milliseconds: 400);
+
+typedef _Basemap = ({vt.Style style, vt.TileProviders tiles});
+
+/// The basemap style load shared by every map. Only [retryRadarBasemap]
+/// replaces it (after a failure), and every mounted map follows.
+// ponytail: a loaded style is never disposed; it lives as long as the app.
+final _basemapLoad = ValueNotifier<Future<_Basemap>>(_startLoad());
+var _basemapFailed = false;
+
+/// Loads the basemap style again if the last load failed; no-op while a load
+/// is running or after it succeeded. Mounting a map calls it; the radar
+/// screen's refresh should too.
+void retryRadarBasemap() {
+  if (!_basemapFailed) return;
+  _basemapLoad.value = _startLoad();
+}
+
+/// A load whose failure is already reported (and shown by the map), so the
+/// future itself is marked handled: until a map's FutureBuilder subscribes
+/// it would otherwise surface a second time as an uncaught error.
+Future<_Basemap> _startLoad() => _loadBasemap()..ignore();
+
+Future<_Basemap> _loadBasemap() async {
+  _basemapFailed = false;
+  appLog(_logTag, 'style load start $_styleUrl');
   try {
-    return await vt.StyleReader(uri: _styleUrl, headers: const {'User-Agent': _userAgent}).read();
+    final style = await vt.StyleReader(
+      uri: _styleUrl,
+      headers: const {'User-Agent': _userAgent},
+      logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+    ).read();
+    final sources = style.providers.providers;
+    appLog(_logTag, 'style load ok, sources ${sources.keys.join(',')}');
+    final tiles = vt.TileProviders({
+      for (final MapEntry(:key, :value) in sources.entries) key: _LoggedTiles(key, value),
+    }, promoteIds: style.providers.promoteIds);
+    return (style: style, tiles: tiles);
   } catch (error, stack) {
-    _sharedStyle = null;
+    _basemapFailed = true;
+    appLog(_logTag, 'style load failed: $error');
     FlutterError.reportError(
       FlutterErrorDetails(
         exception: error,
@@ -52,6 +116,48 @@ Future<vt.Style> _loadStyle() async {
     );
     rethrow;
   }
+}
+
+void _pluginLog(String message) => appLog(_logTag, message);
+void _pluginWarn(String message) => appLog(_logTag, 'warning: $message');
+
+/// Passes every tile load through and logs its outcome (cancelled loads
+/// are not logged). Disk-cache hits never reach a provider, so these are
+/// network loads.
+class _LoggedTiles extends vt.VectorTileProvider {
+  _LoggedTiles(this._source, this._inner);
+
+  final String _source;
+  final vt.VectorTileProvider _inner;
+
+  @override
+  int get maximumZoom => _inner.maximumZoom;
+  @override
+  int get minimumZoom => _inner.minimumZoom;
+  @override
+  String get cacheKey => _inner.cacheKey;
+  @override
+  bool get cacheBytesToDisk => _inner.cacheBytesToDisk;
+
+  @override
+  Future<vt.TileResponse> load(vt.TileKey tile, {vt.CancellationToken? cancellation}) async {
+    final response = await _inner.load(tile, cancellation: cancellation);
+    final where = '$_source ${tile.z}/${tile.x}/${tile.y}';
+    switch (response) {
+      case vt.TileResponseData(:final bytes):
+        appLog(_logTag, 'tile ok $where ${bytes.length} B');
+      case vt.TileResponseNotFound():
+        appLog(_logTag, 'tile not found $where');
+      case vt.TileResponseError(:final error):
+        appLog(_logTag, 'tile failed $where: $error');
+      case vt.TileResponseCancelled():
+        break;
+    }
+    return response;
+  }
+
+  @override
+  void dispose() => _inner.dispose();
 }
 
 /// Frames decoded ahead of the shown one.
@@ -107,8 +213,45 @@ class RadarMapView extends StatefulWidget {
 
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
-  final _style = _basemapStyle();
+  Timer? _zoomLog;
+  double? _loggedZoom;
+  int? _loggedCacheBytes;
   double _initialZoom() => widget.me == null ? _overviewZoom : _locatedZoom;
+
+  @override
+  void initState() {
+    super.initState();
+    retryRadarBasemap();
+  }
+
+  /// Logs the zoom once the camera has rested for [_zoomLogDebounce]; pans
+  /// that keep the zoom are not logged.
+  void _onCamera(MapCamera camera, bool hasGesture) {
+    _zoomLog?.cancel();
+    _zoomLog = Timer(_zoomLogDebounce, () {
+      if (camera.zoom == _loggedZoom) return;
+      _loggedZoom = camera.zoom;
+      final c = camera.center;
+      appLog(
+        _logTag,
+        'zoom ${camera.zoom.toStringAsFixed(2)} centre ${c.latitude.toStringAsFixed(3)},'
+        '${c.longitude.toStringAsFixed(3)} gesture $hasGesture',
+      );
+    });
+  }
+
+  int _cacheBytesFor(Size card, double dpr) {
+    final bytes = _rasterCacheBytes(card, dpr);
+    if (bytes != _loggedCacheBytes) {
+      _loggedCacheBytes = bytes;
+      appLog(
+        _logTag,
+        'raster cache ${(bytes / (1 << 20)).toStringAsFixed(1)} MiB for card '
+        '${card.width.round()}x${card.height.round()} dpr $dpr',
+      );
+    }
+    return bytes;
+  }
 
   @override
   void didUpdateWidget(RadarMapView old) {
@@ -119,6 +262,7 @@ class _RadarMapViewState extends State<RadarMapView> {
 
   @override
   void dispose() {
+    _zoomLog?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -146,62 +290,79 @@ class _RadarMapViewState extends State<RadarMapView> {
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: AspectRatio(
         aspectRatio: 5 / 6,
-        child: FutureBuilder(
-          future: _style,
-          builder: (context, style) => Stack(
-            fit: StackFit.expand,
-            children: [
-              Opacity(
-                opacity: widget.muted ? 0.6 : 1,
-                child: FlutterMap(
-                  mapController: _controller,
-                  options: MapOptions(initialCenter: me ?? _taiwanCenter, initialZoom: _initialZoom()),
-                  children: [
-                    // Same child slot before and after the load, so the layers above keep their state.
-                    if (style.data case final style?)
-                      vt.VectorTileLayer(
-                        theme: style.theme,
-                        tileProviders: style.providers,
-                        sprites: style.sprites,
-                        glyphs: style.glyphs,
-                        rasterCacheMaxBytes: _basemapRasterCacheBytes,
-                      )
-                    else
-                      const SizedBox.shrink(),
-                    if (widget.overlayImages.isNotEmpty) OverlayImageLayer(overlayImages: widget.overlayImages),
-                    ...widget.extraLayers,
-                    if (me != null)
-                      MarkerLayer(
-                        markers: [Marker(point: me, width: _pinHalo, height: _pinHalo, child: const _MePin())],
+        child: LayoutBuilder(
+          builder: (context, card) => ValueListenableBuilder(
+            valueListenable: _basemapLoad,
+            builder: (context, load, _) => FutureBuilder(
+              future: load,
+              builder: (context, style) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  Opacity(
+                    opacity: widget.muted ? 0.6 : 1,
+                    child: FlutterMap(
+                      mapController: _controller,
+                      options: MapOptions(
+                        initialCenter: me ?? _taiwanCenter,
+                        initialZoom: _initialZoom(),
+                        onPositionChanged: _onCamera,
                       ),
-                    const _Attribution(),
-                  ],
-                ),
-              ),
-              if (style.hasError)
-                const Positioned(
-                  bottom: AppSpace.s40,
-                  left: AppSpace.s12,
-                  right: AppSpace.s12,
-                  child: Center(
-                    child: _MapChip(icon: Icons.error_outline, text: _styleFailedText),
+                      children: [
+                        // Same child slot before and after the load, so the layers above keep their state.
+                        if (style.data case (:final style, :final tiles))
+                          vt.VectorTileLayer(
+                            theme: style.theme,
+                            tileProviders: tiles,
+                            sprites: style.sprites,
+                            glyphs: style.glyphs,
+                            tileOffset: _basemapDetail,
+                            rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
+                            logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+                          )
+                        else
+                          const SizedBox.shrink(),
+                        if (widget.overlayImages.isNotEmpty) OverlayImageLayer(overlayImages: widget.overlayImages),
+                        ...widget.extraLayers,
+                        if (me != null)
+                          MarkerLayer(
+                            markers: [Marker(point: me, width: _pinHalo, height: _pinHalo, child: const _MePin())],
+                          ),
+                        const _Attribution(),
+                      ],
+                    ),
                   ),
-                ),
-              if (chipText != null)
-                Positioned(
-                  top: AppSpace.s12,
-                  left: AppSpace.s12,
-                  child: _MapChip(icon: widget.chipIcon, text: chipText),
-                ),
-              if (widget.loading)
-                const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))
-              else
-                Positioned(
-                  top: AppSpace.s12,
-                  right: AppSpace.s12,
-                  child: _LocateFab(onPressed: me == null ? null : () => _controller.move(me, _locatedZoom)),
-                ),
-            ],
+                  if (style.hasError)
+                    Positioned(
+                      bottom: AppSpace.s40,
+                      left: AppSpace.s12,
+                      right: AppSpace.s12,
+                      child: Center(
+                        child: Semantics(
+                          button: true,
+                          child: GestureDetector(
+                            onTap: retryRadarBasemap,
+                            child: const _MapChip(icon: Icons.refresh, text: _styleFailedText),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (chipText != null)
+                    Positioned(
+                      top: AppSpace.s12,
+                      left: AppSpace.s12,
+                      child: _MapChip(icon: widget.chipIcon, text: chipText),
+                    ),
+                  if (widget.loading)
+                    const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))
+                  else
+                    Positioned(
+                      top: AppSpace.s12,
+                      right: AppSpace.s12,
+                      child: _LocateFab(onPressed: me == null ? null : () => _controller.move(me, _locatedZoom)),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
