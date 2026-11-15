@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/weather_models.dart';
@@ -420,7 +421,7 @@ class _ChartPainter extends CustomPainter {
 
       paintLabel(
         canvas,
-        '${wall.hour.toString().padLeft(2, '0')}–${endWall.hour.toString().padLeft(2, '0')}',
+        '${twoDigits(wall.hour)}–${twoDigits(endWall.hour)}',
         Offset(center, _ChartGeometry.slotLabelY),
         caption.copyWith(color: AppPalette.fg2),
       );

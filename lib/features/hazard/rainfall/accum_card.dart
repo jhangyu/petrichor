@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/choices.dart';
@@ -234,7 +235,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
         banner: listError != null
             ? StatusBanner(
                 tone: StatusTone.error,
-                title: '無法更新，顯示 ${formatTaiwanClock(frame.time)} 的資料',
+                title: '無法更新，顯示 ${clockText(frame.time)} 的資料',
                 text: '$listError',
                 actions: [RetryButton(onPressed: () => _retry(hours))],
               )
@@ -242,7 +243,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             ? StatusBanner(
                 tone: StatusTone.error,
                 title: '${failed.length} 張影格無法取得',
-                text: '${formatTaiwanClock(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
+                text: '${clockText(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
                 actions: [RetryButton(onPressed: () => _retry(hours))],
               )
             : null,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/place.dart';
 
@@ -9,7 +10,7 @@ String placeLabel(Place p) => '${p.county} ${p.town}';
 
 /// 「07:00」 for a minute of day.
 String clockOfMinute(int minute) =>
-    '${(minute ~/ 60).toString().padLeft(2, '0')}:${(minute % 60).toString().padLeft(2, '0')}';
+    '${twoDigits(minute ~/ 60)}:${twoDigits(minute % 60)}';
 
 /// One settings group (spec §4): section title + meta above [body], optional [note] below.
 class SettingsGroup extends StatelessWidget {

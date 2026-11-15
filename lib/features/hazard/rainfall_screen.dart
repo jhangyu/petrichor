@@ -16,7 +16,7 @@ import '../../data/models/place.dart';
 import '../../data/repositories/hazard_repository.dart';
 import '../../core/api/result.dart' show Failure, Result, Success;
 import '../location/place_provider.dart';
-import '../radar/radar_playback.dart';
+import '../../core/time/taiwan_time.dart';
 import '../radar/widgets/radar_map_view.dart' show RadarCameraLink;
 import 'hazard_provider.dart';
 import 'rainfall/accum_card.dart';
@@ -189,7 +189,7 @@ class RainfallScreen extends ConsumerWidget {
     return _scaffold(
       ref,
       subtitle: switch (result) {
-        Success(:final data) => '${place.name} · 觀測 ${formatTaiwanClock(data.nearest.obsTime)}',
+        Success(:final data) => '${place.name} · 觀測 ${clockText(data.nearest.obsTime)}',
         Failure() => '${place.name} · 無法取得觀測',
         null => _loadingSubtitle,
       },

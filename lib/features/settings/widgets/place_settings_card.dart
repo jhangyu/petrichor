@@ -10,7 +10,7 @@ import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/inputs.dart';
 import '../../../core/widgets/status.dart';
 import '../../location/place_provider.dart';
-import '../../weather/widgets/home_logic.dart';
+import '../../../core/time/taiwan_time.dart';
 import 'settings_parts.dart';
 
 /// 地點設定 (spec §6): manual search entry, the auto-locate switch and its state, in one group.

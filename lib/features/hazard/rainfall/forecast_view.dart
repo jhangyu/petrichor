@@ -9,7 +9,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/hazard_models.dart';
-import '../../radar/radar_playback.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../../radar/widgets/radar_map_view.dart';
 import 'rain_map_card.dart';
 import 'rainfall_logic.dart';
@@ -30,7 +30,7 @@ const _rgbaChannels = 4;
 const _channelMax = 255;
 
 String forecastRange(RainForecastGrid grid) =>
-    '${formatTaiwanClock(grid.baseTime)} – ${formatTaiwanClock(grid.baseTime.add(_forecastWindow))}';
+    '${clockText(grid.baseTime)} – ${clockText(grid.baseTime.add(_forecastWindow))}';
 
 /// 「此處」 row under the map: forecast mm at the user's cell (「—」 when that cell has no value).
 class _HereRow extends StatelessWidget {

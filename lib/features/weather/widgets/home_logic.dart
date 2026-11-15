@@ -1,33 +1,14 @@
 import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../solar_elevation.dart';
 import '../weather_provider.dart';
-
-/// CWA data and the mockup use Taiwan time (UTC+8, no DST).
-const _taiwanUtcOffset = Duration(hours: 8);
 
 /// Below this 降雨機率 the value is shown muted (`.day__rain--low`, `.fc-t--pop-low`).
 const rainLowThresholdPercent = 30;
 
 const _weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
-
-/// Taiwan wall-clock fields of [t], carried in a UTC DateTime.
-DateTime taiwanWall(DateTime t) => t.toUtc().add(_taiwanUtcOffset);
-
-/// Instant of a Taiwan wall-clock time carried in a UTC DateTime (inverse of [taiwanWall]).
-DateTime fromTaiwanWall(DateTime wall) => wall.subtract(_taiwanUtcOffset);
-
-/// CWA calendar date `2026-11-14` → its wall-clock midnight (UTC carrier).
-DateTime taiwanDate(String date) => DateTime.parse('${date}T00:00:00Z');
-
-String _two(int v) => v.toString().padLeft(2, '0');
-
-/// `14:00`
-String clockText(DateTime t) {
-  final w = taiwanWall(t);
-  return '${_two(w.hour)}:${_two(w.minute)}';
-}
 
 /// `11/14（六）` for a wall date (see [taiwanWall] / [taiwanDate]).
 String monthDayWeekday(DateTime wall) => '${monthDay(wall)}（${_weekdayNames[wall.weekday - 1]}）';
@@ -198,8 +179,6 @@ class SunNow {
   bool get isNight => phase != SunPhase.daytime;
 }
 
-String _isoDate(DateTime wall) => '${wall.year}-${_two(wall.month)}-${_two(wall.day)}';
-
 /// Builds [SunNow] from [days] (expected: yesterday, today, tomorrow); Failure when
 /// they cannot cover [now] (stale data). Never substitutes default times.
 Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
@@ -208,7 +187,7 @@ Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
   final byDate = {for (final d in days) d.date: d};
 
   Result<SunDay> lookup(DateTime dateWall) {
-    final key = _isoDate(dateWall);
+    final key = isoDate(dateWall);
     final d = byDate[key];
     if (d != null) return Success(d);
     final actual = days.isEmpty ? '無資料' : '${days.first.date}–${days.last.date}';

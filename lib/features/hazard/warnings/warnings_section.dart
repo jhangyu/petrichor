@@ -9,7 +9,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
 import '../../../core/api/result.dart' show Failure, Success;
-import '../../radar/radar_playback.dart' show formatTaiwanClock;
+import '../../../core/time/taiwan_time.dart';
 import '../../weather/weather_provider.dart' show weatherClockProvider;
 import '../hazard_provider.dart';
 import 'warning_card.dart';
@@ -77,7 +77,7 @@ class _WarningsSectionState extends ConsumerState<WarningsSection> {
           trailing: updated == null
               ? null
               : Text(
-                  '更新於 ${formatTaiwanClock(updated)}',
+                  '更新於 ${clockText(updated)}',
                   style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
                 ),
         ),

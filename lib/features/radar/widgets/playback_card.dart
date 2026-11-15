@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/layout/adaptive.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/choices.dart';
@@ -363,7 +364,7 @@ class _TimelineFrame extends StatelessWidget {
               spacing: AppSpace.s4,
               children: [
                 Text(
-                  formatTaiwanClock(slot.time),
+                  clockText(slot.time),
                   style: AppType.caption1.copyWith(
                     color: label,
                     fontWeight: current ? FontWeight.w600 : FontWeight.w400,

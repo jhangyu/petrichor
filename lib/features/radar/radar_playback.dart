@@ -141,28 +141,3 @@ List<RadarFrame> radarUpcomingFrames(List<RadarSlot> slots, DateTime? after, {re
         frame,
   ].take(count).toList();
 }
-
-/// File names, the CWA site and the mockup use Taiwan time (UTC+8, no DST).
-const _taiwanUtcOffset = Duration(hours: 8);
-
-DateTime _taiwan(DateTime t) => t.toUtc().add(_taiwanUtcOffset);
-
-String _two(int v) => v.toString().padLeft(2, '0');
-
-/// `14:00`
-String formatTaiwanClock(DateTime t) {
-  final l = _taiwan(t);
-  return '${_two(l.hour)}:${_two(l.minute)}';
-}
-
-/// `11/14 14:00`
-String formatTaiwanMonthDayClock(DateTime t) {
-  final l = _taiwan(t);
-  return '${_two(l.month)}/${_two(l.day)} ${formatTaiwanClock(t)}';
-}
-
-/// `2026-11-14 14:00`
-String formatTaiwanFull(DateTime t) {
-  final l = _taiwan(t);
-  return '${l.year}-${_two(l.month)}-${_two(l.day)} ${formatTaiwanClock(t)}';
-}

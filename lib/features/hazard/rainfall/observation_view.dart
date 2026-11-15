@@ -4,7 +4,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../data/models/hazard_models.dart';
-import '../../radar/radar_playback.dart';
+import '../../../core/time/taiwan_time.dart';
 import 'level_style.dart';
 import 'rainfall_logic.dart';
 
@@ -52,7 +52,7 @@ class ObservationHeroCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      '今日累積 · 觀測 ${formatTaiwanClock(station.obsTime)}',
+                      '今日累積 · 觀測 ${clockText(station.obsTime)}',
                       style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
                     ),
                   ],

@@ -10,6 +10,7 @@ import '../../core/navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../../core/constants/app_constants.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/time/taiwan_time.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/buttons.dart';
 import '../../core/widgets/choices.dart';
@@ -233,8 +234,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         ? StatusBanner(
             tone: StatusTone.error,
             title: listError is RadarStaleListException
-                ? '資料未更新，最新影格 ${formatTaiwanClock(newest.time)}'
-                : '離線，顯示 ${formatTaiwanClock(newest.time)} 的資料',
+                ? '資料未更新，最新影格 ${clockText(newest.time)}'
+                : '離線，顯示 ${clockText(newest.time)} 的資料',
             text: '$listError',
             actions: [RetryButton(onPressed: _refresh)],
           )
@@ -504,8 +505,8 @@ class _FailureBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final times = [for (final f in failed) f.time];
     final range = times.first == times.last
-        ? formatTaiwanClock(times.first)
-        : '${formatTaiwanClock(times.first)}–${formatTaiwanClock(times.last)}';
+        ? clockText(times.first)
+        : '${clockText(times.first)}–${clockText(times.last)}';
     final shown = failed.take(_failureDetailMaxLines);
     final hidden = failed.length - shown.length;
     return Column(
@@ -527,7 +528,7 @@ class _FailureBanner extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '${formatTaiwanClock(f.time)} ${_oneLine(f.error!)}',
+                    '${clockText(f.time)} ${_oneLine(f.error!)}',
                     style: AppType.caption1.copyWith(color: AppPalette.fg3),
                   ),
                 ),
