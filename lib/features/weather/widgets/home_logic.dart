@@ -2,6 +2,7 @@ import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../data/repositories/hazard_repository.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../solar_elevation.dart';
 import '../weather_provider.dart';
@@ -11,6 +12,27 @@ const rainLowThresholdPercent = 30;
 
 /// Whether a 降雨機率 is shown muted; unknown (null) counts as low.
 bool isLowRain(int? pop) => pop == null || pop < rainLowThresholdPercent;
+
+/// The first API-key failure among the page's datasets (they share one CWA token).
+ApiKeyIssue? firstApiKeyIssue(List<Result<Object?>?> results) {
+  for (final result in results) {
+    if (result case Failure(apiKeyIssue: final issue?)) return issue;
+  }
+  return null;
+}
+
+/// Dataset ids credited under the home page: only datasets whose data is on screen; none while loading.
+List<String> creditedDatasets(WeatherState weather, String county, Result<Object?>? warnings) {
+  if (weather.isLoading) return const <String>[];
+  final datasets = AppConstants.townshipForecastDatasets[county];
+  return [
+    if (weather.current is Success) AppConstants.observationDataset,
+    if (weather.weekly is Success && datasets != null) datasets.oneWeek,
+    if (weather.hourly is Success && datasets != null) datasets.threeDay,
+    if (weather.sun is Success) AppConstants.sunTimesDataset,
+    if (warnings is Success) ...[warningsByCountyDataset, warningBulletinsDataset],
+  ];
+}
 
 const _weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
 

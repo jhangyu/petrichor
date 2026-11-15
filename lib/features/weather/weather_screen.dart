@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/navigation/app_tab.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart';
 import '../../core/theme/app_tokens.dart';
@@ -14,7 +13,6 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
-import '../../data/repositories/hazard_repository.dart';
 import '../../core/api/result.dart';
 import '../hazard/hazard_provider.dart';
 import '../hazard/warnings/warning_groups.dart';
@@ -135,7 +133,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
       AsyncData(:final value) => value,
       _ => null,
     };
-    final apiKeyIssue = _apiKeyIssue([
+    final apiKeyIssue = firstApiKeyIssue([
       current,
       hourly,
       weather.weekly,
@@ -159,21 +157,11 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
         ],
       );
     }
-    final datasets = AppConstants.townshipForecastDatasets[place.county];
     final countyWarnings = switch (warningsResult) {
       Success(:final data) => groupsForCounty(groupWarnings(data), place.county),
       _ => const <WarningGroup>[],
     };
-    // Credit only datasets whose data is on screen; none while loading.
-    final sources = weather.isLoading
-        ? const <String>[]
-        : [
-            if (current is Success) AppConstants.observationDataset,
-            if (weather.weekly is Success && datasets != null) datasets.oneWeek,
-            if (hourly is Success && datasets != null) datasets.threeDay,
-            if (weather.sun is Success) AppConstants.sunTimesDataset,
-            if (warningsResult is Success) ...[warningsByCountyDataset, warningBulletinsDataset],
-          ];
+    final sources = creditedDatasets(weather, place.county, warningsResult);
     return AppPageScaffold(
       header: header,
       onRefresh: () async => refresh(),
@@ -204,14 +192,6 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
         AppGridItem.full(child: WarningsSection(key: _warningsKey, county: place.county)),
       ],
     );
-  }
-
-  /// The first API-key failure among the page's datasets (they share one CWA token).
-  ApiKeyIssue? _apiKeyIssue(List<Result<Object?>?> results) {
-    for (final result in results) {
-      if (result case Failure(apiKeyIssue: final issue?)) return issue;
-    }
-    return null;
   }
 }
 
