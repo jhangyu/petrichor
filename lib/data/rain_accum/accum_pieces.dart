@@ -6,7 +6,7 @@ const accumNativeHours = [24, 12, 6, 3, 1];
 typedef AccumPiece = ({int nativeHours, int offsetHours});
 
 /// Windows the rainfall page offers.
-const accumWindowHours = [1, 2, 3, 4, 6, 12, 24, 48, 168];
+const accumWindowHours = [4, 6, 12, 24, 48, 168];
 
 /// Greedy largest-first decomposition of [windowHours] into native grids.
 List<AccumPiece> accumPieces(int windowHours) {

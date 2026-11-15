@@ -43,12 +43,10 @@ void main() {
   });
 
   test('accumPieces for every window', () {
+    expect(accumWindowHours, [4, 6, 12, 24, 48, 168]);
     String show(int w) => accumPieces(
       w,
     ).map((p) => '${p.nativeHours}@${p.offsetHours}').join(' ');
-    expect(show(1), '1@0');
-    expect(show(2), '1@0 1@1');
-    expect(show(3), '3@0');
     expect(show(4), '3@0 1@3');
     expect(show(6), '6@0');
     expect(show(12), '12@0');
@@ -95,7 +93,8 @@ void main() {
 
   test('accumColorIndex maps raw units to scale index', () {
     expect(accumColorIndex(0), -1);
-    expect(accumColorIndex(1), 0); // 0.25 mm
+    expect(accumColorIndex(1), -1); // 0.25 mm
+    expect(accumColorIndex(3), -1); // 0.75 mm
     expect(accumColorIndex(4), 1); // 1 mm
     expect(accumColorIndex(1199), 15); // 299.75 mm
     expect(accumColorIndex(1200), 16); // 300 mm

@@ -139,9 +139,10 @@ Int32List sumAccumGrids(List<AccumGrid> grids) {
   return sum;
 }
 
-/// Index into `AppPalette.rainfallMapScale` for [rawSum]; -1 = transparent (no rain).
+/// Index into `AppPalette.rainfallMapScale` for [rawSum]; -1 = transparent
+/// (below 1 mm, not drawn, as on the forecast map).
 int accumColorIndex(int rawSum) {
-  if (rawSum <= 0) return -1;
+  if (rawSum < accumScaleEdgesMm.first * accumRawPerMm) return -1;
   var index = 0;
   while (index < accumScaleEdgesMm.length &&
       rawSum >= accumScaleEdgesMm[index] * accumRawPerMm) {
