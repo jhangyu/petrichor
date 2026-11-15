@@ -38,6 +38,7 @@ dependencies:
   latlong2: ^0.9.1
   shared_preferences: ^2.5.5
   path_provider: ^2.1.6
+  package_info_plus: ^10.2.2
   pool: ^1.5.2
   ffi: ^2.2.0
   # hook/build.dart (native asset build of libwebp + radar shim)
