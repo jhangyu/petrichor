@@ -291,7 +291,7 @@ class _PieceCache {
   Future<void> setRenderedSignature(int windowHours, DateTime frame, String signature) async {
     final file = await _renderedFile(windowHours, frame);
     await file.parent.create(recursive: true);
-    await (await File('${file.path}.${_tmpSeq++}.tmp').writeAsString(signature, flush: true)).rename(file.path);
+    await writeAtomic(file, utf8.encode(signature), tmpSuffix: '.${_tmpSeq++}.tmp');
   }
 
   static Future<String> _readOrEmpty(File file) async => await file.exists() ? file.readAsString() : '';
@@ -336,12 +336,12 @@ class _PieceCache {
         final gz = Uint8List.fromList(gzip.encode(body));
         await dir.create(recursive: true);
         final seq = _tmpSeq++;
-        await (await File('${file.path}.$seq.tmp').writeAsBytes(gz, flush: true)).rename(file.path);
+        await writeAtomic(file, gz, tmpSuffix: '.$seq.tmp');
         final newEtag = response.headers.value(HttpHeaders.etagHeader);
         if (newEtag == null) {
           if (await etagFile.exists()) await etagFile.delete();
         } else {
-          await (await File('${etagFile.path}.$seq.tmp').writeAsString(newEtag, flush: true)).rename(etagFile.path);
+          await writeAtomic(etagFile, utf8.encode(newEtag), tmpSuffix: '.$seq.tmp');
         }
         return gz;
       default:

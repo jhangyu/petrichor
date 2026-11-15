@@ -311,8 +311,8 @@ class RadarFrameRepository {
     final key = _cacheKey(f.time);
     final stats = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
-    await (await File('${stats.path}.tmp').writeAsBytes(processed.stats.toBytes(), flush: true)).rename(stats.path);
-    await (await File('${webp.path}.tmp').writeAsBytes(processed.webp, flush: true)).rename(webp.path);
+    await writeAtomic(stats, processed.stats.toBytes());
+    await writeAtomic(webp, processed.webp);
     return _frame(f.time, webp, processed.stats, radarWebpSize(processed.webp));
   }
 

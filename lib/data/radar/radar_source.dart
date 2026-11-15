@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -5,6 +7,14 @@ import 'radar_bounds.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
 import 'radar_frame_repository.dart' show radarFrameCacheDirName, radarProcessWorkers;
+
+/// Writes [bytes] to `<target><tmpSuffix>` (flushed), then renames it onto
+/// [target], so [target] is never seen half-written. Leftover temp files fail
+/// the cache file patterns, so cache pruning deletes them.
+Future<void> writeAtomic(File target, List<int> bytes, {String tmpSuffix = '.tmp'}) async {
+  final tmp = await File('${target.path}$tmpSuffix').writeAsBytes(bytes, flush: true);
+  await tmp.rename(target.path);
+}
 
 /// Radar data could not be obtained or did not have the expected shape.
 class RadarDataException implements Exception {
