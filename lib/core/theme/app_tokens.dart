@@ -11,13 +11,11 @@ abstract final class AppPalette {
   static const bg2 = Color(0xFFFAFAFA);
   static const bg3 = Color(0xFFF5F5F5);
   static const bg4 = Color(0xFFF0F0F0);
-  static const bg5 = Color(0xFFEBEBEB);
   static const bg6 = Color(0xFFE6E6E6);
   static const bgHover = Color(0xFFF5F5F5);
   static const bgPressed = Color(0xFFE0E0E0);
   static const bgDisabled = Color(0xFFF0F0F0);
   static const bgOverlay = Color(0xEBFFFFFF); // rgba(255,255,255,0.92)
-  static const scrim = Color(0x66000000); // rgba(0,0,0,0.4)
   static const transparent = Color(0x00000000);
 
   // Neutral foregrounds
@@ -35,23 +33,14 @@ abstract final class AppPalette {
   static const stroke3 = Color(0xFFF0F0F0);
   static const strokeAccessible = Color(0xFF616161);
   static const strokeDisabled = Color(0xFFE0E0E0);
-  static const strokeFocusOuter = Color(0xFF000000);
-  static const strokeFocusInner = Color(0xFFFFFFFF);
 
   // Brand ramp (communication blue)
-  static const brand10 = Color(0xFF061724);
-  static const brand20 = Color(0xFF082338);
-  static const brand30 = Color(0xFF0A2E4A);
   static const brand40 = Color(0xFF0C3B5E);
-  static const brand50 = Color(0xFF0E4775);
   static const brand60 = Color(0xFF0F548C);
   static const brand70 = Color(0xFF115EA3);
   static const brand80 = Color(0xFF0F6CBD);
   static const brand90 = Color(0xFF2886DE);
-  static const brand100 = Color(0xFF479EF5);
-  static const brand110 = Color(0xFF62ABF5);
   static const brand120 = Color(0xFF77B7F7);
-  static const brand130 = Color(0xFF96C6FA);
   static const brand140 = Color(0xFFB4D6FA);
   static const brand150 = Color(0xFFCFE4FA);
   static const brand160 = Color(0xFFEBF3FC);
@@ -70,7 +59,6 @@ abstract final class AppPalette {
   static const successBg = Color(0xFFF1FAF1);
   static const successFg = Color(0xFF0E700E);
   static const successStroke = Color(0xFF9FD89F);
-  static const successSolid = Color(0xFF107C10);
 
   static const warningBg = Color(0xFFFFF9F5);
   static const warningFg = Color(0xFFBC4B09);
@@ -184,20 +172,13 @@ abstract final class AppSpace {
   static const double s24 = 24;
   static const double s32 = 32;
   static const double s40 = 40;
-  static const double s48 = 48;
-  static const double s64 = 64;
-
-  /// `--layout-gutter`.
-  static const double gutter = s16;
 }
 
 /// Material 3 shape scale (`--shape-*`).
 abstract final class AppRadius {
-  static const double none = 0;
   static const double extraSmall = 4;
   static const double small = 8;
   static const double medium = 12;
-  static const double large = 16;
   static const double extraLarge = 28;
   static const double full = 9999;
 }
@@ -289,28 +270,13 @@ abstract final class AppShadows {
     BoxShadow(color: _ambient, blurRadius: 2),
     BoxShadow(color: _key, offset: Offset(0, 4), blurRadius: 8),
   ];
-  static const s16 = [
-    BoxShadow(color: _ambient, blurRadius: 2),
-    BoxShadow(color: _key, offset: Offset(0, 8), blurRadius: 16),
-  ];
-  static const s28 = [
-    BoxShadow(color: _ambient, blurRadius: 8),
-    BoxShadow(color: _key, offset: Offset(0, 14), blurRadius: 28),
-  ];
 }
 
 /// `--duration-*` and `--curve-*` tokens.
 abstract final class AppMotion {
-  static const ultraFast = Duration(milliseconds: 50);
-  static const faster = Duration(milliseconds: 100);
   static const fast = Duration(milliseconds: 150);
   static const normal = Duration(milliseconds: 200);
-  static const gentle = Duration(milliseconds: 250);
-  static const slow = Duration(milliseconds: 300);
-  static const slower = Duration(milliseconds: 400);
-  static const spin = Duration(milliseconds: 1000);
   static const decelerateMid = Cubic(0, 0, 0, 1);
-  static const accelerateMid = Cubic(1, 0, 1, 1);
   static const easyEase = Cubic(0.33, 0, 0.67, 1);
 }
 
@@ -328,10 +294,6 @@ abstract final class AppType {
   static const body2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _regular, leadingDistribution: _even);
   static const subtitle2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _semibold, leadingDistribution: _even);
   static const subtitle1 = TextStyle(fontSize: 20, height: 28 / 20, fontWeight: _semibold, leadingDistribution: _even);
-  static const title3 = TextStyle(fontSize: 24, height: 32 / 24, fontWeight: _semibold, leadingDistribution: _even);
-  static const title2 = TextStyle(fontSize: 28, height: 36 / 28, fontWeight: _semibold, leadingDistribution: _even);
-  static const title1 = TextStyle(fontSize: 32, height: 40 / 32, fontWeight: _semibold, leadingDistribution: _even);
-  static const largeTitle = TextStyle(fontSize: 40, height: 52 / 40, fontWeight: _semibold, leadingDistribution: _even);
 
   /// Current temperature. CSS letter-spacing -0.02em at 68px.
   static const display =
