@@ -56,35 +56,6 @@ class AppBadge extends StatelessWidget {
   }
 }
 
-/// `.level-dot--N`: 8px dot for warning level 1–4; null = neutral (fg3).
-class LevelDot extends StatelessWidget {
-  const LevelDot({super.key, this.level})
-      : assert(level == null || (level >= 1 && level <= 4), 'level must be 1–4 or null');
-
-  final int? level;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = switch (level) {
-      1 => AppPalette.alert1Solid,
-      2 => AppPalette.alert2Solid,
-      3 => AppPalette.alert3Solid,
-      4 => AppPalette.alert4Solid,
-      _ => AppPalette.fg3,
-    };
-    return Container(
-      width: AppSize.dot,
-      height: AppSize.dot,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        // Yellow needs an edge to stay visible on white (`.level-dot--1`).
-        border: level == 1 ? Border.all(color: AppPalette.alert1Fg, width: AppStroke.thin) : null,
-      ),
-    );
-  }
-}
-
 /// Emphasis of a [MetricTile]'s value: [next] = `.tile--next` (brand-subtle
 /// tile, the coming event), [past] = `.tile--past` (muted value: a passed event
 /// or a low reading), [rain] = `.tile--rain` (rain-coloured value).

@@ -52,7 +52,6 @@ Each tab screen returns an `AppPageScaffold`. Do not add a `Scaffold` or `bottom
 | `.chip` | `AppChip` | `choices.dart` | `label` (required), `selected` (bool, required), `onTap` (required), `icon` (IconData?). Group with `Wrap(spacing: AppSpace.s8, runSpacing: AppSpace.s8)` (`.chip-group`), or with a horizontal `SingleChildScrollView` + `Row(spacing: AppSpace.s8)` (`.chip-group--scroll`). |
 | `.segmented.segmented--block` (Team A view tabs) | `AppSegmented<T>` | `choices.dart` | `segments` (List<(T, String)>, required), `selected` (T, required), `onChanged` (ValueChanged<T>, required) |
 | `.badge`, `.badge--rain/brand/alert-1…4` | `AppBadge` | `data_display.dart` | `label` (required), `tone` (BadgeTone, default neutral), `icon` (IconData?) |
-| `.level-dot--1…4` | `LevelDot` | `data_display.dart` | `level` (int? 1–4; null = neutral) |
 | `.metric` | `MetricTile` | `data_display.dart` | `label` (required), `value` (required; one line, ellipsis), `icon` (IconData?), `onHero` (bool; `.hero .metric`) |
 | `.metric-grid` | `MetricGrid` | `data_display.dart` | `children` (List<MetricTile>, required; 2 columns, rows equal height) |
 | `.list` | `AppList` | `data_display.dart` | `children` (List<AppListRow>, required) |
