@@ -1,6 +1,7 @@
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/models/weather_models.dart';
 import 'package:petrichor/core/api/result.dart';
+import 'package:petrichor/core/constants/app_constants.dart';
 import 'package:petrichor/core/time/taiwan_time.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
 import 'package:petrichor/features/weather/widgets/home_logic.dart';
@@ -108,7 +109,7 @@ void main() {
       tw(14, 14),
     ) as NowCardReady;
 
-    final failed = card(const Failure('逾時', dataset: sunDataset));
+    final failed = card(const Failure('逾時', dataset: AppConstants.sunTimesDataset));
     expect(failed.observation, same(obs));
     expect((failed.sun as Failure).message, '逾時');
     expect(failed.slot, isNull);

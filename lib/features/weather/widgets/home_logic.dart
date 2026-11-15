@@ -1,6 +1,7 @@
 import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../solar_elevation.dart';
 import '../weather_provider.dart';
@@ -98,9 +99,6 @@ WeatherGlyph weatherGlyph(String? text) {
 // ---------------------------------------------------------------------------
 // Now card: sun state and view model
 
-/// CWA dataset of the sun times (A-B0062-001), named in sun failures.
-const sunDataset = 'A-B0062-001';
-
 enum SunPhase { beforeSunrise, daytime, afterSunset }
 
 /// The four sun tiles, in time order.
@@ -191,7 +189,7 @@ Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
     final d = byDate[key];
     if (d != null) return Success(d);
     final actual = days.isEmpty ? '無資料' : '${days.first.date}–${days.last.date}';
-    return Failure('日出日落資料不含所需日期：期望 $key，實際 $actual，請重新整理', dataset: sunDataset);
+    return Failure('日出日落資料不含所需日期：期望 $key，實際 $actual，請重新整理', dataset: AppConstants.sunTimesDataset);
   }
 
   final Result<SunDay> todayResult = lookup(todayWall);
@@ -328,7 +326,7 @@ NowCardState nowCard(WeatherState state, DateTime now) {
     Failure(:final message, :final dataset) => Failure(message, dataset: dataset),
     Success(:final data) when place != null => sunNow(data, place, now),
     // Invariant: WeatherState carries data only for a loaded place; surface the break instead of hiding the arc.
-    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: sunDataset),
+    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: AppConstants.sunTimesDataset),
   };
   final slot = switch (state.hourly) {
     Success(:final data) => currentSlot(data, now),
