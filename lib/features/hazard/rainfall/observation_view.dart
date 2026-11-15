@@ -44,9 +44,13 @@ class ObservationHeroCard extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       spacing: AppSpace.s8,
                       children: [
-                        Text(
-                          formatMm(mm),
-                          style: AppType.display.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+                        Flexible(
+                          child: Text(
+                            formatMm(mm),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.display.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+                          ),
                         ),
                         Text('mm', style: AppType.subtitle1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
                       ],
