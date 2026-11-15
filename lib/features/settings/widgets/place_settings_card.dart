@@ -108,18 +108,12 @@ class PlaceSettingsCard extends ConsumerWidget {
         ],
       AsyncError(:final error) => [
           SettingsBlock(children: [
-            StatusBanner(
-              tone: StatusTone.error,
+            settingsErrorBanner(
               title: '無法讀取地點設定',
               text: '$error',
-              actions: [
-                AppButton(
-                  label: '改用 GPS 定位',
-                  variant: AppButtonVariant.primary,
-                  small: true,
-                  onPressed: relocate,
-                ),
-              ],
+              actionLabel: '改用 GPS 定位',
+              variant: AppButtonVariant.primary,
+              onAction: relocate,
             ),
           ]),
         ],

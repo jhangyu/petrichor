@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/storage/stored_setting.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
@@ -70,11 +69,11 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
       final causes = scalars.where((s) => s.hasError).map((s) => '${s.error}').toSet().join('\n');
       body = AppList(children: [
         SettingsBlock(children: [
-          StatusBanner(
-            tone: StatusTone.error,
+          settingsErrorBanner(
             title: '無法讀取通知設定',
             text: causes,
-            actions: [AppButton(label: '重設為預設值', small: true, onPressed: _resetScalars)],
+            actionLabel: '重設為預設值',
+            onAction: _resetScalars,
           ),
         ]),
       ]);
@@ -163,25 +162,19 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
       if (error is StoredSettingException) {
         return [
           SettingsBlock(children: [
-            StatusBanner(
-              tone: StatusTone.error,
+            settingsErrorBanner(
               title: '無法讀取分區警特報設定',
               text: '$error',
-              actions: [
-                AppButton(
-                  label: '重設分區警特報',
-                  small: true,
-                  // setPlace overwrites the whole corrupt set; the place is switched off.
-                  onPressed: () => ref
-                      .read(warningAreasProvider.notifier)
-                      .setPlace(saved.requireValue.first, false),
-                ),
-              ],
+              actionLabel: '重設分區警特報',
+              // setPlace overwrites the whole corrupt set; the place is switched off.
+              onAction: () => ref
+                  .read(warningAreasProvider.notifier)
+                  .setPlace(saved.requireValue.first, false),
             ),
           ]),
         ];
       }
-      return [SettingsBlock(children: [StatusBanner(tone: StatusTone.error, title: '無法讀取已儲存的地點', text: '$error')])];
+      return [SettingsBlock(children: [settingsErrorBanner(title: '無法讀取已儲存的地點', text: '$error')])];
     }
     final places = saved.value;
     final on = areas.value;

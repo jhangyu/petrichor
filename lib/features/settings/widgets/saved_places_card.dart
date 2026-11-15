@@ -65,18 +65,12 @@ class SavedPlacesCard extends ConsumerWidget {
         ),
       AsyncError(:final error) => SettingsGroup(
           title: '儲存的地點',
-          body: StatusBanner(
-            tone: StatusTone.error,
+          body: settingsErrorBanner(
             title: '無法讀取已儲存的地點',
             text: '$error',
-            actions: [
-              AppButton(
-                label: '清除已儲存的地點',
-                variant: AppButtonVariant.primary,
-                small: true,
-                onPressed: () => ref.read(savedPlacesProvider.notifier).clear(),
-              ),
-            ],
+            actionLabel: '清除已儲存的地點',
+            variant: AppButtonVariant.primary,
+            onAction: () => ref.read(savedPlacesProvider.notifier).clear(),
           ),
         ),
       _ => const SettingsGroup(title: '儲存的地點', body: AppCard.loading(skeletonHeight: _loadingHeight)),

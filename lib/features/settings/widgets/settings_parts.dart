@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/buttons.dart';
+import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
 
 /// 「臺北市 中正區」
@@ -11,6 +13,23 @@ String placeLabel(Place p) => '${p.county} ${p.town}';
 /// 「07:00」 for a minute of day.
 String clockOfMinute(int minute) =>
     '${twoDigits(minute ~/ 60)}:${twoDigits(minute % 60)}';
+
+/// Error banner for unreadable stored data, with at most one small recovery button.
+StatusBanner settingsErrorBanner({
+  required String title,
+  required String text,
+  String? actionLabel,
+  VoidCallback? onAction,
+  AppButtonVariant variant = AppButtonVariant.secondary,
+}) =>
+    StatusBanner(
+      tone: StatusTone.error,
+      title: title,
+      text: text,
+      actions: [
+        if (actionLabel != null) AppButton(label: actionLabel, variant: variant, small: true, onPressed: onAction),
+      ],
+    );
 
 /// One settings group (spec §4): section title + meta above [body], optional [note] below.
 class SettingsGroup extends StatelessWidget {

@@ -181,17 +181,11 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
           ),
           SettingsBlock(children: [
                 if (view.unreadable)
-                  StatusBanner(
-                    tone: StatusTone.error,
+                  settingsErrorBanner(
                     title: '無法讀取已儲存的授權碼',
                     text: (status as ApiKeyInvalid).reason,
-                    actions: [
-                      AppButton(
-                        label: '清除並重新輸入',
-                        small: true,
-                        onPressed: () => ref.read(cwaApiKeyProvider.notifier).clear(),
-                      ),
-                    ],
+                    actionLabel: '清除並重新輸入',
+                    onAction: () => ref.read(cwaApiKeyProvider.notifier).clear(),
                   ),
                 LayoutBuilder(
                   builder: (context, c) {
