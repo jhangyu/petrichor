@@ -165,6 +165,7 @@ nothing.
 | `AppLayout.gridMinColumn` | 340 | narrowest page column (= min card width) |
 | `AppLayout.gridMaxColumns` | 6 | max page columns |
 | `AppLayout.gridGap` | 16 | grid and pane gap |
+| `AppLayout.pageMarginCompact / Medium / Expanded` | 16 / 24 / 32 | page side margin per width class (`WindowSizeClass.pageMargin`) |
 | `AppLayout.readingWidth` | 640 | max width of text blocks, banner text, button groups |
 | `AppLayout.cardWideWidth` | 520 | card content width from which a card uses its wide interior |
 | `AppLayout.paneMinWidth` | 320 | min side pane, min map box side, min cell width of multi-column lists |
@@ -267,6 +268,24 @@ single screen needs is composed in that screen from the API above.
    `AppLayout.cardWideWidth`, via the card's own `LayoutBuilder` (a half-width
    cell at expanded and a full cell at medium are the same width, as weather
    noted).
+
+### Token architecture check (ui-ux-pro-max:design-system)
+
+The skill uses three layers: primitive → semantic → component.
+- `AppSpace` is the primitive spacing scale.
+- `AppBreakpoint` and `AppLayout` are semantic layout tokens.
+- Screen-local named constants (chart px/h, sun-arc max width) are the component layer.
+- Every layout value is on the 4 px grid.
+
+What it changed:
+- The page margins were primitives picked inside `WindowSizeClass`. They are
+  now semantic aliases of `AppSpace` in `AppLayout`
+  (`pageMarginCompact/Medium/Expanded`).
+- `gridGap` already aliased `AppSpace.s16`.
+
+What it did not change:
+- The width values (340, 520, 320, 480, 640) have no shared primitive scale,
+  so no extra primitive layer was added for them.
 
 ## 6. Rules for screen designers
 

@@ -47,9 +47,9 @@ class WindowSizeClass {
 
   /// Left/right page margin around the card grid.
   double get pageMargin => switch (width) {
-        WindowWidthClass.compact => AppSpace.s16,
-        WindowWidthClass.medium => AppSpace.s24,
-        WindowWidthClass.expanded || WindowWidthClass.large => AppSpace.s32,
+        WindowWidthClass.compact => AppLayout.pageMarginCompact,
+        WindowWidthClass.medium => AppLayout.pageMarginMedium,
+        WindowWidthClass.expanded || WindowWidthClass.large => AppLayout.pageMarginExpanded,
       };
 }
 

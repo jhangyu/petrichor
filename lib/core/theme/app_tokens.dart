@@ -246,6 +246,11 @@ abstract final class AppLayout {
   static const int gridMaxColumns = 6;
   static const double gridGap = AppSpace.s16;
 
+  /// Left/right page margin per width class (compact / medium / expanded+).
+  static const double pageMarginCompact = AppSpace.s16;
+  static const double pageMarginMedium = AppSpace.s24;
+  static const double pageMarginExpanded = AppSpace.s32;
+
   /// Max width of a running-text block, banner text or button group's
   /// container inside a card. Cards fill their cell; only these are capped.
   static const double readingWidth = 640;
