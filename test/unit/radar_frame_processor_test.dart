@@ -68,7 +68,7 @@ void main() {
     expect(p.stats.pixelsPerDbz.reduce((a, b) => a + b), 1607);
   });
 
-  test('wrong size or a row map that skips source rows fails loudly', () {
+  test('wrong source size and a row map that is not non-decreasing fail loudly', () {
     expect(() => processRadarFrame(png, RadarImageGeometry(size: 3600, bounds: bounds, rowMap: identityRows, decorations: const [], palette: radarEchoPalette)),
         throwsFormatException);
     expect(() => processRadarFrame(png, geometry(rowMap: [0, 2, 1])), throwsArgumentError);

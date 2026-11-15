@@ -108,6 +108,16 @@ int? radarShownIndex(List<RadarSlot> slots, DateTime? playhead) {
   return newest < 0 ? null : newest;
 }
 
+/// Timeline cell to highlight: the slot at [waitingOn] while buffering, so the
+/// time row and highlight match where playback stopped; else the [shown] one.
+/// A [waitingOn] no longer listed (the list was just replaced; the next loop
+/// update sets a new one) keeps [shown].
+int radarCurrentCell(List<RadarSlot> slots, {required int shown, required DateTime? waitingOn}) {
+  if (waitingOn == null) return shown;
+  final i = slots.indexWhere((s) => s.time == waitingOn);
+  return i < 0 ? shown : i;
+}
+
 /// Up to [count] ready frames that play after [after] (null = from the oldest),
 /// in play order with the wrap to the oldest; for decoding ahead.
 List<RadarFrame> radarUpcomingFrames(List<RadarSlot> slots, DateTime? after, {required int count}) {

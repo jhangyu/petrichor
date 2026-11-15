@@ -14,6 +14,7 @@ class PlaybackFrames {
   const PlaybackFrames({
     required this.slots,
     required this.index,
+    required this.current,
     required this.buffering,
     required this.playing,
     required this.fps,
@@ -34,6 +35,10 @@ class PlaybackFrames {
   /// Slot on show (always a ready one).
   final int index;
 
+  /// Highlighted slot and time-row time: the slot playback waits on while
+  /// [buffering], else [index].
+  final int current;
+
   /// Playing but stopped at a pending slot (緩衝中).
   final bool buffering;
   final bool playing;
@@ -47,8 +52,9 @@ class PlaybackFrames {
   /// Null = play disabled (no ready slot).
   final VoidCallback? onTogglePlay;
 
-  /// Called with a ready slot's index only.
-  final ValueChanged<int> onSeek;
+  /// Called with a ready slot's time only (a time, not an index: the slot list
+  /// may be replaced before the screen handles the tap).
+  final ValueChanged<DateTime> onSeek;
   final ValueChanged<int> onFps;
   final ValueChanged<bool> onRepeat;
   final ValueChanged<Duration> onWindow;
@@ -126,7 +132,7 @@ class _TimeRow extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         Text(
-          formatTaiwanMonthDayClock(f.slots[f.index].time),
+          formatTaiwanMonthDayClock(f.slots[f.current].time),
           style: AppType.subtitle2.copyWith(
             color: AppPalette.fg1,
             fontWeight: FontWeight.w600,
@@ -162,7 +168,7 @@ class _Controls extends StatelessWidget {
         AppIconButton(
           icon: Icons.skip_previous,
           tooltip: '上一張',
-          onPressed: previous == null ? null : () => f!.onSeek(previous),
+          onPressed: previous == null ? null : () => f!.onSeek(f.slots[previous].time),
         ),
         IconButton.filled(
           tooltip: f != null && f.playing ? '暫停' : '播放',
@@ -179,7 +185,7 @@ class _Controls extends StatelessWidget {
         AppIconButton(
           icon: Icons.skip_next,
           tooltip: '下一張',
-          onPressed: next == null ? null : () => f!.onSeek(next),
+          onPressed: next == null ? null : () => f!.onSeek(f.slots[next].time),
         ),
         Expanded(
           child: loading
@@ -206,7 +212,7 @@ class _Controls extends StatelessWidget {
                     onChanged: f == null || last == 0
                         ? null
                         : (v) {
-                            if (f._ready(v.round())) f.onSeek(v.round());
+                            if (f._ready(v.round())) f.onSeek(f.slots[v.round()].time);
                           },
                   ),
                 ),
@@ -239,7 +245,7 @@ class _TimelineState extends State<_Timeline> {
   @override
   void didUpdateWidget(_Timeline old) {
     super.didUpdateWidget(old);
-    if (old.f.index != widget.f.index) _revealCurrent(AppMotion.fast);
+    if (old.f.current != widget.f.current) _revealCurrent(AppMotion.fast);
   }
 
   void _revealCurrent(Duration duration) {
@@ -265,10 +271,10 @@ class _TimelineState extends State<_Timeline> {
         children: [
           for (var i = 0; i < f.slots.length; i++)
             _TimelineFrame(
-              key: i == f.index ? _currentKey : null,
+              key: i == f.current ? _currentKey : null,
               slot: f.slots[i],
-              current: i == f.index,
-              onTap: () => f.onSeek(i),
+              current: i == f.current,
+              onTap: () => f.onSeek(f.slots[i].time),
             ),
         ],
       ),

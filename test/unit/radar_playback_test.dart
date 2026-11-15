@@ -71,6 +71,13 @@ void main() {
     expect(radarShownIndex([pending(0), failed(1)], null), isNull);
   });
 
+  test('while buffering the highlighted cell is the waited slot, else the shown one', () {
+    final slots = [pending(0), pending(1), ready(2)];
+    expect(radarCurrentCell(slots, shown: 2, waitingOn: t(0)), 0);
+    expect(radarCurrentCell(slots, shown: 2, waitingOn: null), 2);
+    expect(radarCurrentCell(slots, shown: 2, waitingOn: t(9)), 2);
+  });
+
   test('decodes ahead the next ready frames in play order with the wrap', () {
     final slots = [ready(0), pending(1), ready(2), failed(3), ready(4)];
     List<DateTime> upcoming(DateTime? after) =>

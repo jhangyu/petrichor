@@ -62,7 +62,7 @@ class RadarFrame {
   /// [RadarEchoStats.strongestDbz] when the frame has significant echo, else null.
   final int? significantDbz;
 
-  /// Pixel size of [file] (website frames: 3600 x 3748 Mercator rows).
+  /// Pixel size of [file] (website frames: 2048 x 2132 Mercator rows).
   final int width;
   final int height;
 
@@ -78,9 +78,9 @@ class RadarFrame {
   /// Height / width of the decoded image.
   double get aspect => height / width;
 
-  /// Decoded at [decodeWidth] px, not at full 3600 px: a full-size decoded
-  /// frame is ~54 MB, so a loop must use a display-size width and only the
-  /// paused, zoomed-in frame may use the full width.
+  /// Decoded at [decodeWidth] px, not always at the stored 2048 px: a
+  /// full-width decoded website frame is ~17 MB, so decode no wider than the
+  /// frame is shown on screen.
   ImageProvider imageProvider({required int decodeWidth}) =>
       ResizeImage(FileImage(file), width: decodeWidth, policy: ResizeImagePolicy.fit);
 }

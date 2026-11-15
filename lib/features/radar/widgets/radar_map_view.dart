@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/status.dart';
+import '../../../data/radar/radar_frame_processor.dart' show radarStoredWidth;
 import '../../../data/radar/radar_frame_repository.dart';
 
 /// Map centre and zoom: Taiwan overview when the place is unknown, else the place.
@@ -16,11 +17,6 @@ const _locatedZoom = 8.0;
 
 const _tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const _userAgentPackage = 'com.example.cwbweather';
-
-/// The CWA source image is upsampled from a ~1.27 km grid, so decoding wider
-/// than this adds no echo detail (measured 2026-11-15, radar-perf-contract.md
-/// item 1). Never lowered to fit memory (user decision).
-const radarMaxDecodeWidth = 2048;
 
 /// Frames decoded ahead of the shown one.
 const radarPreDecodeCount = 2;
@@ -35,11 +31,11 @@ const _decodeWidthStep = 256;
 /// Pixel width to decode a frame at: the width the whole frame is drawn at on
 /// screen (its [lonSpanDegrees] at map [zoom], Web Mercator is linear in
 /// longitude) in device pixels, rounded up to [_decodeWidthStep] and capped at
-/// [radarMaxDecodeWidth]. Playing or paused, never lower than needed.
+/// [radarStoredWidth]. Playing or paused, never lower than needed.
 int radarDecodeWidth({required double lonSpanDegrees, required double zoom, required double devicePixelRatio}) {
   final onScreen = lonSpanDegrees / _fullCircleDegrees * _webMercatorTileSize * pow(2, zoom) * devicePixelRatio;
   final stepped = (onScreen / _decodeWidthStep).ceil() * _decodeWidthStep;
-  return min(stepped, radarMaxDecodeWidth);
+  return min(stepped, radarStoredWidth);
 }
 
 const _pinDot = 9.0;

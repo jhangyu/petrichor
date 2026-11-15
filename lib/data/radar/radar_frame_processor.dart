@@ -21,7 +21,10 @@ import 'radar_png_rows.dart';
 const radarFrameSize = 3600;
 
 /// Width of the stored PNG (nearest-neighbour from the source, so the palette
-/// stays exact); narrower sources are stored at their own width.
+/// stays exact); narrower sources are stored at their own width. The CWA
+/// source is upsampled from a ~1.27 km grid, so more width adds no echo
+/// detail (radar-perf-contract.md item 1); never lowered to fit memory (user
+/// decision). The map view never decodes wider than this.
 const radarStoredWidth = 2048;
 
 /// dBZ legend colours (0xRRGGBB, index = dBZ), from the CWA scale in
