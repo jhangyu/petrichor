@@ -374,13 +374,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               small: true,
               onPressed: () {
                 if (windowBroken) {
-                  unawaited(ref.read(radarWindowProvider(_group).notifier).set(_group.defaultWindow));
+                  final n = ref.read(radarWindowProvider(_group).notifier);
+                  unawaited(n.set(n.defaultValue));
                 }
                 if (fpsBroken) {
-                  unawaited(ref.read(radarFpsProvider(_group).notifier).set(_group.defaultFps));
+                  final n = ref.read(radarFpsProvider(_group).notifier);
+                  unawaited(n.set(n.defaultValue));
                 }
                 if (repeatBroken) {
-                  unawaited(ref.read(radarRepeatProvider(_group).notifier).set(true));
+                  final n = ref.read(radarRepeatProvider(_group).notifier);
+                  unawaited(n.set(n.defaultValue));
                 }
               },
             ),
