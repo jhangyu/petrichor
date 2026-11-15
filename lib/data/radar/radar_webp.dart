@@ -12,7 +12,7 @@ import 'package:ffi/ffi.dart';
 
 /// libwebp lossless compression level of stored frames (0 fastest .. 9 smallest;
 /// 6 measured in .claude/tmp/stream-impl/size-probe/report.md).
-const radarWebpLevel = 6;
+const _radarWebpLevel = 6;
 
 const _bytesPerPixel = 4;
 const _okCode = 0;
@@ -67,7 +67,7 @@ class RadarWebpException implements Exception {
       'RadarWebpException: $call returned $code (${_codeNames[code] ?? 'unknown code'}), expected $expected ($affected)';
 }
 
-/// Lossless WebP (level [radarWebpLevel]) of the [width] x [height] image that
+/// Lossless WebP (level [_radarWebpLevel]) of the [width] x [height] image that
 /// [paint] draws into `pixels`: straight-alpha RGBA words (bytes R, G, B, A in
 /// memory), rows tightly packed, all starting transparent (0). `pixels` is native
 /// memory, valid only during [paint] and freed right after the encode, so a frame
@@ -84,11 +84,11 @@ Uint8List encodeRadarWebp(int width, int height, void Function(Uint32List pixels
     final code = using((pixels) {
       final input = pixels<Uint32>(pixelCount); // calloc: zero = transparent
       paint(input.asTypedList(pixelCount));
-      return _encode(input.cast(), width, height, width * _bytesPerPixel, radarWebpLevel, out, outSize);
+      return _encode(input.cast(), width, height, width * _bytesPerPixel, _radarWebpLevel, out, outSize);
     });
     if (code != _okCode) {
       throw RadarWebpException('radar_webp_encode_lossless_rgba', code,
-          expected: '$_okCode', affected: '${width}x$height RGBA, level $radarWebpLevel');
+          expected: '$_okCode', affected: '${width}x$height RGBA, level $_radarWebpLevel');
     }
     try {
       return Uint8List.fromList(out.value.asTypedList(outSize.value));

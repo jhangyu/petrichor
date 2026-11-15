@@ -33,7 +33,7 @@ const accumGridInterval = Duration(minutes: 10);
 
 /// The newest grid is the [accumGridInterval] slot at least this long ago
 /// (QPEplus publishes a grid a few minutes after its end time).
-const accumPublishDelay = Duration(minutes: 6);
+const _accumPublishDelay = Duration(minutes: 6);
 
 /// A cached grid this young (by its end time) is revalidated with its ETag:
 /// QPEplus rewrites a grid once, 4–10 min after it first appears.
@@ -113,7 +113,7 @@ RadarSource accumRadarSource(
     maxWindow: Duration(hours: windowHours),
     listFrames: ({required now, required window, cancelToken}) async {
       await cache.prune(now);
-      var newest = _floor(now.toUtc().subtract(accumPublishDelay), accumGridInterval);
+      var newest = _floor(now.toUtc().subtract(_accumPublishDelay), accumGridInterval);
       // Not published yet: one slot back, once (a second miss is a failed slot).
       if (await cache.get(native, newest, cancelToken) == null) {
         newest = newest.subtract(accumGridInterval);
@@ -129,7 +129,7 @@ RadarSource accumRadarSource(
     // Of a frame's grids only the one ending at the frame time can change once
     // the frame exists: the others ended 10 min or more before it and were
     // past [accumRevalidateAge] at render time (a frame is made at least
-    // [accumPublishDelay] after its time). Stale when that grid's ETag
+    // [_accumPublishDelay] after its time). Stale when that grid's ETag
     // (revalidated if young; another window may have done it) or S is not what
     // the frame was made from.
     cachedFrameStale: (frame, cancel) async {

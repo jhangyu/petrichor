@@ -1,16 +1,16 @@
 /// QPEplus native gauge rolling windows (hours), largest first.
-const accumNativeHours = [24, 12, 6, 3, 1];
+const _accumNativeHours = [24, 12, 6, 3, 1];
 
 /// Windows the rainfall page offers.
 const accumWindowHours = [4, 6, 12, 24, 48, 168];
 
 /// URL of the native [nativeHours] grid ending at [endUtc] (UTC, minute a multiple of 10).
 String accumPieceUrl(int nativeHours, DateTime endUtc) {
-  if (!accumNativeHours.contains(nativeHours)) {
+  if (!_accumNativeHours.contains(nativeHours)) {
     throw ArgumentError.value(
       nativeHours,
       'nativeHours',
-      'expected one of $accumNativeHours',
+      'expected one of $_accumNativeHours',
     );
   }
   if (!endUtc.isUtc || endUtc.minute % 10 != 0) {
