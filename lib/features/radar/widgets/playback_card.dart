@@ -163,10 +163,12 @@ class _TimeRow extends StatelessWidget {
     final count = f.slots.length;
     final isLatest = f.nextReady == null;
     final hours = f.window.inHours;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
+    // Wraps the caption under the time when both do not fit on one line.
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.end,
+      spacing: AppSpace.s8,
+      runSpacing: AppSpace.s4,
       children: [
         Text(
           (f.timeText ?? formatTaiwanMonthDayClock)(f.slots[f.current].time),
