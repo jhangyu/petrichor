@@ -137,11 +137,13 @@ class RadarFrameRepository {
   /// Old cache directories are deleted once, by the first load.
   bool _legacyCachesDeleted = false;
 
-  /// The last started load. Loads run one after another (cache files and the
-  /// processing memory bound are shared); cancelling a load aborts its HTTP
-  /// requests and drops its frames still in processing, so the next load
-  /// starts at once.
-  Future<void> _lastLoad = Future.value();
+  /// The last started load per cache family (first segment of
+  /// [RadarSource.cachePath]). Loads of a family run one after another (they
+  /// share cache files), loads of different families do not wait for each
+  /// other (the processing memory bound is [_processPool]); cancelling a load
+  /// aborts its HTTP requests and drops its frames still in processing, so the
+  /// next load starts at once.
+  final _lastLoad = <String, Future<void>>{};
 
   RadarFrameRepository(this._dio,
       {required this.cacheRoot, required this.clock, this.process = radarProcessOffUiIsolate});
@@ -156,9 +158,10 @@ class RadarFrameRepository {
     final out = StreamController<RadarLoop>();
     out.onCancel = () => cancel.cancel('radar load of ${source.id} cancelled');
     out.onListen = () async {
-      final previous = _lastLoad;
+      final family = source.cachePath.split('/').first;
+      final previous = _lastLoad[family] ?? Future<void>.value();
       final done = Completer<void>();
-      _lastLoad = done.future;
+      _lastLoad[family] = done.future;
       try {
         await previous;
         await _load(source, window, out.add, cancel);

@@ -331,6 +331,24 @@ void main() {
     expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.stats', '${_key(f)}.webp']]);
   });
 
+  test('a load of another cache family does not wait for a running load', () async {
+    final gated = _GatedAdapter();
+    final dio = Dio()..httpClientAdapter = gated;
+    final repo = repository(dio);
+    final radar = repo.watch(source(dio, window), window: span).listen(null);
+    await gated.firstFrameRequest.future;
+    final other = RadarSource(
+        id: 'other',
+        cachePath: 'other_family/other',
+        maxWindow: const Duration(hours: 24),
+        listFrames: ({required now, required window, cancelToken}) async => const [],
+        step: RadarPngStep(_geometry));
+    final first = await repo.watch(other, window: span).first;
+    expect(first.loading, isTrue, reason: 'first event arrived while the radar load is still blocked');
+    expect(gated.release.isCompleted, isFalse);
+    await radar.cancel();
+  }, timeout: const Timeout(Duration(seconds: 2)));
+
   test('schedule: newest first, then oldest first; 4 downloads, 2 processes; slots published in that order', () async {
     final listed = [for (var i = 9; i >= 0; i--) _ref(Duration(minutes: 5 + 10 * i))];
     final newest = listed.last;
