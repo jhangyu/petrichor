@@ -161,9 +161,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final size = WindowSizeClass.of(context);
-        final sideBySide =
-            size.usesRail && !size.isShortHeight && AppTwoPane.fits(constraints.maxWidth - 2 * size.pageMargin);
+        final margin = WindowSizeClass.of(context).pageMargin;
+        final sideBySide = AppTwoPane.fitsWindow(context, constraints.maxWidth - 2 * margin);
         if (!sideBySide) {
           return AppPageScaffold(
             header: header,

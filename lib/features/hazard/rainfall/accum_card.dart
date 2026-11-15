@@ -29,6 +29,9 @@ const _overlayOpacity = 0.8;
 /// Peak under this many mm draws nothing (contract decision 11): the frame has no rain.
 const _noRainBelowMm = 1;
 
+/// What a loop state puts in the card: optional banner, the map, optional playback.
+typedef _Body = ({Widget? banner, RainMapView map, Widget? playback});
+
 /// Legend numbers under the 17-colour bar: the first colour index of each band
 /// and its label (the band lower edge of `accumScaleEdgesMm`).
 const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), (16, '≥300')];
@@ -36,12 +39,15 @@ const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), 
 /// 累積雨量 card (design 3): window chips, accumulation map, the radar's
 /// playback and the 17-colour legend. [me] null = no current place.
 class AccumulationCard extends ConsumerStatefulWidget {
-  const AccumulationCard({super.key, required this.me, this.cameraLink});
+  const AccumulationCard({super.key, required this.me, this.cameraLink, required this.wide});
 
   final LatLng? me;
 
-  /// Camera shared with the forecast map (side by side); null = stacked: square, locked until unlocked.
+  /// Camera shared with the forecast map; only links the cameras.
   final RadarCameraLink? cameraLink;
+
+  /// Map left, controls right ([RainMapCard]); false = one column, square locked map.
+  final bool wide;
 
   @override
   ConsumerState<AccumulationCard> createState() => _AccumulationCardState();
@@ -113,14 +119,19 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final hours = window.requireValue;
     ref.listen(accumLoopProvider(hours), (_, _) => _player.onLoopUpdate());
     final loop = ref.watch(accumLoopProvider(hours));
-    final (meta, body) = switch (loop) {
+    final (meta, (:banner, :map, :playback)) = switch (loop) {
       AsyncError(:final error) => ('無法取得', _failureBody(hours, '$error')),
       AsyncValue(:final value?) => _loopBody(hours, value, fps.requireValue, repeat.requireValue),
       _ => ('載入中', _loadingBody(hours)),
     };
     return RainMapCard(
+      wide: widget.wide,
       title: _cardTitle,
       meta: meta,
+      controlsTitle: '動畫播放',
+      banner: banner,
+      map: map,
+      controls: [?playback],
       legend: RainLegend(
         title: '$hours 小時累積 mm',
         semanticsLabel: '$hours 小時累積雨量圖例（毫米）',
@@ -128,7 +139,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
         marks: _legendMarks,
       ),
       note: '資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。',
-      children: [
+      leading: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: AppSpace.s8,
@@ -148,7 +159,6 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             ),
           ],
         ),
-        ...body,
       ],
     );
   }
@@ -163,6 +173,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     List<OverlayImage> overlayImages = const [],
   }) {
     return RainMapView(
+      wide: widget.wide,
       cameraLink: widget.cameraLink,
       me: widget.me,
       loading: loading,
@@ -175,19 +186,21 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     );
   }
 
-  List<Widget> _loadingBody(int hours) => [_map(loading: true, muted: true), const PlaybackBody(playback: null, loading: true)];
+  _Body _loadingBody(int hours) =>
+      (banner: null, map: _map(loading: true, muted: true), playback: const PlaybackBody(playback: null, loading: true));
 
-  List<Widget> _failureBody(int hours, String error) => [
-    StatusBanner(
+  _Body _failureBody(int hours, String error) => (
+    banner: StatusBanner(
       tone: StatusTone.error,
       title: '無法取得累積雨量',
       text: error,
       actions: [RetryButton(onPressed: () => _retry(hours))],
     ),
-    _map(muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無累積雨量資料', semanticsLabel: '地圖，無累積雨量資料'),
-  ];
+    map: _map(muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無累積雨量資料', semanticsLabel: '地圖，無累積雨量資料'),
+    playback: null,
+  );
 
-  (String, List<Widget>) _loopBody(int hours, RadarLoop loop, int fps, bool repeat) {
+  (String, _Body) _loopBody(int hours, RadarLoop loop, int fps, bool repeat) {
     final slots = loop.slots;
     final failed = [
       for (final s in slots)
@@ -217,22 +230,23 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final listError = loop.listError;
     return (
       meta,
-      [
-        if (listError != null)
-          StatusBanner(
-            tone: StatusTone.error,
-            title: '無法更新，顯示 ${formatTaiwanClock(frame.time)} 的資料',
-            text: '$listError',
-            actions: [RetryButton(onPressed: () => _retry(hours))],
-          )
-        else if (failed.isNotEmpty)
-          StatusBanner(
-            tone: StatusTone.error,
-            title: '${failed.length} 張影格無法取得',
-            text: '${formatTaiwanClock(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
-            actions: [RetryButton(onPressed: () => _retry(hours))],
-          ),
-        _map(
+      (
+        banner: listError != null
+            ? StatusBanner(
+                tone: StatusTone.error,
+                title: '無法更新，顯示 ${formatTaiwanClock(frame.time)} 的資料',
+                text: '$listError',
+                actions: [RetryButton(onPressed: () => _retry(hours))],
+              )
+            : failed.isNotEmpty
+            ? StatusBanner(
+                tone: StatusTone.error,
+                title: '${failed.length} 張影格無法取得',
+                text: '${formatTaiwanClock(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
+                actions: [RetryButton(onPressed: () => _retry(hours))],
+              )
+            : null,
+        map: _map(
           chipIcon: Icons.schedule,
           chipText: noRain
               ? '$accumulated全臺沒有降雨'
@@ -252,7 +266,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
               ),
           ],
         ),
-        PlaybackBody(
+        playback: PlaybackBody(
           playback: PlaybackFrames(
             slots: slots,
             index: index,
@@ -269,7 +283,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
           ),
         ),
-      ],
+      ),
     );
   }
 }

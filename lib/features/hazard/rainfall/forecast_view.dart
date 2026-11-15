@@ -93,15 +93,18 @@ Future<ImageProvider> _gridImage(RainForecastGrid grid) async {
 
 /// `未來 1hr 預測` grid map with the value at the user's place and the legend.
 class ForecastMapCard extends StatefulWidget {
-  const ForecastMapCard({super.key, required this.grid, required this.here, this.cameraLink});
+  const ForecastMapCard({super.key, required this.grid, required this.here, this.cameraLink, required this.wide});
 
   final RainForecastGrid grid;
 
   /// The current place and the forecast at it; null = no place (no pin, no 「此處」 row).
   final ({String name, LatLng point, double? mm})? here;
 
-  /// Camera shared with the 累積雨量 map (side by side); null = stacked: square, locked until unlocked.
+  /// Camera shared with the 累積雨量 map; only links the cameras.
   final RadarCameraLink? cameraLink;
+
+  /// Map left, 此處 row right ([RainMapCard]); false = one column, square locked map.
+  final bool wide;
 
   @override
   State<ForecastMapCard> createState() => _ForecastMapCardState();
@@ -142,21 +145,22 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
           meta: range,
           legend: const RainLegend(title: '1 小時預估雨量 mm', semanticsLabel: '1 小時雨量圖例（毫米）', colours: _bucketTints, marks: _bucketMarks),
           note: '空白格表示預估雨量小於 1 mm 或無資料。',
-          children: [
-            RainMapView(
-              cameraLink: widget.cameraLink,
-              loading: image == null,
-              muted: image == null,
-              chipIcon: image == null ? null : Icons.schedule,
-              chipText: image == null ? null : range,
-              semanticsLabel: '未來 1 小時雨量網格圖',
-              overlayImages: image == null
-                  ? const []
-                  : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: _gridOpacity, filterQuality: FilterQuality.none)],
-              me: here?.point,
-            ),
-            if (here != null) _HereRow(mm: here.mm, placeName: here.name),
-          ],
+          wide: widget.wide,
+          controlsTitle: '此處預估',
+          controls: [if (here != null) _HereRow(mm: here.mm, placeName: here.name)],
+          map: RainMapView(
+            wide: widget.wide,
+            cameraLink: widget.cameraLink,
+            loading: image == null,
+            muted: image == null,
+            chipIcon: image == null ? null : Icons.schedule,
+            chipText: image == null ? null : range,
+            semanticsLabel: '未來 1 小時雨量網格圖',
+            overlayImages: image == null
+                ? const []
+                : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: _gridOpacity, filterQuality: FilterQuality.none)],
+            me: here?.point,
+          ),
         );
       },
     );

@@ -108,12 +108,12 @@ class RainfallScreen extends ConsumerWidget {
     final grid = ref.watch(rainForecastGridProvider);
     void retryStations() => ref.invalidate(rainStationsProvider);
     void retryGrid() => ref.invalidate(rainForecastGridProvider);
-    Widget? forecastCard(RadarCameraLink? link) => _resultCard(
+    Widget? forecastCard(RadarCameraLink? link, bool wide) => _resultCard(
       grid,
       errorTitle: '無法取得降雨預測',
       skeleton: const AppCard.loading(title: '未來 1hr 預測', skeletonHeight: _mapSkeletonHeight),
       onRetry: retryGrid,
-      builder: (g) => ForecastMapCard(grid: g, here: null, cameraLink: link),
+      builder: (g) => ForecastMapCard(grid: g, here: null, cameraLink: link, wide: wide),
     );
     final list = _resultCard(
       stations,
@@ -136,7 +136,9 @@ class RainfallScreen extends ConsumerWidget {
       children: [
         AppGridItem.full(child: _noPlaceCard(ref, reason)),
         AppGridItem.full(
-          child: _MapRow(cards: (link) => [AccumulationCard(me: null, cameraLink: link), ?forecastCard(link)]),
+          child: _MapCards(
+            cards: (link, wide) => [AccumulationCard(me: null, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
+          ),
         ),
         if (list != null) AppGridItem.full(child: list),
       ],
@@ -161,7 +163,7 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryRainfall,
       builder: (r) => ObservationHeroCard(rainfall: r),
     );
-    Widget? forecastCard(RadarCameraLink? link) => _resultCard(
+    Widget? forecastCard(RadarCameraLink? link, bool wide) => _resultCard(
       forecast,
       errorTitle: '無法取得降雨預測',
       skeleton: const AppCard.loading(title: '未來 1hr 預測', skeletonHeight: _mapSkeletonHeight),
@@ -170,6 +172,7 @@ class RainfallScreen extends ConsumerWidget {
         grid: f.grid,
         here: (name: place.name, point: LatLng(place.latitude, place.longitude), mm: f.mmAtLocation),
         cameraLink: link,
+        wide: wide,
       ),
       showError: !tokenIssue,
     );
@@ -201,8 +204,8 @@ class RainfallScreen extends ConsumerWidget {
       children: [
         if (hero != null) AppGridItem.full(child: hero),
         AppGridItem.full(
-          child: _MapRow(
-            cards: (link) => [AccumulationCard(me: me, cameraLink: link), ?forecastCard(link)],
+          child: _MapCards(
+            cards: (link, wide) => [AccumulationCard(me: me, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
           ),
         ),
         if (list != null) AppGridItem.full(child: list),
@@ -234,19 +237,20 @@ class RainfallScreen extends ConsumerWidget {
   }
 }
 
-/// The map cards side by side with one shared camera when two panes fit,
-/// otherwise stacked in order (each map square and locked).
-class _MapRow extends StatefulWidget {
-  const _MapRow({required this.cards});
+/// The map cards, one per row in order. Wide (radar's map+controls split
+/// fits, [AppTwoPane.fitsWindow]): each card puts its map left and controls
+/// right, and the maps share one camera. Otherwise each map is square and locked.
+class _MapCards extends StatefulWidget {
+  const _MapCards({required this.cards});
 
-  /// The cards in order, given the shared camera (null when stacked).
-  final List<Widget> Function(RadarCameraLink? link) cards;
+  /// The cards in order, given the shared camera (null when narrow) and the layout.
+  final List<Widget> Function(RadarCameraLink? link, bool wide) cards;
 
   @override
-  State<_MapRow> createState() => _MapRowState();
+  State<_MapCards> createState() => _MapCardsState();
 }
 
-class _MapRowState extends State<_MapRow> {
+class _MapCardsState extends State<_MapCards> {
   final _link = RadarCameraLink();
 
   @override
@@ -259,14 +263,12 @@ class _MapRowState extends State<_MapRow> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, box) {
-        if (!AppTwoPane.fits(box.maxWidth)) {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppLayout.gridGap, children: widget.cards(null));
-        }
-        final cards = widget.cards(_link);
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // box is the full-row grid cell: page margin already removed.
+        final wide = AppTwoPane.fitsWindow(context, box.maxWidth);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppLayout.gridGap,
-          children: [for (final c in cards) Expanded(child: c)],
+          children: widget.cards(wide ? _link : null, wide),
         );
       },
     );

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雨量 寬螢幕 Designer 2</title>
+<!-- Spec: rainfall-wide.md. Static mock at 1280 x ~800 window. Own classes are all prefixed rw- (components.css already owns .page .row .map .legend). Maps are placeholders. Tokens only. -->
+<link rel="stylesheet" href="../../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../../components.css">
+<style>
+  body { background: var(--color-bg-3); color: var(--color-fg-1); }
+  .rw-doc { max-width: 1400px; margin-inline: auto; padding: var(--space-24) var(--space-16); display: flex; flex-direction: column; gap: var(--space-16); }
+  .rw-note { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .rw-scroll { overflow-x: auto; }
+
+  /* Window 1280 = rail 64 + content 1216; content = margin 32 + 1152 + margin 32 (radar: pageMargin expanded 32). */
+  .rw-window { width: 1280px; display: flex; flex-direction: row; background: var(--color-bg-3); border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; }
+  .rw-rail { flex: none; width: 64px; background: var(--color-bg-1); border-right: var(--stroke-thin) solid var(--color-stroke-2); padding-top: var(--space-16); text-align: center; color: var(--color-fg-3); font-size: var(--type-caption2-size); }
+  .rw-content { flex: none; width: 1216px; box-sizing: border-box; padding: var(--space-8) var(--space-32) var(--space-24); display: flex; flex-direction: column; gap: var(--space-16); }
+
+  /* One row = AppTwoPane: map card | side 461 (0.4 x 1152, clamp 320..480) with gap 16 -> map card 675 */
+  .rw-pane { display: flex; flex-direction: row; gap: var(--space-16); align-items: flex-start; width: 1152px; }
+  .rw-main { flex: none; width: 675px; box-sizing: border-box; }
+  .rw-side { flex: none; width: 461px; display: flex; flex-direction: column; gap: var(--space-16); }
+  .rw-card { position: relative; box-sizing: border-box; background: var(--color-bg-1); border-radius: var(--shape-medium); box-shadow: var(--shadow-8); padding: var(--space-16) var(--space-16) var(--space-20); display: flex; flex-direction: column; gap: var(--space-16); }
+  .rw-mapbox { position: relative; height: 560px; border-radius: var(--shape-small); background: var(--color-bg-4); overflow: hidden; }
+  .rw-chip { position: absolute; left: var(--space-8); top: var(--space-8); background: var(--color-bg-overlay); border-radius: var(--shape-full); padding: var(--space-4) var(--space-12); font-size: var(--type-caption1-size); font-variant-numeric: tabular-nums; }
+  .rw-hint { position: absolute; right: var(--space-8); bottom: var(--space-8); background: var(--color-bg-overlay); border-radius: var(--shape-small); padding: var(--space-4) var(--space-8); font-size: var(--type-caption2-size); color: var(--color-fg-2); }
+  .rw-zone { position: absolute; right: var(--space-16); top: var(--space-16); font-size: var(--type-caption2-size); color: var(--color-fg-3); }
+  .rw-lg { display: flex; flex-direction: column; gap: var(--space-4); }
+  .rw-lg__title { font-size: var(--type-caption1-size); color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
+  .rw-lg__bar { display: flex; height: var(--space-8); border-radius: var(--shape-small); overflow: hidden; }
+  .rw-lg__bar i { flex: 1 1 0; display: block; }
+  .rw-lg__marks { display: flex; justify-content: space-between; font-size: var(--type-caption1-size); color: var(--color-fg-2); font-variant-numeric: tabular-nums; }
+  .rw-lab { font-size: var(--type-caption1-size); color: var(--color-fg-2); font-weight: var(--font-weight-semibold); }
+  .rw-sec { display: flex; flex-direction: column; gap: var(--space-8); }
+  .rw-time { display: flex; justify-content: space-between; align-items: baseline; }
+  .rw-time b { font-size: var(--type-subtitle2-size); font-variant-numeric: tabular-nums; }
+  .rw-btns { display: flex; gap: var(--space-8); }
+  .rw-track { position: relative; height: var(--space-8); border-radius: var(--shape-full); background: var(--color-bg-5); overflow: hidden; }
+  .rw-track i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--color-brand-bg); }
+  .rw-here { display: flex; align-items: baseline; gap: var(--space-8); }
+  .rw-here b { font-size: var(--type-subtitle1-size); }
+  .rw-skel { height: 160px; border-radius: var(--shape-small); background: var(--color-bg-6); }
+  .rw-stack { display: flex; flex-direction: column; gap: var(--space-16); width: 1152px; }
+</style>
+</head>
+<body>
+<div class="rw-doc">
+  <h1>雨量 寬螢幕 — Designer 2</h1>
+  <p class="rw-note">尺寸全依雷達圖：右欄 461（0.4×1152，夾 320–480）、欄距 16、頁邊 32、卡內距 16/16/20、地圖高度視窗綁定（此處示意 560）。右欄為獨立卡堆疊。滾輪：地圖＝縮放，右欄／圖例＝捲頁面。</p>
+
+  <div class="rw-scroll">
+    <div class="rw-window">
+      <div class="rw-rail">雨量</div>
+      <div class="rw-content">
+        <div class="rw-note">（最近測站 hero 卡：全寬、不變）</div>
+
+        <div class="rw-pane">
+          <div class="rw-main rw-card">
+            <div class="rw-mapbox">
+              <span class="rw-chip">11/15 14:20</span>
+              <span class="rw-hint">滾輪＝縮放地圖</span>
+            </div>
+            <div class="rw-lg">
+              <div class="rw-lg__title">24 小時累積 mm</div>
+              <div class="rw-lg__bar"><i style="background:var(--dbz-10)"></i><i style="background:var(--dbz-20)"></i><i style="background:var(--dbz-30)"></i><i style="background:var(--dbz-40)"></i></div>
+              <div class="rw-lg__marks"><span>1</span><span>10</span><span>50</span><span>100</span><span>200</span><span>500</span></div>
+            </div>
+          </div>
+          <div class="rw-side">
+            <div class="rw-card">
+              <span class="rw-zone">滾輪＝捲動頁面</span>
+              <div>
+                <div class="card__title">累積雨量</div>
+                <div class="card__meta">觀測 11/15 14:20 · 每 10 分鐘更新</div>
+              </div>
+              <div class="rw-sec">
+                <span class="rw-lab">累積時距（小時）</span>
+                <div class="chip-group">
+                  <button class="chip">1</button><button class="chip">2</button><button class="chip">3</button><button class="chip">4</button><button class="chip">6</button><button class="chip">12</button><button class="chip" aria-pressed="true">24</button><button class="chip">48</button><button class="chip">168</button>
+                </div>
+              </div>
+            </div>
+            <div class="rw-card">
+              <div class="rw-time"><b>11/15 14:20</b><span class="card__meta">第 144 / 144 張 · 最新</span></div>
+              <div class="rw-btns"><button class="btn btn--primary">播放</button><button class="btn btn--secondary">上一張</button><button class="btn btn--secondary">下一張</button></div>
+              <div class="rw-track"><i></i></div>
+              <div class="chip-group"><button class="chip" aria-pressed="true">循環</button><button class="chip">速度 4 fps</button></div>
+            </div>
+            <span class="rw-note">資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。</span>
+          </div>
+        </div>
+
+        <div class="rw-pane">
+          <div class="rw-main rw-card">
+            <div class="rw-mapbox">
+              <span class="rw-chip">14:30–15:30</span>
+              <span class="rw-hint">滾輪＝縮放地圖</span>
+            </div>
+            <div class="rw-lg">
+              <div class="rw-lg__title">1 小時預估雨量 mm</div>
+              <div class="rw-lg__bar"><i style="background:var(--dbz-10)"></i><i style="background:var(--dbz-20)"></i><i style="background:var(--dbz-30)"></i><i style="background:var(--dbz-40)"></i></div>
+              <div class="rw-lg__marks"><span>1</span><span>5</span><span>10</span><span>20</span><span>40</span></div>
+            </div>
+          </div>
+          <div class="rw-side">
+            <div class="rw-card">
+              <span class="rw-zone">滾輪＝捲動頁面</span>
+              <div>
+                <div class="card__title">未來 1hr 預測</div>
+                <div class="card__meta">14:30–15:30</div>
+              </div>
+              <div class="rw-sec">
+                <span class="rw-lab">你的位置</span>
+                <div class="rw-here"><b>2.5 mm</b><span class="card__meta">板橋區</span></div>
+              </div>
+            </div>
+            <span class="rw-note">空白格表示預估雨量小於 1 mm 或無資料。</span>
+          </div>
+        </div>
+
+        <div class="rw-note">（測站今日累積雨量清單、門檻說明：全寬、不變）</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>錯誤／載入（整列退回單一全寬卡，不分欄）</h2>
+  <div class="rw-stack">
+    <div class="rw-card"><div class="card__title">累積雨量</div><div style="color:var(--color-danger-fg)">網頁版無法取得此資料 — 累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。</div></div>
+    <div class="rw-card"><div class="card__title">累積雨量</div><div class="rw-skel"></div></div>
+    <div class="rw-card"><div class="card__title">累積雨量</div><div>累積雨量設定無法讀取 <button class="btn btn--secondary btn--sm">重設設定</button></div></div>
+    <p class="rw-note">部分影格失敗／資料未更新的 StatusBanner：放右欄第 2 卡的時間列上方（地圖仍顯示）。</p>
+  </div>
+</div>
+</body>
+</html>

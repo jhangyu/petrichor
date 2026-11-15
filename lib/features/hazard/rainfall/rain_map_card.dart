@@ -1,46 +1,117 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show OverflowBoxFit;
 import 'package:flutter_map/flutter_map.dart' show OverlayImage;
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/layout/adaptive.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../radar/widgets/radar_map_view.dart';
 
-/// Shared shell of the two 雨量 map cards: header (title + time line), then [children]
-/// (map first, then value / control rows), then the legend and the footnote.
-class RainMapCard extends StatelessWidget {
-  const RainMapCard({super.key, required this.title, required this.meta, required this.children, required this.legend, required this.note});
+/// Map height chrome in the wide layout: page header and top margin, card padding,
+/// card header, legend (title, bar, labels), note and the three gaps. The map takes
+/// the rest of the window, as radar's `_heroChromeHeight`. Banners are not counted.
+const _wideMapChromeHeight =
+    AppSize.appBar +
+    AppSpace.s8 +
+    AppSpace.s16 +
+    AppSpace.s20 +
+    AppSize.touch +
+    AppSize.icon16 +
+    AppSpace.s4 +
+    AppSize.legendBar +
+    AppSpace.s4 +
+    AppSize.icon16 +
+    AppSize.icon16 +
+    3 * AppSpace.s16;
 
+/// Shared shell of the two 雨量 map cards. Narrow: one card, header, [leading], [banner],
+/// [map], [controls], legend, note. Wide (radar's map+controls split): map card on the
+/// left (header, [banner], [map] at window height, legend, note), and on the right a
+/// plain card titled [controlsTitle] holding [leading] and [controls] (none when both
+/// are empty). The right card does not scroll, so the wheel there scrolls the page.
+class RainMapCard extends StatelessWidget {
+  const RainMapCard({
+    super.key,
+    required this.wide,
+    required this.title,
+    required this.meta,
+    required this.map,
+    required this.legend,
+    required this.note,
+    required this.controlsTitle,
+    this.banner,
+    this.leading = const [],
+    this.controls = const [],
+  });
+
+  final bool wide;
   final String title;
   final String meta;
-  final List<Widget> children;
+  final RainMapView map;
   final Widget legend;
   final String note;
+  final String controlsTitle;
+  final Widget? banner;
+
+  /// Controls placed before the map when narrow (e.g. window chips).
+  final List<Widget> leading;
+
+  /// Controls placed after the map when narrow (e.g. playback, 此處 row).
+  final List<Widget> controls;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      title: title,
-      meta: meta,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpace.s16,
-        children: [
-          ...children,
-          legend,
-          Text(note, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-        ],
+    final noteText = Text(note, style: AppType.caption1.copyWith(color: AppPalette.fg3));
+    if (!wide) {
+      return AppCard(
+        title: title,
+        meta: meta,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpace.s16,
+          children: [...leading, ?banner, map, ...controls, legend, noteText],
+        ),
+      );
+    }
+    final window = MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top;
+    final side = [...leading, ...controls];
+    return AppTwoPane(
+      matchHeight: true,
+      main: AppCard(
+        title: title,
+        meta: meta,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpace.s16,
+          children: [
+            ?banner,
+            SizedBox(height: math.max(AppLayout.paneMinWidth, window - _wideMapChromeHeight), child: map),
+            legend,
+            noteText,
+          ],
+        ),
       ),
+      side: side.isEmpty
+          ? const SizedBox.shrink()
+          : AppCard(
+              title: controlsTitle,
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s16, children: side),
+            ),
     );
   }
 }
 
 /// The map of a [RainMapCard]: one chip style and one aspect / lock rule.
-/// [cameraLink] null = stacked: square, locked until unlocked.
+/// [wide] false = square, locked until unlocked; true = free, sized by the card.
+/// [cameraLink] only links the cameras of the maps.
 class RainMapView extends StatelessWidget {
   const RainMapView({
     super.key,
+    required this.wide,
     required this.cameraLink,
     this.me,
     this.loading = false,
@@ -52,6 +123,7 @@ class RainMapView extends StatelessWidget {
     this.overlayImages = const [],
   });
 
+  final bool wide;
   final RadarCameraLink? cameraLink;
   final LatLng? me;
   final bool loading;
@@ -73,8 +145,8 @@ class RainMapView extends StatelessWidget {
       semanticsLabel: semanticsLabel,
       upcoming: upcoming,
       overlayImages: overlayImages,
-      aspectRatio: cameraLink == null ? 1 : radarMapDefaultAspectRatio,
-      startLocked: cameraLink == null,
+      aspectRatio: wide ? radarMapDefaultAspectRatio : 1,
+      startLocked: !wide,
       cameraLink: cameraLink,
     );
   }
@@ -120,6 +192,7 @@ class RainLegend extends StatelessWidget {
                   child: OverflowBox(
                     alignment: Alignment.centerLeft,
                     maxWidth: double.infinity,
+                    fit: OverflowBoxFit.deferToChild,
                     child: Text(marks[i].$2, softWrap: false, style: caption),
                   ),
                 ),

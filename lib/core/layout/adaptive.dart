@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../theme/app_tokens.dart';
@@ -147,9 +148,16 @@ class AppGrid extends StatelessWidget {
 /// [AppLayout.paneMinWidth]…[AppLayout.paneMaxWidth]; the main pane takes the
 /// rest. Under a bounded height (`AppPageScaffold.fill` body) both panes get
 /// the full height and must scroll themselves; inside the scrolling page grid
-/// they are top-aligned and keep their own height. Check [fits] first.
+/// they are top-aligned and keep their own height, or share the taller one
+/// with [matchHeight]. Check [fits] first.
 class AppTwoPane extends StatelessWidget {
-  const AppTwoPane({super.key, required this.main, required this.side, this.sideFirst = false});
+  const AppTwoPane({
+    super.key,
+    required this.main,
+    required this.side,
+    this.sideFirst = false,
+    this.matchHeight = false,
+  });
 
   final Widget main;
   final Widget side;
@@ -157,8 +165,19 @@ class AppTwoPane extends StatelessWidget {
   /// Side pane on the left (e.g. a county list before its towns).
   final bool sideFirst;
 
+  /// Under an unbounded height, both panes take the taller pane's height (a
+  /// card row with aligned edges).
+  final bool matchHeight;
+
   /// Whether [width] holds two panes of at least [AppLayout.paneMinWidth].
   static bool fits(double width) => width >= 2 * AppLayout.paneMinWidth + AppLayout.gridGap;
+
+  /// Whether a map+controls split fits: side navigation, not a short window,
+  /// and [width] (the content width, page margin removed) [fits] two panes.
+  static bool fitsWindow(BuildContext context, double width) {
+    final size = WindowSizeClass.of(context);
+    return size.usesRail && !size.isShortHeight && fits(width);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +185,11 @@ class AppTwoPane extends StatelessWidget {
       builder: (context, constraints) {
         final sideWidth = (constraints.maxWidth * AppLayout.paneSideShare)
             .clamp(AppLayout.paneMinWidth, AppLayout.paneMaxWidth);
+        if (matchHeight && !constraints.hasBoundedHeight) {
+          final mainWidth = constraints.maxWidth - sideWidth - AppLayout.gridGap;
+          final panes = [SizedBox(width: mainWidth, child: main), SizedBox(width: sideWidth, child: side)];
+          return _MatchHeightRow(children: sideFirst ? panes.reversed.toList() : panes);
+        }
         final panes = [Expanded(child: main), SizedBox(width: sideWidth, child: side)];
         return Row(
           crossAxisAlignment: constraints.hasBoundedHeight ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
@@ -175,4 +199,50 @@ class AppTwoPane extends StatelessWidget {
       },
     );
   }
+}
+
+/// Fixed-width children in a row, gap [AppLayout.gridGap], all as tall as the
+/// tallest: each is laid out at its own height, then the shorter ones again at
+/// the tallest height. Unlike IntrinsicHeight it works with LayoutBuilder content.
+class _MatchHeightRow extends MultiChildRenderObjectWidget {
+  const _MatchHeightRow({required super.children});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderMatchHeightRow();
+}
+
+class _MatchHeightRowParentData extends ContainerBoxParentData<RenderBox> {}
+
+class _RenderMatchHeightRow extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _MatchHeightRowParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _MatchHeightRowParentData> {
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _MatchHeightRowParentData) child.parentData = _MatchHeightRowParentData();
+  }
+
+  @override
+  void performLayout() {
+    final loose = BoxConstraints(maxWidth: constraints.maxWidth);
+    var height = 0.0;
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      child.layout(loose, parentUsesSize: true);
+      height = math.max(height, child.size.height);
+    }
+    var x = 0.0;
+    for (var child = firstChild; child != null; child = childAfter(child)) {
+      if (child.size.height < height) child.layout(loose.tighten(height: height), parentUsesSize: true);
+      (child.parentData! as _MatchHeightRowParentData).offset = Offset(x, 0);
+      x += child.size.width + AppLayout.gridGap;
+    }
+    size = constraints.constrain(Size(math.max(0, x - AppLayout.gridGap), height));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) => defaultPaint(context, offset);
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      defaultHitTestChildren(result, position: position);
 }

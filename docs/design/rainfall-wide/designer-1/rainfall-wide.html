@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>雨量 寬螢幕版面 — Designer 1</title>
+<link rel="stylesheet" href="../../tokens-fluent2-light.css">
+<link rel="stylesheet" href="../../components.css">
+<style>
+  /* ---------- Document frame (presentation only) ---------- */
+  .doc { width: 100%; max-width: 1400px; margin-inline: auto; padding: var(--space-32) var(--layout-gutter) var(--space-64); display: flex; flex-direction: column; gap: var(--space-40); }
+  .doc-head { display: flex; flex-direction: column; gap: var(--space-4); align-items: center; text-align: center; }
+  .doc-head p, .doc-note { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .doc-section { display: flex; flex-direction: column; gap: var(--space-16); }
+  .doc-section > h2 { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--type-subtitle1-weight); }
+  .stage { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: var(--space-32) var(--space-24); }
+  .frame-col { display: flex; flex-direction: column; gap: var(--space-8); width: 100%; max-width: 375px; min-width: 0; }
+  .frame-col--wide { max-width: 100%; }
+  .frame-cap { color: var(--color-fg-2); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); padding-inline: var(--space-4); }
+  .frame-cap small { display: block; font-weight: var(--font-weight-regular); color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .frame .app-shell { min-height: 0; border: var(--stroke-thin) solid var(--color-stroke-2); border-radius: var(--shape-medium); overflow: hidden; box-shadow: var(--shadow-16); max-width: 100%; }
+  .frame .app-bar, .frame .bottom-nav { position: relative; }
+  .frame .page { gap: var(--space-16); padding-top: var(--space-8); }
+  .wide-scroll { overflow-x: auto; padding-bottom: var(--space-8); }
+  .wide-box { width: 1280px; }
+  .wide-box--1024 { width: 1024px; }
+
+  /* ---------- Wide shell: nav rail + content (AppShell expanded) ---------- */
+  .shell-wide { display: flex; flex-direction: row; min-height: 0; max-width: none; }
+  .rail { flex: none; width: var(--space-64); display: flex; flex-direction: column; align-items: center; gap: var(--space-8); padding-top: var(--space-16); background: var(--color-bg-1); border-right: var(--stroke-thin) solid var(--color-stroke-2); }
+  .rail__item { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); width: var(--space-48); padding: var(--space-8) var(--space-0); border-radius: var(--shape-small); color: var(--color-fg-3); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); }
+  .rail__item[aria-current="page"] { color: var(--color-brand-fg-strong); background: var(--color-brand-bg-subtle); font-weight: var(--font-weight-semibold); }
+  .shell-wide__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ---------- Page grid (AppGrid: columns = f(width), items in DOM order) ---------- */
+  .rf-grid { display: grid; gap: var(--space-16); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  .rf-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rf-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .span-full { grid-column: 1 / -1; }
+  .rf-page { padding: var(--space-16) var(--space-24) var(--space-24); background: var(--color-bg-3); }
+
+  /* ---------- Card header: title + meta + trailing ---------- */
+  .rf-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-8); padding: var(--space-16) var(--space-16) var(--space-12); }
+  .rf-head__titles { display: flex; flex-direction: column; min-width: 0; }
+  .rf-title { font-size: var(--type-subtitle2-size); line-height: var(--type-subtitle2-lh); font-weight: var(--type-subtitle2-weight); }
+  .rf-meta { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .rf-body { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-0) var(--space-16) var(--space-16); }
+
+  /* ---------- 1 最近測站 ---------- */
+  .st-main { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-12); }
+  .st-value { display: flex; align-items: baseline; gap: var(--space-8); }
+  .st-value .unit { font-size: var(--type-subtitle1-size); line-height: var(--type-subtitle1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .st-meter { display: flex; flex-direction: column; gap: var(--space-4); }
+  .st-bar { position: relative; height: var(--size-slider-track); border-radius: var(--shape-full); background: var(--color-rain-bar-track); }
+  .st-bar__fill { position: absolute; inset: var(--space-0) auto var(--space-0) var(--space-0); border-radius: var(--shape-full); background: var(--color-rain-bar); }
+  .st-ticks { display: flex; justify-content: space-between; font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  /* wide: station card becomes a strip - value left, metrics + meter right */
+  .st-strip { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-12); }
+  .st-strip--wide { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: var(--space-24); }
+  .st-strip--wide .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  /* ---------- Map card ---------- */
+  .rf-map { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--color-map-water); overflow: hidden; }
+  .rf-map--tall { aspect-ratio: 5 / 6; }
+  .rf-map svg.land { position: absolute; inset: var(--space-0); width: 100%; height: 100%; }
+  .land__shape { fill: var(--color-map-land); stroke: var(--color-map-border); stroke-width: 0.6; }
+  .land__road { fill: none; stroke: var(--color-map-road); stroke-width: 0.5; }
+  .b-0 { fill: var(--dbz-0); } .b-1 { fill: var(--dbz-10); } .b-2 { fill: var(--dbz-20); } .b-3 { fill: var(--dbz-30); } .b-4 { fill: var(--dbz-40); } .b-5 { fill: var(--dbz-50); } .b-6 { fill: var(--dbz-60); }
+  .blob { opacity: 0.78; }
+  .pin { fill: var(--color-map-pin); stroke: var(--color-bg-1); stroke-width: 1.2; }
+  .rf-map--muted svg.land { opacity: 0.45; }
+  .map-chip { position: absolute; top: var(--space-8); left: var(--space-8); display: inline-flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-8); border-radius: var(--shape-full); background: var(--color-bg-overlay); box-shadow: var(--shadow-4); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-2); font-variant-numeric: tabular-nums; }
+  .map-fab { position: absolute; right: var(--space-8); bottom: var(--space-8); display: flex; flex-direction: column; gap: var(--space-8); }
+  .map-fab .fab { width: var(--size-control); height: var(--size-control); }
+  .map-lock { position: absolute; right: var(--space-8); top: var(--space-8); }
+  .map-state { position: absolute; inset: var(--space-0); display: flex; align-items: center; justify-content: center; padding: var(--space-16); }
+  .map-state .status-banner { width: 100%; box-shadow: var(--shadow-8); background: var(--color-bg-1); }
+  .map-sync { display: inline-flex; align-items: center; gap: var(--space-4); }
+
+  /* value-at-place row under the forecast map */
+  .here { display: flex; align-items: center; gap: var(--space-12); padding: var(--space-8) var(--space-12); background: var(--color-bg-2); border-radius: var(--shape-extra-small); }
+  .here__value { margin-left: auto; display: flex; align-items: baseline; gap: var(--space-4); }
+
+  /* compact playback (inline in the card; 設定 collapsed behind the options button) */
+  .pb { display: flex; flex-direction: column; gap: var(--space-4); }
+  .pb__row { display: flex; align-items: center; gap: var(--space-4); }
+  .pb__row .slider__input { flex: 1; min-width: 0; }
+  .pb__time { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-8); }
+  .pb__time b { font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; }
+  .pb--off { opacity: 0.5; }
+
+  /* legends */
+  .lg-bar17 { display: grid; grid-template-columns: repeat(17, minmax(0, 1fr)); height: var(--size-legend-bar); border-radius: var(--shape-full); overflow: hidden; }
+  .lg-lab17 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); font-size: var(--type-caption2-size); line-height: var(--type-caption2-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .lg-lab17 span:nth-child(n+2) { text-align: center; }
+  .lg-lab17 span:last-child { text-align: right; }
+  .legend__swatch.b-1 { background: var(--dbz-10); } .legend__swatch.b-2 { background: var(--dbz-20); } .legend__swatch.b-3 { background: var(--dbz-30); } .legend__swatch.b-4 { background: var(--dbz-40); }
+
+  /* ---------- 5 測站列表 ---------- */
+  .stn-cols { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .stn-cols--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-16); padding: var(--space-0) var(--space-16); }
+  .stn-cols--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--space-24); padding: var(--space-0) var(--space-16); }
+  .stn-cols--2 .list-row, .stn-cols--3 .list-row { padding-inline: var(--space-0); }
+  .stn-bar { width: var(--size-icon-48); height: var(--size-slider-track); border-radius: var(--shape-full); background: var(--color-rain-bar-track); position: relative; flex: none; }
+  .stn-bar i { position: absolute; inset: var(--space-0) auto var(--space-0) var(--space-0); border-radius: var(--shape-full); background: var(--color-rain-bar); }
+  .stn-chips { padding: var(--space-0) var(--space-16) var(--space-12); }
+  .more { display: flex; justify-content: center; padding: var(--space-8) var(--space-16) var(--space-12); }
+
+  .hint { color: var(--color-fg-3); font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); }
+  .note-tag { display: inline-block; margin-left: var(--space-8); color: var(--color-fg-3); font-weight: var(--font-weight-regular); }
+  .skeleton--map { aspect-ratio: 1 / 1; border-radius: var(--shape-none); }
+  .skeleton--line { height: var(--space-16); }
+  .skeleton--hero { height: var(--space-64); }
+
+  /* ---------- v2: window selector, playback settings (aligned with radar tab), progressive load ---------- */
+  .win-chips .chip { min-width: var(--size-control); justify-content: center; }
+  .pb-field { display: flex; flex-direction: column; gap: var(--space-8); min-width: 0; }
+  .pb-field__label { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); font-weight: var(--font-weight-semibold); color: var(--color-fg-2); }
+  .segmented--block { display: flex; }
+  .segmented--block .segmented__item { flex: 1; }
+  .pb-settings { border-radius: var(--shape-small); background: var(--color-bg-2); border: var(--stroke-thin) solid var(--color-stroke-3); }
+  .pb-settings__summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); min-height: var(--size-touch); padding: var(--space-0) var(--space-12); cursor: pointer; list-style: none; }
+  .pb-settings__summary::-webkit-details-marker { display: none; }
+  .pb-settings__title { display: flex; align-items: center; gap: var(--space-8); font-size: var(--type-body1-size); line-height: var(--type-body1-lh); font-weight: var(--font-weight-semibold); flex: none; white-space: nowrap; }
+  .pb-settings__state { display: flex; align-items: center; gap: var(--space-4); min-width: 0; font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); font-variant-numeric: tabular-nums; }
+  .pb-settings__chev { flex: none; transition: transform var(--duration-normal) var(--curve-easy-ease); }
+  .pb-settings[open] .pb-settings__chev { transform: rotate(90deg); }
+  .pb-settings__body { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-4) var(--space-12) var(--space-16); }
+  .pb-toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
+  .pb-toggle__text { display: flex; flex-direction: column; gap: var(--space-4); }
+  .switch { position: relative; flex: none; width: var(--space-40); height: var(--space-24); padding: var(--space-0); border: none; border-radius: var(--shape-full); background: var(--color-stroke-accessible); }
+  .switch[aria-checked="true"] { background: var(--color-brand-bg); }
+  .switch__thumb { position: absolute; top: var(--space-4); left: var(--space-4); width: var(--space-16); height: var(--space-16); border-radius: var(--shape-full); background: var(--color-bg-1); box-shadow: var(--shadow-2); }
+  .switch[aria-checked="true"] .switch__thumb { transform: translateX(var(--space-16)); }
+  .rf-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-16); padding: var(--space-0) var(--space-16) var(--space-16); align-items: start; }
+  .rf-two .rf-map { border-radius: var(--shape-small); }
+  .rf-two__side { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
+  .span-2 { grid-column: span 2; }
+  .ld-bar { position: relative; height: var(--size-slider-track); border-radius: var(--shape-full); background: var(--color-bg-disabled); overflow: hidden; }
+  .ld-bar i { position: absolute; inset: var(--space-0) auto var(--space-0) var(--space-0); background: var(--color-brand-bg); border-radius: var(--shape-full); }
+  .pb-load { display: flex; flex-direction: column; gap: var(--space-8); }
+  .pb-load__text { display: flex; justify-content: space-between; gap: var(--space-8); }
+
+  /* ---- designer-1 wide: radar values. AppTwoPane: side = 40% clamp 320-480, gap 16 (adaptive.dart:167-173). Cards: padding 16/16/16/20, gap 16 (app_card.dart:101). Page margin 32 (app_tokens.dart:256). ---- */
+  .rw-page { padding: var(--space-8) var(--space-32) var(--space-24); background: var(--color-bg-3); }
+  .rw-col { display: flex; flex-direction: column; gap: var(--space-16); }
+  .rw-two { display: grid; grid-template-columns: minmax(0, 1fr) clamp(320px, 40%, 480px); gap: var(--space-16); align-items: start; }
+  .rw-pane { position: relative; display: flex; flex-direction: column; gap: var(--space-16); min-width: 0; }
+  .rw-card { display: flex; flex-direction: column; gap: var(--space-16); padding: var(--space-16) var(--space-16) var(--space-20); }
+  .rw-card .rf-map { border-radius: var(--shape-medium); aspect-ratio: auto; height: 640px; }
+  .rw-note { font-size: var(--type-caption1-size); line-height: var(--type-caption1-lh); color: var(--color-fg-3); }
+  .zone-tag { position: absolute; z-index: 2; padding: var(--space-4) var(--space-8); border-radius: var(--shape-full); font-size: var(--type-caption1-size); font-weight: var(--font-weight-semibold); background: var(--color-brand-bg); color: var(--color-fg-on-brand); box-shadow: var(--shadow-8); pointer-events: none; }
+  .zone-tag--scroll { background: var(--color-fg-1); }
+  .map-zoom-tag { left: 50%; bottom: var(--space-16); transform: translateX(-50%); }
+  .side-tag { top: calc(-1 * var(--space-8)); right: var(--space-0); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="0.75"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.3 4.6 2.9 17.8A2 2 0 0 0 4.6 20.8h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-rainfall" viewBox="0 0 24 24"><path d="M12 3.5c3.2 4 5.5 7.3 5.5 10.2a5.5 5.5 0 0 1-11 0c0-2.9 2.3-6.2 5.5-10.2z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></symbol>
+  <symbol id="i-options" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M17 6l-8 6 8 6zM7 6v12"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M7 6l8 6-8 6zM17 6v12"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2.5v3.5M12 18v3.5M2.5 12H6M18 12h3.5"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4 3 9l9 5 9-5z"/><path d="M3 14l9 5 9-5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 11.5 3.5 3.5 0 0 0 7 18.5z"/><path d="M3.5 3.5l17 17"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5M14 9l2 2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <!-- placeholder Taiwan outline, viewBox 0 0 100 120 (also referenced by every map) -->
+  <symbol id="tw" viewBox="0 0 100 120"><path class="land__shape" d="M58 6 66 9 72 17 70 26 76 34 78 46 74 58 70 70 64 84 58 98 52 108 46 106 42 94 36 78 32 62 30 48 34 36 40 26 46 16 52 9z"/><path class="land__road" d="M54 14 50 36 46 60 50 84 52 100M40 40 60 44M38 62 62 66"/></symbol>
+</svg>
+
+<main class="doc">
+<header class="doc-head"><h1 class="text-title1">雨量 · 寬螢幕版面 · 提案 1（雷達尺寸）</h1><p>每張地圖一列：累積雨量在上、未來1hr預測在下。每列沿用雷達頁寬版：左＝地圖卡（標題、橫幅、地圖、圖例），右＝控制卡；右欄 40% 夾 320–480，間距 16，卡片內距 16/16/16/20，頁邊距 32。窄版不變。</p></header>
+<section class="doc-section"><h2>A 正常 · 1280 px（內容區 1152，右欄 460.8，地圖卡 675.2）</h2><p class="doc-note">標籤＝滾輪行為。藍＝地圖（縮放）；黑＝右欄與其餘區域（捲動頁面）。地圖高度 640 px 為視窗高 900 的示意（雷達公式：窗高 − 外框，下限 320）。</p>
+<div class="wide-scroll"><div class="wide-box"><div class="app-shell shell-wide"><nav class="rail" aria-label="主要導覽"><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-home"/></svg>天氣</a><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-radar"/></svg>雷達</a><a class="rail__item" href="#" aria-current="page"><svg class="icon icon--24" aria-hidden="true"><use href="#i-rainfall"/></svg>雨量</a><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-warning"/></svg>警特報</a><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-settings"/></svg>設定</a></nav><div class="shell-wide__main"><header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><p class="app-bar__subtitle">臺北市 信義區 · 觀測 14:00</p></div></header><div class="rw-page"><div class="rw-col"><section class="card rw-card" aria-label="最近測站"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">最近測站 · 臺北</h2><p class="rf-meta">距離 1.8 km · 觀測 14:00（未變更）</p></div><span class="badge badge--rain">未達大雨</span></div><div class="st-strip st-strip--wide"><div class="st-value"><span class="text-display num">12.5</span><span class="unit">mm</span><span class="text-caption1 text-tertiary">今日累積</span></div><div class="metric-grid"><div class="metric"><div><p class="metric__label">過去 1 小時</p><p class="metric__value">3.0 mm</p></div></div><div class="metric"><div><p class="metric__label">過去 3 小時</p><p class="metric__value">7.5 mm</p></div></div><div class="metric"><div><p class="metric__label">距大雨 80 mm</p><p class="metric__value">67.5 mm</p></div></div></div><div class="st-meter"><div class="st-bar"><div class="st-bar__fill" style="width:15.6%"></div></div><div class="st-ticks"><span>0</span><span>80 大雨</span><span>200 豪雨</span><span>350</span><span>500</span></div></div></div></section><div class="rw-two"><div class="rw-pane"><section class="card rw-card" aria-label="累積雨量地圖"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">累積雨量</h2><p class="rf-meta">過去 6 小時 · 37 張</p></div></div><div class="rf-map" role="img" aria-label="累積雨量圖"><svg class="land" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid slice"><use href="#tw"/><ellipse class="blob b-2" cx="56" cy="30" rx="13" ry="10"/><ellipse class="blob b-3" cx="58" cy="32" rx="7" ry="6"/><ellipse class="blob b-5" cx="60" cy="33" rx="3" ry="2.5"/><ellipse class="blob b-1" cx="42" cy="76" rx="8" ry="10"/><circle class="pin" cx="58" cy="30" r="2.6"/></svg><span class="map-chip">過去 6 小時累積 · 11/15 14:00</span><div class="map-fab" style="top:var(--space-8);bottom:auto"><button class="fab" aria-label="回到我的位置"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg></button></div><span class="zone-tag map-zoom-tag">滾輪 ＝ 縮放地圖</span></div><div class="legend" aria-label="6 小時累積 mm"><div class="row" style="justify-content:space-between"><span class="legend__title">6 小時累積 mm</span><span class="legend__unit">mm</span></div><div class="lg-bar17" aria-hidden="true"><span class="dbz-0"></span><span class="dbz-0"></span><span class="dbz-10"></span><span class="dbz-10"></span><span class="dbz-10"></span><span class="dbz-20"></span><span class="dbz-20"></span><span class="dbz-30"></span><span class="dbz-30"></span><span class="dbz-30"></span><span class="dbz-40"></span><span class="dbz-40"></span><span class="dbz-40"></span><span class="dbz-50"></span><span class="dbz-50"></span><span class="dbz-60"></span><span class="dbz-60"></span></div><div class="lg-lab17"><span>&lt;1</span><span>10</span><span>40</span><span>90</span><span>150</span><span>≥300</span></div></div><p class="rw-note">資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。</p></section></div><div class="rw-pane"><span class="zone-tag zone-tag--scroll side-tag">滾輪 ＝ 捲動頁面</span><section class="card rw-card" aria-label="累積雨量控制"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">動畫播放</h2><p class="rf-meta">37 張</p></div></div><div class="pb-field"><span class="pb-field__label">累積時距（小時）</span><div class="chip-group win-chips" role="radiogroup"><button class="chip" role="radio" aria-checked="false">1</button><button class="chip" role="radio" aria-checked="false">2</button><button class="chip" role="radio" aria-checked="false">3</button><button class="chip" role="radio" aria-checked="false">4</button><button class="chip" role="radio" aria-checked="true">6</button><button class="chip" role="radio" aria-checked="false">12</button><button class="chip" role="radio" aria-checked="false">24</button><button class="chip" role="radio" aria-checked="false">48</button><button class="chip" role="radio" aria-checked="false">168</button></div></div><div class="pb" role="group" aria-label="累積雨量播放"><div class="pb__time"><b>11/15 08:00 起累積至 14:00</b><span class="rf-meta">第 37 / 37 張 · 最新</span></div><div class="pb__row"><button class="btn btn--subtle btn--icon" aria-label="上一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-prev"/></svg></button><button class="btn btn--icon playback__play" aria-label="播放"><svg class="icon icon--20" aria-hidden="true"><use href="#i-play"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="下一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-next"/></svg></button><input class="slider__input" type="range" min="1" max="37" value="37" aria-label="影格時間" style="--fill:100%"></div><div class="playback__ticks"><span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span></div></div><details class="pb-settings"><summary class="pb-settings__summary"><span class="pb-settings__title"><svg class="icon icon--20" aria-hidden="true"><use href="#i-options"/></svg>播放設定</span><span class="pb-settings__state"><span>4 fps · 重複</span><svg class="icon icon--16 pb-settings__chev" aria-hidden="true"><use href="#i-chevron"/></svg></span></summary><div class="pb-settings__body"><div class="pb-field"><span class="pb-field__label">播放速度（fps）</span><div class="segmented segmented--block" role="radiogroup"><button class="segmented__item" role="radio" aria-checked="false">2</button><button class="segmented__item" role="radio" aria-checked="true">4</button><button class="segmented__item" role="radio" aria-checked="false">8</button><button class="segmented__item" role="radio" aria-checked="false">12</button><button class="segmented__item" role="radio" aria-checked="false">24</button></div></div><div class="pb-toggle"><div class="pb-toggle__text"><span class="pb-field__label">重複播放</span><span class="rf-meta">播放結束後等待 3 秒再重播</span></div><button class="switch" role="switch" aria-checked="true"><span class="switch__thumb"></span></button></div></div></details></section></div></div><div class="rw-two"><div class="rw-pane"><section class="card rw-card" aria-label="未來1hr預測地圖"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">未來 1hr 預測</h2><p class="rf-meta">14:00 – 15:00</p></div></div><div class="rf-map" role="img" aria-label="未來 1 小時雨量網格圖"><svg class="land" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid slice"><use href="#tw"/><ellipse class="blob b-1" cx="60" cy="40" rx="9" ry="7"/><ellipse class="blob b-2" cx="62" cy="39" rx="5" ry="4"/><ellipse class="blob b-1" cx="40" cy="78" rx="7" ry="9"/><circle class="pin" cx="58" cy="30" r="2.6"/></svg><span class="map-chip">14:00 – 15:00</span><div class="map-fab" style="top:var(--space-8);bottom:auto"><button class="fab" aria-label="回到我的位置"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg></button></div><span class="zone-tag map-zoom-tag">滾輪 ＝ 縮放地圖</span></div><div class="legend" aria-label="1 小時雨量圖例（毫米）"><div class="row" style="justify-content:space-between"><span class="legend__title">1 小時預估雨量</span><span class="legend__unit">mm</span></div><div class="legend__list"><span class="legend__item"><span class="legend__swatch b-1"></span>1–5 mm</span><span class="legend__item"><span class="legend__swatch b-2"></span>5–10</span><span class="legend__item"><span class="legend__swatch b-3"></span>10–20</span><span class="legend__item"><span class="legend__swatch b-4"></span>≥ 20</span></div></div><p class="rw-note">空白格表示預估雨量小於 1 mm 或無資料。</p></section></div><div class="rw-pane"><span class="zone-tag zone-tag--scroll side-tag">滾輪 ＝ 捲動頁面</span><section class="card rw-card" aria-label="此處預估"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">此處預估</h2><p class="rf-meta">信義區</p></div></div><div class="here"><svg class="icon icon--20 text-rain" aria-hidden="true"><use href="#i-location"/></svg><div><p class="text-body1-strong">信義區預估雨量 · 出門請帶傘</p></div><div class="here__value"><span class="text-title2 num">1–5</span><span class="text-caption1 text-tertiary">mm</span></div></div></section></div></div><section class="card rw-card" aria-label="測站今日累積雨量"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">測站今日累積雨量</h2><p class="rf-meta">未變更：整列卡片，在兩張地圖卡之後</p></div></div></section></div></div></div></div></div></div></section>
+<section class="doc-section"><h2>B 各狀態</h2><p class="doc-note">累積雨量失敗：橫幅在地圖上方（同雷達 hero 卡的 banner 位置），地圖變暗。網頁版不可用 / 設定錯誤 / 預測失敗 / 骨架：無地圖，整張單欄卡。無地點：預測卡無「此處預估」卡與圖釘，右欄留空。</p>
+<div class="wide-scroll"><div class="wide-box"><div class="app-shell shell-wide"><nav class="rail" aria-label="主要導覽"><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-home"/></svg>天氣</a><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-radar"/></svg>雷達</a><a class="rail__item" href="#" aria-current="page"><svg class="icon icon--24" aria-hidden="true"><use href="#i-rainfall"/></svg>雨量</a><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-warning"/></svg>警特報</a><a class="rail__item" href="#"><svg class="icon icon--24" aria-hidden="true"><use href="#i-settings"/></svg>設定</a></nav><div class="shell-wide__main"><header class="app-bar"><div class="app-bar__titles"><h1 class="app-bar__title">雨量</h1><p class="app-bar__subtitle">尚無目前地點</p></div></header><div class="rw-page"><div class="rw-col"><div class="rw-two"><div class="rw-pane"><section class="card rw-card" aria-label="累積雨量地圖"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">累積雨量</h2><p class="rf-meta">無法取得</p></div></div><div class="status-banner status-banner--error" role="alert"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><p class="status-banner__title">無法更新，顯示 13:50 的資料</p><p class="status-banner__text">網路逾時</p><div class="status-banner__actions"><button class="btn btn--secondary btn--sm">重試</button></div></div></div><div class="rf-map rf-map--muted" role="img" aria-label="累積雨量圖"><svg class="land" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid slice"><use href="#tw"/><circle class="pin" cx="58" cy="30" r="2.6"/></svg><span class="map-chip">無累積雨量資料</span><div class="map-fab" style="top:var(--space-8);bottom:auto"><button class="fab" aria-label="回到我的位置"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg></button></div></div><div class="legend" aria-label="6 小時累積 mm"><div class="row" style="justify-content:space-between"><span class="legend__title">6 小時累積 mm</span><span class="legend__unit">mm</span></div><div class="lg-bar17" aria-hidden="true"><span class="dbz-0"></span><span class="dbz-0"></span><span class="dbz-10"></span><span class="dbz-10"></span><span class="dbz-10"></span><span class="dbz-20"></span><span class="dbz-20"></span><span class="dbz-30"></span><span class="dbz-30"></span><span class="dbz-30"></span><span class="dbz-40"></span><span class="dbz-40"></span><span class="dbz-40"></span><span class="dbz-50"></span><span class="dbz-50"></span><span class="dbz-60"></span><span class="dbz-60"></span></div><div class="lg-lab17"><span>&lt;1</span><span>10</span><span>40</span><span>90</span><span>150</span><span>≥300</span></div></div><p class="rw-note">資料來源：中央氣象署 QPEplus 雨量站分析。低於 1 mm 不著色。</p></section></div><div class="rw-pane"><section class="card rw-card" aria-label="累積雨量控制"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">動畫播放</h2><p class="rf-meta">37 張</p></div></div><div class="pb-field"><span class="pb-field__label">累積時距（小時）</span><div class="chip-group win-chips" role="radiogroup"><button class="chip" role="radio" aria-checked="false">1</button><button class="chip" role="radio" aria-checked="false">2</button><button class="chip" role="radio" aria-checked="false">3</button><button class="chip" role="radio" aria-checked="false">4</button><button class="chip" role="radio" aria-checked="true">6</button><button class="chip" role="radio" aria-checked="false">12</button><button class="chip" role="radio" aria-checked="false">24</button><button class="chip" role="radio" aria-checked="false">48</button><button class="chip" role="radio" aria-checked="false">168</button></div></div><div class="pb" role="group" aria-label="累積雨量播放"><div class="pb__time"><b>11/15 08:00 起累積至 14:00</b><span class="rf-meta">第 37 / 37 張 · 最新</span></div><div class="pb__row"><button class="btn btn--subtle btn--icon" aria-label="上一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-prev"/></svg></button><button class="btn btn--icon playback__play" aria-label="播放"><svg class="icon icon--20" aria-hidden="true"><use href="#i-play"/></svg></button><button class="btn btn--subtle btn--icon" aria-label="下一張"><svg class="icon icon--20" aria-hidden="true"><use href="#i-next"/></svg></button><input class="slider__input" type="range" min="1" max="37" value="37" aria-label="影格時間" style="--fill:100%"></div><div class="playback__ticks"><span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span></div></div><details class="pb-settings"><summary class="pb-settings__summary"><span class="pb-settings__title"><svg class="icon icon--20" aria-hidden="true"><use href="#i-options"/></svg>播放設定</span><span class="pb-settings__state"><span>4 fps · 重複</span><svg class="icon icon--16 pb-settings__chev" aria-hidden="true"><use href="#i-chevron"/></svg></span></summary><div class="pb-settings__body"><div class="pb-field"><span class="pb-field__label">播放速度（fps）</span><div class="segmented segmented--block" role="radiogroup"><button class="segmented__item" role="radio" aria-checked="false">2</button><button class="segmented__item" role="radio" aria-checked="true">4</button><button class="segmented__item" role="radio" aria-checked="false">8</button><button class="segmented__item" role="radio" aria-checked="false">12</button><button class="segmented__item" role="radio" aria-checked="false">24</button></div></div><div class="pb-toggle"><div class="pb-toggle__text"><span class="pb-field__label">重複播放</span><span class="rf-meta">播放結束後等待 3 秒再重播</span></div><button class="switch" role="switch" aria-checked="true"><span class="switch__thumb"></span></button></div></div></details></section></div></div><section class="card rw-card" aria-label="累積雨量網頁版"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">累積雨量</h2><p class="rf-meta"></p></div></div><div class="status-banner status-banner--error" role="alert"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><p class="status-banner__title">網頁版無法取得此資料</p><p class="status-banner__text">累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。</p></div></div></section><section class="card rw-card" aria-label="預測錯誤"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">未來 1hr 預測</h2><p class="rf-meta"></p></div></div><div class="status-banner status-banner--error" role="alert"><span class="status-banner__icon"><svg class="icon icon--20" aria-hidden="true"><use href="#i-error"/></svg></span><div class="status-banner__body"><p class="status-banner__title">無法取得降雨預測</p><p class="status-banner__text">HTTP 503</p><div class="status-banner__actions"><button class="btn btn--secondary btn--sm">重試</button></div></div></div></section><div class="rw-two"><div class="rw-pane"><section class="card rw-card" aria-label="未來1hr預測地圖"><div class="card__header"><div class="rf-head__titles"><h2 class="rf-title">未來 1hr 預測</h2><p class="rf-meta">14:00 – 15:00</p></div></div><div class="rf-map" role="img" aria-label="未來 1 小時雨量網格圖"><svg class="land" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid slice"><use href="#tw"/><ellipse class="blob b-1" cx="60" cy="40" rx="9" ry="7"/><ellipse class="blob b-2" cx="62" cy="39" rx="5" ry="4"/><ellipse class="blob b-1" cx="40" cy="78" rx="7" ry="9"/></svg><span class="map-chip">14:00 – 15:00</span><div class="map-fab" style="top:var(--space-8);bottom:auto"><button class="fab" aria-label="回到我的位置"><svg class="icon icon--20" aria-hidden="true"><use href="#i-locate"/></svg></button></div></div><div class="legend" aria-label="1 小時雨量圖例（毫米）"><div class="row" style="justify-content:space-between"><span class="legend__title">1 小時預估雨量</span><span class="legend__unit">mm</span></div><div class="legend__list"><span class="legend__item"><span class="legend__swatch b-1"></span>1–5 mm</span><span class="legend__item"><span class="legend__swatch b-2"></span>5–10</span><span class="legend__item"><span class="legend__swatch b-3"></span>10–20</span><span class="legend__item"><span class="legend__swatch b-4"></span>≥ 20</span></div></div><p class="rw-note">空白格表示預估雨量小於 1 mm 或無資料。</p></section></div><div class="rw-pane"></div></div></div></div></div></div></div></div></section>
+</main>
+
+</body>
+</html>
