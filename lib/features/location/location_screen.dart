@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
@@ -115,12 +116,14 @@ class _ExplainerView extends ConsumerWidget {
     return AppPageScaffold(
       header: const AppPageHeader(title: '地點', subtitle: '首次使用'),
       children: [
-        const _IntroCard(
-          icon: Icons.my_location,
-          circleColor: AppPalette.brandBg,
-          cardColor: AppPalette.brandBgSubtle,
-          title: '讓天氣跟著你',
-          text: '允許使用位置後，App 會自動顯示你所在鄉鎮的天氣與警特報，不必每次手動選擇。',
+        const AppGridItem.full(
+          child: _IntroCard(
+            icon: Icons.my_location,
+            circleColor: AppPalette.brandBg,
+            cardColor: AppPalette.brandBgSubtle,
+            title: '讓天氣跟著你',
+            text: '允許使用位置後，App 會自動顯示你所在鄉鎮的天氣與警特報，不必每次手動選擇。',
+          ),
         ),
         const AppList(children: [
           AppListRow(
@@ -139,17 +142,19 @@ class _ExplainerView extends ConsumerWidget {
             secondary: '一眼看雨雲是否靠近',
           ),
         ]),
-        _ActionsColumn(children: [
-          AppButton(
-            label: '允許使用位置',
-            icon: Icons.my_location,
-            variant: AppButtonVariant.primary,
-            block: true,
-            onPressed: () => _useGps(ref),
-          ),
-          AppButton(label: '手動選擇地點', block: true, onPressed: onManual),
-        ]),
-        const _Note(icon: Icons.lock_outline, text: '位置僅在你的裝置上用來查詢天氣，不會上傳或分享。'),
+        _ActionsCell(
+          actions: [
+            AppButton(
+              label: '允許使用位置',
+              icon: Icons.my_location,
+              variant: AppButtonVariant.primary,
+              block: true,
+              onPressed: () => _useGps(ref),
+            ),
+            AppButton(label: '手動選擇地點', block: true, onPressed: onManual),
+          ],
+          note: const _Note(icon: Icons.lock_outline, text: '位置僅在你的裝置上用來查詢天氣，不會上傳或分享。'),
+        ),
       ],
     );
   }
@@ -182,8 +187,14 @@ class _SelectedView extends ConsumerWidget {
         ?AppConstants.townshipForecastDatasets[place.county]?.threeDay,
       ]),
       children: [
-        _PlaceHero(place: place, gps: gps),
-        _SearchField(readOnly: true, onTap: () => onManual(focusSearch: true)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpace.s16,
+          children: [
+            _PlaceHero(place: place, gps: gps),
+            _SearchField(readOnly: true, onTap: () => onManual(focusSearch: true)),
+          ],
+        ),
         _MyPlaces(
           current: place,
           gpsRow: gps
@@ -222,21 +233,23 @@ class _DeniedView extends ConsumerWidget {
       header: const AppPageHeader(title: '地點', subtitle: '未取得位置權限'),
       source: hasSaved ? const SourceLine(datasetIds: [_observationDataset]) : null,
       children: [
-        StatusBanner(
-          tone: StatusTone.permission,
-          title: '未取得位置權限',
-          text: _guidance(none),
-          actions: [
-            AppButton(
-              label: '前往設定',
-              variant: AppButtonVariant.primary,
-              small: true,
-              onPressed: () => _openSettings(context, Geolocator.openAppSettings),
-            ),
-            AppButton(label: '手動選擇', small: true, onPressed: onManual),
-          ],
+        AppGridItem.full(
+          child: StatusBanner(
+            tone: StatusTone.permission,
+            title: '未取得位置權限',
+            text: _guidance(none),
+            actions: [
+              AppButton(
+                label: '前往設定',
+                variant: AppButtonVariant.primary,
+                small: true,
+                onPressed: () => _openSettings(context, Geolocator.openAppSettings),
+              ),
+              AppButton(label: '手動選擇', small: true, onPressed: onManual),
+            ],
+          ),
         ),
-        _MyPlaces(current: null, gpsRow: _disabledGpsRow('未授權'), onManual: null),
+        AppGridItem.full(child: _MyPlaces(current: null, gpsRow: _disabledGpsRow('未授權'), onManual: null)),
       ],
     );
   }
@@ -257,12 +270,14 @@ class _DeniedForeverView extends ConsumerWidget {
       header: const AppPageHeader(title: '地點', subtitle: '位置權限已關閉'),
       source: hasSaved ? const SourceLine(datasetIds: [_observationDataset]) : null,
       children: [
-        const _IntroCard(
-          icon: Icons.location_disabled_outlined,
-          circleColor: AppPalette.warningSolid,
-          cardColor: AppPalette.warningBg,
-          title: '位置權限已關閉',
-          text: '系統不再詢問位置權限。要使用自動定位，請在系統設定中手動開啟。',
+        const AppGridItem.full(
+          child: _IntroCard(
+            icon: Icons.location_disabled_outlined,
+            circleColor: AppPalette.warningSolid,
+            cardColor: AppPalette.warningBg,
+            title: '位置權限已關閉',
+            text: '系統不再詢問位置權限。要使用自動定位，請在系統設定中手動開啟。',
+          ),
         ),
         const AppCard(
           title: '開啟步驟',
@@ -275,17 +290,20 @@ class _DeniedForeverView extends ConsumerWidget {
             ],
           ),
         ),
-        _ActionsColumn(children: [
-          AppButton(
-            label: '前往設定',
-            variant: AppButtonVariant.primary,
-            block: true,
-            onPressed: () => _openSettings(context, Geolocator.openAppSettings),
-          ),
-          AppButton(label: '手動選擇地點', block: true, onPressed: onManual),
-        ]),
-        _Note(icon: Icons.info_outline, text: '原因：${none.cause}'),
-        if (hasSaved) _MyPlaces(current: null, gpsRow: _disabledGpsRow('未授權'), onManual: null),
+        _ActionsCell(
+          actions: [
+            AppButton(
+              label: '前往設定',
+              variant: AppButtonVariant.primary,
+              block: true,
+              onPressed: () => _openSettings(context, Geolocator.openAppSettings),
+            ),
+            AppButton(label: '手動選擇地點', block: true, onPressed: onManual),
+          ],
+          note: _Note(icon: Icons.info_outline, text: '原因：${none.cause}'),
+        ),
+        if (hasSaved)
+          AppGridItem.full(child: _MyPlaces(current: null, gpsRow: _disabledGpsRow('未授權'), onManual: null)),
       ],
     );
   }
@@ -310,31 +328,34 @@ class _FailedView extends ConsumerWidget {
       ),
       source: hasSaved ? const SourceLine(datasetIds: [_observationDataset]) : null,
       children: [
-        StatusBanner(
-          tone: StatusTone.error,
-          title: '無法取得目前位置',
-          text: _guidance(none),
-          actions: [
-            if (serviceOff)
-              AppButton(
-                label: '前往設定',
-                variant: AppButtonVariant.primary,
-                small: true,
-                onPressed: () => _openSettings(context, Geolocator.openLocationSettings),
-              ),
-            RetryButton(primary: !serviceOff, onPressed: () => _useGps(ref)),
-            AppButton(label: '手動選擇', small: true, onPressed: onManual),
-          ],
-        ),
-        if (hasSaved)
-          _MyPlaces(current: null, gpsRow: _disabledGpsRow(serviceOff ? '定位服務關閉' : '無法定位'), onManual: null)
-        else
-          EmptyState(
-            title: '尚未設定地點',
-            text: '選擇一個縣市與鄉鎮後，即可查看當地天氣與警特報。',
-            icon: Icons.location_off_outlined,
-            actions: [AppButton(label: '手動選擇地點', variant: AppButtonVariant.primary, onPressed: onManual)],
+        AppGridItem.full(
+          child: StatusBanner(
+            tone: StatusTone.error,
+            title: '無法取得目前位置',
+            text: _guidance(none),
+            actions: [
+              if (serviceOff)
+                AppButton(
+                  label: '前往設定',
+                  variant: AppButtonVariant.primary,
+                  small: true,
+                  onPressed: () => _openSettings(context, Geolocator.openLocationSettings),
+                ),
+              RetryButton(primary: !serviceOff, onPressed: () => _useGps(ref)),
+              AppButton(label: '手動選擇', small: true, onPressed: onManual),
+            ],
           ),
+        ),
+        AppGridItem.full(
+          child: hasSaved
+              ? _MyPlaces(current: null, gpsRow: _disabledGpsRow(serviceOff ? '定位服務關閉' : '無法定位'), onManual: null)
+              : EmptyState(
+                  title: '尚未設定地點',
+                  text: '選擇一個縣市與鄉鎮後，即可查看當地天氣與警特報。',
+                  icon: Icons.location_off_outlined,
+                  actions: [AppButton(label: '手動選擇地點', variant: AppButtonVariant.primary, onPressed: onManual)],
+                ),
+        ),
       ],
     );
   }
@@ -352,11 +373,13 @@ class _CorruptView extends StatelessWidget {
     return AppPageScaffold(
       header: const AppPageHeader(title: '地點', subtitle: '地點資料損毀'),
       children: [
-        StatusBanner(
-          tone: StatusTone.error,
-          title: '無法讀取已儲存的地點',
-          text: '$error',
-          actions: [AppButton(label: '手動選擇', variant: AppButtonVariant.primary, small: true, onPressed: onManual)],
+        AppGridItem.full(
+          child: StatusBanner(
+            tone: StatusTone.error,
+            title: '無法讀取已儲存的地點',
+            text: '$error',
+            actions: [AppButton(label: '手動選擇', variant: AppButtonVariant.primary, small: true, onPressed: onManual)],
+          ),
         ),
       ],
     );
@@ -376,7 +399,9 @@ class _LocatingView extends StatelessWidget {
         actions: [AppIconButton(icon: Icons.refresh, tooltip: '重新定位', onPressed: null)],
       ),
       children: [
-        const StatusBanner(tone: StatusTone.loading, title: '正在取得你的位置…', text: '通常需要數秒'),
+        const AppGridItem.full(
+          child: StatusBanner(tone: StatusTone.loading, title: '正在取得你的位置…', text: '通常需要數秒'),
+        ),
         const AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight),
         AppList(children: [
           for (var i = 0; i < _skeletonRows; i++)
@@ -419,42 +444,42 @@ class _PickerViewState extends ConsumerState<_PickerView> {
     final town = _town;
     final saved = ref.watch(savedPlacesProvider).value ?? const [];
     final alreadySaved = town != null && saved.contains(town);
-    return AppPageScaffold(
-      header: AppPageHeader(title: '選擇地點', subtitle: '${_counties.length} 個縣市', onBack: widget.onClose),
+    // ponytail: a query that matches no county (e.g. a town name) keeps every chip so the user can still pick one.
+    final shownCounties = counties.isEmpty ? _counties : counties;
+    final scrollChips = WindowSizeClass.of(context).width == WindowWidthClass.compact;
+    final chips = [
+      for (final c in shownCounties)
+        AppChip(
+          label: c,
+          selected: c == _county,
+          onTap: () => setState(() {
+            _county = c;
+            _town = null;
+          }),
+        ),
+    ];
+    final countySection = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpace.s8,
       children: [
-        _SearchField(autofocus: widget.autofocus, onChanged: (q) => setState(() => _query = q.trim())),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: AppSpace.s8,
-          children: [
-            const SectionHeader(title: '縣市', trailing: _Meta('左右滑動')),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                spacing: AppSpace.s8,
-                // ponytail: a query that matches no county (e.g. a town name) keeps every chip so the user can still pick one.
-                children: [
-                  for (final c in counties.isEmpty ? _counties : counties)
-                    AppChip(
-                      label: c,
-                      selected: c == _county,
-                      onTap: () => setState(() {
-                        _county = c;
-                        _town = null;
-                      }),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        _TownList(
-          county: _county,
-          query: _query,
-          selected: town,
-          onSelect: (p) => setState(() => _town = p),
-        ),
-        Row(
+        SectionHeader(title: '縣市', trailing: scrollChips ? const _Meta('左右滑動') : null),
+        if (scrollChips)
+          SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(spacing: AppSpace.s8, children: chips))
+        else
+          Wrap(spacing: AppSpace.s8, runSpacing: AppSpace.s8, children: chips),
+      ],
+    );
+    final townSection = _TownList(
+      county: _county,
+      query: _query,
+      selected: town,
+      onSelect: (p) => setState(() => _town = p),
+    );
+    final buttons = Align(
+      alignment: Alignment.centerRight,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppLayout.readingWidth),
+        child: Row(
           spacing: AppSpace.s8,
           children: [
             Expanded(
@@ -481,6 +506,39 @@ class _PickerViewState extends ConsumerState<_PickerView> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+    return AppPageScaffold(
+      header: AppPageHeader(title: '選擇地點', subtitle: '${_counties.length} 個縣市', onBack: widget.onClose),
+      children: [
+        AppGridItem.full(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppLayout.readingWidth),
+              child: _SearchField(autofocus: widget.autofocus, onChanged: (q) => setState(() => _query = q.trim())),
+            ),
+          ),
+        ),
+        AppGridItem.full(
+          child: LayoutBuilder(
+            builder: (context, constraints) => AppTwoPane.fits(constraints.maxWidth)
+                ? AppTwoPane(
+                    sideFirst: true,
+                    side: countySection,
+                    main: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: AppSpace.s16,
+                      children: [townSection, buttons],
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: AppSpace.s16,
+                    children: [countySection, townSection, buttons],
+                  ),
+          ),
         ),
       ],
     );
@@ -524,18 +582,42 @@ class _TownList extends ConsumerWidget {
         if (shown.isEmpty)
           AppCard.empty(title: '找不到「$query」', message: '搜尋只比對$county的鄉鎮市區；請先選擇縣市')
         else
-          AppList(children: [
-            for (final t in shown)
-              AppListRow(
-                primary: t.town,
-                selected: _sameTown(t, selected),
-                trailing: _sameTown(t, selected)
-                    ? const Icon(Icons.check, size: AppSize.icon20, color: AppPalette.brandFg)
-                    : null,
-                onTap: () => onSelect(t),
-              ),
-          ]),
+          LayoutBuilder(builder: (context, constraints) {
+            final rows = [
+              for (final t in shown)
+                AppListRow(
+                  primary: t.town,
+                  selected: _sameTown(t, selected),
+                  trailing: _sameTown(t, selected)
+                      ? const Icon(Icons.check, size: AppSize.icon20, color: AppPalette.brandFg)
+                      : null,
+                  onTap: () => onSelect(t),
+                ),
+            ];
+            if (!AppTwoPane.fits(constraints.maxWidth)) return AppList(children: rows);
+            return AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: [for (final r in rows) _RowTile(row: r)]);
+          }),
       ],
+    );
+  }
+}
+
+/// One [AppListRow] as its own rounded card, for multi-column town grids ([AppList] assumes one column).
+class _RowTile extends StatelessWidget {
+  const _RowTile({required this.row});
+
+  final AppListRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppPalette.bg1,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        boxShadow: AppShadows.s2,
+      ),
+      child: row,
     );
   }
 }
@@ -767,8 +849,16 @@ class _IntroCard extends StatelessWidget {
             decoration: BoxDecoration(color: circleColor, shape: BoxShape.circle, boxShadow: AppShadows.s8),
             child: Icon(icon, size: AppSize.icon32, color: AppPalette.fgOnBrand),
           ),
-          Text(title, textAlign: TextAlign.center, style: AppType.title3.copyWith(color: AppPalette.fg1)),
-          Text(text, textAlign: TextAlign.center, style: AppType.body1.copyWith(color: AppPalette.fg2)),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AppLayout.readingWidth),
+            child: Column(
+              spacing: AppSpace.s12,
+              children: [
+                Text(title, textAlign: TextAlign.center, style: AppType.title3.copyWith(color: AppPalette.fg1)),
+                Text(text, textAlign: TextAlign.center, style: AppType.body1.copyWith(color: AppPalette.fg2)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -858,15 +948,29 @@ class _Step extends StatelessWidget {
   }
 }
 
-/// `.actions-col`
-class _ActionsColumn extends StatelessWidget {
-  const _ActionsColumn({required this.children});
+/// `.actions-col` + its note: one grid cell, buttons capped at reading width.
+class _ActionsCell extends StatelessWidget {
+  const _ActionsCell({required this.actions, required this.note});
 
-  final List<Widget> children;
+  final List<Widget> actions;
+  final Widget note;
 
   @override
   Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s8, children: children);
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppLayout.readingWidth),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpace.s16,
+          children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s8, children: actions),
+            note,
+          ],
+        ),
+      ),
+    );
   }
 }
 
