@@ -21,6 +21,23 @@ const _userAgentPackage = 'com.example.cwbweather';
 /// item 1). Never lowered to fit memory (user decision).
 const radarMaxDecodeWidth = 2048;
 
+const _fullCircleDegrees = 360.0;
+const _webMercatorTileSize = 256.0;
+
+/// Decode widths step up in multiples of this, so pinch-zooming does not decode
+/// a frame per gesture event.
+const _decodeWidthStep = 256;
+
+/// Pixel width to decode a frame at: the width the whole frame is drawn at on
+/// screen (its [lonSpanDegrees] at map [zoom], Web Mercator is linear in
+/// longitude) in device pixels, rounded up to [_decodeWidthStep] and capped at
+/// [radarMaxDecodeWidth]. Playing or paused, never lower than needed.
+int radarDecodeWidth({required double lonSpanDegrees, required double zoom, required double devicePixelRatio}) {
+  final onScreen = lonSpanDegrees / _fullCircleDegrees * _webMercatorTileSize * pow(2, zoom) * devicePixelRatio;
+  final stepped = (onScreen / _decodeWidthStep).ceil() * _decodeWidthStep;
+  return min(stepped, radarMaxDecodeWidth);
+}
+
 /// Image cache ceiling (user decision: 200–500 MB). The top of that range, so
 /// a 24-frame composite loop at 2048 px (~420 MiB with other images) is still
 /// held whole; longer loops (200 station frames ≈ 3.2 GiB) are decoded during
@@ -65,9 +82,8 @@ const _pinBorder = 2.0;
 
 /// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 button
 /// (top right) and the current place's pin. [overlayBuilder] gets the pixel width the
-/// radar frame should be decoded at: the viewport width capped at
-/// [radarMaxDecodeWidth], playing or paused, and must return the one shown
-/// frame. The image cache follows [radarImageCachePlan] for the [loop]; it goes
+/// radar frame should be decoded at ([radarDecodeWidth] of [frameBounds] at the
+/// current zoom), and must return the one shown frame. The image cache follows [radarImageCachePlan] for the [loop]; it goes
 /// back to Flutter's default when the map leaves the screen.
 class RadarMapView extends StatefulWidget {
   const RadarMapView({
@@ -75,6 +91,7 @@ class RadarMapView extends StatefulWidget {
     required this.me,
     this.chipText,
     this.chipIcon,
+    this.frameBounds,
     this.overlayBuilder,
     this.loop,
     this.extraLayers = const [],
@@ -89,6 +106,9 @@ class RadarMapView extends StatefulWidget {
   /// Top-left chip (observation time / 無雷達資料); none while loading.
   final String? chipText;
   final IconData? chipIcon;
+
+  /// Extent of the shown radar frame; required with [overlayBuilder].
+  final LatLngBounds? frameBounds;
   final List<OverlayImage> Function(int decodeWidth)? overlayBuilder;
   /// The radar loop shown by [overlayBuilder]; null for a single image that
   /// needs no cache plan (rainfall maps).
@@ -106,8 +126,17 @@ class RadarMapView extends StatefulWidget {
   State<RadarMapView> createState() => _RadarMapViewState();
 }
 
+/// Maps that have set the image cache size. The cache goes back to the default
+/// only when the last one is disposed, so an old map replaced by a new one
+/// (which sets the size first) cannot undo the new map's size.
+int _cacheOwners = 0;
+
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
+  late double _zoom = _initialZoom();
+
+  /// Whether this map has set the image cache size ([_cacheOwners]).
+  bool _ownsCacheSize = false;
 
   double _initialZoom() => widget.me == null ? _overviewZoom : _locatedZoom;
 
@@ -121,8 +150,26 @@ class _RadarMapViewState extends State<RadarMapView> {
   @override
   void dispose() {
     _controller.dispose();
-    PaintingBinding.instance.imageCache.maximumSizeBytes = _flutterDefaultImageCacheBytes;
+    if (_ownsCacheSize && --_cacheOwners == 0) {
+      PaintingBinding.instance.imageCache.maximumSizeBytes = _flutterDefaultImageCacheBytes;
+    }
     super.dispose();
+  }
+
+  int _decodeWidth(double zoom) {
+    final bounds = widget.frameBounds;
+    if (bounds == null) throw StateError('RadarMapView: overlayBuilder given without frameBounds');
+    return radarDecodeWidth(
+      lonSpanDegrees: bounds.east - bounds.west,
+      zoom: zoom,
+      devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+    );
+  }
+
+  void _onPositionChanged(MapCamera camera, bool hasGesture) {
+    final stepChanged = widget.overlayBuilder != null && _decodeWidth(camera.zoom) != _decodeWidth(_zoom);
+    _zoom = camera.zoom;
+    if (stepChanged) setState(() {});
   }
 
   /// Frame image on screen after the last build.
@@ -131,12 +178,15 @@ class _RadarMapViewState extends State<RadarMapView> {
   /// The frame overlay at the decode width, with the image cache sized by
   /// [radarImageCachePlan]; after the frame is painted, the frame that left the
   /// screen is evicted (loop not held) and the next frame is decoded ahead.
-  List<OverlayImage> _frameOverlay(
-      List<OverlayImage> Function(int decodeWidth) builder, double viewportLogical, RadarLoopShape? loop) {
-    final width = min((viewportLogical * MediaQuery.devicePixelRatioOf(context)).ceil(), radarMaxDecodeWidth);
+  List<OverlayImage> _frameOverlay(List<OverlayImage> Function(int decodeWidth) builder, RadarLoopShape? loop) {
+    final width = _decodeWidth(_zoom);
     if (loop == null) return builder(width);
     final plan = radarImageCachePlan(frameCount: loop.frameCount, decodeWidth: width, aspect: loop.aspect);
     PaintingBinding.instance.imageCache.maximumSizeBytes = plan.maximumBytes;
+    if (!_ownsCacheSize) {
+      _ownsCacheSize = true;
+      _cacheOwners++;
+    }
     final overlay = builder(width);
     final shown = overlay.single.imageProvider;
     final left = _shown;
@@ -171,11 +221,12 @@ class _RadarMapViewState extends State<RadarMapView> {
                   options: MapOptions(
                     initialCenter: me ?? _taiwanCenter,
                     initialZoom: _initialZoom(),
+                    onPositionChanged: _onPositionChanged,
                   ),
                   children: [
                     TileLayer(urlTemplate: _tileUrl, userAgentPackageName: _userAgentPackage),
                     if (builder != null)
-                      OverlayImageLayer(overlayImages: _frameOverlay(builder, box.maxWidth, loop)),
+                      OverlayImageLayer(overlayImages: _frameOverlay(builder, loop)),
                     ...widget.extraLayers,
                     if (me != null)
                       MarkerLayer(

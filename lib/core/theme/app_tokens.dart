@@ -130,7 +130,7 @@ abstract final class AppPalette {
   // exactly the colours CWA draws, so legend, timeline bars and the radar
   // overlay agree. Index = dBZ (0–65). Source: legend bar of the website frame
   // CV1_3600_202611142230 (column 3453, rows 2507–3571): 66 equal 16-row
-  // steps, 65 dBZ at the top down to 0 at the bottom; the O-A0084 station
+  // steps, 65 dBZ at the top down to 0 at the bottom; the website station
   // images use the same 66 colours. The radar processor keys echo pixels by
   // these colours (radarEchoPalette), so they must stay CWA's values.
   // Legends must always label numbers.

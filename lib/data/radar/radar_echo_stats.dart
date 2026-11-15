@@ -13,7 +13,7 @@ import 'radar_frame_processor.dart';
 // the real frame CV1_3600_202611142230 (column 3453, rows 2507–3571) is 66
 // equal 16-row steps whose colours are palette indices 65 (top) down to 0
 // (bottom), i.e. one colour per 1 dBZ over the legend's 0–65 dBZ scale. The
-// O-A0084 station images carry the same 66-colour bar.
+// website station images carry the same 66-colour bar.
 
 /// Echo weaker than this is not "明顯回波". Marshall–Palmer (Z = 200 R^1.6):
 /// 20 dBZ ≈ 0.65 mm/h, just above the 0.5 mm resolution of CWA rain gauges;

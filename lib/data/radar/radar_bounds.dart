@@ -35,9 +35,9 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
 
 const _earthRadiusKm = 6371.0088;
 
-/// A station radar: image-name code in the website station list, open-data
-/// dataset id (the app's source id) and site. Sites from the O-A0084-00x
-/// metadata (StationLongitude/StationLatitude, 2026-11-15).
+/// A station radar: image-name code in the website station list, dataset id
+/// (the app's source id) and site. Sites from CWA's station radar metadata
+/// (StationLongitude/StationLatitude, 2026-11-15).
 typedef RadarStation = ({String code, String datasetId, LatLng site});
 
 const radarStations = <RadarStation>[
@@ -46,9 +46,8 @@ const radarStations = <RadarStation>[
   (code: 'RCLY', datasetId: AppConstants.radarLinyuan, site: LatLng(22.53, 120.38)), // 林園
 ];
 
-/// Station images reach this far from the radar (O-A0084 「距雷達150公里」). The
-/// website station frames have the open-data images' layout (98 % of pixels
-/// identical, same legend bar at x 3462-3525, y 2541-3572; checked 2026-11-15).
+/// Website station images reach this far from the radar (their 「距雷達150公里」
+/// ring); legend bar at x 3462-3525, y 2541-3572 (checked 2026-11-15).
 const radarStationRangeKm = 150.0;
 
 /// Square around a station radar whose half-side is [radiusKm] (the image's

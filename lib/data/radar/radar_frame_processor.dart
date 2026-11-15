@@ -7,7 +7,7 @@ import 'package:image/image.dart' as img;
 import '../../core/theme/app_tokens.dart';
 import 'radar_echo_stats.dart';
 
-/// Post-processing of a radar image (website `CV1_3600_` frame or open-data
+/// Post-processing of a radar image (website `CV1_3600_` frame or website
 /// station image): background → transparent, rows reprojected as the
 /// [RadarImageGeometry] says, stored as one 8-bit indexed PNG.
 ///
@@ -34,7 +34,7 @@ const websiteFrameDecorations = <PixelRect>[
   (left: 97, top: 223, right: 146, bottom: 718), // radar station status dots
 ];
 
-/// Decorations of the O-A0084-00x station images drawn in legend colours: only
+/// Decorations of the website station frames drawn in legend colours: only
 /// the dBZ colour bar (identical on all three stations, 66 x 1032 px; no other
 /// legend-colour pixels outside the 150 km circle, measured 2026-11-14).
 const stationFrameDecorations = <PixelRect>[

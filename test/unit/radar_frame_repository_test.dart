@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -35,17 +36,43 @@ String _key(RadarFrameRef f) => f.time.toIso8601String().replaceAll(RegExp(r'[^0
 
 const _listUrl = 'https://example.test/list.js';
 
-/// Serves [_png] for every URL except [failing] (HTTP 500).
+/// Serves [_png] for every URL except [failing] (HTTP 500); records every URL.
 class _Adapter implements HttpClientAdapter {
   _Adapter({this.failing = const {}});
 
   final Set<String> failing;
+  final requested = <String>[];
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async =>
-      failing.contains(options.uri.toString())
-          ? ResponseBody.fromString('boom', 500)
-          : ResponseBody.fromBytes(_png, 200);
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    requested.add(options.uri.toString());
+    return failing.contains(options.uri.toString())
+        ? ResponseBody.fromString('boom', 500)
+        : ResponseBody.fromBytes(_png, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Answers the list at once; every frame download waits for [release].
+/// Records frame requests and the ones whose cancel signal fired.
+class _GatedAdapter implements HttpClientAdapter {
+  final release = Completer<void>();
+  final firstFrameRequest = Completer<void>();
+  final requested = <String>[];
+  final cancelled = <String>[];
+
+  @override
+  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    final url = options.uri.toString();
+    if (url == _listUrl) return ResponseBody.fromString('list', 200);
+    requested.add(url);
+    cancelFuture?.then((_) => cancelled.add(url));
+    if (!firstFrameRequest.isCompleted) firstFrameRequest.complete();
+    await release.future;
+    return ResponseBody.fromBytes(_png, 200);
+  }
 
   @override
   void close({bool force = false}) {}
@@ -60,16 +87,27 @@ void main() {
   final window = [for (final s in [2242, 1011, 497, 303]) _ref(Duration(seconds: s))];
   const span = Duration(minutes: 40);
 
-  /// One load of a source listing [frames] (any list body parses to them).
+  /// A source listing [frames] (any list body parses to them).
+  RadarSource source(Dio dio, List<RadarFrameRef> frames, {Duration maxWindow = const Duration(hours: 24)}) =>
+      RadarSource(dio, id: 'test', listUrl: _listUrl, maxWindow: maxWindow, parse: (_) => frames);
+
+  RadarFrameRepository repository(Dio dio, {DateTime? now}) =>
+      RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now);
+
+  /// One load of a source listing [frames] over [adapter].
   Stream<RadarLoop> load(List<RadarFrameRef> frames,
-      {Set<String> failing = const {}, DateTime? now, Duration window = span}) {
-    final dio = Dio()..httpClientAdapter = _Adapter(failing: failing);
-    final source = RadarSource(dio, id: 'test', listUrl: _listUrl, maxWindow: const Duration(hours: 24), parse: (_) => frames);
-    return RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now).watch(source, window: window);
+      {Set<String> failing = const {},
+      DateTime? now,
+      Duration window = span,
+      Duration maxWindow = const Duration(hours: 24),
+      _Adapter? adapter}) {
+    final dio = Dio()..httpClientAdapter = adapter ?? _Adapter(failing: failing);
+    return repository(dio, now: now).watch(source(dio, frames, maxWindow: maxWindow), window: window);
   }
 
   List<DateTime> stamps(RadarLoop l) => [for (final f in l.frames) f.time];
   Directory cacheDir() => Directory('${root.path}/$radarFrameCacheDirName/test');
+  List<String> cacheFiles() => [for (final e in cacheDir().listSync()) e.path.split('/').last]..sort();
 
   test('empty cache: newest frame emitted first, then one frame per event, final loop oldest first', () async {
     final events = await load(window).toList();
@@ -97,6 +135,14 @@ void main() {
     expect((last.loading, last.windowSize), (false, null));
     expect(last.listError, isA<RadarDataException>());
     expect('${last.listError}', allOf(contains(_listUrl), contains('HTTP 500')));
+    expect(last.listError, isNot(isA<RadarStaleListException>()), reason: 'a failed request is not a stale list');
+  });
+
+  test('a list without recent frames is a stale list, told apart from a failed request', () async {
+    await load(window).drain<void>();
+    final last = await load(window, now: _now.add(const Duration(hours: 1))).last;
+    expect(stamps(last), [for (final f in window) f.time]);
+    expect(last.listError, isA<RadarStaleListException>());
   });
 
   test('a failing frame does not fail the window; the failure names the frame', () async {
@@ -108,23 +154,75 @@ void main() {
     expect(last.failures.single.error, isA<DioException>());
   });
 
-  test('24 h retention by the injected clock; frames outside the window but inside 24 h stay', () async {
-    final old = _ref(const Duration(hours: 23));
-    final outside = _ref(const Duration(hours: 5));
+  test('retention = the source max window before the newest frame; outside the selected window stays', () async {
+    const maxWindow = Duration(hours: 6);
+    // Older than now - 6 h but inside the 6 h window ending at the newest listed frame.
+    final edge = _ref(const Duration(hours: 6, minutes: 2));
+    final outside = _ref(const Duration(hours: 3));
     final recent = _ref(const Duration(minutes: 5));
-    await load([old, outside, recent], window: const Duration(hours: 24)).drain<void>();
-    File('${cacheDir().path}/${_key(recent)}.png.tmp').writeAsStringSync('interrupted write');
+    await load([edge, outside, recent], window: maxWindow, maxWindow: maxWindow).drain<void>();
 
+    final again = _Adapter();
+    final full = await load([edge, outside, recent], window: maxWindow, maxWindow: maxWindow, adapter: again).last;
+    expect(stamps(full), [edge.time, outside.time, recent.time]);
+    expect(again.requested, [_listUrl], reason: 'a full window is not pruned and downloaded again');
+
+    File('${cacheDir().path}/${_key(recent)}.png.tmp').writeAsStringSync('interrupted write');
     final later = _now.add(const Duration(hours: 2));
-    final last = await load([recent], now: later).last;
-    expect(stamps(last), [recent.time]);
-    final files = [for (final e in cacheDir().listSync()) e.path.split('/').last]..sort();
-    expect(files, [
-      '${_key(outside)}.png',
-      '${_key(outside)}.stats.gz',
-      '${_key(recent)}.png',
-      '${_key(recent)}.stats.gz',
+    final newer = _ref(const Duration(minutes: -115));
+    await load([newer], now: later, maxWindow: maxWindow).drain<void>();
+    final last = await load([newer], now: later, maxWindow: maxWindow).last;
+    expect(stamps(last), [newer.time]);
+    expect(cacheFiles(), [
+      for (final f in [outside, recent, newer]) ...['${_key(f)}.png', '${_key(f)}.stats.gz'],
     ]);
+  });
+
+  test('cancelling a load aborts its downloads; the next load shows the cache without waiting for them', () async {
+    await load(window).drain<void>();
+    final gated = _GatedAdapter();
+    final dio = Dio()..httpClientAdapter = gated;
+    final repo = repository(dio);
+    final uncached = _ref(const Duration(seconds: 100));
+    final first = repo.watch(source(dio, [...window, uncached]), window: span).listen(null);
+    await gated.firstFrameRequest.future;
+    await first.cancel();
+
+    final events = await repo.watch(source(dio, window), window: const Duration(minutes: 30)).toList();
+    final shown = [for (final f in window.skip(1)) f.time];
+    expect(stamps(events.first), shown, reason: 'cached frames first');
+    expect(stamps(events.last), shown);
+    expect((events.last.loading, events.last.failures.length), (false, 0));
+    expect(gated.requested, [uncached.url]);
+    expect(gated.cancelled, [uncached.url], reason: 'the in-flight download was cancelled, not awaited');
+    expect(gated.release.isCompleted, isFalse);
+    expect(cacheFiles().where((f) => !f.endsWith('.png') && !f.endsWith('.stats.gz')), isEmpty);
+  }, timeout: const Timeout(Duration(seconds: 2)));
+
+  test('two overlapping loads: events in order, one load after the other, no partial files', () async {
+    final gated = _GatedAdapter();
+    final dio = Dio()..httpClientAdapter = gated;
+    final repo = repository(dio);
+    final log = <(String, RadarLoop)>[];
+    Future<List<RadarLoop>> collect(String name, Stream<RadarLoop> s) =>
+        s.map((l) => (log..add((name, l))).last.$2).toList();
+
+    final first = collect('first', repo.watch(source(dio, window), window: span));
+    await gated.firstFrameRequest.future;
+    const short = Duration(minutes: 10);
+    final second = collect('second', repo.watch(source(dio, window), window: short));
+    gated.release.complete();
+    final (a, b) = (await first, await second);
+
+    expect([for (final (name, _) in log) name], [...List.filled(a.length, 'first'), ...List.filled(b.length, 'second')]);
+    expect([for (final e in a) e.frames.length], [0, 1, 2, 3, 4, 4]);
+    expect([for (final e in a) e.loading], [...List.filled(a.length - 1, true), false]);
+    expect(stamps(a.last), [for (final f in window) f.time]);
+    final recent = [for (final f in window) if (f.time.isAfter(_now.subtract(short))) f.time];
+    expect([stamps(b.first), stamps(b.last)], [recent, recent]);
+    expect(b.last.loading, isFalse);
+    expect(gated.requested, unorderedEquals([for (final f in window) f.url]), reason: 'the second load reads the cache');
+    expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.png', '${_key(f)}.stats.gz']]);
   });
 
   test('per-source window limits: composite up to 24 h, stations up to 6 h', () {

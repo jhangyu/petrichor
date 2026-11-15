@@ -16,6 +16,13 @@ class RadarDataException implements Exception {
   String toString() => 'RadarDataException($source): expected $expected, got $actual';
 }
 
+/// The frame list was fetched but has no frame within the window (the source
+/// stopped updating); every other [RadarDataException] means the data could
+/// not be obtained.
+class RadarStaleListException extends RadarDataException {
+  const RadarStaleListException(super.source, {required super.expected, required super.actual});
+}
+
 /// A CWA website radar loop. Every source's frames go through the same
 /// pipeline (download → `processRadarFrame` → cache → stream) and the same
 /// screen; a source only differs in its frame list (native cadence, regular
@@ -49,12 +56,16 @@ class RadarSource {
   }
 
   /// Frames of the [window] ending at the newest listed frame, oldest first.
-  /// Throws when the list cannot be obtained or has no frame that recent.
-  Future<List<RadarFrameRef>> listFrames({required DateTime now, required Duration window}) async {
+  /// Throws [RadarDataException] when the list cannot be obtained,
+  /// [RadarStaleListException] when it has no frame that recent, and the
+  /// cancellation [DioException] as is once [cancelToken] fires.
+  Future<List<RadarFrameRef>> listFrames({required DateTime now, required Duration window, CancelToken? cancelToken}) async {
     final Response<String> response;
     try {
-      response = await _dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain));
+      response =
+          await _dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain), cancelToken: cancelToken);
     } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) rethrow;
       throw RadarDataException(listUrl,
           expected: 'HTTP 200 with the frame list',
           actual: switch (e.response) { final r? => 'HTTP ${r.statusCode}', null => '${e.type.name}: ${e.message}' });
@@ -63,7 +74,7 @@ class RadarSource {
         (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
     final frames = selectRadarFrameWindow(parse(js), now: now, window: window);
     if (frames.isEmpty) {
-      throw RadarDataException(listUrl, expected: 'frames newer than ${now.toUtc().subtract(window)} for $id', actual: 'none');
+      throw RadarStaleListException(listUrl, expected: 'frames newer than ${now.toUtc().subtract(window)} for $id', actual: 'none');
     }
     return frames;
   }

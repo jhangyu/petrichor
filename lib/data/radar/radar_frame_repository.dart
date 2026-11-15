@@ -17,11 +17,6 @@ import 'radar_source.dart';
 /// never shown.
 const radarFrameCacheDirName = 'radar_indexed_png_v1';
 
-/// Frames of every source stay on disk this long after their observation
-/// time, whatever look-back is selected, so changing the window never deletes
-/// or reprocesses frames. 24 h = the longest source window.
-const radarFrameRetention = Duration(hours: 24);
-
 /// Frames downloaded and processed at once. Measured on the Mac
 /// (docs/logs/2026-11-15/radar-perf-handover.md §9): 2 workers are 2.1x
 /// faster than 1 for ~+100 MB RSS; 4 workers cost +410 MB RSS (rejected).
@@ -106,7 +101,8 @@ class RadarLoop {
   /// Listed frames that failed; the other frames are still shown.
   final List<RadarFrameFailure> failures;
 
-  /// The frame list could not be fetched; [frames] then come from the cache.
+  /// The frame list could not be fetched, or is stale
+  /// ([RadarStaleListException]); [frames] then come from the cache.
   final Exception? listError;
 
   const RadarLoop({
@@ -121,15 +117,17 @@ class RadarLoop {
 
 /// Loads a source's frames: cached frames first, then the frame list, then
 /// the missing frames newest first, each processed off the UI isolate and
-/// emitted as soon as it is ready. Keeps [radarFrameRetention] of frames on disk.
+/// emitted as soon as it is ready. Keeps [RadarSource.maxWindow] of frames on
+/// disk per source, so changing the window never deletes or reprocesses frames.
 class RadarFrameRepository {
   final Dio _dio;
   final Future<Directory> Function() cacheRoot;
   final DateTime Function() clock;
 
   /// The last started load. Loads run one after another (cache files and the
-  /// [radarProcessWorkers] memory bound are shared); a cancelled load stops
-  /// after its in-flight frames.
+  /// [radarProcessWorkers] memory bound are shared); cancelling a load aborts
+  /// its HTTP requests and drops its frames still in processing, so the next
+  /// load starts at once.
   Future<void> _lastLoad = Future.value();
 
   RadarFrameRepository(this._dio, {required this.cacheRoot, required this.clock});
@@ -140,18 +138,19 @@ class RadarFrameRepository {
     if (window <= Duration.zero || window > source.maxWindow) {
       throw RangeError('radar window: expected 0 < window <= ${source.maxWindow} for ${source.id}, got $window');
     }
-    var cancelled = false;
+    final cancel = CancelToken();
     final out = StreamController<RadarLoop>();
-    out.onCancel = () => cancelled = true;
+    out.onCancel = () => cancel.cancel('radar load of ${source.id} cancelled');
     out.onListen = () async {
       final previous = _lastLoad;
       final done = Completer<void>();
       _lastLoad = done.future;
       try {
         await previous;
-        await _load(source, window, out.add, () => cancelled);
+        await _load(source, window, out.add, cancel);
       } catch (e, s) {
-        out.addError(e, s);
+        // The cancellation error is how a cancelled load ends; nobody listens.
+        if (!(cancel.isCancelled && _isCancel(e))) out.addError(e, s);
       } finally {
         done.complete();
         await out.close();
@@ -160,11 +159,11 @@ class RadarFrameRepository {
     return out.stream;
   }
 
-  Future<void> _load(RadarSource source, Duration window, void Function(RadarLoop) emit, bool Function() cancelled) async {
+  Future<void> _load(RadarSource source, Duration window, void Function(RadarLoop) emit, CancelToken cancel) async {
     final dir = Directory('${(await cacheRoot()).path}/$radarFrameCacheDirName/${source.id}');
     await dir.create(recursive: true);
     final now = clock();
-    final cached = await _pruneCache(dir, now: now);
+    final cached = await _pruneCache(dir, now: now, retention: source.maxWindow);
     final ready = <String, RadarFrame>{};
     Future<RadarEchoStats> readStats(String key) async {
       final file = File('${dir.path}/$key.stats.gz');
@@ -214,8 +213,9 @@ class RadarFrameRepository {
 
     final List<RadarFrameRef> listed;
     try {
-      listed = await source.listFrames(now: now, window: window);
+      listed = await source.listFrames(now: now, window: window, cancelToken: cancel);
     } on Exception catch (e) {
+      if (_isCancel(e)) rethrow;
       await send(() => cachedShown, loading: false, listError: e);
       return;
     }
@@ -232,8 +232,9 @@ class RadarFrameRepository {
       ..sort((a, b) => b.time.compareTo(a.time));
     Future<void> fetch(RadarFrameRef f) async {
       try {
-        ready[_cacheKey(f.time)] = await _fetch(dir, f);
+        ready[_cacheKey(f.time)] = await _fetch(dir, f, cancel);
       } on Exception catch (e) {
+        if (_isCancel(e)) rethrow;
         failures.add(RadarFrameFailure(f, e));
       }
       await sendWindow(loading: true);
@@ -243,7 +244,7 @@ class RadarFrameRepository {
     if (queue.isNotEmpty) await fetch(queue.first);
     var next = 1;
     Future<void> worker() async {
-      while (next < queue.length && !cancelled()) {
+      while (next < queue.length && !cancel.isCancelled) {
         await fetch(queue[next++]);
       }
     }
@@ -253,29 +254,39 @@ class RadarFrameRepository {
   }
 
   /// Deletes every file of [dir] that is not a frame file observed within
-  /// [radarFrameRetention] before [now] (including temp files of an
-  /// interrupted write); returns the keys of complete frames, oldest first.
-  Future<List<String>> _pruneCache(Directory dir, {required DateTime now}) async {
-    final cutoff = now.toUtc().subtract(radarFrameRetention);
-    final keys = <String>[];
-    await for (final entity in dir.list()) {
-      final match = _cacheFilePattern.firstMatch(entity.path.substring(dir.path.length + 1));
-      if (match == null || _cacheKeyTime(match[1]!).isBefore(cutoff)) {
-        await entity.delete(recursive: true);
-      } else if (match[2] == 'png') {
-        keys.add(match[1]!);
-      }
+  /// [retention] before the newest cached frame, or before [now] if that is
+  /// earlier (including temp files of an interrupted write); returns the keys
+  /// of complete frames, oldest first. Anchored like the windows (which end at
+  /// the newest frame, a few minutes before [now]), so a full window is never
+  /// pruned and downloaded again.
+  Future<List<String>> _pruneCache(Directory dir, {required DateTime now, required Duration retention}) async {
+    final entries = [
+      for (final entity in await dir.list().toList())
+        (entity, _cacheFilePattern.firstMatch(entity.path.substring(dir.path.length + 1)))
+    ];
+    final pngKeys = [for (final (_, match) in entries) if (match?[2] == 'png') match![1]!]..sort();
+    final newest = pngKeys.isEmpty ? null : _cacheKeyTime(pngKeys.last);
+    final end = newest != null && newest.isBefore(now.toUtc()) ? newest : now.toUtc();
+    final cutoff = end.subtract(retention);
+    for (final (entity, match) in entries) {
+      if (match == null || _cacheKeyTime(match[1]!).isBefore(cutoff)) await entity.delete(recursive: true);
     }
-    return keys..sort();
+    return [for (final key in pngKeys) if (!_cacheKeyTime(key).isBefore(cutoff)) key];
   }
 
   /// Downloads and processes [f]; the PNG is renamed into place last, so a
-  /// `<key>.png` always has its stats file.
-  Future<RadarFrame> _fetch(Directory dir, RadarFrameRef f) async {
-    final response = await _dio.get<List<int>>(f.url, options: Options(responseType: ResponseType.bytes));
+  /// `<key>.png` always has its stats file. Throws the cancellation error once
+  /// [cancel] fires, before any file is written: a frame still in processing
+  /// is dropped (its isolate runs to the end unobserved).
+  Future<RadarFrame> _fetch(Directory dir, RadarFrameRef f, CancelToken cancel) async {
+    final response =
+        await _dio.get<List<int>>(f.url, options: Options(responseType: ResponseType.bytes), cancelToken: cancel);
     final body = response.data ??
         (throw RadarDataException(f.url, expected: 'PNG body', actual: 'HTTP ${response.statusCode} without body'));
-    final processed = await _processOffUiIsolate(Uint8List.fromList(body), f.geometry);
+    final processed = await Future.any([
+      _processOffUiIsolate(Uint8List.fromList(body), f.geometry),
+      cancel.whenCancel.then<ProcessedRadarFrame>((e) => throw e),
+    ]);
     final key = _cacheKey(f.time);
     final stats = File('${dir.path}/$key.stats.gz');
     final png = File('${dir.path}/$key.png');
@@ -285,6 +296,8 @@ class RadarFrameRepository {
     return _frame(f.time, png, processed.stats, _pngSize(processed.png, source: f.url));
   }
 }
+
+bool _isCancel(Object e) => e is DioException && CancelToken.isCancel(e);
 
 RadarFrame _frame(DateTime time, File png, RadarEchoStats stats, ({int width, int height}) size) => RadarFrame(
       time: time,

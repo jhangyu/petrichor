@@ -16,6 +16,7 @@ import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart';
+import '../../data/radar/radar_source.dart' show RadarStaleListException;
 import '../location/place_provider.dart';
 import 'radar_playback.dart';
 import 'radar_provider.dart';
@@ -174,7 +175,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         subtitleIcon: Icons.schedule,
         actions: [AppIconButton(icon: Icons.refresh, tooltip: '重新整理', onPressed: view.loading ? null : _refresh)],
       ),
-      source: view.sourceIds == null ? null : SourceLine(datasetIds: view.sourceIds!),
       children: [
         if (ref.watch(currentPlaceProvider) case AsyncData(value: NoPlace(:final reason)))
           StatusBanner(
@@ -194,6 +194,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         _sourceCard(),
         if (view.sourceIds != null) _opacityCard(),
         if (view.sourceIds != null && _isComposite) _coverageCard(),
+        if (view.sourceIds != null)
+          Text(
+            '資料來源：中央氣象署 官網雷達回波圖',
+            textAlign: TextAlign.center,
+            style: AppType.caption1.copyWith(color: AppPalette.fg3),
+          ),
       ],
     );
   }
@@ -226,23 +232,20 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final banner = listError != null
         ? StatusBanner(
             tone: StatusTone.error,
-            title: '離線，顯示 ${formatTaiwanClock(newest.time)} 的資料',
+            title: listError is RadarStaleListException
+                ? '資料未更新，最新影格 ${formatTaiwanClock(newest.time)}'
+                : '離線，顯示 ${formatTaiwanClock(newest.time)} 的資料',
             text: '$listError',
             actions: [RetryButton(onPressed: _refresh)],
           )
         : loop.failures.isNotEmpty
-            ? StatusBanner(
-                tone: StatusTone.error,
-                title: '${loop.failures.length} 張影格無法取得',
-                text: [for (final f in loop.failures) '${formatTaiwanClock(f.frame.time)} ${f.error}'].join('\n'),
-                actions: [RetryButton(onPressed: _refresh)],
-              )
+            ? _FailureBanner(failures: loop.failures, onRetry: _refresh)
             : null;
     return _RadarView(
       subtitle: name == null
           ? '觀測 ${formatTaiwanFull(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
           : '$name站 · 觀測 ${formatTaiwanFull(newest.time)}',
-      sourceIds: ['雷達回波：官網時間戳記圖', _source],
+      sourceIds: [_source],
       loading: loop.loading,
       hero: _heroCard(
         eyebrow: name == null ? '全台合成回波' : '$name雷達站',
@@ -251,6 +254,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         banner: banner,
         map: RadarMapView(
           me: _me,
+          frameBounds: frame.bounds,
           chipIcon: Icons.schedule,
           chipText: formatTaiwanMonthDayClock(frame.time),
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
@@ -370,7 +374,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     String? eyebrow,
     String? title,
     String? note,
-    StatusBanner? banner,
+    Widget? banner,
     required RadarMapView map,
     Widget? legend,
   }) {
@@ -513,4 +517,62 @@ class _RadarView {
   /// Dataset ids for the 資料來源 line; null on loading / error frames.
   final List<String>? sourceIds;
   final bool loading;
+}
+
+/// Most failed frames listed in the expandable details; the title always shows
+/// the full count.
+const _failureDetailMaxLines = 20;
+
+/// Failed-frame banner: count, time range and the first cause on one line; every
+/// frame (up to [_failureDetailMaxLines]) with its cause under 「詳細」.
+class _FailureBanner extends StatelessWidget {
+  const _FailureBanner({required this.failures, required this.onRetry});
+
+  final List<RadarFrameFailure> failures;
+  final VoidCallback onRetry;
+
+  static String _oneLine(Object error) => '$error'.trim().split('\n').first.trim();
+
+  @override
+  Widget build(BuildContext context) {
+    final times = [for (final f in failures) f.frame.time]..sort();
+    final range = times.first == times.last
+        ? formatTaiwanClock(times.first)
+        : '${formatTaiwanClock(times.first)}–${formatTaiwanClock(times.last)}';
+    final shown = failures.take(_failureDetailMaxLines);
+    final hidden = failures.length - shown.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StatusBanner(
+          tone: StatusTone.error,
+          title: '${failures.length} 張影格無法取得',
+          text: '$range · ${_oneLine(failures.first.error)}',
+          actions: [RetryButton(onPressed: onRetry)],
+        ),
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: AppPalette.transparent),
+          child: ExpansionTile(
+            title: Text('詳細（${failures.length} 張）', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+            childrenPadding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+            children: [
+              for (final f in shown)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${formatTaiwanClock(f.frame.time)} ${_oneLine(f.error)}',
+                    style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                  ),
+                ),
+              if (hidden > 0)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('…另 $hidden 張', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
