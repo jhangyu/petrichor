@@ -203,6 +203,17 @@ void main() {
   Directory cacheDir() => Directory('${root.path}/$radarFrameCacheDirName/test');
   List<String> cacheFiles() => [for (final e in cacheDir().listSync()) e.path.split('/').last]..sort();
 
+  test('first load deletes the known old cache directories and keeps the current and unrelated ones', () async {
+    for (final name in [...radarLegacyCacheDirNames, 'unrelated_dir', radarFrameCacheDirName]) {
+      File('${root.path}/$name/test/keep.txt').createSync(recursive: true);
+    }
+    await load(window).drain<void>();
+    final left = [for (final e in root.listSync()) e.path.split('/').last]..sort();
+    expect(left, ['unrelated_dir', radarFrameCacheDirName]);
+    expect(File('${root.path}/unrelated_dir/test/keep.txt').existsSync(), isTrue);
+    expect(radarLegacyCacheDirNames, isNot(contains(radarFrameCacheDirName)));
+  });
+
   test('empty cache: a slot per listed time, newest ready first, then oldest first, one slot per event', () async {
     final events = await load(window).toList();
     final all = [for (final f in window) f.time];

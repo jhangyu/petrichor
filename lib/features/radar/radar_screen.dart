@@ -234,19 +234,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow) {
     final opacity = ref.watch(radarOpacityProvider);
     final opacityPercent = opacity.value;
+    final opacityBanner = switch (opacity) {
+      AsyncError(:final error) => RadarOpacityErrorBanner(error: error, onReset: () => _setOpacity(radarOpacityDefaultPercent)),
+      _ => null,
+    };
     final opacityControl = switch (opacity) {
-      AsyncError(:final error) => StatusBanner(
-          tone: StatusTone.error,
-          title: '無法使用疊圖透明度設定',
-          text: '$error',
-          actions: [
-            AppButton(
-              label: '重設為 $radarOpacityDefaultPercent%',
-              small: true,
-              onPressed: () => _setOpacity(radarOpacityDefaultPercent),
-            ),
-          ],
-        ),
       AsyncData(:final value) => RadarOpacitySlider(percent: value, onChanged: _setOpacity),
       _ => null,
     };
@@ -282,7 +274,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       sourceIds: [_source],
       loading: loop.loading,
       hero: _heroCard(
-        banner: banner,
+        banner: switch ((banner, opacityBanner)) {
+          (final a?, final b?) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s16, children: [a, b]),
+          (final a?, null) => a,
+          (null, final b) => b,
+        },
         map: RadarMapView(
           me: _me,
           chipIcon: Icons.schedule,
@@ -447,6 +443,25 @@ class _RadarView {
   /// Dataset ids for the 資料來源 line; null on loading / error frames.
   final List<String>? sourceIds;
   final bool loading;
+}
+
+/// Shown above the map while the saved overlay opacity is unreadable: the radar
+/// overlay is hidden until the user resets the setting.
+class RadarOpacityErrorBanner extends StatelessWidget {
+  const RadarOpacityErrorBanner({super.key, required this.error, required this.onReset});
+
+  final Object error;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusBanner(
+      tone: StatusTone.error,
+      title: '雷達疊圖已隱藏：儲存的透明度設定無法讀取',
+      text: '$error。重設後即可再顯示雷達疊圖。',
+      actions: [AppButton(label: '重設為 $radarOpacityDefaultPercent%', small: true, onPressed: onReset)],
+    );
+  }
 }
 
 /// Most failed frames listed in the expandable details; the title always shows
