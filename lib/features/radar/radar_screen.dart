@@ -59,8 +59,6 @@ class RadarScreen extends ConsumerStatefulWidget {
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
   String _source = AppConstants.radarTaiwan;
-  int _fps = radarDefaultFps;
-  bool _repeat = true;
   bool _playing = false;
 
   /// Time of the shown slot; null = the newest ready one (page open, reload,
@@ -99,6 +97,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     _playing = false;
     _waitingOn = null;
   }
+
+  RadarGroup get _group => radarGroupOf(_source);
+
+  /// Repeat of the current group; only read once the screen has shown it.
+  bool get _repeat => ref.read(radarRepeatProvider(_group)).requireValue;
+
+  /// Playback speed of the current group; only read once the screen has shown it.
+  int get _fps => ref.read(radarFpsProvider(_group)).requireValue;
 
   List<RadarSlot>? get _slots => ref.read(radarLoopProvider(_source)).value?.slots;
 
@@ -155,7 +161,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   void _setFps(int fps) {
-    setState(() => _fps = fps);
+    unawaited(ref.read(radarFpsProvider(_group).notifier).set(fps));
     if (_playing && _waitingOn == null) _advance(immediate: false);
   }
 
@@ -164,7 +170,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       _stop();
       _playhead = null;
     });
-    ref.read(radarWindowProvider.notifier).set(window);
+    unawaited(ref.read(radarWindowProvider(_group).notifier).set(window));
   }
 
   void _selectSource(String id) {
@@ -175,7 +181,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     });
   }
 
-  void _setOpacity(int percent) => unawaited(ref.read(radarOpacityProvider.notifier).set(percent));
+  void _setOpacity(int percent) => unawaited(ref.read(radarOpacityProvider(_group).notifier).set(percent));
 
   void _refresh() {
     setState(() {
@@ -189,12 +195,24 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   @override
   Widget build(BuildContext context) {
     final source = ref.watch(radarSourceProvider(_source));
-    final window = radarEffectiveWindow(ref.watch(radarWindowProvider), source);
+    final selectedWindow = ref.watch(radarWindowProvider(_group));
+    final fps = ref.watch(radarFpsProvider(_group));
+    final repeat = ref.watch(radarRepeatProvider(_group));
     // Each loop update may make the slot playback waits on ready (or failed).
     ref.listen(radarLoopProvider(_source), (_, _) {
       if (_playing && _waitingOn != null) _advance(immediate: true);
     });
-    final view = _sourceView(ref.watch(radarLoopProvider(_source)), window, source.maxWindow);
+    final loop = ref.watch(radarLoopProvider(_source));
+    final view = switch ((selectedWindow, fps, repeat)) {
+      (AsyncValue(hasValue: true), AsyncValue(hasValue: true), AsyncValue(hasValue: true)) => _sourceView(
+        loop,
+        radarEffectiveWindow(selectedWindow.requireValue, source),
+        source.maxWindow,
+        fps.requireValue,
+        repeat.requireValue,
+      ),
+      _ => _settingsView(selectedWindow, fps, repeat),
+    };
     final header = AppPageHeader(
       title: '雷達回波',
       subtitle: view.subtitle,
@@ -262,16 +280,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   // ---- views (one path for every source) ----
 
-  _RadarView _sourceView(AsyncValue<RadarLoop> async, Duration window, Duration maxWindow) {
+  _RadarView _sourceView(AsyncValue<RadarLoop> async, Duration window, Duration maxWindow, int fps, bool repeat) {
     return switch (async) {
       AsyncError(:final error) => _errorView(error),
-      AsyncValue(:final value?) => _loopView(value, window, maxWindow),
+      AsyncValue(:final value?) => _loopView(value, window, maxWindow, fps, repeat),
       _ => _loadingView(),
     };
   }
 
-  _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow) {
-    final opacity = ref.watch(radarOpacityProvider);
+  _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow, int fps, bool repeat) {
+    final opacity = ref.watch(radarOpacityProvider(_group));
     final opacityPercent = opacity.value;
     final opacityBanner = switch (opacity) {
       AsyncError(:final error) => RadarOpacityErrorBanner(error: error, overlayHidden: !opacity.hasValue, onReset: () => _setOpacity(radarOpacityDefaultPercent)),
@@ -345,7 +363,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             meta: _waitingOn != null
                 ? '緩衝中 · 已就緒 $readyCount / ${slots.length} 張'
                 : _playing
-                    ? '播放中 · $_fps fps${_repeat ? ' · 重複' : ''}'
+                    ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
                     : loop.loading
                         ? '載入中 $readyCount / ${slots.length} 張'
                         : '過去 ${window.inHours} 小時 · ${slots.length} 張',
@@ -355,14 +373,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               current: radarCurrentCell(slots, shown: index, waitingOn: _waitingOn),
               buffering: _waitingOn != null,
               playing: _playing,
-              fps: _fps,
-              repeat: _repeat,
+              fps: fps,
+              repeat: repeat,
               window: window,
               windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
               onTogglePlay: _togglePlay,
               onSeek: _seek,
               onFps: _setFps,
-              onRepeat: (v) => setState(() => _repeat = v),
+              onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
               onWindow: _setWindow,
             ),
             opacity: opacityControl,
@@ -414,6 +432,43 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     hero: _heroCard(map: RadarMapView(me: _me, loading: true, muted: true)),
     afterHero: [PlaybackCard(meta: listed == null || listed == 0 ? '等待影格' : '載入中 0 / $listed 張', loading: true)],
   );
+
+  /// Playback settings still loading, or unreadable (error without a value):
+  /// the error with a reset to the group's defaults.
+  _RadarView _settingsView(AsyncValue<Duration> window, AsyncValue<int> fps, AsyncValue<bool> repeat) {
+    final windowBroken = window.hasError && !window.hasValue;
+    final fpsBroken = fps.hasError && !fps.hasValue;
+    final repeatBroken = repeat.hasError && !repeat.hasValue;
+    if (!windowBroken && !fpsBroken && !repeatBroken) return _loadingView();
+    return _RadarView(
+      subtitle: _unreachableSubtitle,
+      hero: _heroCard(
+        banner: StatusBanner(
+          tone: StatusTone.error,
+          title: '播放設定無法讀取',
+          text: [if (windowBroken) '${window.error}', if (fpsBroken) '${fps.error}', if (repeatBroken) '${repeat.error}'].join('；'),
+          actions: [
+            AppButton(
+              label: '重設播放設定',
+              small: true,
+              onPressed: () {
+                if (windowBroken) {
+                  unawaited(ref.read(radarWindowProvider(_group).notifier).set(_group.defaultWindow));
+                }
+                if (fpsBroken) {
+                  unawaited(ref.read(radarFpsProvider(_group).notifier).set(_group.defaultFps));
+                }
+                if (repeatBroken) {
+                  unawaited(ref.read(radarRepeatProvider(_group).notifier).set(true));
+                }
+              },
+            ),
+          ],
+        ),
+        map: RadarMapView(me: _me, muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無雷達資料', semanticsLabel: '地圖，無雷達資料'),
+      ),
+    );
+  }
 
   _RadarView _errorView(Object error) => _RadarView(
     subtitle: _unreachableSubtitle,

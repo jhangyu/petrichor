@@ -3,7 +3,6 @@ import '../../data/radar/radar_loop.dart';
 
 /// Playback speeds offered in 播放設定 and the default.
 const radarFpsOptions = [2, 4, 8, 12, 24];
-const radarDefaultFps = 4;
 
 /// Look-back choices; a source offers those up to its `maxWindow`.
 const radarWindowOptions = [
@@ -15,8 +14,17 @@ const radarWindowOptions = [
   Duration(hours: 24),
 ];
 
-/// Look-back when the page opens.
-const radarDefaultWindow = Duration(hours: 4);
+/// Sources that share playback settings (look-back, fps, opacity), each group
+/// with its own defaults.
+enum RadarGroup {
+  taiwan(defaultWindow: Duration(hours: 6), defaultFps: 8),
+  regional(defaultWindow: Duration(hours: 4), defaultFps: 12);
+
+  const RadarGroup({required this.defaultWindow, required this.defaultFps});
+
+  final Duration defaultWindow;
+  final int defaultFps;
+}
 
 /// Fixed wait after the last frame before the loop restarts (repeat on).
 const radarRepeatPause = Duration(seconds: 3);
