@@ -12,6 +12,15 @@ import '../radar_playback.dart';
 import '../radar_provider.dart' show radarOpacityMaxPercent, radarOpacityMinPercent, radarOpacityStepPercent;
 import 'radar_legend.dart';
 
+const _sliderTheme = SliderThemeData(
+  trackHeight: AppSize.sliderTrack,
+  activeTrackColor: AppPalette.brandBg,
+  inactiveTrackColor: AppPalette.strokeAccessible,
+  thumbColor: AppPalette.brandBg,
+  overlayColor: AppPalette.brandBgSubtle,
+  thumbShape: RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
+);
+
 /// What the playback card shows once the loop's times are known.
 class PlaybackFrames {
   const PlaybackFrames({
@@ -231,16 +240,10 @@ class _Controls extends StatelessWidget {
           child: loading
               ? const Skeleton(height: AppSize.sliderThumb)
               : SliderTheme(
-                  data: SliderThemeData(
-                    trackHeight: AppSize.sliderTrack,
-                    activeTrackColor: AppPalette.brandBg,
-                    inactiveTrackColor: AppPalette.strokeAccessible,
-                    thumbColor: AppPalette.brandBg,
+                  data: _sliderTheme.copyWith(
                     disabledActiveTrackColor: AppPalette.bgDisabled,
                     disabledInactiveTrackColor: AppPalette.bgDisabled,
                     disabledThumbColor: AppPalette.fgDisabled,
-                    overlayColor: AppPalette.brandBgSubtle,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
                   ),
                   child: Slider(
                     min: 0,
@@ -559,14 +562,7 @@ class RadarOpacitySlider extends StatelessWidget {
           ],
         ),
         SliderTheme(
-          data: const SliderThemeData(
-            trackHeight: AppSize.sliderTrack,
-            activeTrackColor: AppPalette.brandBg,
-            inactiveTrackColor: AppPalette.strokeAccessible,
-            thumbColor: AppPalette.brandBg,
-            overlayColor: AppPalette.brandBgSubtle,
-            thumbShape: RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
-          ),
+          data: _sliderTheme,
           child: Slider(
             min: radarOpacityMinPercent.toDouble(),
             max: radarOpacityMaxPercent.toDouble(),
