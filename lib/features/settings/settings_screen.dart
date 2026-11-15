@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_key.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/buttons.dart';
@@ -15,9 +16,6 @@ import 'widgets/place_settings_card.dart';
 import 'widgets/saved_places_card.dart';
 import 'widgets/settings_parts.dart';
 import 'widgets/token_card.dart';
-
-/// Observation dataset behind the per-row weather of 儲存的地點.
-const _observationDataset = 'O-A0003-001';
 
 /// Why the page-level token banner shows (未設定 / 無效 only; 無法驗證 and 驗證中 show none).
 enum _TokenProblem { notSet, invalid }
@@ -70,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     };
     return AppPageScaffold(
       header: AppPageHeader(title: '設定', subtitle: _subtitle(problem, current)),
-      source: _hasObservation() ? const SourceLine(datasetIds: [_observationDataset]) : null,
+      source: _hasObservation() ? const SourceLine(datasetIds: [AppConstants.observationDataset]) : null,
       onRefresh: _refreshWeather,
       children: [
         if (problem != null) AppGridItem.full(child: _tokenBanner(problem)),

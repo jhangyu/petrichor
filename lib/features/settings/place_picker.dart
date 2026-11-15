@@ -162,19 +162,17 @@ class _TownList extends ConsumerWidget {
     final title = '$county · 鄉鎮市區';
     return switch (ref.watch(townsProvider(county))) {
       AsyncData(value: Success(data: final towns)) => _towns(title, towns),
-      AsyncData(value: Failure(:final message)) => AppCard.error(
-          title: '無法取得$county鄉鎮清單',
-          message: message,
-          onRetry: () => ref.invalidate(townsProvider(county)),
-        ),
-      AsyncError(:final error) => AppCard.error(
-          title: '無法取得$county鄉鎮清單',
-          message: '$error',
-          onRetry: () => ref.invalidate(townsProvider(county)),
-        ),
+      AsyncData(value: Failure(:final message)) => _error(ref, message),
+      AsyncError(:final error) => _error(ref, '$error'),
       _ => AppCard.loading(title: title, skeletonHeight: _townsSkeletonHeight),
     };
   }
+
+  Widget _error(WidgetRef ref, String message) => AppCard.error(
+        title: '無法取得$county鄉鎮清單',
+        message: message,
+        onRetry: () => ref.invalidate(townsProvider(county)),
+      );
 
   Widget _towns(String title, List<Place> towns) {
     final shown = [for (final t in towns) if (t.name.contains(query)) t];
