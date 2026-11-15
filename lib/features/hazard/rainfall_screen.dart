@@ -43,7 +43,6 @@ class RainfallScreen extends ConsumerWidget {
       AsyncData(value: PlaceSelected(:final place)) => _placeBody(ref, place),
       AsyncData(value: NoPlace(:final reason)) => _noPlaceBody(ref, reason),
       AsyncError(:final error) => _scaffold(
-        ref,
         subtitle: '無法讀取地點',
         children: [
           AppGridItem.full(
@@ -52,15 +51,13 @@ class RainfallScreen extends ConsumerWidget {
         ],
       ),
       _ => _scaffold(
-        ref,
         subtitle: _loadingSubtitle,
         children: const [AppGridItem.full(child: AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight))],
       ),
     };
   }
 
-  Widget _scaffold(
-    WidgetRef ref, {
+  Widget _scaffold({
     required String subtitle,
     required List<Widget> children,
     List<String>? sourceIds,
@@ -76,6 +73,27 @@ class RainfallScreen extends ConsumerWidget {
       source: sourceIds == null ? null : SourceLine(datasetIds: sourceIds),
       children: children,
     );
+  }
+
+  /// The accumulation and forecast map cards sharing one camera row.
+  Widget _mapRow(LatLng? me, Widget? Function(RadarCameraLink? link, bool wide) forecastCard) {
+    return AppGridItem.full(
+      child: _MapCards(
+        cards: (link, wide) => [AccumulationCard(me: me, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
+      ),
+    );
+  }
+
+  /// Refresh action: disabled while [busy], else retries every provider then the accumulation loop.
+  VoidCallback? _refreshAll(WidgetRef ref, {required bool busy, required List<VoidCallback> retries}) {
+    return busy
+        ? null
+        : () {
+            for (final retry in retries) {
+              retry();
+            }
+            ref.invalidate(accumLoopProvider);
+          };
   }
 
   /// 最近測站 in its no-place state: why, with the buttons to locate or pick a place.
@@ -125,23 +143,12 @@ class RainfallScreen extends ConsumerWidget {
       builder: (all) => StationListCard(county: null, stations: all, nearestId: null),
     );
     return _scaffold(
-      ref,
       subtitle: '尚無目前地點',
       sourceIds: [if (stations.value is Success) rainObservationDataset, if (grid.value is Success) rainForecast1hDataset],
-      onRefresh: stations.isLoading || grid.isLoading
-          ? null
-          : () {
-              retryStations();
-              retryGrid();
-              ref.invalidate(accumLoopProvider);
-            },
+      onRefresh: _refreshAll(ref, busy: stations.isLoading || grid.isLoading, retries: [retryStations, retryGrid]),
       children: [
         AppGridItem.full(child: _noPlaceCard(ref, reason)),
-        AppGridItem.full(
-          child: _MapCards(
-            cards: (link, wide) => [AccumulationCard(me: null, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
-          ),
-        ),
+        _mapRow(null, forecastCard),
         if (list != null) AppGridItem.full(child: list),
       ],
     );
@@ -151,6 +158,7 @@ class RainfallScreen extends ConsumerWidget {
     final loc = place.hazardLocation;
     final rainfall = ref.watch(rainfallProvider(loc));
     final forecastLoc = (latitude: place.latitude, longitude: place.longitude);
+    final me = LatLng(place.latitude, place.longitude);
     final forecast = ref.watch(rainForecastProvider(forecastLoc));
     void retryRainfall() => ref.invalidate(rainfallProvider(loc));
     void retryForecast() => ref.invalidate(rainForecastProvider(forecastLoc));
@@ -172,7 +180,7 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryForecast,
       builder: (f) => ForecastMapCard(
         grid: f.grid,
-        here: (name: place.name, point: LatLng(place.latitude, place.longitude), mm: f.mmAtLocation),
+        here: (name: place.name, point: me, mm: f.mmAtLocation),
         cameraLink: link,
         wide: wide,
       ),
@@ -187,29 +195,17 @@ class RainfallScreen extends ConsumerWidget {
       showError: false,
     );
     final sourceIds = [if (result is Success) rainObservationDataset, if (forecastResult is Success) rainForecast1hDataset];
-    final me = LatLng(place.latitude, place.longitude);
     return _scaffold(
-      ref,
       subtitle: switch (result) {
         Success(:final data) => '${place.name} · 觀測 ${clockText(data.nearest.obsTime)}',
         Failure() => '${place.name} · 無法取得觀測',
         null => _loadingSubtitle,
       },
       sourceIds: sourceIds.isEmpty ? null : sourceIds,
-      onRefresh: rainfall.isLoading || forecast.isLoading
-          ? null
-          : () {
-              retryRainfall();
-              retryForecast();
-              ref.invalidate(accumLoopProvider);
-            },
+      onRefresh: _refreshAll(ref, busy: rainfall.isLoading || forecast.isLoading, retries: [retryRainfall, retryForecast]),
       children: [
         if (hero != null) AppGridItem.full(child: hero),
-        AppGridItem.full(
-          child: _MapCards(
-            cards: (link, wide) => [AccumulationCard(me: me, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
-          ),
-        ),
+        _mapRow(me, forecastCard),
         if (list != null) AppGridItem.full(child: list),
         if (result is Success)
           AppGridItem.full(
