@@ -55,8 +55,6 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
       decorations: stationFrameDecorations,
     );
 
-const _earthRadiusKm = 6371.0088;
-
 /// A station radar: image-name code in the website station list, dataset id
 /// (the app's source id), display name and site. Sites from CWA's station radar metadata
 /// (StationLongitude/StationLatitude, 2026-11-15).
@@ -79,7 +77,7 @@ const radarStationRangeKm = 150.0;
 /// so a reprojection could not be shown to be more correct. Revisit if CWA
 /// publishes the projection.
 LatLngBounds stationRadarBounds(LatLng centre, {required double radiusKm}) {
-  final dLat = radiusKm / _earthRadiusKm * 180 / pi;
+  final dLat = radiusKm / AppConstants.earthRadiusKm * 180 / pi;
   final dLon = dLat / cos(centre.latitude * pi / 180);
   return LatLngBounds(
     LatLng(centre.latitude - dLat, centre.longitude - dLon),

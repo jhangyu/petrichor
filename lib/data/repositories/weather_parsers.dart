@@ -7,7 +7,6 @@ part of 'weather_repository.dart';
 /// CWA 缺值標記（所有值皆為字串）
 const double _missingValue = -99;
 final _missingText = _missingValue.toStringAsFixed(0); // '-99'
-const double _earthRadiusKm = 6371.0;
 
 /// 一週預報顯示天數
 const int _weeklyDayCount = 7;
@@ -83,7 +82,7 @@ double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
   final dLon = rad(lon2 - lon1);
   final a = math.pow(math.sin(dLat / 2), 2) +
       math.cos(rad(lat1)) * math.cos(rad(lat2)) * math.pow(math.sin(dLon / 2), 2);
-  return 2 * _earthRadiusKm * math.asin(math.sqrt(a));
+  return 2 * AppConstants.earthRadiusKm * math.asin(math.sqrt(a));
 }
 
 CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double lon) {
