@@ -5,6 +5,7 @@ import '../../app_shell.dart' show AppTab, appTabProvider;
 import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart' show LocationFailure;
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/api_key_notice.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/buttons.dart';
 import '../../core/widgets/choices.dart';
@@ -268,6 +269,7 @@ class _RainfallScreenState extends ConsumerState<RainfallScreen> {
   }) {
     return switch (async) {
       AsyncData(value: Success(:final data)) => builder(data),
+      AsyncData(value: Failure(apiKeyIssue: final issue?)) => showError ? ApiKeyNotice(issue: issue) : null,
       AsyncData(value: Failure(:final message)) =>
         showError ? AppCard.error(title: errorTitle, message: message, onRetry: onRetry) : null,
       AsyncError(:final error) => AppCard.error(title: errorTitle, message: '$error', onRetry: onRetry),

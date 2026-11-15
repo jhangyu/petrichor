@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../data/repositories/weather_repository.dart';
@@ -31,6 +32,7 @@ class SunCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (days) {
       null => const AppCard.loading(title: _title, skeletonHeight: _sunSkeletonHeight),
+      Failure(apiKeyIssue: final issue?) => ApiKeyNotice(issue: issue),
       Failure(:final message) => AppCard.error(title: '無法取得日出日落資料', message: message, onRetry: onRetry),
       Success(:final data) => _card(data.first, data.length > 1 ? data[1] : null),
     };

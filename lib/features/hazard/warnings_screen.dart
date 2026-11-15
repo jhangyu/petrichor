@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_shell.dart' show AppTab, appTabProvider;
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/api_key_notice.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/buttons.dart';
 import '../../core/widgets/choices.dart';
@@ -79,6 +80,10 @@ class _WarningsScreenState extends ConsumerState<WarningsScreen> {
     return switch (ref.watch(activeWarningsProvider)) {
       AsyncLoading() => _loading(),
       AsyncError(:final error) => _error('$error'),
+      AsyncData(value: Failure(apiKeyIssue: final issue?)) => _page(
+        subtitle: '需要 CWA token',
+        children: [AppGridItem.full(child: ApiKeyNotice(issue: issue))],
+      ),
       AsyncData(value: Failure(:final message)) => _error(message),
       AsyncData(value: Success(:final data)) => _data(data, county),
     };

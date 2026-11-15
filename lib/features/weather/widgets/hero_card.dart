@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../data/models/weather_models.dart';
@@ -26,6 +27,7 @@ class HeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (current) {
       null => const AppCard.loading(hero: true, skeletonHeight: _heroSkeletonHeight),
+      Failure(apiKeyIssue: final issue?) => ApiKeyNotice(issue: issue),
       Failure(:final message) => AppCard.error(title: '無法取得目前天氣', message: message, onRetry: onRetry),
       Success(:final data) => AppCard(hero: true, child: _content(data)),
     };

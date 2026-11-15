@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../data/repositories/weather_repository.dart';
@@ -37,6 +38,7 @@ class WeeklyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (weekly) {
       null => const AppCard.loading(title: _title, skeletonHeight: _weeklySkeletonHeight),
+      Failure(apiKeyIssue: final issue?) => ApiKeyNotice(issue: issue),
       Failure(:final message) => AppCard.error(title: '無法取得 7 日預報', message: message, onRetry: onRetry),
       Success(:final data) when data.isEmpty => const AppCard.empty(title: '暫無 7 日預報'),
       Success(:final data) => _card(data),

@@ -8,6 +8,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/location/location_service.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/api_key_notice.dart';
 import '../../core/widgets/buttons.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
@@ -168,6 +169,7 @@ class WeatherScreen extends ConsumerWidget {
     DateTime now,
   ) {
     final entry = switch (warnings) {
+      AsyncData(value: Failure(apiKeyIssue: final issue?)) => ApiKeyNotice(issue: issue),
       AsyncData(value: Failure(:final message)) => _warningError(ref, message),
       AsyncError(:final error) => _warningError(ref, '$error'),
       AsyncData(value: Success()) => _activeEntry(ref, groups, now),

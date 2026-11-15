@@ -34,7 +34,7 @@
 3. **Phase 2/3 狀態**：plan.md/task.md 稱未開始，程式碼已有 radar_screen.dart（172 行）與 location_service.dart（85 行）並接入。
 4. **radar_screen.dart 與 repository 簽章**：gate_results 記錄 radar_screen.dart:12 `getRadarImageUrl` 引數不符；現行 radar_screen.dart:12 以 `datasetId:` 具名參數呼叫、repository 簽章 weather_repository.dart:177 一致 → 已修。
 5. **雷達資料集 ID**：app_constants.dart:57-63 的 O-A0084-001/002/003（樹林/南屯/林園）；artifacts/radar_api_verification_2026-06-11.md 記載舊 ID 含 O-A0084-001/002/003 全部 404 已廢棄 → 常數與驗證紀錄**互相矛盾**；radar_screen.dart:81-88 三個分站按鈕很可能取不到圖（未實測）。
-6. **plan.md 待確認項已有答案**：「是否需 API key／雷達 URL 格式」(plan.md:294-295) 已解：key 走 `--dart-define`（app_constants.dart:14-17），雷達走 fileapi ProductURL（weather_repository.dart:177-210）。
+6. **plan.md 待確認項已有答案**：「是否需 API key／雷達 URL 格式」(plan.md:294-295) 已解：key 由設定頁 App 內輸入（lib/core/api/api_key.dart），雷達走 fileapi ProductURL（weather_repository.dart:177-210）。
 7. **plan.md 架構圖**：radar_screen 註記「待實作」(plan.md:146)；且未列 core/theme/、core/constants/。
 8. **Phase 1 範圍「一週預報」**：UI 的週預報區塊與 24h 區塊吃同一份 `get24hForecast`（weather_provider.dart:52、weather_screen.dart:274），而該方法標 `@Deprecated`（weather_repository.dart:224）並內部改呼叫 getWeeklyForecast；`getCurrentWeather` 與 `getWarnings`（常數 warningsDataset 僅定義 app_constants.dart:82）**無任何 UI 呼叫端**（grep 零命中）。「目前天氣」實為預報第一筆。
 9. **主題**：main.dart:21-23 註冊 darkTheme＋ThemeMode.system；畫面本身硬編碼深藍漸層與白字（weather_screen.dart:48-52），主題檔實質未驅動畫面。
