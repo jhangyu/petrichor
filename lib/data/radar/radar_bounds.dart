@@ -8,23 +8,27 @@ import 'radar_frame_processor.dart';
 /// Extent of the website `CV1_3600_` frames ([radarFrameWest] etc.). Same grid as open-data O-A0058-001
 /// (pixel-identical image; graticule lines verified at whole degrees), see
 /// docs/logs/2026-11-14/radar-impl-notes.md. The source image is linear in
-/// latitude; the processor reprojects rows to Web Mercator so these boxes can
-/// be used directly by flutter_map's `OverlayImage` (Mercator-linear stretch).
-/// Bounds of each processed band, top band first (see `radarBandRows`).
-final websiteRadarBandBounds = [
-  for (final (top, end) in radarBandRows())
-    LatLngBounds(
-      LatLng(_edgeLat(end), radarFrameWest),
-      LatLng(_edgeLat(top), radarFrameEast),
-    ),
-];
-
-/// Whole source frame (linear in latitude), for echo statistics lookups.
+/// latitude; the processor reprojects rows to Web Mercator ([radarFrameRowMap])
+/// so this box can be used directly by flutter_map's `OverlayImage`.
 final websiteRadarFrameBounds =
     LatLngBounds(const LatLng(radarFrameSouth, radarFrameWest), const LatLng(radarFrameNorth, radarFrameEast));
 
-double _edgeLat(int row) => mercatorRowEdgeLat(row,
-    height: radarFrameRowMap.length, south: radarFrameSouth, north: radarFrameNorth);
+/// Processing of the website frames.
+final websiteRadarGeometry = RadarImageGeometry(
+  size: radarFrameSize,
+  bounds: websiteRadarFrameBounds,
+  rowMap: radarFrameRowMap,
+  decorations: websiteFrameDecorations,
+);
+
+/// Processing of one station image covering [bounds]: rows kept as they are
+/// (see [stationRadarBounds] for why there is no reprojection).
+RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeometry(
+      size: radarFrameSize,
+      bounds: bounds,
+      rowMap: List<int>.generate(radarFrameSize, (i) => i),
+      decorations: stationFrameDecorations,
+    );
 
 const _earthRadiusKm = 6371.0088;
 final _radiusKmPattern = RegExp(r'(\d+(?:\.\d+)?)\s*公里');

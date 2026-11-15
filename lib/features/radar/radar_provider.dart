@@ -1,16 +1,13 @@
-import 'dart:convert';
-
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
-import '../../data/radar/radar_bounds.dart';
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_frame_repository.dart';
+import '../../data/radar/radar_source.dart';
 
-/// Clock for the frame window; override in tests.
+/// Clock for the frame window and cache retention; override in tests.
 final radarClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final radarFrameRepositoryProvider = Provider<RadarFrameRepository>((ref) => RadarFrameRepository(
@@ -34,28 +31,15 @@ class RadarWindowFrames extends Notifier<int> {
 
 final radarWindowFramesProvider = NotifierProvider<RadarWindowFrames, int>(RadarWindowFrames.new);
 
-/// Website radar loop (oldest first; each frame = bands with bounds); the screen
-/// credits the source via SourceLine. Refreshes when first watched (screen open) or when the
-/// window changes; a user refresh is `ref.invalidate(radarFramesProvider)`.
-/// No timer/polling.
-final radarFramesProvider = FutureProvider.autoDispose<List<RadarFrame>>((ref) =>
-    ref.watch(radarFrameRepositoryProvider).refresh(windowFrames: ref.watch(radarWindowFramesProvider)));
+/// Source by dataset id: the website loop for [AppConstants.radarTaiwan],
+/// open-data station images for the O-A0084-00x ids.
+final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) => id == AppConstants.radarTaiwan
+    ? WebsiteRadarSource(ref.watch(fileApiDioProvider))
+    : StationRadarSource(ref.watch(fileApiDioProvider), id));
 
-/// Latest open-data station radar image (O-A0084-00x) with bounds from the
-/// response and echo statistics of the image.
-final openDataRadarProvider = FutureProvider.autoDispose.family<StationRadarFrame, String>((ref, datasetId) async {
-  if (!AppConstants.hasApiKey) {
-    throw RadarDataException(datasetId, expected: 'CWA_API_KEY via --dart-define', actual: 'none');
-  }
-  final response = await ref.watch(fileApiDioProvider).get<String>(
-        AppConstants.radarApiUrl(datasetId, AppConstants.cwaApiKey),
-        options: Options(responseType: ResponseType.plain),
-      );
-  final text = response.data ??
-      (throw RadarDataException(datasetId, expected: 'JSON body', actual: 'HTTP ${response.statusCode} without body'));
-  final body = jsonDecode(text);
-  if (body is! Map<String, dynamic>) {
-    throw RadarDataException(datasetId, expected: 'JSON object', actual: body.runtimeType);
-  }
-  return loadStationRadarFrame(ref.watch(fileApiDioProvider), OpenDataRadarImage.fromJson(datasetId, body));
-});
+/// Frames of one source, updated as each frame is ready (newest first). Loads
+/// when first watched (screen open) or when the window changes; a user refresh
+/// is `ref.invalidate(radarLoopProvider(id))`. No timer/polling.
+final radarLoopProvider = StreamProvider.autoDispose.family<RadarLoop, String>((ref, id) => ref
+    .watch(radarFrameRepositoryProvider)
+    .watch(ref.watch(radarSourceProvider(id)), windowFrames: ref.watch(radarWindowFramesProvider)));

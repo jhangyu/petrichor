@@ -2,13 +2,12 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:image/image.dart' as img;
 import 'package:latlong2/latlong.dart';
 
 import 'radar_frame_processor.dart';
 
 // Echo statistics of one radar image (website frame or station image),
-// computed from the source pixels while the image is processed.
+// computed from the source pixels by `processRadarFrame`.
 //
 // Colour → dBZ: [radarEchoPalette] index = dBZ. Evidence: the legend bar of
 // the real frame CV1_3600_202611142230 (column 3453, rows 2507–3571) is 66
@@ -224,40 +223,4 @@ class RadarEchoStats {
       ]),
     );
   }
-}
-
-/// Counts echo pixels of [src] (source rows, before reprojection) per dBZ and
-/// per cell and legend band. Pixels inside [decorations] are not echo (same
-/// rule as `keyRadarEcho`). [frame] is the image extent.
-RadarEchoStats radarEchoStats(img.Image src, {required LatLngBounds frame, List<PixelRect> decorations = const []}) {
-  requireRgb8(src);
-  final echoBits = radarEchoColourBits();
-  final dbzOf = {for (final (d, c) in radarEchoPalette.indexed) c: d};
-  final counts = List<int>.filled(radarEchoPalette.length, 0);
-  final columns = (src.width / radarStatsCellPixels).ceil();
-  final rows = (src.height / radarStatsCellPixels).ceil();
-  final cells = Uint16List(columns * rows * radarDbzBands);
-  final s = src.toUint8List();
-  for (var y = 0; y < src.height; y++) {
-    final sRow = y * src.rowStride;
-    final cellRow = (y ~/ radarStatsCellPixels) * columns;
-    for (var x = 0; x < src.width; x++) {
-      final si = sRow + x * 3;
-      final c = (s[si] << 16) | (s[si + 1] << 8) | s[si + 2];
-      if (echoBits[c >> 5] & (1 << (c & 31)) == 0) continue;
-      if (decorations.any((r) => x >= r.left && x < r.right && y >= r.top && y < r.bottom)) continue;
-      final d = dbzOf[c]!;
-      counts[d]++;
-      cells[(cellRow + x ~/ radarStatsCellPixels) * radarDbzBands + d ~/ radarDbzBandWidth]++;
-    }
-  }
-  return RadarEchoStats(
-    frame: frame,
-    imageWidth: src.width,
-    imageHeight: src.height,
-    pixelsPerDbz: counts,
-    cellBandPixels: cells,
-    gridColumns: columns,
-    gridRows: rows,
-  );
 }

@@ -5,11 +5,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:image/image.dart' as img;
 
 import '../../core/theme/app_tokens.dart';
-import 'radar_bounds.dart';
 import 'radar_echo_stats.dart';
 
-/// Post-processing of a website `CV1_3600_` frame: background → transparent,
-/// rows reprojected to Web Mercator, lossless WebP.
+/// Post-processing of a radar image (website `CV1_3600_` frame or open-data
+/// station image): background → transparent, rows reprojected as the
+/// [RadarImageGeometry] says, stored as one 8-bit indexed PNG.
 ///
 /// Background key (evidence: docs/logs/2026-11-14/radar-impl-notes.md): echo
 /// pixels are drawn only in the 66 colours of the dBZ legend (one per dBZ,
@@ -34,57 +34,6 @@ const websiteFrameDecorations = <PixelRect>[
   (left: 97, top: 223, right: 146, bottom: 718), // radar station status dots
 ];
 
-/// Extent of the 3600 frame (see radar_bounds.dart).
-const radarFrameSouth = 17.75;
-const radarFrameNorth = 29.25;
-const radarFrameWest = 115.0;
-const radarFrameEast = 126.5;
-
-/// The processed frame is stored as this many horizontal bands, each its own
-/// lossless WebP: the `image` VP8L encoder allocates ~28 bytes per pixel, so
-/// one 3600x3748 encode peaks near 375 MB; bands bound that by the band size.
-const radarFrameBands = 8;
-
-/// Mercator row map of the 3600 frame (3748 output rows).
-final radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: radarFrameSouth, north: radarFrameNorth);
-
-/// Output-row ranges [start, end) of each band, top band first.
-List<(int, int)> radarBandRows({int bands = radarFrameBands}) {
-  final height = radarFrameRowMap.length;
-  final step = (height / bands).ceil();
-  return [for (var top = 0; top < height; top += step) (top, min(top + step, height))];
-}
-
-/// Full pipeline for one downloaded frame: one lossless WebP per band (see
-/// [radarBandRows]) and the frame's echo statistics. Pure and synchronous: run
-/// it in a background isolate.
-({List<Uint8List> bands, RadarEchoStats stats}) processRadarFrame(Uint8List png, {int bands = radarFrameBands}) {
-  final src = img.decodePng(png) ?? (throw const FormatException('radar frame: expected PNG bytes, decode failed'));
-  if (src.width != radarFrameSize || src.height != radarFrameSize) {
-    throw FormatException('radar frame: expected ${radarFrameSize}x$radarFrameSize, got ${src.width}x${src.height}');
-  }
-  return (
-    bands: [
-      for (final (top, end) in radarBandRows(bands: bands))
-        img.encodeWebP(
-          keyRadarEcho(src, rowMap: radarFrameRowMap.sublist(top, end), decorations: websiteFrameDecorations),
-          lossless: true,
-        ),
-    ],
-    stats: radarEchoStats(src, frame: websiteRadarFrameBounds, decorations: websiteFrameDecorations),
-  );
-}
-
-/// One bit per 24-bit colour, set for the [radarEchoPalette] colours (2 MB):
-/// test `bits[c >> 5] & (1 << (c & 31))`.
-Uint32List radarEchoColourBits() {
-  final bits = Uint32List(1 << 19);
-  for (final c in radarEchoPalette) {
-    bits[c >> 5] |= 1 << (c & 31);
-  }
-  return bits;
-}
-
 /// Decorations of the O-A0084-00x station images drawn in legend colours: only
 /// the dBZ colour bar (identical on all three stations, 66 x 1032 px; no other
 /// legend-colour pixels outside the 150 km circle, measured 2026-11-14).
@@ -92,68 +41,124 @@ const stationFrameDecorations = <PixelRect>[
   (left: 3461, top: 2541, right: 3527, bottom: 3573),
 ];
 
-/// Echo statistics of one open-data station image (3600 x 3600 PNG, same
-/// legend colours as the website frames). Pure: run it in a background isolate.
-RadarEchoStats processStationRadarImage(Uint8List png, {required LatLngBounds frame}) {
-  final src = img.decodePng(png) ?? (throw const FormatException('station radar: expected PNG bytes, decode failed'));
-  if (src.width != radarFrameSize || src.height != radarFrameSize) {
-    throw FormatException('station radar: expected ${radarFrameSize}x$radarFrameSize, got ${src.width}x${src.height}');
-  }
-  return radarEchoStats(src, frame: frame, decorations: stationFrameDecorations);
+/// Extent of the 3600 frame (see radar_bounds.dart).
+const radarFrameSouth = 17.75;
+const radarFrameNorth = 29.25;
+const radarFrameWest = 115.0;
+const radarFrameEast = 126.5;
+
+/// Mercator row map of the 3600 frame (3748 output rows).
+final radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: radarFrameSouth, north: radarFrameNorth);
+
+/// How one source's images are processed and placed on the map.
+class RadarImageGeometry {
+  /// Source images are [size] x [size] px.
+  final int size;
+
+  /// Extent of the source image (linear in latitude and longitude) and of the
+  /// processed image on the map: [rowMap] makes the output rows linear in
+  /// Web Mercator, which is what flutter_map's `OverlayImage` stretches by.
+  final LatLngBounds bounds;
+
+  /// Output row j is source row `rowMap[j]`; non-decreasing, covers 0..size-1.
+  final List<int> rowMap;
+
+  /// Rectangles (source px) drawn in legend colours that are not echo.
+  final List<PixelRect> decorations;
+
+  const RadarImageGeometry({required this.size, required this.bounds, required this.rowMap, required this.decorations});
 }
 
-/// Throws unless [src] is 8-bit RGB without palette (the website frame format).
-void requireRgb8(img.Image src) {
+/// A processed frame: indexed PNG (palette [radarIndexedPalette]) and the
+/// echo statistics of the source image.
+typedef ProcessedRadarFrame = ({Uint8List png, RadarEchoStats stats});
+
+/// Palette of the processed PNG: index 0 = transparent, index d + 1 = dBZ d
+/// ([radarEchoPalette]), opaque.
+img.PaletteUint8 radarIndexedPalette() {
+  final palette = img.PaletteUint8(radarEchoPalette.length + 1, 4);
+  for (final (d, c) in radarEchoPalette.indexed) {
+    palette.setRgba(d + 1, c >> 16, (c >> 8) & 0xFF, c & 0xFF, 0xFF);
+  }
+  return palette;
+}
+
+/// Full pipeline for one downloaded image, in one pass over the source rows:
+/// key echo pixels to palette indices (decorations → transparent), count the
+/// echo statistics, copy each index row to the output rows [g.rowMap] maps to
+/// it, encode one indexed PNG (zlib from the platform). Pure and synchronous:
+/// run it in a background isolate.
+ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
+  final src = img.decodePng(png) ?? (throw const FormatException('radar image: expected PNG bytes, decode failed'));
+  if (src.width != g.size || src.height != g.size) {
+    throw FormatException('radar image: expected ${g.size}x${g.size}, got ${src.width}x${src.height}');
+  }
   if (src.numChannels != 3 || src.format != img.Format.uint8 || src.hasPalette) {
     throw FormatException(
-      'radar frame: expected 8-bit RGB without palette, got ${src.numChannels} channels, '
+      'radar image: expected 8-bit RGB without palette, got ${src.numChannels} channels, '
       '${src.format}, palette=${src.hasPalette}',
     );
   }
-}
-
-/// Builds an RGBA image whose row `j` is source row `rowMap[j]` with every
-/// non-echo pixel (colour not in [radarEchoPalette], or inside a [decorations]
-/// rectangle given in source coordinates) set to transparent black. Echo pixels
-/// keep their RGB exactly, alpha 255.
-img.Image keyRadarEcho(img.Image src, {required List<int> rowMap, List<PixelRect> decorations = const []}) {
-  requireRgb8(src);
-  final echoBits = radarEchoColourBits();
   final width = src.width;
-  final out = img.Image(width: width, height: rowMap.length, numChannels: 4);
+  final echoBits = _radarEchoColourBits();
+  final indexOf = {for (final (d, c) in radarEchoPalette.indexed) c: d + 1};
+  final counts = List<int>.filled(radarEchoPalette.length, 0);
+  final columns = (width / radarStatsCellPixels).ceil();
+  final cells = Uint16List(columns * (src.height / radarStatsCellPixels).ceil() * radarDbzBands);
+  final out = img.Image(width: width, height: g.rowMap.length, numChannels: 1, palette: radarIndexedPalette());
   final s = src.toUint8List();
   final d = out.toUint8List();
-  final sStride = src.rowStride;
-  final dStride = out.rowStride;
-  var previousSrcRow = -1;
-  for (var j = 0; j < rowMap.length; j++) {
-    final y = rowMap[j];
-    final dRow = j * dStride;
-    if (y == previousSrcRow) {
-      d.setRange(dRow, dRow + dStride, d, dRow - dStride);
-      continue;
-    }
-    previousSrcRow = y;
-    final sRow = y * sStride;
+  final row = Uint8List(width);
+  var j = 0;
+  for (var y = 0; y < src.height; y++) {
+    row.fillRange(0, width, 0);
+    final sRow = y * src.rowStride;
     for (var x = 0; x < width; x++) {
       final si = sRow + x * 3;
-      final r = s[si], g = s[si + 1], b = s[si + 2];
-      final c = (r << 16) | (g << 8) | b;
-      if (echoBits[c >> 5] & (1 << (c & 31)) != 0) {
-        final di = dRow + x * 4;
-        d[di] = r;
-        d[di + 1] = g;
-        d[di + 2] = b;
-        d[di + 3] = 255;
-      }
+      final c = (s[si] << 16) | (s[si + 1] << 8) | s[si + 2];
+      if (echoBits[c >> 5] & (1 << (c & 31)) != 0) row[x] = indexOf[c]!;
     }
-    for (final rect in decorations) {
-      if (y >= rect.top && y < rect.bottom) {
-        d.fillRange(dRow + rect.left * 4, dRow + min(rect.right, width) * 4, 0);
-      }
+    for (final rect in g.decorations) {
+      if (y >= rect.top && y < rect.bottom) row.fillRange(rect.left, min(rect.right, width), 0);
+    }
+    final cellRow = (y ~/ radarStatsCellPixels) * columns;
+    for (var x = 0; x < width; x++) {
+      final i = row[x];
+      if (i == 0) continue;
+      counts[i - 1]++;
+      cells[(cellRow + x ~/ radarStatsCellPixels) * radarDbzBands + (i - 1) ~/ radarDbzBandWidth]++;
+    }
+    while (j < g.rowMap.length && g.rowMap[j] == y) {
+      d.setRange(j * width, (j + 1) * width, row);
+      j++;
     }
   }
-  return out;
+  if (j != g.rowMap.length) {
+    throw ArgumentError('radar image: expected a non-decreasing row map over source rows 0..${g.size - 1}, '
+        'output row $j maps to ${g.rowMap[j]}');
+  }
+  return (
+    png: img.encodePng(out),
+    stats: RadarEchoStats(
+      frame: g.bounds,
+      imageWidth: width,
+      imageHeight: src.height,
+      pixelsPerDbz: counts,
+      cellBandPixels: cells,
+      gridColumns: columns,
+      gridRows: (src.height / radarStatsCellPixels).ceil(),
+    ),
+  );
+}
+
+/// One bit per 24-bit colour, set for the [radarEchoPalette] colours (2 MB):
+/// test `bits[c >> 5] & (1 << (c & 31))`.
+Uint32List _radarEchoColourBits() {
+  final bits = Uint32List(1 << 19);
+  for (final c in radarEchoPalette) {
+    bits[c >> 5] |= 1 << (c & 31);
+  }
+  return bits;
 }
 
 /// Row map from an image linear in latitude ([south]..[north], [srcHeight]
@@ -167,13 +172,6 @@ List<int> mercatorRowMap({required int srcHeight, required double south, require
     final lat = _latOf(yN - (j + 0.5) * (yN - yS) / outHeight);
     return ((north - lat) / (north - south) * srcHeight).floor().clamp(0, srcHeight - 1);
   });
-}
-
-/// Latitude of the edge above output row [row] (0..[height]) of a Mercator
-/// image spanning [south]..[north].
-double mercatorRowEdgeLat(int row, {required int height, required double south, required double north}) {
-  final yS = _mercY(south), yN = _mercY(north);
-  return _latOf(yN - row * (yN - yS) / height);
 }
 
 double _rad(double deg) => deg * pi / 180;

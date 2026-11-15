@@ -1,21 +1,29 @@
 import 'dart:io';
 
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:latlong2/latlong.dart';
 
 void main() {
   // 64x64 crop at (1536,768) of the real frame CV1_3600_202611142050.png: echo
   // partly covered by a grey coastline. Expected counts measured independently
   // (PIL/numpy against the legend colours, see radar-impl-notes.md).
-  final src = img.decodePng(File('test/fixtures/radar/cv1_3600_202611142050_crop_1536_768_64.png').readAsBytesSync())!;
-  final identityRows = List<int>.generate(src.height, (i) => i);
-  final keyed = keyRadarEcho(src, rowMap: identityRows);
+  final png = File('test/fixtures/radar/cv1_3600_202611142050_crop_1536_768_64.png').readAsBytesSync();
+  final src = img.decodePng(png)!;
+  final bounds = LatLngBounds(const LatLng(26.59, 119.9), const LatLng(26.8, 120.11));
+  final identityRows = List<int>.generate(64, (i) => i);
+  RadarImageGeometry geometry({List<int>? rowMap, List<PixelRect> decorations = const []}) =>
+      RadarImageGeometry(size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations);
+  img.Image decode(ProcessedRadarFrame p) => img.decodePng(p.png)!;
+  final keyed = decode(processRadarFrame(png, geometry()));
 
-  test('background becomes transparent, echo keeps its RGB exactly', () {
+  test('output is one indexed PNG; background transparent, echo keeps its RGB exactly', () {
+    expect((keyed.hasPalette, keyed.width, keyed.height), (true, 64, 64));
     var echo = 0, background = 0, sumR = 0, sumG = 0, sumB = 0;
-    for (var y = 0; y < src.height; y++) {
-      for (var x = 0; x < src.width; x++) {
+    for (var y = 0; y < 64; y++) {
+      for (var x = 0; x < 64; x++) {
         final o = keyed.getPixel(x, y);
         final s = src.getPixel(x, y);
         if (o.a == 255) {
@@ -26,7 +34,9 @@ void main() {
           sumB += o.b.toInt();
         } else {
           background++;
-          expect([o.r, o.g, o.b, o.a], [0, 0, 0, 0], reason: 'background pixel ($x,$y)');
+          expect(o.a, 0, reason: 'background pixel ($x,$y)');
+          final c = (s.r.toInt() << 16) | (s.g.toInt() << 8) | s.b.toInt();
+          expect(radarEchoPalette, isNot(contains(c)), reason: 'echo colour keyed out at ($x,$y)');
         }
       }
     }
@@ -35,7 +45,7 @@ void main() {
   });
 
   test('decoration rectangles are background even in legend colours', () {
-    final cut = keyRadarEcho(src, rowMap: identityRows, decorations: const [(left: 0, top: 0, right: 64, bottom: 32)]);
+    final cut = decode(processRadarFrame(png, geometry(decorations: const [(left: 0, top: 0, right: 64, bottom: 32)])));
     for (var y = 0; y < 64; y++) {
       for (var x = 0; x < 64; x++) {
         expect(cut.getPixel(x, y).a, y < 32 ? 0 : keyed.getPixel(x, y).a, reason: '($x,$y)');
@@ -43,10 +53,23 @@ void main() {
     }
   });
 
-  test('lossless WebP round trip is pixel-identical', () {
-    final back = img.decodeWebP(img.encodeWebP(keyed, lossless: true))!;
-    expect(back.numChannels, 4);
-    expect(back.getBytes(order: img.ChannelOrder.rgba), keyed.getBytes(order: img.ChannelOrder.rgba));
+  test('output row j is source row rowMap[j] (duplicated rows); statistics count each source row once', () {
+    final rowMap = [for (var y = 0; y < 64; y++) ...(y.isEven ? [y, y] : [y])];
+    final p = processRadarFrame(png, geometry(rowMap: rowMap));
+    final out = decode(p);
+    expect(out.height, rowMap.length);
+    for (var j = 0; j < rowMap.length; j++) {
+      for (var x = 0; x < 64; x++) {
+        expect(out.getPixel(x, j), keyed.getPixel(x, rowMap[j]), reason: 'output ($x,$j)');
+      }
+    }
+    expect(p.stats.pixelsPerDbz.reduce((a, b) => a + b), 1607);
+  });
+
+  test('wrong size or a row map that skips source rows fails loudly', () {
+    expect(() => processRadarFrame(png, RadarImageGeometry(size: 3600, bounds: bounds, rowMap: identityRows, decorations: const [])),
+        throwsFormatException);
+    expect(() => processRadarFrame(png, geometry(rowMap: [0, 2, 1])), throwsArgumentError);
   });
 
   test('Mercator row map for the 3600 frame keeps every source row in order', () {

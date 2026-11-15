@@ -100,7 +100,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   /// pause before restarting.
   void _scheduleTick() {
     _timer?.cancel();
-    final count = ref.read(radarFramesProvider).value?.length;
+    final count = ref.read(radarLoopProvider(_source)).value?.frames.length;
     if (count == null) {
       setState(_stop);
       return;
@@ -159,19 +159,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       _stop();
       _index = null;
     });
-    if (_isComposite) {
-      ref.invalidate(radarFramesProvider);
-    } else {
-      ref.invalidate(openDataRadarProvider(_source));
-    }
+    ref.invalidate(radarLoopProvider(_source));
   }
 
   @override
   Widget build(BuildContext context) {
     final windowFrames = ref.watch(radarWindowFramesProvider);
-    final view = _isComposite
-        ? _compositeView(ref.watch(radarFramesProvider), windowFrames)
-        : _stationView(ref.watch(openDataRadarProvider(_source)));
+    final view = _sourceView(ref.watch(radarLoopProvider(_source)), windowFrames);
     return AppPageScaffold(
       header: AppPageHeader(
         title: '雷達回波',
@@ -203,74 +197,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     );
   }
 
-  // ---- views per source ----
+  // ---- views (one path for every source) ----
 
-  _RadarView _compositeView(AsyncValue<List<RadarFrame>> async, int windowFrames) {
-    return async.when(
-      loading: () => _loadingView(),
-      error: (e, _) => _errorView(e),
-      data: (frames) {
-        final index = _currentIndex(frames.length);
-        final frame = frames[index];
-        final summary = radarEchoSummary(
-          frames.last.stats,
-          coverage: '臺灣本島及周邊海域',
-          place: _place,
-        );
-        return _RadarView(
-          subtitle: '觀測 ${formatTaiwanFull(frames.last.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新',
-          sourceIds: const ['雷達回波：官網時間戳記圖', AppConstants.radarTaiwan],
-          hero: _heroCard(
-            eyebrow: '全台合成回波',
-            title: summary.title,
-            note: summary.meta,
-            map: RadarMapView(
-              me: _me,
-              playing: _playing,
-              chipIcon: Icons.schedule,
-              chipText: formatTaiwanMonthDayClock(frame.time),
-              semanticsLabel: '雷達回波地圖',
-              overlayBuilder: (decodeWidth) => [
-                for (final band in frame.bands)
-                  OverlayImage(
-                    bounds: band.bounds,
-                    opacity: _opacityPercent / 100,
-                    imageProvider: band.imageProvider(decodeWidth: decodeWidth),
-                    gaplessPlayback: true,
-                  ),
-              ],
-            ),
-            legend: const RadarLegend(showWords: true),
-          ),
-          afterHero: [
-            PlaybackCard(
-              meta: _playing
-                  ? '播放中 · $_fps fps${_repeat ? ' · 重複' : ''}'
-                  : '過去 ${windowFrames ~/ radarFramesPerHour} 小時 · ${frames.length} 張',
-              frames: PlaybackFrames(
-                times: [for (final f in frames) f.time],
-                strongestDbz: [for (final f in frames) f.stats.hasSignificantEcho ? f.stats.strongestDbz : null],
-                index: index,
-                playing: _playing,
-                fps: _fps,
-                repeat: _repeat,
-                windowFrames: windowFrames,
-                onTogglePlay: () => _togglePlay(frames.length),
-                onSeek: _seek,
-                onFps: _setFps,
-                onRepeat: (v) => setState(() => _repeat = v),
-                onWindowFrames: _setWindow,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  _RadarView _stationView(AsyncValue<StationRadarFrame> async) {
-    final name = _stationNames[_source]!;
-    if (!AppConstants.hasApiKey) {
+  _RadarView _sourceView(AsyncValue<RadarLoop> async, int windowFrames) {
+    if (!_isComposite && !AppConstants.hasApiKey) {
       return _RadarView(
         subtitle: _unreachableSubtitle,
         hero: AppCard(
@@ -279,82 +209,143 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         ),
       );
     }
-    return async.when(
-      loading: () => _loadingView(),
-      error: (e, _) => _errorView(e),
-      data: (station) {
-        final image = station.image;
-        final center = image.bounds.center;
-        final radius = const Distance().as(LengthUnit.Meter, center, LatLng(image.bounds.north, center.longitude));
-        final summary = radarEchoSummary(
-          station.stats,
-          coverage: '$name雷達站涵蓋範圍內',
-          place: _place,
-        );
-        return _RadarView(
-          subtitle: '$name站 · 觀測 ${formatTaiwanFull(image.time)}',
-          sourceIds: [_source],
-          hero: _heroCard(
-            eyebrow: '$name雷達站',
-            title: summary.title,
-            note: '${summary.meta}\n僅顯示虛線圈內範圍 · 圈外請改看全台合成',
-            map: RadarMapView(
-              me: _me,
-              chipIcon: Icons.schedule,
-              chipText: formatTaiwanMonthDayClock(image.time),
-              semanticsLabel: '$name雷達回波地圖，虛線圈為涵蓋範圍',
-              overlayBuilder: (decodeWidth) => [
-                OverlayImage(
-                  bounds: image.bounds,
-                  opacity: _opacityPercent / 100,
-                  imageProvider: station.imageProvider(decodeWidth: decodeWidth),
-                ),
-              ],
-              extraLayers: [
-                PolygonLayer(
-                  polygons: [
-                    Polygon(
-                      points: [
-                        for (var i = 0; i < _ringPoints; i++)
-                          const Distance().offset(center, radius, i * _fullCircleDegrees / _ringPoints),
-                      ],
-                      borderColor: AppPalette.brandStroke,
-                      borderStrokeWidth: _ringStrokeWidth,
-                      pattern: StrokePattern.dashed(segments: _ringDash),
-                    ),
-                  ],
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: center,
-                      width: _stationDotRadius * 2,
-                      height: _stationDotRadius * 2,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppPalette.brandBg,
-                          border: Border.all(color: AppPalette.bg1, width: _ringStrokeWidth),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return switch (async) {
+      AsyncError(:final error) => _errorView(error),
+      AsyncValue(:final value?) => _loopView(value, windowFrames),
+      _ => _loadingView(),
+    };
+  }
+
+  _RadarView _loopView(RadarLoop loop, int windowFrames) {
+    final frames = loop.frames;
+    if (frames.isEmpty) {
+      return loop.loading ? _loadingView(windowSize: loop.windowSize) : _errorView(loop.listError ?? loop.failures.join('；'));
+    }
+    final index = _currentIndex(frames.length);
+    final frame = frames[index];
+    final newest = frames.last;
+    final name = _stationNames[_source];
+    final summary = radarEchoSummary(
+      newest.stats,
+      coverage: name == null ? '臺灣本島及周邊海域' : '$name雷達站涵蓋範圍內',
+      place: _place,
+    );
+    final listError = loop.listError;
+    final banner = listError != null
+        ? StatusBanner(
+            tone: StatusTone.error,
+            title: '離線，顯示 ${formatTaiwanClock(newest.time)} 的資料',
+            text: '$listError',
+            actions: [RetryButton(onPressed: _refresh)],
+          )
+        : loop.failures.isNotEmpty
+            ? StatusBanner(
+                tone: StatusTone.error,
+                title: '${loop.failures.length} 張影格無法取得',
+                text: [for (final f in loop.failures) '${formatTaiwanClock(f.frame.time)} ${f.error}'].join('\n'),
+                actions: [RetryButton(onPressed: _refresh)],
+              )
+            : null;
+    return _RadarView(
+      subtitle: name == null
+          ? '觀測 ${formatTaiwanFull(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
+          : '$name站 · 觀測 ${formatTaiwanFull(newest.time)}',
+      sourceIds: _isComposite ? const ['雷達回波：官網時間戳記圖', AppConstants.radarTaiwan] : [_source],
+      loading: loop.loading,
+      hero: _heroCard(
+        eyebrow: name == null ? '全台合成回波' : '$name雷達站',
+        title: summary.title,
+        note: name == null ? summary.meta : '${summary.meta}\n僅顯示虛線圈內範圍 · 圈外請改看全台合成',
+        banner: banner,
+        map: RadarMapView(
+          me: _me,
+          playing: _playing,
+          chipIcon: Icons.schedule,
+          chipText: formatTaiwanMonthDayClock(frame.time),
+          semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
+          overlayBuilder: (decodeWidth) => [
+            OverlayImage(
+              bounds: frame.bounds,
+              opacity: _opacityPercent / 100,
+              imageProvider: frame.imageProvider(decodeWidth: decodeWidth),
+              gaplessPlayback: true,
             ),
-            legend: const RadarLegend(showWords: false),
+          ],
+          extraLayers: name == null ? const [] : _stationLayers(frame.bounds),
+        ),
+        legend: RadarLegend(showWords: name == null),
+      ),
+      afterHero: [
+        if (loop.loading)
+          PlaybackCard(meta: '載入中 ${frames.length} / ${loop.windowSize ?? '…'} 張', loading: true)
+        else if (frames.length == 1)
+          const PlaybackCard(meta: '僅有最新影格')
+        else
+          PlaybackCard(
+            meta: _playing
+                ? '播放中 · $_fps fps${_repeat ? ' · 重複' : ''}'
+                : '過去 ${windowFrames ~/ radarFramesPerHour} 小時 · ${frames.length} 張',
+            frames: PlaybackFrames(
+              times: [for (final f in frames) f.time],
+              strongestDbz: [for (final f in frames) f.stats.hasSignificantEcho ? f.stats.strongestDbz : null],
+              index: index,
+              playing: _playing,
+              fps: _fps,
+              repeat: _repeat,
+              windowFrames: windowFrames,
+              onTogglePlay: () => _togglePlay(frames.length),
+              onSeek: _seek,
+              onFps: _setFps,
+              onRepeat: (v) => setState(() => _repeat = v),
+              onWindowFrames: _setWindow,
+            ),
           ),
-          afterHero: const [PlaybackCard(meta: '單站雷達僅提供最新影格')],
-        );
-      },
+      ],
     );
   }
 
-  _RadarView _loadingView() => _RadarView(
+  /// Dashed coverage ring and station dot of a station image covering [bounds].
+  List<Widget> _stationLayers(LatLngBounds bounds) {
+    final center = bounds.center;
+    final radius = const Distance().as(LengthUnit.Meter, center, LatLng(bounds.north, center.longitude));
+    return [
+      PolygonLayer(
+        polygons: [
+          Polygon(
+            points: [
+              for (var i = 0; i < _ringPoints; i++)
+                const Distance().offset(center, radius, i * _fullCircleDegrees / _ringPoints),
+            ],
+            borderColor: AppPalette.brandStroke,
+            borderStrokeWidth: _ringStrokeWidth,
+            pattern: StrokePattern.dashed(segments: _ringDash),
+          ),
+        ],
+      ),
+      MarkerLayer(
+        markers: [
+          Marker(
+            point: center,
+            width: _stationDotRadius * 2,
+            height: _stationDotRadius * 2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppPalette.brandBg,
+                border: Border.all(color: AppPalette.bg1, width: _ringStrokeWidth),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  _RadarView _loadingView({int? windowSize}) => _RadarView(
     subtitle: _loadingSubtitle,
     loading: true,
     hero: _heroCard(map: RadarMapView(me: _me, loading: true, muted: true)),
-    afterHero: const [PlaybackCard(meta: '等待影格', loading: true)],
+    afterHero: [PlaybackCard(meta: windowSize == null ? '等待影格' : '載入中 0 / $windowSize 張', loading: true)],
   );
 
   _RadarView _errorView(Object error) => _RadarView(

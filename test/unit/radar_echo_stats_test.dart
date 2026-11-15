@@ -6,7 +6,6 @@ import 'package:cwb_flutter/data/radar/radar_echo_stats.dart';
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image/image.dart' as img;
 import 'package:latlong2/latlong.dart';
 
 const _columns = radarFrameSize ~/ radarStatsCellPixels;
@@ -35,14 +34,18 @@ void main() {
   // Same 64x64 real-frame crop as radar_frame_processor_test, at source pixel
   // (1536,768) of CV1_3600_202611142050. Expected values computed
   // independently with PIL/numpy against the legend colours.
-  final src = img.decodePng(File('test/fixtures/radar/cv1_3600_202611142050_crop_1536_768_64.png').readAsBytesSync())!;
+  final png = File('test/fixtures/radar/cv1_3600_202611142050_crop_1536_768_64.png').readAsBytesSync();
   final cropFrame = LatLngBounds(
     const LatLng(26.592222222222222, 119.90666666666667),
     const LatLng(26.796666666666667, 120.11111111111111),
   );
+  RadarEchoStats cropStats({List<PixelRect> decorations = const []}) => processRadarFrame(
+        png,
+        RadarImageGeometry(size: 64, bounds: cropFrame, rowMap: List.generate(64, (i) => i), decorations: decorations),
+      ).stats;
 
   test('per-dBZ counts, per-cell band counts and strongest level of a real frame crop', () {
-    final s = radarEchoStats(src, frame: cropFrame);
+    final s = cropStats();
     expect({for (final (d, n) in s.pixelsPerDbz.indexed) if (n > 0) d: n}, {
       4: 9, 5: 9, 6: 18, 7: 35, 8: 44, 9: 23, 10: 60, 11: 59, 12: 40, 13: 46, 14: 56, 15: 77, 16: 65, //
       17: 51, 18: 28, 19: 71, 20: 118, 21: 113, 22: 111, 23: 97, 24: 45, 25: 107, 26: 110, 27: 42,
@@ -61,7 +64,7 @@ void main() {
   });
 
   test('decoration rectangles are not counted', () {
-    final s = radarEchoStats(src, frame: cropFrame, decorations: const [(left: 0, top: 0, right: 64, bottom: 32)]);
+    final s = cropStats(decorations: const [(left: 0, top: 0, right: 64, bottom: 32)]);
     expect(s.pixelsPerDbz.reduce((a, b) => a + b), 711);
   });
 
@@ -103,7 +106,7 @@ void main() {
   });
 
   test('bytes round trip; wrong length fails loudly', () {
-    final s = radarEchoStats(src, frame: cropFrame);
+    final s = cropStats();
     final back = RadarEchoStats.fromBytes(s.toBytes(), source: 'mem');
     expect((back.gridColumns, back.gridRows, back.imageWidth, back.imageHeight), (4, 4, 64, 64));
     expect([back.frame.south, back.frame.west, back.frame.north, back.frame.east],
