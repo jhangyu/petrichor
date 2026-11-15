@@ -48,13 +48,13 @@ class LocationException implements Exception {
 }
 
 /// 使用者決定：10 秒內沒有定位結果就視為失敗並返回，讓使用者手動選地點（macOS 定位可能永不回應）。
-const locationTimeout = Duration(seconds: 10);
+const _locationTimeout = Duration(seconds: 10);
 
 class LocationService {
   final Future<Result<Place>> Function(double latitude, double longitude) _nearestTown;
   final Duration timeout;
 
-  LocationService(this._nearestTown, {this.timeout = locationTimeout});
+  LocationService(this._nearestTown, {this.timeout = _locationTimeout});
 
   static const _positionSettings = LocationSettings(
     accuracy: LocationAccuracy.high,

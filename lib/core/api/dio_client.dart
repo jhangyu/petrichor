@@ -5,6 +5,17 @@ import '../constants/app_constants.dart';
 import '../storage/stored_setting.dart';
 import 'api_key.dart';
 
+/// Options both clients share; [baseUrl] and [queryParameters] only for the CWA API client.
+BaseOptions _commonOptions({String baseUrl = '', Map<String, dynamic>? queryParameters}) => BaseOptions(
+      baseUrl: baseUrl,
+      queryParameters: queryParameters,
+      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
+      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
+      followRedirects: true,
+      maxRedirects: AppConstants.maxRedirects,
+      headers: {'Accept': 'application/json'},
+    );
+
 /// Dio HTTP 用戶端 Provider（datastore 與 fileapi 皆經此）
 ///
 /// 自動處理：
@@ -14,21 +25,7 @@ import 'api_key.dart';
 /// 監看 [cwaApiKeyProvider]：金鑰變更後本 provider 重建，下游 repository 隨之重建。
 final dioProvider = Provider<Dio>((ref) {
   final key = ref.watch(cwaApiKeyProvider.future);
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.cwaApiBaseUrl,
-      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
-      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
-      followRedirects: true,
-      maxRedirects: AppConstants.maxRedirects,
-      headers: {
-        'Accept': 'application/json',
-      },
-      queryParameters: {
-        'format': 'JSON',
-      },
-    ),
-  );
+  final dio = Dio(_commonOptions(baseUrl: AppConstants.cwaApiBaseUrl, queryParameters: {'format': 'JSON'}));
 
   // query 不會隨 fileapi 的 302 轉址帶到 S3
   dio.interceptors.add(InterceptorsWrapper(
@@ -60,16 +57,4 @@ final dioProvider = Provider<Dio>((ref) {
 ///
 /// 獨立的 Dio實例，只給雷達用（www.cwa.gov.tw 的 JS 清單與圖片）。
 /// 不使用 baseUrl 和預設 queryParameters，直接使用完整 URL。
-final fileApiDioProvider = Provider<Dio>((ref) {
-  return Dio(
-    BaseOptions(
-      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
-      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
-      followRedirects: true,
-      maxRedirects: AppConstants.maxRedirects,
-      headers: {
-        'Accept': 'application/json',
-      },
-    ),
-  );
-});
+final webDioProvider = Provider<Dio>((ref) => Dio(_commonOptions()));
