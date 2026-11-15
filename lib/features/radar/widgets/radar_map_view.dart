@@ -11,6 +11,7 @@ import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_frame_repository.dart';
 import 'basemap_theme.dart';
+import 'content_scaled_layer.dart';
 
 /// Map centre and zoom: Taiwan overview when the place is unknown, else the place.
 const _taiwanCenter = LatLng(23.7, 121.0);
@@ -27,18 +28,20 @@ const _attribution = '© OpenStreetMap contributors';
 const _styleFailedText = '底圖載入失敗，點按重試';
 const _logTag = 'basemap';
 
-/// Map detail: [vt.TileOffset.none] fetches data tiles and evaluates the
-/// style at the camera zoom, one level more than the plugin's default
-/// ([vt.TileOffset.maplibre], camera zoom - 1), so the same camera zoom
-/// draws the next level's roads, places and labels instead of enlarging the
-/// coarser level. One level is the plugin's ceiling: `TileOffset` asserts
-/// `zoomOffset <= 0`, and a data zoom above the display zoom resolves to no
-/// tile at all (flutter_map_vector_tiles 2.11.0 tile_zoom.dart:28). The GPU
-/// tile grid follows the camera zoom, so GPU memory is unchanged.
-/// Measured on the 340×408 card (features drawn, default → this):
-/// located zoom 8: 3462 → 7523, style layers 11 → 14, tiles fetched 9 → 25;
-/// overview zoom 6.5: 3358 → 3359 (Shortbread carries the same data at
-/// zooms 5 and 6, so the overview gains almost nothing).
+/// Basemap content scale, like a browser page zoomed to 50%: the basemap
+/// alone is laid out on a surface twice the card's size at camera zoom + 1
+/// and shrunk back ([ContentScaledLayer]), so the same ground on the same
+/// card shows the next zoom level's content with labels, line widths and
+/// icons at half size. The radar overlay, pin and controls are not scaled.
+/// Measured on the 340×408 card (features drawn, data tile zoom, unscaled →
+/// 0.5): located zoom 8: 7521 → 12668, style layers 14 → 17, z8 → z9;
+/// overview zoom 6.5: 8250 → 10724, style layers 10 → 11, z6 → z7.
+const _basemapContentScale = 0.5;
+
+/// Data tiles and style evaluated at the (scaled) camera zoom rather than
+/// the plugin's MapLibre default of one level lower: with the default, the
+/// scaled basemap would draw the same features as an unscaled one, only
+/// smaller (located zoom 8: 7512 features, data z8).
 const _basemapDetail = vt.TileOffset.none;
 
 /// GPU budget for finished basemap tiles, in screenfuls of the plugin's tile
@@ -57,11 +60,16 @@ const _gridExtraTiles = 3;
 const _rgbaBytes = 4;
 
 /// GPU bytes for [_rasterCacheScreens] of finished tiles over a [card] at
-/// [dpr]. A 340×408 card is 5×5 tiles: 56.25 MiB at dpr 3, 25 MiB at dpr 2.
+/// [dpr], as the scaled layer sees them: a surface of card / scale at
+/// dpr × scale (tiles land 1:1 on device pixels after the shrink). A 340×408
+/// card at scale 0.5 is a 680×816 surface, 6×7 tiles of 384 px at dpr 3:
+/// 23.6 MiB (unscaled it was 5×5 tiles of 768 px, 56.25 MiB); 10.5 MiB at
+/// dpr 2.
 int _rasterCacheBytes(Size card, double dpr) {
-  final tilesX = (card.width / _displayTilePx).ceil() + _gridExtraTiles;
-  final tilesY = (card.height / _displayTilePx).ceil() + _gridExtraTiles;
-  final tileEdge = _displayTilePx * dpr;
+  final surface = card / _basemapContentScale;
+  final tilesX = (surface.width / _displayTilePx).ceil() + _gridExtraTiles;
+  final tilesY = (surface.height / _displayTilePx).ceil() + _gridExtraTiles;
+  final tileEdge = (_displayTilePx * dpr * _basemapContentScale).ceilToDouble();
   return (tilesX * tilesY * tileEdge * tileEdge * _rgbaBytes * _rasterCacheScreens).round();
 }
 
@@ -91,7 +99,7 @@ Future<_Basemap> _startLoad() => _loadBasemap()..ignore();
 
 Future<_Basemap> _loadBasemap() async {
   _basemapFailed = false;
-  appLog(_logTag, 'style load start $_styleUrl');
+  appLog(_logTag, 'style load start $_styleUrl content scale $_basemapContentScale');
   try {
     final style = await vt.StyleReader(
       uri: _styleUrl,
@@ -254,7 +262,7 @@ class _RadarMapViewState extends State<RadarMapView> {
       appLog(
         _logTag,
         'raster cache ${(bytes / (1 << 20)).toStringAsFixed(1)} MiB for card '
-        '${card.width.round()}x${card.height.round()} dpr $dpr',
+        '${card.width.round()}x${card.height.round()} dpr $dpr content scale $_basemapContentScale',
       );
     }
     return bytes;
@@ -317,14 +325,17 @@ class _RadarMapViewState extends State<RadarMapView> {
                       children: [
                         // Same child slot before and after the load, so the layers above keep their state.
                         if (style.data case (:final style, :final theme, :final tiles))
-                          vt.VectorTileLayer(
-                            theme: theme,
-                            tileProviders: tiles,
-                            sprites: style.sprites,
-                            glyphs: style.glyphs,
-                            tileOffset: _basemapDetail,
-                            rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
-                            logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+                          ContentScaledLayer(
+                            scale: _basemapContentScale,
+                            child: vt.VectorTileLayer(
+                              theme: theme,
+                              tileProviders: tiles,
+                              sprites: style.sprites,
+                              glyphs: style.glyphs,
+                              tileOffset: _basemapDetail,
+                              rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
+                              logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+                            ),
                           )
                         else
                           const SizedBox.shrink(),
