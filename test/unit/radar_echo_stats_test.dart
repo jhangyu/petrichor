@@ -36,7 +36,6 @@ void main() {
           bounds: cropFrame,
           rowMap: List.generate(64, (i) => i),
           decorations: decorations,
-          palette: radarEchoPalette,
         ),
       ).stats;
 

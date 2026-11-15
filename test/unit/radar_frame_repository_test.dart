@@ -23,7 +23,6 @@ final _geometry = RadarImageGeometry(
   bounds: LatLngBounds(const LatLng(24, 120), const LatLng(25, 121)),
   rowMap: List.generate(_size, (i) => i),
   decorations: const [],
-  palette: radarEchoPalette,
 );
 
 /// 8x8 RGB frame: one echo pixel of 30 dBZ, the rest background.

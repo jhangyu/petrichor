@@ -19,7 +19,7 @@ void main() {
   final identityRows = List<int>.generate(64, (i) => i);
   RadarImageGeometry geometry({List<int>? rowMap, List<PixelRect> decorations = const []}) =>
       RadarImageGeometry(
-        size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations, palette: radarEchoPalette);
+        size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations);
   img.Image decode(ProcessedRadarFrame p) {
     final size = radarWebpSize(p.webp);
     return img.Image.fromBytes(
@@ -76,7 +76,7 @@ void main() {
   });
 
   test('wrong source size and a row map that is not non-decreasing fail loudly', () {
-    expect(() => processRadarFrame(png, RadarImageGeometry(size: 3600, bounds: bounds, rowMap: identityRows, decorations: const [], palette: radarEchoPalette)),
+    expect(() => processRadarFrame(png, RadarImageGeometry(size: 3600, bounds: bounds, rowMap: identityRows, decorations: const [])),
         throwsFormatException);
     expect(() => processRadarFrame(png, geometry(rowMap: [0, 2, 1])), throwsArgumentError);
   });
@@ -101,7 +101,6 @@ void main() {
         bounds: bounds,
         rowMap: List<int>.generate(size, (i) => i),
         decorations: const [],
-        palette: radarEchoPalette,
       ),
     );
     expect(radarWebpSize(p.webp), (width: 2048, height: 2048));

@@ -18,8 +18,6 @@ import 'radar_webp.dart';
 /// logo) is background. The legend bar and the station-status dots also use
 /// legend-like colours, so their rectangles are always background.
 
-const radarFrameSize = 3600;
-
 /// Width of the stored image (nearest-neighbour from the source, so the palette
 /// stays exact); narrower sources are stored at their own width. The CWA
 /// source is upsampled from a ~1.27 km grid, so more width adds no echo
@@ -35,28 +33,6 @@ const _rgbMask = 0xFFFFFF;
 
 /// Pixel rectangle, [left, right) x [top, bottom).
 typedef PixelRect = ({int left, int top, int right, int bottom});
-
-/// Decorations of the 3600 frame drawn in legend colours (measured on real frames).
-const websiteFrameDecorations = <PixelRect>[
-  (left: 3419, top: 2507, right: 3488, bottom: 3572), // dBZ colour bar
-  (left: 97, top: 223, right: 146, bottom: 718), // radar station status dots
-];
-
-/// Decorations of the website station frames drawn in legend colours: only
-/// the dBZ colour bar (identical on all three stations, 66 x 1032 px; no other
-/// legend-colour pixels outside the 150 km circle, measured 2026-11-14).
-const stationFrameDecorations = <PixelRect>[
-  (left: 3461, top: 2541, right: 3527, bottom: 3573),
-];
-
-/// Extent of the 3600 frame (see radar_bounds.dart).
-const radarFrameSouth = 17.75;
-const radarFrameNorth = 29.25;
-const radarFrameWest = 115.0;
-const radarFrameEast = 126.5;
-
-/// Mercator row map of the 3600 frame (3748 output rows).
-final radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: radarFrameSouth, north: radarFrameNorth);
 
 /// How one source's images are processed and placed on the map.
 class RadarImageGeometry {
@@ -75,16 +51,11 @@ class RadarImageGeometry {
   /// Rectangles (source px) drawn in legend colours that are not echo.
   final List<PixelRect> decorations;
 
-  /// Colour table of the source (0xRRGGBB, index = dBZ 0..65, as
-  /// [radarEchoPalette]); pixels in other colours are background.
-  final List<int> palette;
-
   const RadarImageGeometry({
     required this.size,
     required this.bounds,
     required this.rowMap,
     required this.decorations,
-    required this.palette,
   });
 }
 
@@ -112,14 +83,10 @@ Uint32List _rgbaOfIndex(List<int> colours) {
 /// [g.rowMap] maps to it, encode one lossless WebP. Pure
 /// and synchronous: run it in a background isolate.
 ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
-  if (g.palette.length != radarEchoPalette.length) {
-    throw ArgumentError('radar image: expected a colour table of ${radarEchoPalette.length} dBZ levels '
-        '(echo statistics are 0..65 dBZ), got ${g.palette.length}');
-  }
   final width = g.size;
   final height = g.size;
-  final echoBits = _colourBits(g.palette);
-  final indexOf = {for (final (d, c) in g.palette.indexed) c: d + 1};
+  final echoBits = _colourBits(radarEchoPalette);
+  final indexOf = {for (final (d, c) in radarEchoPalette.indexed) c: d + 1};
   final counts = List<int>.filled(radarEchoPalette.length, 0);
   for (var j = 0; j < g.rowMap.length; j++) {
     if (g.rowMap[j] < 0 || g.rowMap[j] >= g.size || (j > 0 && g.rowMap[j] < g.rowMap[j - 1])) {
@@ -131,7 +98,7 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final outHeight = (g.rowMap.length * outWidth / width).round();
   final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
   final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);
-  final rgbaOfIndex = _rgbaOfIndex(g.palette);
+  final rgbaOfIndex = _rgbaOfIndex(radarEchoPalette);
   final row = Uint8List(width);
   var k = 0;
   final webp = encodeRadarWebp(outWidth, outHeight, (out) => readPngRgbRows(png, g.size, (y, rgb) {

@@ -6,6 +6,30 @@ import 'package:latlong2/latlong.dart';
 import '../../core/constants/app_constants.dart';
 import 'radar_frame_processor.dart';
 
+const radarFrameSize = 3600;
+
+/// Decorations of the 3600 frame drawn in legend colours (measured on real frames).
+const websiteFrameDecorations = <PixelRect>[
+  (left: 3419, top: 2507, right: 3488, bottom: 3572), // dBZ colour bar
+  (left: 97, top: 223, right: 146, bottom: 718), // radar station status dots
+];
+
+/// Decorations of the website station frames drawn in legend colours: only
+/// the dBZ colour bar (identical on all three stations, 66 x 1032 px; no other
+/// legend-colour pixels outside the 150 km circle, measured 2026-11-14).
+const stationFrameDecorations = <PixelRect>[
+  (left: 3461, top: 2541, right: 3527, bottom: 3573),
+];
+
+/// Extent of the 3600 frame (see [websiteRadarFrameBounds]).
+const radarFrameSouth = 17.75;
+const radarFrameNorth = 29.25;
+const radarFrameWest = 115.0;
+const radarFrameEast = 126.5;
+
+/// Mercator row map of the 3600 frame (3748 output rows).
+final radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: radarFrameSouth, north: radarFrameNorth);
+
 /// Extent of the website `CV1_3600_` frames ([radarFrameWest] etc.). Same grid as open-data O-A0058-001
 /// (pixel-identical image; graticule lines verified at whole degrees), see
 /// docs/logs/2026-11-14/radar-impl-notes.md. The source image is linear in
@@ -20,7 +44,6 @@ final websiteRadarGeometry = RadarImageGeometry(
   bounds: websiteRadarFrameBounds,
   rowMap: radarFrameRowMap,
   decorations: websiteFrameDecorations,
-  palette: radarEchoPalette,
 );
 
 /// Processing of one station image covering [bounds]: rows kept as they are
@@ -30,7 +53,6 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
       bounds: bounds,
       rowMap: List<int>.generate(radarFrameSize, (i) => i),
       decorations: stationFrameDecorations,
-      palette: radarEchoPalette,
     );
 
 const _earthRadiusKm = 6371.0088;
