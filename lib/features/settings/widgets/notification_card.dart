@@ -5,12 +5,12 @@ import '../../../core/storage/stored_setting.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
-import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
 import '../../location/place_provider.dart';
 import '../notification_settings.dart';
+import 'notification_parts.dart';
 import 'settings_parts.dart';
 
 /// 通知設定 group (settings only: nothing is delivered yet).
@@ -105,7 +105,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     final window = '${clockOfMinute(start)} 至 ${crosses ? '隔日 ' : ''}${clockOfMinute(end)}';
 
     return [
-      _SwitchRow(
+      NotifySwitchRow(
         icon: Icons.notifications_outlined,
         title: '通知',
         subtitle: masterOn ? '總開關：關閉時下列設定保留但不套用' : '已關閉：下列設定保留但不套用',
@@ -113,10 +113,10 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
         brand: masterOn,
         onChanged: (v) => ref.read(notifyToggleProvider(NotifyToggle.master).notifier).set(v),
       ),
-      const _GroupLabel('分區警特報通知'),
+      const NotifyGroupLabel('分區警特報通知'),
       ..._placeRows(masterOn),
-      const _GroupLabel('其他'),
-      _SwitchRow(
+      const NotifyGroupLabel('其他'),
+      NotifySwitchRow(
         icon: Icons.umbrella_outlined,
         title: '降雨提醒',
         subtitle: '目前地點未來 1 小時可能降雨時',
@@ -124,7 +124,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
         enabled: masterOn,
         onChanged: (v) => ref.read(notifyToggleProvider(NotifyToggle.rain).notifier).set(v),
       ),
-      _SwitchRow(
+      NotifySwitchRow(
         icon: Icons.bedtime_outlined,
         title: '靜音時段',
         subtitle: quietOn ? (crosses ? '$window · 跨午夜' : window) : '未開啟',
@@ -133,13 +133,13 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
         onChanged: (v) => ref.read(notifyToggleProvider(NotifyToggle.quiet).notifier).set(v),
       ),
       if (quietOn) ...[
-        _TimeRow(
+        QuietTimeRow(
           title: '開始',
           minute: start,
           enabled: masterOn,
           onTap: () => _pickTime(QuietEdge.start, start, end),
         ),
-        _TimeRow(
+        QuietTimeRow(
           title: '結束',
           minute: end,
           nextDay: crosses,
@@ -148,7 +148,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
         ),
         if (_quietError case final error?)
           SettingsBlock(children: [StatusBanner(tone: StatusTone.error, title: error)]),
-        _QuietHoursBar(start: start, end: end, label: '靜音時段：$window'),
+        QuietHoursBar(start: start, end: end, label: '靜音時段：$window'),
       ],
     ];
   }
@@ -189,7 +189,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     if (places.isEmpty) return const [none];
     return [
       for (final Place p in places)
-        _SwitchRow(
+        NotifySwitchRow(
           icon: Icons.warning_amber_outlined,
           title: placeLabel(p),
           subtitle: '依${p.county}的警特報',
@@ -200,161 +200,3 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     ];
   }
 }
-
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-    this.enabled = true,
-    this.brand = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final bool enabled;
-  final bool brand;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppListRow(
-      leading: SettingsTint(icon: icon, brand: brand),
-      primary: title,
-      secondary: subtitle,
-      enabled: enabled,
-      onTap: () => onChanged(!value),
-      trailing: AppSwitch(value: value, semanticLabel: title, onChanged: enabled ? onChanged : null),
-    );
-  }
-}
-
-class _TimeRow extends StatelessWidget {
-  const _TimeRow({
-    required this.title,
-    required this.minute,
-    required this.enabled,
-    required this.onTap,
-    this.nextDay = false,
-  });
-
-  final String title;
-  final int minute;
-  final bool enabled;
-  final bool nextDay;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: '靜音$title時間 ${nextDay ? '隔日 ' : ''}${clockOfMinute(minute)}',
-      button: true,
-      excludeSemantics: true,
-      child: AppListRow(
-        leading: const SettingsTint(icon: Icons.schedule),
-        primary: title,
-        enabled: enabled,
-        onTap: onTap,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: AppSpace.s8,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpace.s4,
-              children: [
-                if (nextDay) const AppBadge(label: '隔日'),
-                Text(clockOfMinute(minute),
-                    style: AppType.body1Strong.copyWith(
-                      color: enabled ? AppPalette.fg1 : AppPalette.fgDisabled,
-                      fontFeatures: AppType.tabular,
-                    )),
-              ],
-            ),
-            const Icon(Icons.chevron_right, size: AppSize.icon20, color: AppPalette.fg3),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 24 h strip: ticks 0/6/12/18/24, segment(s) in brand colour. Starts on the 60 text column.
-class _QuietHoursBar extends StatelessWidget {
-  const _QuietHoursBar({required this.start, required this.end, required this.label});
-
-  final int start;
-  final int end;
-  final String label;
-
-  static const _textColumn = AppSpace.s16 + AppSize.controlSm + AppSpace.s12;
-  static const _ticks = [0, 6, 12, 18, 24];
-
-  @override
-  Widget build(BuildContext context) {
-    final segments = start < end ? [(start, end)] : [(0, end), (start, minutesPerDay)];
-    return Semantics(
-      label: label,
-      excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(_textColumn, AppSpace.s16, AppSpace.s16, AppSpace.s16),
-        child: Column(
-          spacing: AppSpace.s4,
-          children: [
-            LayoutBuilder(
-              builder: (context, c) => SizedBox(
-                height: AppSize.dot,
-                width: c.maxWidth,
-                child: Stack(children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: AppPalette.bg4,
-                      borderRadius: BorderRadius.all(Radius.circular(AppRadius.full)),
-                    ),
-                  ),
-                  for (final (from, to) in segments)
-                    Positioned(
-                      left: c.maxWidth * from / minutesPerDay,
-                      width: c.maxWidth * (to - from) / minutesPerDay,
-                      top: 0,
-                      bottom: 0,
-                      child: const ColoredBox(color: AppPalette.brandBg),
-                    ),
-                ]),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (final t in _ticks) Text('$t', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Sub-label band (32 high, text centred).
-class _GroupLabel extends StatelessWidget {
-  const _GroupLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppPalette.bg2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s8),
-        child: Text(text, style: AppType.caption1.copyWith(color: AppPalette.fg3, fontWeight: FontWeight.w600)),
-      ),
-    );
-  }
-}
-
