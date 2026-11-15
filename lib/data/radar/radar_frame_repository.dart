@@ -26,6 +26,8 @@ const radarFrameCacheDirName = 'radar_webp_2048_v2';
 /// Cache directories of earlier pipelines (each was [radarFrameCacheDirName]
 /// once); deleted by [deleteLegacyRadarCaches]. Never contains the current name.
 const radarLegacyCacheDirNames = [
+  'radar_cv1_3600_webp_v1',
+  'radar_cv1_3600_webp_v2',
   'radar_cv1_3600_webp_v3',
   'radar_cv1_3600_webp_v4',
   'radar_indexed_png_v1',
