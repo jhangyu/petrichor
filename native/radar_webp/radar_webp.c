@@ -75,8 +75,10 @@ static void unmap_pages(void* pages, size_t bytes) {
 #endif
 
 static void* arena_alloc(Arena* arena, size_t size) {
-  // libwebp caps one allocation at WEBP_MAX_ALLOCABLE_MEMORY (2^34), so these
-  // roundings cannot overflow.
+  // libwebp caps one allocation at WEBP_MAX_ALLOCABLE_MEMORY (2^34 on 64-bit,
+  // just under 2^31 on 32-bit), so these roundings cannot overflow.
+  // A zero-byte request is served as one byte so it returns a non-NULL pointer.
+  if (size == 0) size = 1;
   size = round_up(size, RADAR_WEBP_ARENA_ALIGN);
   if ((size_t)(arena->end - arena->next_free) < size) {
     const size_t header = round_up(sizeof(ArenaChunk), RADAR_WEBP_ARENA_ALIGN);

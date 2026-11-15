@@ -7,6 +7,10 @@
 
 #include <stdlib.h>
 
+#ifdef WEBP_USE_THREAD
+#error "radar_webp's per-call arena is thread-local state: with WEBP_USE_THREAD libwebp allocates on its own worker threads, where no arena is active, and the allocator would abort."
+#endif
+
 void* radar_webp_arena_malloc(size_t size);
 void* radar_webp_arena_calloc(size_t count, size_t size);
 void radar_webp_arena_free(void* ptr);
