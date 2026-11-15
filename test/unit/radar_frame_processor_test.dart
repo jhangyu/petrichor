@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cwb_flutter/data/radar/radar_frame_processor.dart';
 import 'package:cwb_flutter/data/radar/radar_png_rows.dart';
@@ -103,15 +104,20 @@ void main() {
         palette: radarEchoPalette,
       ),
     );
-    final out = decode(p);
-    expect((out.width, out.height), (2048, 2048));
+    expect(radarWebpSize(p.webp), (width: 2048, height: 2048));
+    // Pixels as little-endian RGBA words (bytes R, G, B, A); background 0.
+    final out = decodeRadarWebp(p.webp).buffer.asUint32List();
+    final expectedOfLevel = Uint32List(70);
+    for (var l = 0; l < 66; l++) {
+      final c = radarEchoPalette[l];
+      expectedOfLevel[l] = 0xFF000000 | ((c & 0xFF) << 16) | (c & 0xFF00) | (c >> 16);
+    }
     for (var oy = 0; oy < 2048; oy++) {
       for (var ox = 0; ox < 2048; ox++) {
-        final l = level(ox * size ~/ 2048, oy * size ~/ 2048);
-        final o = out.getPixel(ox, oy);
-        final expected = l < 66 ? [radarEchoPalette[l] >> 16, (radarEchoPalette[l] >> 8) & 0xFF, radarEchoPalette[l] & 0xFF, 255] : null;
-        if (expected == null ? o.a != 0 : [o.r, o.g, o.b, o.a].toString() != expected.toString()) {
-          fail('pixel differs at ($ox,$oy)');
+        final expected = expectedOfLevel[level(ox * size ~/ 2048, oy * size ~/ 2048)];
+        final actual = out[oy * 2048 + ox];
+        if (actual != expected) {
+          fail('pixel ($ox,$oy): expected 0x${expected.toRadixString(16)}, got 0x${actual.toRadixString(16)}');
         }
       }
     }

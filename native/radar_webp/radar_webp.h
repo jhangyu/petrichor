@@ -20,7 +20,8 @@ extern "C" {
 // Return codes. 0 is success; every failure is negative.
 enum {
   RADAR_WEBP_OK = 0,
-  // A pointer is NULL, width/height <= 0, stride < width * 4, size == 0,
+  // A pointer is NULL, width/height <= 0 or > 16383 (encode), stride <
+  // width * 4, size == 0,
   // or level is outside 0..9.
   RADAR_WEBP_E_INVALID_ARG = -1,
   // libwebp rejected its own config/picture/decoder init (header/library

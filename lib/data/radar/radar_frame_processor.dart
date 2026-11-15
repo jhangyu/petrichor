@@ -135,10 +135,9 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
   final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);
   final rgbaOfIndex = _rgbaOfIndex(g.palette);
-  final out = Uint32List(outWidth * outHeight);
   final row = Uint8List(width);
   var k = 0;
-  readPngRgbRows(png, g.size, (y, rgb) {
+  final webp = encodeRadarWebp(outWidth, outHeight, (out) => readPngRgbRows(png, g.size, (y, rgb) {
     row.fillRange(0, width, 0);
     for (var x = 0; x < width; x++) {
       final si = x * 3;
@@ -162,9 +161,9 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
       }
       k++;
     }
-  });
+  }));
   return (
-    webp: encodeRadarWebp(out.buffer.asUint8List(), outWidth, outHeight),
+    webp: webp,
     stats: RadarEchoStats(
       frame: g.bounds,
       imageWidth: width,

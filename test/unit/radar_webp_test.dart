@@ -15,9 +15,12 @@ void main() {
     return rgba;
   }
 
+  Uint8List encode(Uint8List rgba) =>
+      encodeRadarWebp(width, height, (p) => p.buffer.asUint8List(p.offsetInBytes, p.lengthInBytes).setAll(0, rgba));
+
   test('encode then decode returns every RGBA byte; transparent pixels stay transparent', () {
     final src = fixture();
-    final webp = encodeRadarWebp(src, width, height);
+    final webp = encode(src);
     expect(radarWebpSize(webp), (width: width, height: height));
     final out = decodeRadarWebp(webp);
     for (var i = 0; i < width * height; i++) {
@@ -26,15 +29,18 @@ void main() {
   });
 
   test('size from the first header bytes only', () {
-    final webp = encodeRadarWebp(fixture(), width, height);
+    final webp = encode(fixture());
     expect(radarWebpSize(webp.sublist(0, radarWebpHeaderBytes)), (width: width, height: height));
   });
 
   test('bad input fails loudly with the call, the code and the affected data', () {
-    expect(() => encodeRadarWebp(Uint8List(10), width, height), throwsArgumentError);
+    expect(() => encodeRadarWebp(0, height, (_) {}), throwsArgumentError);
+    // Wider than WebP allows (16383): rejected by the C adapter, surfaced with its code.
+    expect(() => encodeRadarWebp(16384, 1, (_) {}),
+        throwsA(isA<RadarWebpException>().having((e) => e.code, 'code', -1)));
     final garbage = Uint8List.fromList(List.filled(64, 7));
     expect(() => radarWebpSize(garbage), throwsA(isA<RadarWebpException>().having((e) => e.code, 'code', isNegative)));
-    final webp = encodeRadarWebp(fixture(), width, height);
+    final webp = encode(fixture());
     expect(() => decodeRadarWebp(webp.sublist(0, webp.length ~/ 2)),
         throwsA(isA<RadarWebpException>().having((e) => e.call, 'call', 'radar_webp_decode_rgba_into')));
   });

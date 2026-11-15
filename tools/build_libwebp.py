@@ -124,13 +124,14 @@ def fetch_tarball(cache_dir: Path) -> Path:
 def extract(tarball: Path, cache_dir: Path) -> Path:
     source = cache_dir / f"libwebp-{LIBWEBP_VERSION}"
     marker = cache_dir / f"libwebp-{LIBWEBP_VERSION}.extracted"
-    if marker.exists() and marker.read_text() == LIBWEBP_SHA256:
+    header = source / "src" / "webp" / "encode.h"
+    if marker.exists() and marker.read_text() == LIBWEBP_SHA256 and header.is_file():
         return source
     if source.exists():
         shutil.rmtree(source)
     with tarfile.open(tarball) as tar:
         tar.extractall(cache_dir, filter="data")
-    if not (source / "src" / "webp" / "encode.h").is_file():
+    if not header.is_file():
         raise BuildError(f"expected {source}/src/webp/encode.h after extracting {tarball}")
     marker.write_text(LIBWEBP_SHA256)
     return source

@@ -34,23 +34,26 @@ class RadarWebpImage extends ImageProvider<RadarWebpImage> {
       return (size: radarWebpSize(data), rgba: decodeRadarWebp(data));
     });
     final buffer = await ui.ImmutableBuffer.fromUint8List(decoded.rgba);
-    final descriptor = ui.ImageDescriptor.raw(
-      buffer,
-      width: decoded.size.width,
-      height: decoded.size.height,
-      // Premultiplied, as decodeRadarWebp returns.
-      pixelFormat: ui.PixelFormat.rgba8888,
-    );
     try {
-      final codec = await descriptor.instantiateCodec();
+      final descriptor = ui.ImageDescriptor.raw(
+        buffer,
+        width: decoded.size.width,
+        height: decoded.size.height,
+        // Premultiplied, as decodeRadarWebp returns.
+        pixelFormat: ui.PixelFormat.rgba8888,
+      );
       try {
-        final frame = await codec.getNextFrame();
-        return ImageInfo(image: frame.image, debugLabel: path);
+        final codec = await descriptor.instantiateCodec();
+        try {
+          final frame = await codec.getNextFrame();
+          return ImageInfo(image: frame.image, debugLabel: path);
+        } finally {
+          codec.dispose();
+        }
       } finally {
-        codec.dispose();
+        descriptor.dispose();
       }
     } finally {
-      descriptor.dispose();
       buffer.dispose();
     }
   }

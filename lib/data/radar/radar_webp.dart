@@ -25,11 +25,13 @@ const radarWebpHeaderBytes = 32;
 external int _encode(Pointer<Uint8> rgba, int width, int height, int stride, int level, Pointer<Pointer<Uint8>> out,
     Pointer<Size> outSize);
 
-// Leaf (the Dart buffers are passed by address, no copy): decode is tens of ms.
+// Leaf (the Dart buffer is passed by address, no copy): only parses the header.
 @Native<Int32 Function(Pointer<Uint8>, Size, Pointer<Int32>, Pointer<Int32>)>(symbol: 'radar_webp_get_info', isLeaf: true)
 external int _getInfo(Pointer<Uint8> data, int size, Pointer<Int32> width, Pointer<Int32> height);
 
-@Native<Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>, Size, Int32)>(symbol: 'radar_webp_decode_rgba_into', isLeaf: true)
+// Not leaf: a decode takes ~10 ms, and a leaf call that long holds up GC of the
+// whole isolate group (UI isolate included). Buffers are therefore native.
+@Native<Int32 Function(Pointer<Uint8>, Size, Pointer<Uint8>, Size, Int32)>(symbol: 'radar_webp_decode_rgba_into')
 external int _decodeInto(Pointer<Uint8> data, int size, Pointer<Uint8> out, int outSize, int stride);
 
 @Native<Void Function(Pointer<Void>)>(symbol: 'radar_webp_free')
@@ -61,18 +63,26 @@ class RadarWebpException implements Exception {
       'RadarWebpException: $call returned $code (${_codeNames[code] ?? 'unknown code'}), expected $expected ($affected)';
 }
 
-/// Lossless WebP (level [radarWebpLevel]) of the straight-alpha RGBA pixels [rgba]
-/// ([width] x [height], rows tightly packed; transparent pixels as 0,0,0,0).
-Uint8List encodeRadarWebp(Uint8List rgba, int width, int height) {
-  final expectedBytes = width * height * _bytesPerPixel;
-  if (width <= 0 || height <= 0 || rgba.length != expectedBytes) {
-    throw ArgumentError('radar webp encode: expected $expectedBytes RGBA bytes for ${width}x$height, got ${rgba.length}');
+/// Lossless WebP (level [radarWebpLevel]) of the [width] x [height] image that
+/// [paint] draws into `pixels`: straight-alpha RGBA words (bytes R, G, B, A in
+/// memory), rows tightly packed, all starting transparent (0). `pixels` is native
+/// memory, valid only during [paint] and freed right after the encode, so a frame
+/// never holds its 16 MB of pixels in the Dart heap nor copies them.
+Uint8List encodeRadarWebp(int width, int height, void Function(Uint32List pixels) paint) {
+  if (width <= 0 || height <= 0) {
+    throw ArgumentError('radar webp encode: expected a positive size, got ${width}x$height');
   }
+  final pixelCount = width * height;
   return using((arena) {
-    final input = arena<Uint8>(rgba.length)..asTypedList(rgba.length).setAll(0, rgba);
     final out = arena<Pointer<Uint8>>();
     final outSize = arena<Size>();
-    final code = _encode(input, width, height, width * _bytesPerPixel, radarWebpLevel, out, outSize);
+    // The pixels are freed before radar_webp_free (below), which hands freed
+    // heap pages back to the OS.
+    final code = using((pixels) {
+      final input = pixels<Uint32>(pixelCount); // calloc: zero = transparent
+      paint(input.asTypedList(pixelCount));
+      return _encode(input.cast(), width, height, width * _bytesPerPixel, radarWebpLevel, out, outSize);
+    });
     if (code != _okCode) {
       throw RadarWebpException('radar_webp_encode_lossless_rgba', code,
           expected: '$_okCode', affected: '${width}x$height RGBA, level $radarWebpLevel');
@@ -102,11 +112,16 @@ Uint8List encodeRadarWebp(Uint8List rgba, int width, int height) {
 /// tightly packed, [radarWebpSize] says how many) of a WebP file.
 Uint8List decodeRadarWebp(Uint8List data) {
   final size = radarWebpSize(data);
-  final out = Uint8List(size.width * size.height * _bytesPerPixel);
-  final code = _decodeInto(data[0].address, data.length, out[0].address, out.length, size.width * _bytesPerPixel);
-  if (code != _okCode) {
-    throw RadarWebpException('radar_webp_decode_rgba_into', code,
-        expected: '$_okCode', affected: '${size.width}x${size.height} WebP of ${data.length} bytes');
-  }
-  return out;
+  final outLength = size.width * size.height * _bytesPerPixel;
+  return using((arena) {
+    final input = arena<Uint8>(data.length)..asTypedList(data.length).setAll(0, data);
+    final out = arena<Uint8>(outLength);
+    final code = _decodeInto(input, data.length, out, outLength, size.width * _bytesPerPixel);
+    if (code != _okCode) {
+      throw RadarWebpException('radar_webp_decode_rgba_into', code,
+          expected: '$_okCode', affected: '${size.width}x${size.height} WebP of ${data.length} bytes');
+    }
+    // One copy into the Dart heap so the native buffer is freed now, not at a GC.
+    return Uint8List.fromList(out.asTypedList(outLength));
+  }, malloc); // every byte is overwritten: no need to zero
 }
