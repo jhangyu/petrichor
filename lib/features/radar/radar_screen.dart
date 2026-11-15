@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -7,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../app_shell.dart' show AppTab, appTabProvider;
 import '../../core/constants/app_constants.dart';
+import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/buttons.dart';
@@ -42,6 +44,10 @@ const _radarSources = [
 
 const _loadingSubtitle = '正在取得最新觀測…';
 const _unreachableSubtitle = '無法連線中央氣象署';
+/// Height of the hero card around its map in side-by-side mode: card padding,
+/// source chips, legend and the three gaps. The map box takes the rest of the pane.
+const _heroChromeHeight =
+    AppSpace.s16 + AppSpace.s20 + AppSize.touch + AppSize.legendBar + AppSpace.s4 + AppSize.icon16 + 2 * AppSpace.s16;
 const _noEchoNotice = '地圖上沒有回波，不代表沒有下雨。';
 
 class RadarScreen extends ConsumerStatefulWidget {
@@ -189,36 +195,68 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       if (_playing && _waitingOn != null) _advance(immediate: true);
     });
     final view = _sourceView(ref.watch(radarLoopProvider(_source)), window, source.maxWindow);
-    return AppPageScaffold(
-      header: AppPageHeader(
-        title: '雷達回波',
-        subtitle: view.subtitle,
-        subtitleIcon: Icons.schedule,
-        actions: [AppIconButton(icon: Icons.refresh, tooltip: '重新整理', onPressed: view.loading ? null : _refresh)],
-      ),
-      children: [
-        if (ref.watch(currentPlaceProvider) case AsyncData(value: NoPlace(:final reason)))
-          StatusBanner(
-            tone: StatusTone.permission,
-            title: '尚未選定地點',
-            text: '${locationFailureMessage(reason)}。雷達圖仍可查看，但地圖上不會標示你的位置。',
-            actions: [
-              AppButton(
-                label: '選擇地點',
-                small: true,
-                onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
-              ),
-            ],
+    final header = AppPageHeader(
+      title: '雷達回波',
+      subtitle: view.subtitle,
+      subtitleIcon: Icons.schedule,
+      actions: [AppIconButton(icon: Icons.refresh, tooltip: '重新整理', onPressed: view.loading ? null : _refresh)],
+    );
+    final placeBanner = switch (ref.watch(currentPlaceProvider)) {
+      AsyncData(value: NoPlace(:final reason)) => StatusBanner(
+        tone: StatusTone.permission,
+        title: '尚未選定地點',
+        text: '${locationFailureMessage(reason)}。雷達圖仍可查看，但地圖上不會標示你的位置。',
+        actions: [
+          AppButton(
+            label: '選擇地點',
+            small: true,
+            onPressed: () => ref.read(appTabProvider.notifier).select(AppTab.location),
           ),
-        view.hero,
-        ...view.afterHero,
-        if (view.sourceIds != null)
-          Text(
+        ],
+      ),
+      _ => null,
+    };
+    final sourceLine = view.sourceIds == null
+        ? null
+        : Text(
             '資料來源：中央氣象署 官網雷達回波圖',
             textAlign: TextAlign.center,
             style: AppType.caption1.copyWith(color: AppPalette.fg3),
+          );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = WindowSizeClass.of(context);
+        final sideBySide =
+            size.usesRail && !size.isShortHeight && AppTwoPane.fits(constraints.maxWidth - 2 * size.pageMargin);
+        if (!sideBySide) {
+          return AppPageScaffold(
+            header: header,
+            children: [
+              if (placeBanner != null) AppGridItem.full(child: placeBanner),
+              view.hero(null),
+              ...view.afterHero,
+              if (sourceLine != null) AppGridItem.full(child: sourceLine),
+            ],
+          );
+        }
+        return AppPageScaffold.fill(
+          header: header,
+          body: AppTwoPane(
+            main: LayoutBuilder(
+              builder: (context, pane) => SingleChildScrollView(
+                child: view.hero(math.max(AppLayout.paneMinWidth, pane.maxHeight - _heroChromeHeight)),
+              ),
+            ),
+            side: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: AppSpace.s16,
+                children: [?placeBanner, ...view.afterHero, ?sourceLine],
+              ),
+            ),
           ),
-      ],
+        );
+      },
     );
   }
 
@@ -399,8 +437,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   // ---- cards ----
 
   /// Radar map card: source switch on top, then [banner], the map and [legend].
-  AppCard _heroCard({Widget? banner, required RadarMapView map, Widget? legend}) {
-    return AppCard(
+  Widget Function(double? mapHeight) _heroCard({Widget? banner, required RadarMapView map, Widget? legend}) {
+    return (mapHeight) => AppCard(
       hero: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -419,7 +457,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             ),
           ),
           ?banner,
-          map,
+          mapHeight == null
+              ? Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: AppLayout.paneMaxWidth),
+                    child: map,
+                  ),
+                )
+              : SizedBox(height: mapHeight, child: map),
           ?legend,
         ],
       ),
@@ -438,7 +483,8 @@ class _RadarView {
   });
 
   final String subtitle;
-  final Widget hero;
+  /// Hero card for a map box of the given height; null = the map's natural aspect.
+  final Widget Function(double? mapHeight) hero;
   final List<Widget> afterHero;
 
   /// Dataset ids for the 資料來源 line; null on loading / error frames.

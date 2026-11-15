@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/layout/adaptive.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
@@ -172,7 +173,7 @@ class _Controls extends StatelessWidget {
     final previous = f?.previousReady;
     final next = f?.nextReady;
     return Row(
-      spacing: AppSpace.s4,
+      spacing: AppSpace.s8,
       children: [
         AppIconButton(
           icon: Icons.skip_previous,
@@ -422,9 +423,9 @@ class _SettingsState extends State<_Settings> {
           if (_open)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.s12, AppSpace.s4, AppSpace.s12, AppSpace.s16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: AppSpace.s16,
+              // One column in a narrow pane; the fields sit side by side once the card is wide enough for two.
+              child: AppGrid(
+                minColumnWidth: AppLayout.paneMinWidth,
                 children: [
                   _Field(
                     label: '回看範圍',
