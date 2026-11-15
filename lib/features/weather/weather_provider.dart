@@ -45,6 +45,8 @@ final weatherClockProvider = Provider<DateTime Function()>((ref) => DateTime.now
 class WeatherNotifier extends Notifier<WeatherState> {
   @override
   WeatherState build() {
+    // 金鑰變更會重建 repository，據此重新載入
+    ref.watch(weatherRepositoryProvider);
     return switch (ref.watch(currentPlaceProvider)) {
       AsyncLoading() => const WeatherState(),
       AsyncError(:final error) => WeatherState(isLoading: false, error: '$error'),

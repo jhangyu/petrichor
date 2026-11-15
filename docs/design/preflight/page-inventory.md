@@ -11,7 +11,7 @@
 | 主題 | light/dark 兩套，`themeMode: system`；但天氣頁背景寫死深藍漸層 `#2C3E50→#3498DB`，兩主題無差別 | main.dart:22-24, weather_screen.dart:19-23, app_theme.dart |
 | 字型 | Google Fonts Inter（中文無對應字重，退回系統字） | app_theme.dart:9 |
 | 定位 | 取 GPS → 反向地理編碼 city/district；服務未開、權限 denied/deniedForever、地理編碼失敗、任何例外 → 一律**靜默**回預設「臺北市 信義區」(25.0330, 121.5654) | location_service.dart:23-84 |
-| API Key | 編譯時 `--dart-define=CWA_API_KEY`；缺 → Failure「API Key 未設定…」 | app_constants.dart:18-24, weather_repository.dart:98 |
+| API Key | 由「設定」分頁輸入、存 shared_preferences；缺 → `Failure.apiKeyIssue`（missing／rejected／unreadable） | api_key.dart, dio_client.dart, weather_repository.dart |
 | 錯誤訊息（Repository 已有的中文字串，設計可直接引用） | 連線逾時，請檢查網路／傳送逾時，請稍後再試／接收逾時，請稍後再試／伺服器回應錯誤：{code}／請求已取消／連線失敗，請檢查網路／API 授權失敗（401/403）／查無此地點的天氣預報：{name}／無法解析雷達圖 URL | weather_repository.dart:99,111,264-285 |
 
 ---

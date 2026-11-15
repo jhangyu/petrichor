@@ -67,7 +67,54 @@ final class Failure<T> extends Result<T> {
   final int? statusCode;
   final String? dataset;
   final String? location;
-  const Failure(this.message, {this.statusCode, this.dataset, this.location});
+
+  /// Non-null = the request failed because of the API key; pages show 「請到「設定」輸入 / 更新 token」.
+  final ApiKeyIssue? apiKeyIssue;
+  const Failure(this.message, {this.statusCode, this.dataset, this.location, this.apiKeyIssue});
+}
+
+/// Why a request failed because of the API key.
+enum ApiKeyIssue { missing, rejected, unreadable }
+
+/// Interceptor rejection payload (`DioException.error`).
+class CwaApiKeyException implements Exception {
+  final ApiKeyIssue issue;
+  final String message;
+  const CwaApiKeyException(this.issue, this.message);
+
+  @override
+  String toString() => 'CwaApiKeyException(${issue.name}): $message';
+}
+
+/// The one DioException → [Failure] mapping for every repository.
+Failure<T> failureFromDio<T>(DioException e, {required String dataset, String? location}) {
+  final status = e.response?.statusCode;
+  final error = e.error;
+  final issue = error is CwaApiKeyException
+      ? error.issue
+      : (status == 401 || status == 403)
+          ? ApiKeyIssue.rejected
+          : null;
+  final message = switch (error) {
+    CwaApiKeyException(:final message) => message,
+    _ when issue == ApiKeyIssue.rejected => 'API 授權失敗，請確認 API Key 正確（HTTP $status）',
+    _ => switch (e.type) {
+        DioExceptionType.connectionTimeout => '連線逾時，請檢查網路',
+        DioExceptionType.sendTimeout => '傳送逾時，請稍後再試',
+        DioExceptionType.receiveTimeout => '接收逾時，請稍後再試',
+        DioExceptionType.badResponse => '伺服器回應錯誤：$status',
+        DioExceptionType.cancel => '請求已取消',
+        DioExceptionType.connectionError => '連線失敗，請檢查網路',
+        _ => '網路錯誤：${e.message}',
+      },
+  };
+  return Failure(
+    location == null ? '$message（資料集 $dataset）' : '$message（資料集 $dataset，地點 $location）',
+    statusCode: status,
+    dataset: dataset,
+    location: location,
+    apiKeyIssue: issue,
+  );
 }
 
 // ============================================================================
@@ -231,7 +278,7 @@ class WeatherRepository {
       );
       return Success(_parseIssueTime(response.data ?? '', dataset));
     } on DioException catch (e) {
-      return _handleDioError(e, dataset: dataset, location: county);
+      return failureFromDio(e, dataset: dataset, location: county);
     } on FormatException catch (e) {
       return Failure('解析 $dataset 發布時間失敗（地點 $county）：${e.message}', dataset: dataset, location: county);
     }
@@ -239,7 +286,7 @@ class WeatherRepository {
 
   /// 同一失敗換成另一結果型別（訊息、資料集、地點原樣保留）。
   Failure<T> _retype<T>(Failure<Object?> f) =>
-      Failure(f.message, statusCode: f.statusCode, dataset: f.dataset, location: f.location);
+      Failure(f.message, statusCode: f.statusCode, dataset: f.dataset, location: f.location, apiKeyIssue: f.apiKeyIssue);
 
   Future<Result<T>> _townshipForecast<T>(
     String city,
@@ -287,7 +334,7 @@ class WeatherRepository {
       }
       return Success(parse(data));
     } on DioException catch (e) {
-      return _handleDioError(e, dataset: dataset, location: location);
+      return failureFromDio(e, dataset: dataset, location: location);
     } on FormatException catch (e) {
       return Failure(
         '解析 $dataset 失敗（地點 $location）：${e.message}',
@@ -295,30 +342,6 @@ class WeatherRepository {
         location: location,
       );
     }
-  }
-
-  /// 處理 Dio 例外
-  Result<T> _handleDioError<T>(DioException e, {String? dataset, String? location}) {
-    final message = isApiError(e) ? 'API 授權失敗，請確認 API Key 正確' : _formatDioError(e);
-    return Failure(
-      dataset == null ? message : '$message（資料集 $dataset，地點 $location）',
-      statusCode: e.response?.statusCode,
-      dataset: dataset,
-      location: location,
-    );
-  }
-
-  /// 格式化 Dio 例外為可讀訊息
-  String _formatDioError(DioException e) {
-    return switch (e.type) {
-      DioExceptionType.connectionTimeout => '連線逾時，請檢查網路',
-      DioExceptionType.sendTimeout => '傳送逾時，請稍後再試',
-      DioExceptionType.receiveTimeout => '接收逾時，請稍後再試',
-      DioExceptionType.badResponse => '伺服器回應錯誤：${e.response?.statusCode}',
-      DioExceptionType.cancel => '請求已取消',
-      DioExceptionType.connectionError => '連線失敗，請檢查網路',
-      _ => '網路錯誤：${e.message}',
-    };
   }
 }
 

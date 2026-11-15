@@ -1,7 +1,6 @@
 /// App 常數與 API 端點設定
 ///
-/// API key 從編譯時透過 `--dart-define=CWA_API_KEY=your_key` 注入，
-/// 避免將金鑰寫入原始碼。
+/// API key 不在此處：使用者於「設定」輸入，存在 shared_preferences（見 core/api/api_key.dart）。
 class AppConstants {
   AppConstants._();
 
@@ -12,16 +11,6 @@ class AppConstants {
   /// CWA Open Data API base URL
   static const String cwaApiBaseUrl =
       'https://opendata.cwa.gov.tw/api/v1/rest/datastore/';
-
-  /// CWA API 授權金鑰（從編譯時 `--dart-define` 注入）
-  /// 使用方式：`flutter run --dart-define=CWA_API_KEY=your_key`
-  static String get cwaApiKey => const String.fromEnvironment(
-        'CWA_API_KEY',
-        defaultValue: '',
-      );
-
-  /// 檢查 API key 是否已設定
-  static bool get hasApiKey => cwaApiKey.isNotEmpty;
 
   // -------------------------------------------------------------------------
   // Dataset IDs（氣象資料集）
@@ -87,13 +76,8 @@ class AppConstants {
   /// 水利署雷達（林園）
   static const String radarLinyuan = 'O-A0084-003';
 
-  /// 雷達 API query參數模板（不含 dataset ID）
-  static String radarApiQueryParams(String apiKey) =>
-      'Authorization=$apiKey&downloadType=WEB&format=JSON';
-
-  /// 完整雷達 API URL
-  static String radarApiUrl(String datasetId, String apiKey) =>
-      '$cwaFileApiBaseUrl$datasetId?${radarApiQueryParams(apiKey)}';
+  /// fileapi 資料集 URL（金鑰由 dioProvider 攔截器加入 query）
+  static String fileApiUrl(String datasetId) => '$cwaFileApiBaseUrl$datasetId?downloadType=WEB&format=JSON';
 
   // -------------------------------------------------------------------------
   //網路請求設定

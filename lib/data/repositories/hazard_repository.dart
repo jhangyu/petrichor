@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
 import '../models/hazard_models.dart';
-import 'weather_repository.dart' show Failure, Result, Success;
+import 'weather_repository.dart' show Failure, Result, Success, failureFromDio;
 
 /// 警特報：各縣市生效特報
 const String warningsByCountyDataset = 'W-C0033-001';
@@ -23,26 +23,18 @@ const String rainfallMapDataset = 'O-A0040-002';
 /// 未來 1 小時雨量預測格點（fileapi 專屬）
 const String rainForecast1hDataset = 'F-B0046-001';
 
-const String _missingApiKeyMessage = 'API Key 未設定，請使用 --dart-define=CWA_API_KEY=your_key';
-
 final hazardRepositoryProvider = Provider<HazardRepository>((ref) {
-  return HazardRepository(
-    ref.watch(dioProvider),
-    ref.watch(fileApiDioProvider),
-    apiKey: AppConstants.cwaApiKey,
-  );
+  return HazardRepository(ref.watch(dioProvider));
 });
 
 /// 警特報與雨量資料倉儲。所有方法回傳 [Result]，失敗訊息含資料集 ID。
 class HazardRepository {
   final Dio _dio;
-  final Dio _fileApiDio;
-  final String apiKey;
 
   /// 取得 [ActiveWarnings.fetchedAt] 的時鐘（測試注入）
   final DateTime Function() clock;
 
-  HazardRepository(this._dio, this._fileApiDio, {required this.apiKey, this.clock = DateTime.now});
+  HazardRepository(this._dio, {this.clock = DateTime.now});
 
   /// 目前生效的縣市層級特報（-001）併公告（-002）。
   ///
@@ -52,7 +44,6 @@ class HazardRepository {
   /// 或 `records` 非物件、欄位型別不符，一律 [Failure]。
   /// -001 有特報但 -002 無任何公告 → [Failure]（兩資料集不一致，不默默丟掉內文）。
   Future<Result<ActiveWarnings>> getActiveWarnings() async {
-    if (apiKey.isEmpty) return const Failure('[$warningsByCountyDataset/$warningBulletinsDataset] $_missingApiKeyMessage');
     try {
       final responses = await Future.wait([
         _dio.get<Object?>(warningsByCountyDataset),
@@ -69,7 +60,7 @@ class HazardRepository {
       }
       return Success(warnings);
     } on DioException catch (e) {
-      return _dioFailure('$warningsByCountyDataset/$warningBulletinsDataset', e);
+      return failureFromDio(e, dataset: '$warningsByCountyDataset/$warningBulletinsDataset');
     } on FormatException catch (e) {
       return Failure('[$warningsByCountyDataset/$warningBulletinsDataset] 解析失敗：${e.message}');
     }
@@ -84,7 +75,6 @@ class HazardRepository {
     required double latitude,
     required double longitude,
   }) async {
-    if (apiKey.isEmpty) return const Failure('[$rainObservationDataset] $_missingApiKeyMessage');
     try {
       final response = await _dio.get<Object?>(rainObservationDataset);
       final all = parseRainStations(_datastoreRecords(response.data, rainObservationDataset));
@@ -99,7 +89,7 @@ class HazardRepository {
       withValue.sort((a, b) => a.distanceSqTo(latitude, longitude).compareTo(b.distanceSqTo(latitude, longitude)));
       return Success(CountyRainfall(county: county, stations: inCounty, allStations: all, nearest: withValue.first));
     } on DioException catch (e) {
-      return _dioFailure(rainObservationDataset, e);
+      return failureFromDio(e, dataset: rainObservationDataset);
     } on FormatException catch (e) {
       return Failure('[$rainObservationDataset] 解析失敗：${e.message}');
     }
@@ -111,12 +101,19 @@ class HazardRepository {
   /// 使用者位置的 1 小時雨量預測；座標不在格點範圍內 → [Failure]。
   Future<Result<RainForecast>> getRainForecast({required double latitude, required double longitude}) async {
     final grid = await _fileApi(rainForecast1hDataset, RainForecastGrid.fromJson);
-    return grid.fold(
-      onSuccess: (g) => g.contains(latitude, longitude)
+    return switch (grid) {
+      Success(data: final g) => g.contains(latitude, longitude)
           ? Success(RainForecast(grid: g, mmAtLocation: g.valueAt(latitude, longitude)))
           : Failure<RainForecast>('[$rainForecast1hDataset] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
-      onFailure: (message, statusCode) => Failure<RainForecast>(message, statusCode: statusCode),
-    );
+      Failure(:final message, :final statusCode, :final dataset, :final location, :final apiKeyIssue) =>
+        Failure<RainForecast>(
+          message,
+          statusCode: statusCode,
+          dataset: dataset,
+          location: location,
+          apiKeyIssue: apiKeyIssue,
+        ),
+    };
   }
 
   // ==========================================================================
@@ -124,13 +121,12 @@ class HazardRepository {
   // ==========================================================================
 
   Future<Result<T>> _fileApi<T>(String dataset, T Function(Object? root) parse) async {
-    if (apiKey.isEmpty) return Failure('[$dataset] $_missingApiKeyMessage');
     try {
-      final response = await _fileApiDio.get<Object?>(AppConstants.radarApiUrl(dataset, apiKey));
+      final response = await _dio.get<Object?>(AppConstants.fileApiUrl(dataset));
       final body = _jsonMap(response.data, dataset);
       return Success(parse(body['cwaopendata']));
     } on DioException catch (e) {
-      return _dioFailure(dataset, e);
+      return failureFromDio(e, dataset: dataset);
     } on FormatException catch (e) {
       return Failure('[$dataset] 解析失敗：${e.message}');
     }
@@ -170,14 +166,4 @@ class HazardRepository {
   }
 
   bool _isLifted(Object? record) => record is Map<String, dynamic> && record['hazardConditions'] == null;
-
-  Failure<T> _dioFailure<T>(String dataset, DioException e) {
-    final status = e.response?.statusCode;
-    final detail = switch (status) {
-      401 || 403 => 'API 授權失敗，請確認 API Key（HTTP $status）',
-      null => '${e.type.name}：${e.message}',
-      _ => '伺服器回應 HTTP $status',
-    };
-    return Failure('[$dataset] 請求失敗：$detail', statusCode: status);
-  }
 }

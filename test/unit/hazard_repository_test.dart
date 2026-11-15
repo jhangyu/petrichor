@@ -2,19 +2,25 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:cwb_flutter/core/api/api_key.dart';
+import 'package:cwb_flutter/core/api/dio_client.dart';
 import 'package:cwb_flutter/data/models/hazard_models.dart';
 import 'package:cwb_flutter/data/repositories/hazard_repository.dart';
 import 'package:cwb_flutter/data/repositories/weather_repository.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 依 URL 路徑中的資料集 ID 回傳預設內容的假 HTTP adapter
 class _FakeAdapter implements HttpClientAdapter {
   final Map<String, ({int status, String body})> routes;
+  final List<Uri> requests = [];
   _FakeAdapter(this.routes);
 
   @override
   Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    requests.add(options.uri);
     final key = routes.keys.firstWhere(options.uri.path.endsWith, orElse: () => throw StateError('no fake route for ${options.uri}'));
     final r = routes[key]!;
     return ResponseBody.fromString(r.body, r.status, headers: {
@@ -34,13 +40,10 @@ Map<String, dynamic> _fixtureJson(String id) => jsonDecode(_fixture(id)) as Map<
 
 HazardRepository _repo(
   Map<String, ({int status, String body})> routes, {
-  String apiKey = 'test-key',
   DateTime Function() clock = DateTime.now,
 }) {
-  final adapter = _FakeAdapter(routes);
-  final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1/rest/datastore/'))..httpClientAdapter = adapter;
-  final fileDio = Dio()..httpClientAdapter = adapter;
-  return HazardRepository(dio, fileDio, apiKey: apiKey, clock: clock);
+  final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api/v1/rest/datastore/'))..httpClientAdapter = _FakeAdapter(routes);
+  return HazardRepository(dio, clock: clock);
 }
 
 DateTime _tw(String s) => DateTime.parse('$s+08:00');
@@ -252,6 +255,25 @@ void main() {
     test('truncated fixture (200 of 247401 values) is Failure', () async {
       final r = await _repo({'F-B0046-001': _ok(_fixture('F-B0046-001'))}).getRainForecast(latitude: 25.0, longitude: 121.5);
       expect((r as Failure).message, allOf(contains('F-B0046-001'), contains('247401')));
+    });
+  });
+
+  group('fileapi key', () {
+    test('url carries no key and the interceptor adds it as a query parameter', () async {
+      const dummyKey = 'CWA-00000000-0000-0000-0000-000000000000';
+      SharedPreferences.setMockInitialValues({CwaApiKeyNotifier.storageKey: dummyKey});
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final adapter = _FakeAdapter({'O-A0040-002': _ok(_fixture('O-A0040-002'))});
+      container.read(dioProvider).httpClientAdapter = adapter;
+
+      final r = await container.read(hazardRepositoryProvider).getRainfallMap();
+
+      expect(r, isA<Success<RainfallMap>>());
+      final uri = adapter.requests.single;
+      expect(uri.path, endsWith('/fileapi/v1/opendataapi/O-A0040-002'));
+      expect(uri.queryParameters['Authorization'], dummyKey);
+      expect(uri.queryParameters['downloadType'], 'WEB');
     });
   });
 }
