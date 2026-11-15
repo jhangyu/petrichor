@@ -208,8 +208,8 @@ void main() {
       File('${root.path}/$name/test/keep.txt').createSync(recursive: true);
     }
     await load(window).drain<void>();
-    final left = [for (final e in root.listSync()) e.path.split('/').last]..sort();
-    expect(left, [radarFrameCacheDirName, 'unrelated_dir']);
+    final left = {for (final e in root.listSync()) e.path.split('/').last};
+    expect(left, {radarFrameCacheDirName, 'unrelated_dir'});
     expect(File('${root.path}/unrelated_dir/test/keep.txt').existsSync(), isTrue);
     expect(radarLegacyCacheDirNames, isNot(contains(radarFrameCacheDirName)));
   });
