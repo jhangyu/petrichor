@@ -24,34 +24,6 @@ export 'radar_loop.dart';
 /// never shown.
 const radarFrameCacheDirName = 'radar_webp_2048_v3';
 
-/// Frame cache directories of earlier pipelines (radar and accumulated
-/// rainfall); deleted by [deleteLegacyRadarCaches]. Never contains a current name.
-const radarLegacyCacheDirNames = [
-  'radar_cv1_3600_webp_v1',
-  'radar_cv1_3600_webp_v2',
-  'radar_cv1_3600_webp_v3',
-  'radar_cv1_3600_webp_v4',
-  'radar_indexed_png_v1',
-  'radar_indexed_png_2048_v1',
-  'radar_webp_2048_v1',
-  'radar_webp_2048_v2',
-  'rain_accum_frames_v1',
-  'rain_accum_frames_v2',
-];
-
-/// Deletes the [radarLegacyCacheDirNames] directories under [root]; anything
-/// else is kept. A failed delete is rethrown naming the directory.
-Future<void> deleteLegacyRadarCaches(Directory root) async {
-  for (final name in radarLegacyCacheDirNames) {
-    final dir = Directory('${root.path}/$name');
-    try {
-      if (await dir.exists()) await dir.delete(recursive: true);
-    } on FileSystemException catch (e) {
-      throw FileSystemException('radar cache cleanup: expected ${dir.path} deleted, got ${e.message}', dir.path, e.osError);
-    }
-  }
-}
-
 /// Frames processed at once (one isolate each). Measured on the Mac
 /// (docs/logs/2026-11-15/radar-perf-handover.md §9): 2 workers are 2.1x
 /// faster than 1 for ~+100 MB RSS; 4 workers cost +410 MB RSS (rejected).
@@ -134,9 +106,6 @@ class RadarFrameRepository {
   /// Shared by all loads so the processing bound holds across back-to-back loads.
   final _processPool = Pool(radarProcessWorkers);
 
-  /// Old cache directories are deleted once, by the first load.
-  bool _legacyCachesDeleted = false;
-
   /// The last started load per cache family (first segment of
   /// [RadarSource.cachePath]). Loads of a family run one after another (they
   /// share cache files), loads of different families do not wait for each
@@ -178,10 +147,6 @@ class RadarFrameRepository {
 
   Future<void> _load(RadarSource source, Duration window, void Function(RadarLoop) emit, CancelToken cancel) async {
     final root = await cacheRoot();
-    if (!_legacyCachesDeleted) {
-      await deleteLegacyRadarCaches(root);
-      _legacyCachesDeleted = true;
-    }
     final dir = Directory('${root.path}/${source.cachePath}');
     await dir.create(recursive: true);
     final now = clock();
