@@ -17,9 +17,6 @@ const String warningBulletinsDataset = 'W-C0033-002';
 /// 雨量站今日累積（datastore）
 const String rainObservationDataset = 'O-A0002-001';
 
-/// 日累積雨量圖（fileapi 專屬）
-const String rainfallMapDataset = 'O-A0040-002';
-
 /// 未來 1 小時雨量預測格點（fileapi 專屬）
 const String rainForecast1hDataset = 'F-B0046-001';
 
@@ -94,9 +91,6 @@ class HazardRepository {
       return Failure('[$rainObservationDataset] 解析失敗：${e.message}');
     }
   }
-
-  /// 日累積雨量圖 URL 與經緯度範圍
-  Future<Result<RainfallMap>> getRainfallMap() => _fileApi(rainfallMapDataset, RainfallMap.fromJson);
 
   /// 使用者位置的 1 小時雨量預測；座標不在格點範圍內 → [Failure]。
   Future<Result<RainForecast>> getRainForecast({required double latitude, required double longitude}) async {

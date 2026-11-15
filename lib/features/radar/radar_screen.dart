@@ -21,6 +21,7 @@ import '../../data/radar/radar_loop.dart';
 import '../../data/radar/radar_source.dart' show RadarStaleListException;
 import '../location/place_provider.dart';
 import 'radar_playback.dart';
+import 'radar_player.dart';
 import 'radar_provider.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
@@ -59,19 +60,12 @@ class RadarScreen extends ConsumerStatefulWidget {
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
   String _source = AppConstants.radarTaiwan;
-  bool _playing = false;
-
-  /// Time of the shown slot; null = the newest ready one (page open, reload,
-  /// and before play starts from the oldest).
-  DateTime? _playhead;
-
-  /// Time of the pending slot playback stopped at (緩衝中); null when not
-  /// buffering. Resumed by the loop update that makes it ready (see [build]),
-  /// never by a timer. The map keeps the last shown frame meanwhile.
-  DateTime? _waitingOn;
-
-  /// Frame-rate / repeat-pause clock between shown frames.
-  Timer? _timer;
+  late final RadarPlayer _player = RadarPlayer(
+    slots: () => ref.read(radarLoopProvider(_source)).value?.slots,
+    fps: () => ref.read(radarFpsProvider(_group)).requireValue,
+    repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
+    onChanged: () => setState(() {}),
+  );
 
   /// Current place; null while loading, on error or without a place.
   Place? get _place => switch (ref.watch(currentPlaceProvider)) {
@@ -87,107 +81,31 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _player.dispose();
     super.dispose();
-  }
-
-  void _stop() {
-    _timer?.cancel();
-    _timer = null;
-    _playing = false;
-    _waitingOn = null;
   }
 
   RadarGroup get _group => radarGroupOf(_source);
 
-  /// Repeat of the current group; only read once the screen has shown it.
-  bool get _repeat => ref.read(radarRepeatProvider(_group)).requireValue;
-
-  /// Playback speed of the current group; only read once the screen has shown it.
-  int get _fps => ref.read(radarFpsProvider(_group)).requireValue;
-
-  List<RadarSlot>? get _slots => ref.read(radarLoopProvider(_source)).value?.slots;
-
-  /// Takes the next step after the playhead: shows the next ready slot after
-  /// 1/fps (at once when [immediate]: play start, or resuming from 緩衝中), or
-  /// stops at a pending one, or ends.
-  void _advance({required bool immediate}) {
-    _timer?.cancel();
-    final slots = _slots;
-    final step = slots == null ? null : radarNextStep(slots: slots, after: _playhead, fps: _fps, repeat: _repeat);
-    switch (step) {
-      case null:
-        setState(_stop);
-      case RadarWait(:final time):
-        setState(() => _waitingOn = time);
-      case RadarShow(:final time, :final delay):
-        void show() {
-          setState(() {
-            _playhead = time;
-            _waitingOn = null;
-          });
-          _advance(immediate: false);
-        }
-        if (immediate) {
-          show();
-        } else {
-          _timer = Timer(delay, show);
-        }
-    }
-  }
-
-  void _togglePlay() {
-    if (_playing) {
-      setState(_stop);
-      return;
-    }
-    final slots = _slots!;
-    final head = _playhead;
-    // At (or before reaching) the newest ready frame: play from the oldest.
-    final fromStart = head == null || !slots.any((s) => s.state == RadarSlotState.ready && s.time.isAfter(head));
-    setState(() {
-      _playing = true;
-      if (fromStart) _playhead = null;
-    });
-    _advance(immediate: fromStart);
-  }
-
-  void _seek(DateTime time) {
-    setState(() {
-      _playhead = time;
-      _waitingOn = null;
-    });
-    if (_playing) _advance(immediate: false);
-  }
-
   void _setFps(int fps) {
     unawaited(ref.read(radarFpsProvider(_group).notifier).set(fps));
-    if (_playing && _waitingOn == null) _advance(immediate: false);
+    _player.onFpsChanged();
   }
 
   void _setWindow(Duration window) {
-    setState(() {
-      _stop();
-      _playhead = null;
-    });
+    _player.reset();
     unawaited(ref.read(radarWindowProvider(_group).notifier).set(window));
   }
 
   void _selectSource(String id) {
-    setState(() {
-      _stop();
-      _playhead = null;
-      _source = id;
-    });
+    _source = id;
+    _player.reset();
   }
 
   void _setOpacity(int percent) => unawaited(ref.read(radarOpacityProvider(_group).notifier).set(percent));
 
   void _refresh() {
-    setState(() {
-      _stop();
-      _playhead = null;
-    });
+    _player.reset();
     retryRadarBasemap();
     ref.invalidate(radarLoopProvider(_source));
   }
@@ -200,7 +118,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final repeat = ref.watch(radarRepeatProvider(_group));
     // Each loop update may make the slot playback waits on ready (or failed).
     ref.listen(radarLoopProvider(_source), (_, _) {
-      if (_playing && _waitingOn != null) _advance(immediate: true);
+      _player.onLoopUpdate();
     });
     final loop = ref.watch(radarLoopProvider(_source));
     final view = switch ((selectedWindow, fps, repeat)) {
@@ -301,7 +219,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     };
     final slots = loop.slots;
     final failed = [for (final s in slots) if (s.state == RadarSlotState.failed) s];
-    final index = radarShownIndex(slots, _playhead);
+    final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
       return loop.loading
           ? _loadingView(listed: slots.length)
@@ -341,7 +259,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           chipIcon: Icons.schedule,
           chipText: formatTaiwanMonthDayClock(frame.time),
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
-          upcoming: radarUpcomingFrames(slots, _playhead, count: radarPreDecodeCount),
+          upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
           overlayImages: [
             if (opacityPercent != null)
               OverlayImage(
@@ -360,9 +278,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           PlaybackCard(meta: '僅有最新影格', opacity: opacityControl)
         else
           PlaybackCard(
-            meta: _waitingOn != null
+            meta: _player.waitingOn != null
                 ? '緩衝中 · 已就緒 $readyCount / ${slots.length} 張'
-                : _playing
+                : _player.playing
                     ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
                     : loop.loading
                         ? '載入中 $readyCount / ${slots.length} 張'
@@ -370,15 +288,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             playback: PlaybackFrames(
               slots: slots,
               index: index,
-              current: radarCurrentCell(slots, shown: index, waitingOn: _waitingOn),
-              buffering: _waitingOn != null,
-              playing: _playing,
+              current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
+              buffering: _player.waitingOn != null,
+              playing: _player.playing,
               fps: fps,
               repeat: repeat,
               window: window,
               windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
-              onTogglePlay: _togglePlay,
-              onSeek: _seek,
+              onTogglePlay: _player.togglePlay,
+              onSeek: _player.seek,
               onFps: _setFps,
               onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
               onWindow: _setWindow,

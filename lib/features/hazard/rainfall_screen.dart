@@ -17,6 +17,7 @@ import '../../data/repositories/hazard_repository.dart';
 import '../../data/repositories/weather_repository.dart' show Failure, Result, Success;
 import '../location/place_provider.dart';
 import '../radar/radar_playback.dart';
+import '../radar/widgets/radar_map_view.dart' show RadarCameraLink;
 import 'hazard_provider.dart';
 import 'rainfall/accum_card.dart';
 import 'rainfall/accum_provider.dart';
@@ -131,12 +132,18 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryRainfall,
       builder: (r) => ObservationHeroCard(rainfall: r),
     );
-    final forecastCard = _resultCard(
+    Widget? forecastCard(RadarCameraLink? link) => _resultCard(
       forecast,
       errorTitle: '無法取得降雨預測',
       skeleton: const AppCard.loading(title: '未來 1hr 預測', skeletonHeight: _mapSkeletonHeight),
       onRetry: retryForecast,
-      builder: (f) => ForecastMapCard(forecast: f, placeName: place.name, latitude: place.latitude, longitude: place.longitude),
+      builder: (f) => ForecastMapCard(
+        forecast: f,
+        placeName: place.name,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        cameraLink: link,
+      ),
       showError: !tokenIssue,
     );
     final list = _resultCard(
@@ -151,7 +158,7 @@ class RainfallScreen extends ConsumerWidget {
       if (result is Success) rainObservationDataset,
       if (forecastResult is Success) rainForecast1hDataset,
     ];
-    final accum = AccumulationCard(me: LatLng(place.latitude, place.longitude));
+    final me = LatLng(place.latitude, place.longitude);
     return _scaffold(
       ref,
       subtitle: switch (result) {
@@ -169,29 +176,13 @@ class RainfallScreen extends ConsumerWidget {
             },
       children: [
         if (hero != null) AppGridItem.full(child: hero),
-        AppGridItem.full(child: _mapRow([?forecastCard, accum])),
+        AppGridItem.full(child: _MapRow(cards: (link) => [?forecastCard(link), AccumulationCard(me: me, cameraLink: link)])),
         if (list != null) AppGridItem.full(child: list),
         if (result is Success)
           AppGridItem.full(
             child: Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
           ),
       ],
-    );
-  }
-
-  /// The map cards side by side when two panes fit, otherwise stacked in order.
-  Widget _mapRow(List<Widget> cards) {
-    return LayoutBuilder(
-      builder: (context, box) {
-        if (cards.length < 2 || !AppTwoPane.fits(box.maxWidth)) {
-          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppLayout.gridGap, children: cards);
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppLayout.gridGap,
-          children: [for (final c in cards) Expanded(child: c)],
-        );
-      },
     );
   }
 
@@ -213,5 +204,48 @@ class RainfallScreen extends ConsumerWidget {
       AsyncError(:final error) => AppCard.error(title: errorTitle, message: '$error', onRetry: onRetry),
       _ => skeleton,
     };
+  }
+}
+
+/// The map cards side by side with one shared camera when two panes fit,
+/// otherwise stacked in order (each map square and locked).
+class _MapRow extends StatefulWidget {
+  const _MapRow({required this.cards});
+
+  /// The cards in order, given the shared camera (null when stacked).
+  final List<Widget> Function(RadarCameraLink? link) cards;
+
+  @override
+  State<_MapRow> createState() => _MapRowState();
+}
+
+class _MapRowState extends State<_MapRow> {
+  final _link = RadarCameraLink();
+
+  @override
+  void dispose() {
+    _link.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (!AppTwoPane.fits(box.maxWidth)) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppLayout.gridGap,
+            children: widget.cards(null),
+          );
+        }
+        final cards = widget.cards(_link);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppLayout.gridGap,
+          children: [for (final c in cards) Expanded(child: c)],
+        );
+      },
+    );
   }
 }

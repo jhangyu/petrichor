@@ -183,6 +183,30 @@ const _pinHalo = 20.0;
 const _pinHaloAlpha = 0.2;
 const _pinBorder = 2.0;
 
+/// Camera shared by maps side by side: a map that the user moves reports its
+/// camera, the others follow it. Reports only come from gestures, so a
+/// following map moving does not echo back.
+class RadarCameraLink extends ChangeNotifier {
+  Object? _origin;
+  LatLng? _center;
+  double? _zoom;
+
+  /// The map that last reported; it ignores its own report.
+  Object? get origin => _origin;
+  LatLng? get center => _center;
+  double? get zoom => _zoom;
+
+  void report(Object origin, MapCamera camera) {
+    _origin = origin;
+    _center = camera.center;
+    _zoom = camera.zoom;
+    notifyListeners();
+  }
+}
+
+/// Default map shape of [RadarMapView.aspectRatio].
+const radarMapDefaultAspectRatio = 5 / 6;
+
 /// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 button
 /// (top right) and the current place's pin. [overlayImages] holds the one shown
 /// frame. The image cache stays at Flutter's default; [upcoming] frames are
@@ -199,6 +223,9 @@ class RadarMapView extends StatefulWidget {
     this.loading = false,
     this.muted = false,
     this.semanticsLabel,
+    this.aspectRatio = radarMapDefaultAspectRatio,
+    this.startLocked = false,
+    this.cameraLink,
   });
 
   /// Current place; null = no place (pin hidden, locate button disabled).
@@ -222,12 +249,22 @@ class RadarMapView extends StatefulWidget {
   final bool muted;
   final String? semanticsLabel;
 
+  /// Width / height of the map.
+  final double aspectRatio;
+
+  /// Pan and zoom are off until the lock button is pressed (maps inside a scrolling page).
+  final bool startLocked;
+
+  /// Camera shared with the other maps of the link; null = this map is alone.
+  final RadarCameraLink? cameraLink;
+
   @override
   State<RadarMapView> createState() => _RadarMapViewState();
 }
 
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
+  late bool _locked = widget.startLocked;
   Timer? _zoomLog;
   double? _loggedZoom;
   int? _loggedCacheBytes;
@@ -240,11 +277,19 @@ class _RadarMapViewState extends State<RadarMapView> {
     // the other maps' builders while this one mounts (during build) would
     // mark them dirty mid-build.
     WidgetsBinding.instance.addPostFrameCallback((_) => retryRadarBasemap());
+    widget.cameraLink?.addListener(_followLink);
+  }
+
+  void _followLink() {
+    final link = widget.cameraLink!;
+    if (identical(link.origin, this)) return;
+    _controller.move(link.center!, link.zoom!);
   }
 
   /// Logs the zoom once the camera has rested for [_zoomLogDebounce]; pans
   /// that keep the zoom are not logged.
   void _onCamera(MapCamera camera, bool hasGesture) {
+    if (hasGesture) widget.cameraLink?.report(this, camera);
     _zoomLog?.cancel();
     _zoomLog = Timer(_zoomLogDebounce, () {
       if (camera.zoom == _loggedZoom) return;
@@ -275,12 +320,17 @@ class _RadarMapViewState extends State<RadarMapView> {
   @override
   void didUpdateWidget(RadarMapView old) {
     super.didUpdateWidget(old);
+    if (old.cameraLink != widget.cameraLink) {
+      old.cameraLink?.removeListener(_followLink);
+      widget.cameraLink?.addListener(_followLink);
+    }
     final me = widget.me;
     if (me != null && me != old.me) _controller.move(me, _locatedZoom);
   }
 
   @override
   void dispose() {
+    widget.cameraLink?.removeListener(_followLink);
     _zoomLog?.cancel();
     _controller.dispose();
     super.dispose();
@@ -308,7 +358,7 @@ class _RadarMapViewState extends State<RadarMapView> {
     final map = ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.medium),
       child: AspectRatio(
-        aspectRatio: 5 / 6,
+        aspectRatio: widget.aspectRatio,
         child: LayoutBuilder(
           builder: (context, card) => ValueListenableBuilder(
             valueListenable: _basemapLoad,
@@ -325,6 +375,9 @@ class _RadarMapViewState extends State<RadarMapView> {
                         initialCenter: me ?? _taiwanCenter,
                         initialZoom: _initialZoom(),
                         onPositionChanged: _onCamera,
+                        interactionOptions: InteractionOptions(
+                          flags: _locked ? InteractiveFlag.none : InteractiveFlag.all,
+                        ),
                       ),
                       children: [
                         // Same child slot before and after the load, so the layers above keep their state.
@@ -380,7 +433,22 @@ class _RadarMapViewState extends State<RadarMapView> {
                     Positioned(
                       top: AppSpace.s12,
                       right: AppSpace.s12,
-                      child: _LocateFab(onPressed: me == null ? null : () => _controller.move(me, _locatedZoom)),
+                      child: Column(
+                        spacing: AppSpace.s8,
+                        children: [
+                          _MapFab(
+                            icon: Icons.my_location,
+                            tooltip: me == null ? '回到我的位置（沒有目前地點）' : '回到我的位置',
+                            onPressed: me == null ? null : () => _controller.move(me, _locatedZoom),
+                          ),
+                          if (widget.startLocked)
+                            _MapFab(
+                              icon: _locked ? Icons.lock_outline : Icons.lock_open,
+                              tooltip: _locked ? '解除鎖定，可拖曳縮放地圖' : '鎖定地圖，頁面可捲動',
+                              onPressed: () => setState(() => _locked = !_locked),
+                            ),
+                        ],
+                      ),
                     ),
                 ],
               ),
@@ -498,9 +566,11 @@ class _MePin extends StatelessWidget {
 }
 
 /// `.fab` 「回到我的位置」; disabled without a current place.
-class _LocateFab extends StatelessWidget {
-  const _LocateFab({required this.onPressed});
+class _MapFab extends StatelessWidget {
+  const _MapFab({required this.icon, required this.tooltip, required this.onPressed});
 
+  final IconData icon;
+  final String tooltip;
   final VoidCallback? onPressed;
 
   @override
@@ -514,8 +584,8 @@ class _LocateFab extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: enabled ? AppShadows.s4 : AppShadows.s2),
         child: AppIconButton(
-          icon: Icons.my_location,
-          tooltip: enabled ? '回到我的位置' : '回到我的位置（沒有目前地點）',
+          icon: icon,
+          tooltip: tooltip,
           onPressed: onPressed,
         ),
       ),

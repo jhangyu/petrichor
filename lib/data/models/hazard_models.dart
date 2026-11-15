@@ -293,58 +293,6 @@ List<RainStation> parseRainStations(Object? records) {
 }
 
 // ============================================================================
-// 累積雨量圖（O-A0040-002）
-// ============================================================================
-
-/// 日累積雨量圖：圖片 URL 與經緯度範圍（疊圖用）
-class RainfallMap {
-  final String imageUrl;
-  final DateTime obsTime;
-  final double minLongitude;
-  final double maxLongitude;
-  final double minLatitude;
-  final double maxLatitude;
-
-  const RainfallMap({
-    required this.imageUrl,
-    required this.obsTime,
-    required this.minLongitude,
-    required this.maxLongitude,
-    required this.minLatitude,
-    required this.maxLatitude,
-  });
-
-  /// [root] = fileapi 回應的 `cwaopendata`
-  factory RainfallMap.fromJson(Object? root) {
-    const base = 'cwaopendata.dataset';
-    final ds = _map(_map(root, 'cwaopendata')['dataset'], base);
-    final geo = _map(ds['GeoInfo'], '$base.GeoInfo');
-    final lon = _range(geo['LongitudeRange'], '$base.GeoInfo.LongitudeRange');
-    final lat = _range(geo['LatitudeRange'], '$base.GeoInfo.LatitudeRange');
-    final url = _str(_map(ds['Resource'], '$base.Resource')['ProductURL'], '$base.Resource.ProductURL');
-    if (url.isEmpty) throw const FormatException('empty ProductURL at cwaopendata.dataset.Resource.ProductURL');
-    return RainfallMap(
-      imageUrl: url,
-      obsTime: _time(_map(ds['ObsTime'], '$base.ObsTime')['DateTime'], '$base.ObsTime.DateTime'),
-      minLongitude: lon.$1,
-      maxLongitude: lon.$2,
-      minLatitude: lat.$1,
-      maxLatitude: lat.$2,
-    );
-  }
-
-  /// "119.188-123.588" → (119.188, 123.588)
-  static (double, double) _range(Object? v, String path) {
-    final s = _str(v, path);
-    final parts = s.split('-');
-    final lo = parts.length == 2 ? double.tryParse(parts[0]) : null;
-    final hi = parts.length == 2 ? double.tryParse(parts[1]) : null;
-    if (lo == null || hi == null) throw FormatException('expected "min-max" at $path, got "$s"');
-    return (lo, hi);
-  }
-}
-
-// ============================================================================
 // 1 小時雨量預測格點（F-B0046-001）
 // ============================================================================
 

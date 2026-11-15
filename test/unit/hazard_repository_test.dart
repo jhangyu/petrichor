@@ -205,23 +205,6 @@ void main() {
     });
   });
 
-  group('getRainfallMap', () {
-    test('parses image URL and lon/lat ranges', () async {
-      final m = (await _repo({'O-A0040-002': _ok(_fixture('O-A0040-002'))}).getRainfallMap()).data;
-      expect(m.imageUrl, 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0040-002.jpg');
-      expect([m.minLongitude, m.maxLongitude], [119.188, 123.588]);
-      expect([m.minLatitude, m.maxLatitude], [21.523, 25.938]);
-      expect(m.obsTime, _tw('2026-11-14T20:30:00'));
-    });
-
-    test('missing ProductURL is Failure with dataset', () async {
-      final body = _fixtureJson('O-A0040-002');
-      (body['cwaopendata']['dataset'] as Map).remove('Resource');
-      final r = await _repo({'O-A0040-002': _ok(body)}).getRainfallMap();
-      expect((r as Failure).message, allOf(contains('O-A0040-002'), contains('Resource')));
-    });
-  });
-
   group('getRainForecast', () {
     // 25.0375N,121.5E → y=(25.0375-20)/0.0125=403, x=(121.5-118)/0.0125=280（手算）
     const cell = 403 * 441 + 280;
@@ -264,14 +247,14 @@ void main() {
       SharedPreferences.setMockInitialValues({CwaApiKeyNotifier.storageKey: dummyKey});
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      final adapter = _FakeAdapter({'O-A0040-002': _ok(_fixture('O-A0040-002'))});
+      final adapter = _FakeAdapter({'F-B0046-001': _ok(_fullGrid({}))});
       container.read(dioProvider).httpClientAdapter = adapter;
 
-      final r = await container.read(hazardRepositoryProvider).getRainfallMap();
+      final r = await container.read(hazardRepositoryProvider).getRainForecast(latitude: 25.0, longitude: 121.5);
 
-      expect(r, isA<Success<RainfallMap>>());
+      expect(r, isA<Success<RainForecast>>());
       final uri = adapter.requests.single;
-      expect(uri.path, endsWith('/fileapi/v1/opendataapi/O-A0040-002'));
+      expect(uri.path, endsWith('/fileapi/v1/opendataapi/F-B0046-001'));
       expect(uri.queryParameters['Authorization'], dummyKey);
       expect(uri.queryParameters['downloadType'], 'WEB');
       // CWA answers 404 when a query parameter appears twice

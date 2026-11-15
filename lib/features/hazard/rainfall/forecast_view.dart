@@ -92,12 +92,22 @@ Future<ImageProvider> _gridImage(RainForecastGrid grid) async {
 
 /// `未來 1hr 預測` grid map with the value at the user's place and the legend.
 class ForecastMapCard extends StatefulWidget {
-  const ForecastMapCard({super.key, required this.forecast, required this.placeName, required this.latitude, required this.longitude});
+  const ForecastMapCard({
+    super.key,
+    required this.forecast,
+    required this.placeName,
+    required this.latitude,
+    required this.longitude,
+    this.cameraLink,
+  });
 
   final RainForecast forecast;
   final String placeName;
   final double latitude;
   final double longitude;
+
+  /// Camera shared with the 累積雨量 map (side by side); null = stacked: square, locked until unlocked.
+  final RadarCameraLink? cameraLink;
 
   @override
   State<ForecastMapCard> createState() => _ForecastMapCardState();
@@ -149,6 +159,9 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
                 chipIcon: image == null ? null : Icons.schedule,
                 chipText: image == null ? null : range,
                 semanticsLabel: '未來 1 小時雨量網格圖',
+                aspectRatio: widget.cameraLink == null ? 1 : radarMapDefaultAspectRatio,
+                startLocked: widget.cameraLink == null,
+                cameraLink: widget.cameraLink,
                 overlayImages: image == null
                     ? const []
                     : [

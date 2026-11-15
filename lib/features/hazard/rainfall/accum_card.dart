@@ -11,6 +11,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
+import '../../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../../data/radar/radar_loop.dart';
 import '../../../data/rain_accum/accum_pieces.dart';
 import '../../radar/radar_playback.dart';
@@ -31,9 +32,12 @@ const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), 
 /// 累積雨量 card (design 3): window chips, accumulation map, the radar's
 /// playback and the 17-colour legend. [me] null = no current place.
 class AccumulationCard extends ConsumerStatefulWidget {
-  const AccumulationCard({super.key, required this.me});
+  const AccumulationCard({super.key, required this.me, this.cameraLink});
 
   final LatLng? me;
+
+  /// Camera shared with the forecast map (side by side); null = stacked: square, locked until unlocked.
+  final RadarCameraLink? cameraLink;
 
   @override
   ConsumerState<AccumulationCard> createState() => _AccumulationCardState();
@@ -148,8 +152,33 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     );
   }
 
+  RadarMapView _map({
+    bool loading = false,
+    bool muted = false,
+    IconData? chipIcon,
+    String? chipText,
+    String? semanticsLabel,
+    List<RadarFrame> upcoming = const [],
+    List<OverlayImage> overlayImages = const [],
+  }) {
+    final link = widget.cameraLink;
+    return RadarMapView(
+      me: widget.me,
+      loading: loading,
+      muted: muted,
+      chipIcon: chipIcon,
+      chipText: chipText,
+      semanticsLabel: semanticsLabel,
+      upcoming: upcoming,
+      overlayImages: overlayImages,
+      aspectRatio: link == null ? 1 : radarMapDefaultAspectRatio,
+      startLocked: link == null,
+      cameraLink: link,
+    );
+  }
+
   List<Widget> _loadingBody(int hours) => [
-    RadarMapView(me: widget.me, loading: true, muted: true),
+    _map(loading: true, muted: true),
     const PlaybackBody(playback: null, loading: true),
     _Legend(hours: hours),
   ];
@@ -161,8 +190,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       text: error,
       actions: [RetryButton(onPressed: () => _retry(hours))],
     ),
-    RadarMapView(
-      me: widget.me,
+    _map(
       muted: true,
       chipIcon: Icons.cloud_off_outlined,
       chipText: '無累積雨量資料',
@@ -207,8 +235,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             text: '${formatTaiwanClock(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
             actions: [RetryButton(onPressed: () => _retry(hours))],
           ),
-        RadarMapView(
-          me: widget.me,
+        _map(
           chipIcon: Icons.schedule,
           chipText: '過去 $hours 小時累積 · ${formatTaiwanMonthDayClock(frame.time)}',
           semanticsLabel: '過去 $hours 小時累積雨量圖',
