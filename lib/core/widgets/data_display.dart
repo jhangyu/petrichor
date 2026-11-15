@@ -132,33 +132,40 @@ class MetricTile extends StatelessWidget {
   }
 }
 
-/// `.metric-grid`: two equal columns, gap 8. Rows stretch to the taller tile.
+/// `.metric-grid`: equal columns, gap 8; rows stretch to the taller tile.
+/// Two columns, or every tile in one row once the grid is at least
+/// [AppLayout.cardWideWidth] wide.
 class MetricGrid extends StatelessWidget {
   const MetricGrid({super.key, required this.children});
 
   final List<MetricTile> children;
 
-  static const _columns = 2;
+  static const _narrowColumns = 2;
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i += _columns) {
-      final row = children.sublist(i, (i + _columns).clamp(0, children.length));
-      rows.add(
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: AppSpace.s8,
-            children: [
-              for (var c = 0; c < _columns; c++)
-                Expanded(child: c < row.length ? row[c] : const SizedBox.shrink()),
-            ],
-          ),
-        ),
-      );
-    }
-    return Column(spacing: AppSpace.s8, children: rows);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= AppLayout.cardWideWidth ? children.length : _narrowColumns;
+        final rows = <Widget>[];
+        for (var i = 0; i < children.length; i += columns) {
+          final row = children.sublist(i, (i + columns).clamp(0, children.length));
+          rows.add(
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: AppSpace.s8,
+                children: [
+                  for (var c = 0; c < columns; c++)
+                    Expanded(child: c < row.length ? row[c] : const SizedBox.shrink()),
+                ],
+              ),
+            ),
+          );
+        }
+        return Column(spacing: AppSpace.s8, children: rows);
+      },
+    );
   }
 }
 

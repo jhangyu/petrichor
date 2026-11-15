@@ -246,9 +246,21 @@ abstract final class AppLayout {
   static const int gridMaxColumns = 6;
   static const double gridGap = AppSpace.s16;
 
-  /// Max width of a running-text block inside a card (~70 CJK/Latin chars at
-  /// body1). Cards fill their cell; only long text is capped.
+  /// Max width of a running-text block, banner text or button group's
+  /// container inside a card. Cards fill their cell; only these are capped.
   static const double readingWidth = 640;
+
+  /// Card content width from which a card may switch to its wide interior
+  /// (metrics in one row, settings side by side, list + detail).
+  static const double cardWideWidth = 520;
+
+  /// `AppTwoPane` side pane: width = available × [paneSideShare], clamped to
+  /// [paneMinWidth]…[paneMaxWidth]. [paneMinWidth] is also the smallest map
+  /// box side and the min cell width of multi-column lists; [paneMaxWidth]
+  /// caps a map that keeps its natural aspect ratio.
+  static const double paneMinWidth = 320;
+  static const double paneMaxWidth = 480;
+  static const double paneSideShare = 0.4;
 }
 
 /// `--shadow-*` tokens (Fluent elevation, light theme).

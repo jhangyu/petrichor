@@ -8,21 +8,33 @@ import 'buttons.dart';
 ///
 /// [children] are laid out in an [AppGrid] that fills the window width (gap
 /// 16, page margin from [WindowSizeClass.pageMargin]); wrap a child in
-/// [AppGridItem] / [AppGridItem.full] to span columns. Pass [source] only on
-/// frames that show CWA data (loading / error frames have none); it is pinned
-/// at the bottom of the viewport on short pages and follows the content on
-/// long ones.
+/// [AppGridItem] / [AppGridItem.full] to span columns. [AppPageScaffold.fill]
+/// instead gives one [body] the bounded rest of the viewport without page
+/// scroll (panes that scroll themselves). Pass [source] only on frames that
+/// show CWA data (loading / error frames have none); it is pinned at the
+/// bottom of the viewport on short pages and follows the content on long ones
+/// (always pinned with [AppPageScaffold.fill]).
 class AppPageScaffold extends StatelessWidget {
   const AppPageScaffold({
     super.key,
     required this.header,
-    required this.children,
+    required List<Widget> this.children,
     this.source,
     this.onRefresh,
-  });
+  }) : body = null;
+
+  /// Non-scrolling page: [body] gets tight width and bounded height.
+  const AppPageScaffold.fill({
+    super.key,
+    required this.header,
+    required Widget this.body,
+    this.source,
+  })  : children = null,
+        onRefresh = null;
 
   final AppPageHeader header;
-  final List<Widget> children;
+  final List<Widget>? children;
+  final Widget? body;
   final SourceLine? source;
 
   /// Enables pull-to-refresh when set.
@@ -31,18 +43,37 @@ class AppPageScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final margin = WindowSizeClass.of(context).pageMargin;
+    final foot = EdgeInsets.fromLTRB(margin, AppSpace.s16, margin, AppSpace.s24);
+    final fillBody = body;
+    if (fillBody != null) {
+      return ColoredBox(
+        color: AppPalette.bg3,
+        child: Column(
+          children: [
+            header,
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(margin, AppSpace.s8, margin, AppSpace.s0),
+                child: fillBody,
+              ),
+            ),
+            if (source case final line?) Padding(padding: foot, child: line),
+          ],
+        ),
+      );
+    }
     // ponytail: the grid is built eagerly (pages hold < 20 cards); go lazy if a page grows long lists.
     final scroll = CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
           padding: EdgeInsets.fromLTRB(margin, AppSpace.s8, margin, AppSpace.s0),
-          sliver: SliverToBoxAdapter(child: AppGrid(children: children)),
+          sliver: SliverToBoxAdapter(child: AppGrid(children: children!)),
         ),
         SliverFillRemaining(
           hasScrollBody: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(margin, AppSpace.s16, margin, AppSpace.s24),
+            padding: foot,
             child: Align(alignment: Alignment.bottomCenter, child: source),
           ),
         ),

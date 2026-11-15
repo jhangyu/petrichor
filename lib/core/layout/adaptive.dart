@@ -38,6 +38,10 @@ class WindowSizeClass {
   final WindowWidthClass width;
   final WindowHeightClass height;
 
+  /// Short window (height class compact): no viewport-bounded panes, let
+  /// the page scroll.
+  bool get isShortHeight => height == WindowHeightClass.compact;
+
   /// Side navigation (rail) instead of the bottom bar.
   bool get usesRail => width != WindowWidthClass.compact;
 
@@ -133,6 +137,41 @@ class AppGrid extends StatelessWidget {
         }
         flush();
         return Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: _gap, children: rows);
+      },
+    );
+  }
+}
+
+/// Main pane + side pane in one row, gap 16. Side pane width =
+/// available × [AppLayout.paneSideShare], clamped to
+/// [AppLayout.paneMinWidth]…[AppLayout.paneMaxWidth]; the main pane takes the
+/// rest. Under a bounded height (`AppPageScaffold.fill` body) both panes get
+/// the full height and must scroll themselves; inside the scrolling page grid
+/// they are top-aligned and keep their own height. Check [fits] first.
+class AppTwoPane extends StatelessWidget {
+  const AppTwoPane({super.key, required this.main, required this.side, this.sideFirst = false});
+
+  final Widget main;
+  final Widget side;
+
+  /// Side pane on the left (e.g. a county list before its towns).
+  final bool sideFirst;
+
+  /// Whether [width] holds two panes of at least [AppLayout.paneMinWidth].
+  static bool fits(double width) => width >= 2 * AppLayout.paneMinWidth + AppLayout.gridGap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sideWidth = (constraints.maxWidth * AppLayout.paneSideShare)
+            .clamp(AppLayout.paneMinWidth, AppLayout.paneMaxWidth);
+        final panes = [Expanded(child: main), SizedBox(width: sideWidth, child: side)];
+        return Row(
+          crossAxisAlignment: constraints.hasBoundedHeight ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
+          spacing: AppLayout.gridGap,
+          children: sideFirst ? panes.reversed.toList() : panes,
+        );
       },
     );
   }
