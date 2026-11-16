@@ -31,7 +31,7 @@ class _ConnectionErrorAdapter implements HttpClientAdapter {
 ProviderContainer _container(Map<String, Object> preferences, HttpClientAdapter adapter) {
   SharedPreferences.setMockInitialValues(preferences);
   final container = newContainer();
-  container.read(dioProvider).httpClientAdapter = adapter;
+  container.read(cwaDioProvider).httpClientAdapter = adapter;
   return container;
 }
 
@@ -88,7 +88,7 @@ void main() {
     });
   });
 
-  group('dioProvider interceptor', () {
+  group('cwaDioProvider interceptor', () {
     test('no key → Failure(missing) and zero requests', () async {
       final adapter = FakeCwaAdapter()..serveStatus(_townDataset, 200);
       final container = _container({}, adapter);

@@ -9,7 +9,7 @@ import '../models/hazard_models.dart';
 import '../../core/api/result.dart' show Failure, Result, Success, guardRequest;
 
 final hazardRepositoryProvider = Provider<HazardRepository>((ref) {
-  return HazardRepository(ref.watch(dioProvider));
+  return HazardRepository(ref.watch(cwaDioProvider));
 });
 
 /// 警特報與雨量資料倉儲。所有方法回傳 [Result]，失敗訊息含資料集 ID。

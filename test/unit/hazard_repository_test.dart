@@ -229,7 +229,7 @@ void main() {
       SharedPreferences.setMockInitialValues({CwaApiKeyNotifier.storageKey: dummyKey});
       final container = newContainer();
       final adapter = FakeCwaAdapter()..routes['F-B0046-001'] = _ok(_fullGrid({}));
-      container.read(dioProvider).httpClientAdapter = adapter;
+      container.read(cwaDioProvider).httpClientAdapter = adapter;
 
       final r = await container.read(hazardRepositoryProvider).getRainForecast(latitude: 25.0, longitude: 121.5);
 

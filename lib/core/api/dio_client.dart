@@ -23,7 +23,7 @@ BaseOptions _commonOptions({String baseUrl = '', Map<String, dynamic>? queryPara
 /// - 以 query 加入使用者在「設定」輸入的 API key（缺少或讀不出 → 拒絕請求，不送出）
 ///
 /// 監看 [cwaApiKeyProvider]：金鑰變更後本 provider 重建，下游 repository 隨之重建。
-final dioProvider = Provider<Dio>((ref) {
+final cwaDioProvider = Provider<Dio>((ref) {
   final key = ref.watch(cwaApiKeyProvider.future);
   final dio = Dio(_commonOptions(baseUrl: AppConstants.cwaApiBaseUrl, queryParameters: {'format': 'JSON'}));
 
@@ -57,4 +57,4 @@ final dioProvider = Provider<Dio>((ref) {
 ///
 /// 獨立的 Dio實例，只給雷達用（www.cwa.gov.tw 的 JS 清單與圖片）。
 /// 不使用 baseUrl 和預設 queryParameters，直接使用完整 URL。
-final webDioProvider = Provider<Dio>((ref) => Dio(_commonOptions()));
+final cwaWebsiteDioProvider = Provider<Dio>((ref) => Dio(_commonOptions()));

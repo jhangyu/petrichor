@@ -31,6 +31,6 @@ final rainAccumulationWindowProvider = AsyncNotifierProvider<RainAccumulationWin
 /// first watched or when the window changes; a user refresh is
 /// `ref.invalidate(accumulationLoopProvider(hours))`.
 final accumulationLoopProvider = StreamProvider.autoDispose.family<RadarLoop, int>((ref, windowHours) {
-  final source = accumRadarSource(ref.watch(webDioProvider), windowHours: windowHours);
+  final source = accumRadarSource(ref.watch(cwaWebsiteDioProvider), windowHours: windowHours);
   return ref.watch(radarFrameRepositoryProvider).watch(source, window: Duration(hours: windowHours));
 });

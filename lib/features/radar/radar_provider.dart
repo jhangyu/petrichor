@@ -110,7 +110,7 @@ RadarGroup radarGroupOf(String id) => id == AppConstants.radarTaiwanDatasetId ? 
 final radarClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 final radarFrameRepositoryProvider = Provider<RadarFrameRepository>((ref) => RadarFrameRepository(
-      ref.watch(webDioProvider),
+      ref.watch(cwaWebsiteDioProvider),
       cacheRoot: getApplicationCacheDirectory,
       clock: ref.watch(radarClockProvider),
     ));
@@ -122,7 +122,7 @@ Duration radarEffectiveWindow(Duration selected, RadarSource source) =>
 /// Source by dataset id: the composite loop for [AppConstants.radarTaiwanDatasetId],
 /// a station loop for each [radarStations] id.
 final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) {
-  final dio = ref.watch(webDioProvider);
+  final dio = ref.watch(cwaWebsiteDioProvider);
   if (id == AppConstants.radarTaiwanDatasetId) return RadarSource.composite(dio);
   final station = radarStationById(id) ??
       (throw ArgumentError.value(id, 'id', 'expected ${AppConstants.radarTaiwanDatasetId} or a radarStations dataset id'));

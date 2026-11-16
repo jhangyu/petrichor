@@ -124,7 +124,7 @@ class ApiKeyStatusNotifier extends Notifier<ApiKeyStatus> {
 
   Future<ApiKeyStatus> _probe() async {
     try {
-      final response = await ref.read(dioProvider).get<Object?>(_verifyDatasetId, queryParameters: {'limit': 1});
+      final response = await ref.read(cwaDioProvider).get<Object?>(_verifyDatasetId, queryParameters: {'limit': 1});
       final data = response.data;
       if (response.statusCode == 200 && data is Map<String, dynamic> && data['success'] == 'true') {
         return ApiKeyValid(DateTime.now());

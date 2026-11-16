@@ -16,7 +16,7 @@ part 'weather_parsers.dart';
 
 /// WeatherRepository 單例 Provider
 final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
-  return WeatherRepository(ref.watch(dioProvider));
+  return WeatherRepository(ref.watch(cwaDioProvider));
 });
 
 // ============================================================================
