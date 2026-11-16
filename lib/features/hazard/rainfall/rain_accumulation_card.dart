@@ -14,6 +14,7 @@ import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_loop.dart';
 import '../../../data/rain_accumulation/rain_accumulation_pieces.dart';
+import '../../radar/playback_frames.dart';
 import '../../radar/radar_playback.dart';
 import '../../radar/radar_player.dart';
 import '../../radar/radar_provider.dart';
