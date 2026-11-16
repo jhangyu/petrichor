@@ -127,8 +127,8 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
       AsyncData(:final value) => value,
       _ => ref.read(weatherClockProvider)(),
     };
-    final hourly = weather.hourly;
-    final current = weather.current;
+    final hourly = weather.hourlyForecasts;
+    final current = weather.currentWeather;
     final warnings = ref.watch(activeWarningsProvider);
     final warningsResult = switch (warnings) {
       AsyncData(:final value) => value,
@@ -137,8 +137,8 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
     final apiKeyIssue = firstApiKeyIssue([
       current,
       hourly,
-      weather.weekly,
-      weather.sun,
+      weather.dailyForecasts,
+      weather.sunDays,
       weather.hourlyIssuedAt,
       warningsResult,
     ]);
@@ -182,7 +182,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
         AppGridItem.full(
           child: _ForecastFlow(
             weekly: WeeklyCard(
-              weekly: weather.weekly,
+              weekly: weather.dailyForecasts,
               currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,
               now: now,
               onRetry: refresh,

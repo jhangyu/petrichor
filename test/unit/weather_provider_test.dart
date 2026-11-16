@@ -84,11 +84,11 @@ void main() {
 
     final s = await _settled(container);
 
-    expect(s.location, _taipei.toPlace());
-    expect(s.current!.data.temperature, isNotNull);
-    expect(s.hourly!.data, hasLength(4));
-    expect(s.weekly!.data.first.minTemperature, 21);
-    expect(s.sun, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
+    expect(s.place, _taipei.toPlace());
+    expect(s.currentWeather!.data.temperature, isNotNull);
+    expect(s.hourlyForecasts!.data, hasLength(4));
+    expect(s.dailyForecasts!.data.first.minTemperature, 21);
+    expect(s.sunDays, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
     expect(s.hourlyIssuedAt!.data, DateTime.parse('2026-11-14T17:00:00+08:00'));
     expect(adapter.fileRequests.single.pathSegments.last, 'F-D0047-061');
   });
@@ -103,8 +103,8 @@ void main() {
 
     expect(place, isA<NoPlace>().having((p) => p.reason, 'reason', LocationFailure.permissionDenied));
     expect(s.isLoading, isFalse);
-    expect(s.location, isNull);
-    expect(s.current, isNull);
+    expect(s.place, isNull);
+    expect(s.currentWeather, isNull);
     expect(adapter.requests, isEmpty);
   });
 
@@ -121,8 +121,8 @@ void main() {
     await container.read(currentPlaceProvider.notifier).select(_banqiao);
     final s = await _settled(container);
 
-    expect(s.location, _banqiao);
-    expect(s.hourly!.data, hasLength(4));
+    expect(s.place, _banqiao);
+    expect(s.hourlyForecasts!.data, hasLength(4));
     final byDataset = {for (final r in adapter.requests) r.pathSegments.last: r.queryParameters};
     expect(byDataset['F-D0047-069']!['LocationName'], '板橋區');
     expect(byDataset['F-D0047-071']!['LocationName'], '板橋區');
@@ -139,11 +139,11 @@ void main() {
 
     final s = await _settled(container);
 
-    expect(s.hourly, isA<Failure<List<HourlyForecast>>>());
-    expect((s.hourly as Failure).message, contains('F-D0047-061'));
-    expect(s.current, isA<Success<CurrentWeather>>());
-    expect(s.weekly!.data.first.minTemperature, 21);
-    expect(s.sun, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
+    expect(s.hourlyForecasts, isA<Failure<List<HourlyForecast>>>());
+    expect((s.hourlyForecasts as Failure).message, contains('F-D0047-061'));
+    expect(s.currentWeather, isA<Success<CurrentWeather>>());
+    expect(s.dailyForecasts!.data.first.minTemperature, 21);
+    expect(s.sunDays, isA<Failure<List<SunDay>>>()); // 夾具缺 11-13：三日資料待重錄
   });
 
   group('minuteTickProvider', () {

@@ -104,7 +104,7 @@ void main() {
       dailyLow: null,
     );
     NowCardReady card(Result<List<SunDay>> sun) => nowCard(
-      WeatherState(location: taipei, current: Success(obs), sun: sun, isLoading: false),
+      WeatherState(place: taipei, currentWeather: Success(obs), sunDays: sun, isLoading: false),
       tw(14, 14),
     ) as NowCardReady;
 
@@ -131,9 +131,9 @@ void main() {
       dailyLow: null,
     );
     final state = WeatherState(
-      location: taipei,
-      current: Success(obs),
-      sun: const Failure('逾時', dataset: CwaDatasets.sunTimesDatasetId, location: '臺北市中正區'),
+      place: taipei,
+      currentWeather: Success(obs),
+      sunDays: const Failure('逾時', dataset: CwaDatasets.sunTimesDatasetId, location: '臺北市中正區'),
       isLoading: false,
     );
     final sun = (nowCard(state, tw(14, 14)) as NowCardReady).sun as Failure;

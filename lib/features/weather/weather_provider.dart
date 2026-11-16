@@ -9,15 +9,15 @@ import '../place/place_provider.dart';
 
 /// 首頁狀態。四組資料各自成敗（null＝尚未載入或尚無地點），單一資料集失敗不影響其他。
 class WeatherState {
-  final Place? location;
-  final Result<CurrentWeather>? current;
-  final Result<List<HourlyForecast>>? hourly;
-  final Result<List<DailyForecast>>? weekly;
+  final Place? place;
+  final Result<CurrentWeather>? currentWeather;
+  final Result<List<HourlyForecast>>? hourlyForecasts;
+  final Result<List<DailyForecast>>? dailyForecasts;
 
   /// [昨天, 今天, 明天] 的日出日沒
-  final Result<List<SunDay>>? sun;
+  final Result<List<SunDay>>? sunDays;
 
-  /// 72 小時預報（[hourly] 同一資料集）的發布時間
+  /// 72 小時預報（[hourlyForecasts] 同一資料集）的發布時間
   final Result<DateTime>? hourlyIssuedAt;
 
   /// App 完成這次載入的時刻（[weatherClockProvider]）；首頁「更新於」。尚未載入完成為 null
@@ -25,11 +25,11 @@ class WeatherState {
   final bool isLoading;
 
   const WeatherState({
-    this.location,
-    this.current,
-    this.hourly,
-    this.weekly,
-    this.sun,
+    this.place,
+    this.currentWeather,
+    this.hourlyForecasts,
+    this.dailyForecasts,
+    this.sunDays,
     this.hourlyIssuedAt,
     this.fetchedAt,
     this.isLoading = true,
@@ -87,27 +87,27 @@ class WeatherNotifier extends Notifier<WeatherState> {
   WeatherState _startLoad(Place place) {
     final buildRef = ref;
     Future.microtask(() => _load(place, buildRef));
-    return WeatherState(location: place);
+    return WeatherState(place: place);
   }
 
   Future<void> _load(Place place, Ref buildRef) async {
-    final repo = ref.read(weatherRepositoryProvider);
+    final repository = ref.read(weatherRepositoryProvider);
     final (current, hourly, weekly, sun, hourlyIssuedAt) = await (
-      repo.getCurrentWeather(place),
-      repo.getHourlyForecast(place.county, place.town),
-      repo.getWeeklyForecast(place.county, place.town),
-      repo.getSunTimes(place.county, ref.read(weatherClockProvider)()),
-      repo.getForecastIssuedAt(place.county),
+      repository.getCurrentWeather(place),
+      repository.getHourlyForecast(place.county, place.town),
+      repository.getWeeklyForecast(place.county, place.town),
+      repository.getSunTimes(place.county, ref.read(weatherClockProvider)()),
+      repository.getForecastIssuedAt(place.county),
     ).wait;
     // 地點已變更（重新 build）則丟棄舊結果
     if (!buildRef.mounted) return;
 
     state = WeatherState(
-      location: place,
-      current: current,
-      hourly: hourly,
-      weekly: weekly,
-      sun: sun,
+      place: place,
+      currentWeather: current,
+      hourlyForecasts: hourly,
+      dailyForecasts: weekly,
+      sunDays: sun,
       hourlyIssuedAt: hourlyIssuedAt,
       fetchedAt: ref.read(weatherClockProvider)(),
       isLoading: false,

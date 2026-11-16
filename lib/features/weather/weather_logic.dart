@@ -35,10 +35,10 @@ List<String> creditedDatasets(WeatherState weather, String county, Result<Object
   if (weather.isLoading) return const <String>[];
   final datasets = CwaDatasets.townshipForecastDatasets[county];
   return [
-    if (weather.current is Success) CwaDatasets.observationDatasetId,
-    if (weather.weekly is Success && datasets != null) datasets.oneWeek,
-    if (weather.hourly is Success && datasets != null) datasets.threeDay,
-    if (weather.sun is Success) CwaDatasets.sunTimesDatasetId,
+    if (weather.currentWeather is Success) CwaDatasets.observationDatasetId,
+    if (weather.dailyForecasts is Success && datasets != null) datasets.oneWeek,
+    if (weather.hourlyForecasts is Success && datasets != null) datasets.threeDay,
+    if (weather.sunDays is Success) CwaDatasets.sunTimesDatasetId,
     if (warnings is Success) ...[CwaDatasets.warningsByCountyDatasetId, CwaDatasets.warningBulletinsDatasetId],
   ];
 }
@@ -78,8 +78,8 @@ final class NowCardReady extends NowCardState {
 }
 
 NowCardState nowCard(WeatherState state, DateTime now) {
-  final current = state.current;
-  final sun = state.sun;
+  final current = state.currentWeather;
+  final sun = state.sunDays;
   if (current == null || sun == null) return const NowCardLoading();
   if (current case Failure(apiKeyIssue: final issue?)) return NowCardApiKey(issue);
   if (sun case Failure(apiKeyIssue: final issue?)) return NowCardApiKey(issue);
@@ -90,14 +90,14 @@ NowCardState nowCard(WeatherState state, DateTime now) {
     case Success(:final data):
       observation = data;
   }
-  final place = state.location;
+  final place = state.place;
   final Result<SunNow> sunState = switch (sun) {
     final Failure<List<SunDay>> failure => failure.retype<SunNow>(),
     Success(:final data) when place != null => sunNow(data, place, now),
     // Invariant: WeatherState carries data only for a loaded place; surface the break instead of hiding the arc.
     Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: CwaDatasets.sunTimesDatasetId),
   };
-  final slot = switch (state.hourly) {
+  final slot = switch (state.hourlyForecasts) {
     Success(:final data) => currentSlot(data, now),
     _ => null,
   };
