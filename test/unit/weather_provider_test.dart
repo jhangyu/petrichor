@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/data/location/location_service.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/models/weather_models.dart';
 import 'package:petrichor/core/api/result.dart';

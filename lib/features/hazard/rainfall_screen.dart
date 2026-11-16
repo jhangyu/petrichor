@@ -4,7 +4,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../core/navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../../core/layout/adaptive.dart';
-import '../../core/location/location_service.dart' show LocationFailure;
+import '../../data/location/location_service.dart' show LocationFailure;
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/api_key_notice.dart';
 import '../../core/widgets/app_card.dart';

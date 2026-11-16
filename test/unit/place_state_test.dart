@@ -1,4 +1,4 @@
-import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/data/location/location_service.dart';
 import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';

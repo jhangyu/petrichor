@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
-import '../../data/models/place.dart';
-import '../api/result.dart';
+import '../models/place.dart';
+import '../../core/api/result.dart';
 
 class LocationData {
   final double latitude;

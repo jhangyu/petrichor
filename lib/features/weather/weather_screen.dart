@@ -4,7 +4,7 @@ import 'package:geolocator/geolocator.dart';
 
 import '../../core/navigation/app_tab.dart';
 import '../../core/layout/adaptive.dart';
-import '../../core/location/location_service.dart';
+import '../../data/location/location_service.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/time/taiwan_time.dart';
 import '../../core/widgets/api_key_notice.dart';

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/data/location/location_service.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/features/place/place_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
