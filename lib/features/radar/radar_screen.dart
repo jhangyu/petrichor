@@ -169,12 +169,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         return AppPageScaffold.fill(
           header: header,
           body: AppTwoPane(
-            main: LayoutBuilder(
+            mainPane: LayoutBuilder(
               builder: (context, pane) => SingleChildScrollView(
                 child: view.hero(math.max(AppLayout.paneMinimumWidth, pane.maxHeight - _heroChromeHeight)),
               ),
             ),
-            side: SingleChildScrollView(
+            sidePane: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: AppSpace.s16,

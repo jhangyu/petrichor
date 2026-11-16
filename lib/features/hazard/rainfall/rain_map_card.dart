@@ -84,7 +84,7 @@ class RainMapCard extends StatelessWidget {
     final side = [...leading, ...controls];
     return AppTwoPane(
       matchHeight: true,
-      main: AppCard(
+      mainPane: AppCard(
         title: title,
         meta: meta,
         child: Column(
@@ -98,7 +98,7 @@ class RainMapCard extends StatelessWidget {
           ],
         ),
       ),
-      side: side.isEmpty
+      sidePane: side.isEmpty
           ? const SizedBox.shrink()
           : AppCard(
               title: controlsTitle,

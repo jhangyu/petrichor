@@ -156,14 +156,14 @@ class AppGrid extends StatelessWidget {
 class AppTwoPane extends StatelessWidget {
   const AppTwoPane({
     super.key,
-    required this.main,
-    required this.side,
+    required this.mainPane,
+    required this.sidePane,
     this.sideFirst = false,
     this.matchHeight = false,
   });
 
-  final Widget main;
-  final Widget side;
+  final Widget mainPane;
+  final Widget sidePane;
 
   /// Side pane on the left (e.g. a county list before its towns).
   final bool sideFirst;
@@ -190,10 +190,10 @@ class AppTwoPane extends StatelessWidget {
             .clamp(AppLayout.paneMinimumWidth, AppLayout.paneMaximumWidth);
         if (matchHeight && !constraints.hasBoundedHeight) {
           final mainWidth = constraints.maxWidth - sideWidth - AppLayout.gridGap;
-          final panes = [SizedBox(width: mainWidth, child: main), SizedBox(width: sideWidth, child: side)];
+          final panes = [SizedBox(width: mainWidth, child: mainPane), SizedBox(width: sideWidth, child: sidePane)];
           return _MatchHeightRow(children: sideFirst ? panes.reversed.toList() : panes);
         }
-        final panes = [Expanded(child: main), SizedBox(width: sideWidth, child: side)];
+        final panes = [Expanded(child: mainPane), SizedBox(width: sideWidth, child: sidePane)];
         return Row(
           crossAxisAlignment: constraints.hasBoundedHeight ? CrossAxisAlignment.stretch : CrossAxisAlignment.start,
           spacing: AppLayout.gridGap,

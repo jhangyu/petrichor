@@ -130,8 +130,8 @@ class _PlacePickerState extends ConsumerState<PlacePicker> {
             builder: (context, constraints) => AppTwoPane.fits(constraints.maxWidth)
                 ? AppTwoPane(
                     sideFirst: true,
-                    side: countySection,
-                    main: Column(
+                    sidePane: countySection,
+                    mainPane: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       spacing: AppSpace.s16,
                       children: [townSection, buttons],
