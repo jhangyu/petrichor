@@ -1,9 +1,9 @@
-import '../../../core/api/result.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../core/time/taiwan_time.dart';
-import '../../../data/models/place.dart';
-import '../../../data/models/weather_models.dart';
-import '../solar_elevation.dart';
+import '../../core/api/result.dart';
+import '../../core/constants/app_constants.dart';
+import '../../core/time/taiwan_time.dart';
+import '../../data/models/place.dart';
+import '../../data/models/weather_models.dart';
+import 'solar_elevation.dart';
 import 'weather_format.dart';
 
 enum SunPhase { beforeSunrise, daytime, afterSunset }

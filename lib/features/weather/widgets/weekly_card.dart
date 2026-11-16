@@ -6,8 +6,8 @@ import '../../../core/widgets/api_key_notice.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
-import 'home_logic.dart';
-import 'weather_format.dart';
+import '../weather_logic.dart';
+import '../weather_format.dart';
 import 'weather_glyph_icon.dart';
 
 /// Height of the 7-day data block (7 rows of 56 + legend).

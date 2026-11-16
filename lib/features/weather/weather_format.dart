@@ -1,5 +1,5 @@
-import '../../../core/time/taiwan_time.dart';
-import '../../../data/models/weather_models.dart';
+import '../../core/time/taiwan_time.dart';
+import '../../data/models/weather_models.dart';
 
 const _weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
 

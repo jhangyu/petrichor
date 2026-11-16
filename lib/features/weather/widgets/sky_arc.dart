@@ -6,8 +6,8 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../../../data/models/weather_models.dart';
 import 'chart_paint.dart';
-import 'sun_now.dart';
-import 'weather_format.dart';
+import '../sun_now.dart';
+import '../weather_format.dart';
 import 'weather_glyph_icon.dart';
 
 /// Widest the sky arc grows (`.sky` max-width 360).

@@ -20,7 +20,7 @@ import '../hazard/warnings/warnings_section.dart';
 import '../location/place_provider.dart';
 import 'weather_provider.dart';
 import 'widgets/forecast_72h_card.dart';
-import 'widgets/home_logic.dart';
+import 'weather_logic.dart';
 import 'widgets/now_card.dart';
 import 'widgets/weekly_card.dart';
 

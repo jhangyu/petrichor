@@ -7,8 +7,8 @@ import '../../../core/widgets/app_card.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import 'forecast_chart.dart';
-import 'home_logic.dart';
-import 'weather_format.dart';
+import '../weather_logic.dart';
+import '../weather_format.dart';
 import 'weather_glyph_icon.dart';
 
 /// Height of the 72-hour data block (summary + chart + legend).

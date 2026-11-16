@@ -4,9 +4,9 @@ import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/core/constants/app_constants.dart';
 import 'package:petrichor/core/time/taiwan_time.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
-import 'package:petrichor/features/weather/widgets/home_logic.dart';
-import 'package:petrichor/features/weather/widgets/sun_now.dart';
-import 'package:petrichor/features/weather/widgets/weather_format.dart';
+import 'package:petrichor/features/weather/weather_logic.dart';
+import 'package:petrichor/features/weather/sun_now.dart';
+import 'package:petrichor/features/weather/weather_format.dart';
 import 'package:petrichor/features/weather/widgets/weather_glyph_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 

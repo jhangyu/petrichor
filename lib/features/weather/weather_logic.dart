@@ -1,10 +1,10 @@
 import 'package:flutter/painting.dart';
 
-import '../../../core/theme/app_tokens.dart';
-import '../../../data/models/weather_models.dart';
-import '../../../core/api/result.dart';
-import '../../../core/constants/app_constants.dart';
-import '../weather_provider.dart';
+import '../../core/theme/app_tokens.dart';
+import '../../data/models/weather_models.dart';
+import '../../core/api/result.dart';
+import '../../core/constants/app_constants.dart';
+import 'weather_provider.dart';
 import 'sun_now.dart';
 
 /// Below this 降雨機率 the value is shown muted (`.day__rain--low`, `.fc-t--pop-low`).
