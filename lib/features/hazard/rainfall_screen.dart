@@ -77,10 +77,10 @@ class RainfallScreen extends ConsumerWidget {
   }
 
   /// The accumulation and forecast map cards sharing one camera row.
-  Widget _mapRow(LatLng? me, Widget? Function(RadarCameraLink? link, bool wide) forecastCard) {
+  Widget _mapRow(LatLng? currentPlacePoint, Widget? Function(RadarCameraLink? link, bool wide) forecastCard) {
     return AppGridItem.full(
       child: _MapCards(
-        cards: (link, wide) => [AccumulationCard(me: me, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
+        cards: (link, wide) => [AccumulationCard(currentPlacePoint: currentPlacePoint, cameraLink: link, wide: wide), ?forecastCard(link, wide)],
       ),
     );
   }
@@ -159,7 +159,7 @@ class RainfallScreen extends ConsumerWidget {
     final hazardLocation = place.hazardLocation;
     final rainfall = ref.watch(countyRainfallProvider(hazardLocation));
     final forecastPoint = (latitude: place.latitude, longitude: place.longitude);
-    final me = LatLng(place.latitude, place.longitude);
+    final currentPlacePoint = LatLng(place.latitude, place.longitude);
     final forecast = ref.watch(rainForecastProvider(forecastPoint));
     void retryRainfall() => ref.invalidate(countyRainfallProvider(hazardLocation));
     void retryForecast() => ref.invalidate(rainForecastProvider(forecastPoint));
@@ -181,7 +181,7 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryForecast,
       builder: (f) => ForecastMapCard(
         grid: f.grid,
-        currentPlaceForecast: (name: place.name, point: me, millimeters: f.millimetersAtLocation),
+        currentPlaceForecast: (name: place.name, point: currentPlacePoint, millimeters: f.millimetersAtLocation),
         cameraLink: link,
         wide: wide,
       ),
@@ -206,7 +206,7 @@ class RainfallScreen extends ConsumerWidget {
       onRefresh: _refreshAll(ref, busy: rainfall.isLoading || forecast.isLoading, retries: [retryRainfall, retryForecast]),
       children: [
         if (hero != null) AppGridItem.full(child: hero),
-        _mapRow(me, forecastCard),
+        _mapRow(currentPlacePoint, forecastCard),
         if (list != null) AppGridItem.full(child: list),
         if (result is Success)
           AppGridItem.full(

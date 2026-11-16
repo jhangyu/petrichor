@@ -157,7 +157,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
             overlayImages: image == null
                 ? const []
                 : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: rainMapOverlayOpacity, filterQuality: FilterQuality.none)],
-            me: currentPlaceForecast?.point,
+            currentPlacePoint: currentPlaceForecast?.point,
           ),
         );
       },

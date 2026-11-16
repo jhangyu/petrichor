@@ -108,7 +108,7 @@ const _mutedOpacity = 0.6;
 class RadarMapView extends StatefulWidget {
   const RadarMapView({
     super.key,
-    required this.me,
+    required this.currentPlacePoint,
     this.chipText,
     this.chipIcon,
     this.overlayImages = const [],
@@ -123,7 +123,7 @@ class RadarMapView extends StatefulWidget {
   });
 
   /// Current place; null = no place (pin hidden, locate button disabled).
-  final LatLng? me;
+  final LatLng? currentPlacePoint;
 
   /// Top-left chip (observation time / 無雷達資料); none while loading.
   final String? chipText;
@@ -162,7 +162,7 @@ class _RadarMapViewState extends State<RadarMapView> {
   Timer? _zoomLog;
   double? _loggedZoom;
   int? _loggedCacheBytes;
-  double _initialZoom() => widget.me == null ? _overviewZoom : _locatedZoom;
+  double _initialZoom() => widget.currentPlacePoint == null ? _overviewZoom : _locatedZoom;
 
   @override
   void initState() {
@@ -218,8 +218,8 @@ class _RadarMapViewState extends State<RadarMapView> {
       old.cameraLink?.removeListener(_followLink);
       widget.cameraLink?.addListener(_followLink);
     }
-    final me = widget.me;
-    if (me != null && me != old.me) _controller.move(me, _locatedZoom);
+    final currentPlacePoint = widget.currentPlacePoint;
+    if (currentPlacePoint != null && currentPlacePoint != old.currentPlacePoint) _controller.move(currentPlacePoint, _locatedZoom);
   }
 
   @override
@@ -246,7 +246,7 @@ class _RadarMapViewState extends State<RadarMapView> {
 
   @override
   Widget build(BuildContext context) {
-    final me = widget.me;
+    final currentPlacePoint = widget.currentPlacePoint;
     _preDecodeUpcoming();
     final chipText = widget.chipText;
     final map = ClipRRect(
@@ -266,7 +266,7 @@ class _RadarMapViewState extends State<RadarMapView> {
                     child: FlutterMap(
                       mapController: _controller,
                       options: MapOptions(
-                        initialCenter: me ?? _taiwanCenter,
+                        initialCenter: currentPlacePoint ?? _taiwanCenter,
                         initialZoom: _initialZoom(),
                         onPositionChanged: _onCamera,
                         interactionOptions: InteractionOptions(
@@ -292,9 +292,9 @@ class _RadarMapViewState extends State<RadarMapView> {
                           const SizedBox.shrink(),
                         if (widget.overlayImages.isNotEmpty) OverlayImageLayer(overlayImages: widget.overlayImages),
                         ...widget.extraLayers,
-                        if (me != null)
+                        if (currentPlacePoint != null)
                           MarkerLayer(
-                            markers: [Marker(point: me, width: _pinHalo, height: _pinHalo, child: const _MePin())],
+                            markers: [Marker(point: currentPlacePoint, width: _pinHalo, height: _pinHalo, child: const _CurrentPlacePin())],
                           ),
                         const _Attribution(),
                       ],
@@ -330,13 +330,13 @@ class _RadarMapViewState extends State<RadarMapView> {
                       child: Column(
                         spacing: AppSpace.s8,
                         children: [
-                          _MapFab(
+                          _MapActionButton(
                             icon: Icons.my_location,
-                            tooltip: me == null ? '回到我的位置（沒有目前地點）' : '回到我的位置',
-                            onPressed: me == null ? null : () => _controller.move(me, _locatedZoom),
+                            tooltip: currentPlacePoint == null ? '回到我的位置（沒有目前地點）' : '回到我的位置',
+                            onPressed: currentPlacePoint == null ? null : () => _controller.move(currentPlacePoint, _locatedZoom),
                           ),
                           if (widget.startLocked)
-                            _MapFab(
+                            _MapActionButton(
                               icon: _locked ? Icons.lock_outline : Icons.lock_open,
                               tooltip: _locked ? '解除鎖定，可拖曳縮放地圖' : '鎖定地圖，頁面可捲動',
                               onPressed: () => setState(() => _locked = !_locked),

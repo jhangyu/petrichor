@@ -69,7 +69,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   };
 
   /// Current place as a map point.
-  LatLng? get _me => switch (_place) {
+  LatLng? get _currentPlacePoint => switch (_place) {
     final place? => LatLng(place.latitude, place.longitude),
     null => null,
   };
@@ -233,7 +233,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           (null, final b) => b,
         },
         map: RadarMapView(
-          me: _me,
+          currentPlacePoint: _currentPlacePoint,
           chipIcon: Icons.schedule,
           chipText: formatTaiwanMonthDayClock(frame.time),
           semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
@@ -321,7 +321,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   _RadarView _loadingView({int? listed}) => _RadarView(
     subtitle: _loadingSubtitle,
     loading: true,
-    hero: _heroCard(map: RadarMapView(me: _me, loading: true, muted: true)),
+    hero: _heroCard(map: RadarMapView(currentPlacePoint: _currentPlacePoint, loading: true, muted: true)),
     afterHero: [PlaybackCard(meta: listed == null || listed == 0 ? '等待影格' : '載入中 0 / $listed 張', loading: true)],
   );
 
@@ -351,7 +351,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             ),
           ],
         ),
-        map: RadarMapView(me: _me, muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無雷達資料', semanticsLabel: '地圖，無雷達資料'),
+        map: RadarMapView(currentPlacePoint: _currentPlacePoint, muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無雷達資料', semanticsLabel: '地圖，無雷達資料'),
       ),
     );
   }
@@ -366,7 +366,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         actions: [RetryButton(onPressed: _refresh)],
       ),
       map: RadarMapView(
-        me: _me,
+        currentPlacePoint: _currentPlacePoint,
         muted: true,
         chipIcon: Icons.cloud_off_outlined,
         chipText: '無雷達資料',

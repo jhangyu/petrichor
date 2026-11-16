@@ -39,11 +39,11 @@ typedef _Body = ({Widget? banner, RainMapView map, Widget? playback});
 const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), (16, '≥300')];
 
 /// 累積雨量 card (design 3): window chips, accumulation map, the radar's
-/// playback and the 17-colour legend. [me] null = no current place.
+/// playback and the 17-colour legend. [currentPlacePoint] null = no current place.
 class AccumulationCard extends ConsumerStatefulWidget {
-  const AccumulationCard({super.key, required this.me, this.cameraLink, required this.wide});
+  const AccumulationCard({super.key, required this.currentPlacePoint, this.cameraLink, required this.wide});
 
-  final LatLng? me;
+  final LatLng? currentPlacePoint;
 
   /// Camera shared with the forecast map; only links the cameras.
   final RadarCameraLink? cameraLink;
@@ -177,7 +177,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     return RainMapView(
       wide: widget.wide,
       cameraLink: widget.cameraLink,
-      me: widget.me,
+      currentPlacePoint: widget.currentPlacePoint,
       loading: loading,
       muted: muted,
       chipIcon: chipIcon,

@@ -116,7 +116,7 @@ class RainMapView extends StatelessWidget {
     super.key,
     required this.wide,
     required this.cameraLink,
-    this.me,
+    this.currentPlacePoint,
     this.loading = false,
     this.muted = false,
     this.chipIcon,
@@ -128,7 +128,7 @@ class RainMapView extends StatelessWidget {
 
   final bool wide;
   final RadarCameraLink? cameraLink;
-  final LatLng? me;
+  final LatLng? currentPlacePoint;
   final bool loading;
   final bool muted;
   final IconData? chipIcon;
@@ -140,7 +140,7 @@ class RainMapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return RadarMapView(
-      me: me,
+      currentPlacePoint: currentPlacePoint,
       loading: loading,
       muted: muted,
       chipIcon: chipIcon,

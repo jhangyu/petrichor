@@ -80,8 +80,8 @@ class _Attribution extends StatelessWidget {
   }
 }
 
-class _MePin extends StatelessWidget {
-  const _MePin();
+class _CurrentPlacePin extends StatelessWidget {
+  const _CurrentPlacePin();
 
   @override
   Widget build(BuildContext context) {
@@ -111,8 +111,8 @@ class _MePin extends StatelessWidget {
 }
 
 /// `.fab` 「回到我的位置」; disabled without a current place.
-class _MapFab extends StatelessWidget {
-  const _MapFab({required this.icon, required this.tooltip, required this.onPressed});
+class _MapActionButton extends StatelessWidget {
+  const _MapActionButton({required this.icon, required this.tooltip, required this.onPressed});
 
   final IconData icon;
   final String tooltip;
