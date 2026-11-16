@@ -27,9 +27,9 @@ class _ConnectionErrorAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-/// Container over mock prefs; the shared Dio talks to [adapter] instead of the network.
-ProviderContainer _container(Map<String, Object> prefs, HttpClientAdapter adapter) {
-  SharedPreferences.setMockInitialValues(prefs);
+/// Container over mock preferences; the shared Dio talks to [adapter] instead of the network.
+ProviderContainer _container(Map<String, Object> preferences, HttpClientAdapter adapter) {
+  SharedPreferences.setMockInitialValues(preferences);
   final container = newContainer();
   container.read(dioProvider).httpClientAdapter = adapter;
   return container;

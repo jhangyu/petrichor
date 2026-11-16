@@ -42,11 +42,11 @@ String _fullGrid(Map<int, String> cells) {
 void main() {
   group('getActiveWarnings', () {
     test('joins county warnings with bulletins by county and valid period', () async {
-      final repo = _hazardRepository({
+      final repository = _hazardRepository({
         'W-C0033-001': _ok(_fixture('W-C0033-001')),
         'W-C0033-002': _ok(_fixture('W-C0033-002')),
       });
-      final w = (await repo.getActiveWarnings()).data;
+      final w = (await repository.getActiveWarnings()).data;
 
       expect(w.counties.length, 11);
       expect(w.bulletins.length, 2);
@@ -69,25 +69,25 @@ void main() {
 
     test('updatedAt is the newest bulletin update, fetchedAt comes from the injected clock', () async {
       final fetched = _taiwanTime('2026-11-14T22:50:00');
-      final repo = _hazardRepository({
+      final repository = _hazardRepository({
         'W-C0033-001': _ok(_fixture('W-C0033-001')),
         'W-C0033-002': _ok(_fixture('W-C0033-002')),
       }, clock: () => fetched);
-      final w = (await repo.getActiveWarnings()).data;
+      final w = (await repository.getActiveWarnings()).data;
       expect(w.fetchedAt, fetched);
       expect(w.updatedAt, _taiwanTime('2026-11-14T18:59:50'));
     });
 
     test('no active warnings is Success with empty counties', () async {
       final w1 = _fixtureJson('W-C0033-001');
-      for (final loc in (w1['records']['location'] as List)) {
-        loc['hazardConditions']['hazards'] = [];
+      for (final location in (w1['records']['location'] as List)) {
+        location['hazardConditions']['hazards'] = [];
       }
-      final repo = _hazardRepository({
+      final repository = _hazardRepository({
         'W-C0033-001': _ok(w1),
         'W-C0033-002': _ok({'success': 'true', 'records': <String, dynamic>{}}),
       });
-      final r = await repo.getActiveWarnings();
+      final r = await repository.getActiveWarnings();
       expect(r, isA<Success<ActiveWarnings>>());
       expect(r.data.counties, isEmpty);
       expect(r.data.bulletins, isEmpty);
@@ -95,11 +95,11 @@ void main() {
     });
 
     test('active warnings without any bulletin is Failure naming -002', () async {
-      final repo = _hazardRepository({
+      final repository = _hazardRepository({
         'W-C0033-001': _ok(_fixture('W-C0033-001')),
         'W-C0033-002': _ok({'success': 'true', 'records': <String, dynamic>{}}),
       });
-      final r = await repo.getActiveWarnings();
+      final r = await repository.getActiveWarnings();
       expect(r, isA<Failure<ActiveWarnings>>());
       expect((r as Failure).message, contains('W-C0033-002'));
     });
@@ -108,11 +108,11 @@ void main() {
       final w2 = _fixtureJson('W-C0033-002');
       final lifted = jsonDecode(_fixture('W-C0033-002-lifted-record'));
       (w2['records']['record'] as List).insert(0, lifted);
-      final repo = _hazardRepository({
+      final repository = _hazardRepository({
         'W-C0033-001': _ok(_fixture('W-C0033-001')),
         'W-C0033-002': _ok(w2),
       });
-      final r = await repo.getActiveWarnings();
+      final r = await repository.getActiveWarnings();
       expect(r, isA<Success<ActiveWarnings>>());
       expect(r.data.bulletins.length, 2);
       expect(r.data.bulletins.any((b) => b.description.contains('解除')), isFalse);
@@ -120,11 +120,11 @@ void main() {
     });
 
     test('-001 without records.location is Failure, not empty', () async {
-      final repo = _hazardRepository({
+      final repository = _hazardRepository({
         'W-C0033-001': _ok({'success': 'true', 'records': <String, dynamic>{}}),
         'W-C0033-002': _ok(_fixture('W-C0033-002')),
       });
-      final r = await repo.getActiveWarnings();
+      final r = await repository.getActiveWarnings();
       expect(r, isA<Failure<ActiveWarnings>>());
       expect((r as Failure).message, allOf(contains('W-C0033-001'), contains('records.location')));
     });
@@ -160,8 +160,8 @@ void main() {
       extra['RainfallElement']['Now']['Precipitation'] = '8.0';
       stations[1]['RainfallElement']['Now']['Precipitation'] = '-99';
       stations.add(extra);
-      final repo = _hazardRepository({'O-A0002-001': _ok(body)});
-      final r = (await repo.getRainfall(county: '基隆市', latitude: 25.13, longitude: 121.74)).data;
+      final repository = _hazardRepository({'O-A0002-001': _ok(body)});
+      final r = (await repository.getRainfall(county: '基隆市', latitude: 25.13, longitude: 121.74)).data;
       expect(r.stations.firstWhere((s) => s.name == '基隆').todayMm, isNull);
       expect(r.nearest.name, '遠站');
     });
@@ -192,8 +192,8 @@ void main() {
     const cell = 403 * 441 + 280;
 
     test('value at coordinate comes from hand-computed grid index', () async {
-      final repo = _hazardRepository({'F-B0046-001': _ok(_fullGrid({cell: '1.250E+01'}))});
-      final f = (await repo.getRainForecast(latitude: 25.0375, longitude: 121.5)).data;
+      final repository = _hazardRepository({'F-B0046-001': _ok(_fullGrid({cell: '1.250E+01'}))});
+      final f = (await repository.getRainForecast(latitude: 25.0375, longitude: 121.5)).data;
       expect(f.mmAtLocation, 12.5);
       expect(f.grid.baseTime, _taiwanTime('2026-11-14T20:30:00'));
       expect(f.grid.issuedAt, _taiwanTime('2026-11-14T20:45:09'));
@@ -202,18 +202,18 @@ void main() {
       expect(f.grid.resolution, 0.0125);
       expect([f.grid.startLongitude, f.grid.startLatitude], [118.0, 20.0]);
       // 相鄰格不受影響
-      final neighbour = (await repo.getRainForecast(latitude: 25.0375, longitude: 121.5125)).data;
+      final neighbour = (await repository.getRainForecast(latitude: 25.0375, longitude: 121.5125)).data;
       expect(neighbour.mmAtLocation, isNull);
     });
 
     test('-99 cell is null, not zero', () async {
-      final repo = _hazardRepository({'F-B0046-001': _ok(_fullGrid({}))});
-      expect((await repo.getRainForecast(latitude: 25.0, longitude: 121.5)).data.mmAtLocation, isNull);
+      final repository = _hazardRepository({'F-B0046-001': _ok(_fullGrid({}))});
+      expect((await repository.getRainForecast(latitude: 25.0, longitude: 121.5)).data.mmAtLocation, isNull);
     });
 
     test('coordinate outside grid is Failure', () async {
-      final repo = _hazardRepository({'F-B0046-001': _ok(_fullGrid({}))});
-      final r = await repo.getRainForecast(latitude: 30.0, longitude: 121.5);
+      final repository = _hazardRepository({'F-B0046-001': _ok(_fullGrid({}))});
+      final r = await repository.getRainForecast(latitude: 30.0, longitude: 121.5);
       expect((r as Failure).message, allOf(contains('F-B0046-001'), contains('30.0')));
     });
 
