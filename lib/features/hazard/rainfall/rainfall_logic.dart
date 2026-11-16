@@ -20,16 +20,16 @@ const forecastVisibleMinimumMillimeters = 1.0;
 const forecastBucketUpperMillimeters = [5.0, 10.0, 20.0];
 
 /// 0 = below 大雨 … 4 = 超大豪雨.
-int rainLevel(double mm) => rainWarningThresholds.where((t) => mm >= t).length;
+int rainLevel(double millimeters) => rainWarningThresholds.where((t) => millimeters >= t).length;
 
 /// Marker position on the threshold bar, 0–1 (piecewise linear per segment, clamped).
-double thresholdMarkerFraction(double mm) {
+double thresholdMarkerFraction(double millimeters) {
   var done = 0.0;
   var lower = 0.0;
   for (var i = 0; i < rainWarningThresholds.length; i++) {
     final upper = rainWarningThresholds[i];
     final segment = thresholdSegmentPercents[i] / 100;
-    if (mm < upper) return done + (mm - lower) / (upper - lower) * segment;
+    if (millimeters < upper) return done + (millimeters - lower) / (upper - lower) * segment;
     done += segment;
     lower = upper;
   }
@@ -37,14 +37,14 @@ double thresholdMarkerFraction(double mm) {
 }
 
 /// Remaining mm to the next warning level and its name; null at the top level.
-({String name, double remainingMillimeters})? nextWarning(double mm) {
-  final level = rainLevel(mm);
+({String name, double remainingMillimeters})? nextWarning(double millimeters) {
+  final level = rainLevel(millimeters);
   if (level >= rainWarningThresholds.length) return null;
-  return (name: rainLevelNames[level + 1], remainingMillimeters: rainWarningThresholds[level] - mm);
+  return (name: rainLevelNames[level + 1], remainingMillimeters: rainWarningThresholds[level] - millimeters);
 }
 
 /// 1 decimal, e.g. `86.5`; null (station reported no value) → `—`.
-String millimetersText(double? mm) => mm == null ? '—' : mm.toStringAsFixed(1);
+String millimetersText(double? millimeters) => millimeters == null ? '—' : millimeters.toStringAsFixed(1);
 
 /// County chip order: [current] first (none without a place), then the other counties of [stations] by first appearance.
 List<String> countyChipOrder(List<RainStation> stations, String? current) {
@@ -88,10 +88,10 @@ List<RainStation> stationsInScope(List<RainStation> stations, String? county) =>
 /// 0 = blank (missing or < 1 mm), 1 = 1–5, 2 = 5–10, 3 = 10–20, 4 = ≥ 20 mm.
 List<int> forecastBuckets(RainForecastGrid grid) {
   return [
-    for (final mm in grid.values)
-      if (mm == null || mm < forecastVisibleMinimumMillimeters)
+    for (final millimeters in grid.values)
+      if (millimeters == null || millimeters < forecastVisibleMinimumMillimeters)
         0
       else
-        1 + forecastBucketUpperMillimeters.where((upper) => mm >= upper).length,
+        1 + forecastBucketUpperMillimeters.where((upper) => millimeters >= upper).length,
   ];
 }

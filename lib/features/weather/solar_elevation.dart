@@ -28,22 +28,22 @@ double solarElevationDegrees({required double latitude, required double longitud
   final hour = minutesOfDay / 60;
 
   // Fractional year γ (rad).
-  final g = 2 * math.pi / daysInYear * (dayOfYear - 1 + (hour - 12) / _hoursPerDay);
+  final dayAngle = 2 * math.pi / daysInYear * (dayOfYear - 1 + (hour - 12) / _hoursPerDay);
 
   final equationOfTimeMinutes = 229.18 *
       (0.000075 +
-          0.001868 * math.cos(g) -
-          0.032077 * math.sin(g) -
-          0.014615 * math.cos(2 * g) -
-          0.040849 * math.sin(2 * g));
+          0.001868 * math.cos(dayAngle) -
+          0.032077 * math.sin(dayAngle) -
+          0.014615 * math.cos(2 * dayAngle) -
+          0.040849 * math.sin(2 * dayAngle));
 
   final declination = 0.006918 -
-      0.399912 * math.cos(g) +
-      0.070257 * math.sin(g) -
-      0.006758 * math.cos(2 * g) +
-      0.000907 * math.sin(2 * g) -
-      0.002697 * math.cos(3 * g) +
-      0.00148 * math.sin(3 * g);
+      0.399912 * math.cos(dayAngle) +
+      0.070257 * math.sin(dayAngle) -
+      0.006758 * math.cos(2 * dayAngle) +
+      0.000907 * math.sin(2 * dayAngle) -
+      0.002697 * math.cos(3 * dayAngle) +
+      0.00148 * math.sin(3 * dayAngle);
 
   final trueSolarMinutes = minutesOfDay + equationOfTimeMinutes + _minutesPerDegreeOfHourAngle * longitude;
   final hourAngle = _radians(trueSolarMinutes / _minutesPerDegreeOfHourAngle - 180);

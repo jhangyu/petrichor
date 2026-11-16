@@ -106,7 +106,7 @@ class _SavedPlaceRow extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: AppSpace.s4,
-                children: [weather.glyph, SizedBox(width: AppSize.icon32, child: weather.temp)],
+                children: [weather.glyph, SizedBox(width: AppSize.icon32, child: weather.temperature)],
               ),
             ),
             AppIconButton(
@@ -122,7 +122,7 @@ class _SavedPlaceRow extends ConsumerWidget {
 }
 
 /// What one row shows for its observation state (spec §5 table).
-typedef _WeatherView = ({Widget glyph, Widget temp, String secondary, String spoken});
+typedef _WeatherView = ({Widget glyph, Widget temperature, String secondary, String spoken});
 
 _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
   switch (observation) {
@@ -130,7 +130,7 @@ _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
       final text = data.weather;
       return (
         glyph: WeatherGlyphIcon(text: text, size: AppSize.icon20),
-        temp: _temperatureText(temperatureText(data.temperature), strong: true),
+        temperature: _temperatureText(temperatureText(data.temperature), strong: true),
         secondary: '${text ?? '無天氣現象資料'} · 觀測 ${clockText(data.observedAt)}',
         spoken: '${text ?? '無天氣現象資料'} ${data.temperature.round()} 度',
       );
@@ -145,7 +145,7 @@ _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
     default:
       return (
         glyph: const Skeleton(width: AppSize.icon20, height: AppSize.icon20, circle: true),
-        temp: const Align(
+        temperature: const Align(
           alignment: Alignment.centerRight,
           child: Skeleton(width: AppSize.icon32, height: AppSpace.s16),
         ),
@@ -157,7 +157,7 @@ _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
 
 _WeatherView _unavailable(IconData icon, String secondary) => (
       glyph: Icon(icon, size: AppSize.icon20, color: AppPalette.foreground3),
-      temp: _temperatureText('—', strong: false),
+      temperature: _temperatureText('—', strong: false),
       secondary: secondary,
       spoken: secondary,
     );

@@ -65,7 +65,7 @@ class ForecastChartGeometry {
   static const rainProbabilityTop = 236.0;
   static const rainProbabilityHeight = 40.0;
   static const rainProbabilityLabelY = 292.0;
-  static const windDirY = 312.0;
+  static const windDirectionY = 312.0;
   static const windSpeedY = 328.0;
 
   double x(DateTime t) => _padStart + t.difference(origin).inMinutes / Duration.minutesPerHour * pixelsPerHour;
@@ -93,7 +93,7 @@ class ForecastAxisPainter extends CustomPainter {
       ('溫度', (ForecastChartGeometry.temperatureTop + ForecastChartGeometry.temperatureBottom) / 2),
       ('體感', ForecastChartGeometry.apparentLabelY),
       ('降雨', ForecastChartGeometry.rainProbabilityTop + ForecastChartGeometry.rainProbabilityHeight / 2),
-      ('風', (ForecastChartGeometry.windDirY + ForecastChartGeometry.windSpeedY) / 2),
+      ('風', (ForecastChartGeometry.windDirectionY + ForecastChartGeometry.windSpeedY) / 2),
     ]) {
       paintLabel(canvas, label, Offset(0, y), style, anchor: LabelAnchor.start);
     }
@@ -278,7 +278,7 @@ class ForecastChartPainter extends CustomPainter {
         Offset(center, ForecastChartGeometry.rainProbabilityLabelY),
         rainProbabilityTextStyle(small, rainProbabilityPercent),
       );
-      paintLabel(canvas, windDirectionLabel(s.windDirection), Offset(center, ForecastChartGeometry.windDirY), small);
+      paintLabel(canvas, windDirectionLabel(s.windDirection), Offset(center, ForecastChartGeometry.windDirectionY), small);
       paintLabel(canvas, speedText(s.windSpeed), Offset(center, ForecastChartGeometry.windSpeedY), small);
     }
   }

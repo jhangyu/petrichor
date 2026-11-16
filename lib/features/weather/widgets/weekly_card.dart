@@ -174,8 +174,8 @@ class _TemperatureRange extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    final lo = low;
-    final hi = high;
+    final lowTemperature = low;
+    final highTemperature = high;
     final mark = currentTemperature;
     return LayoutBuilder(
       builder: (context, box) {
@@ -193,10 +193,10 @@ class _TemperatureRange extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
-              if (s != null && lo != null && hi != null)
+              if (s != null && lowTemperature != null && highTemperature != null)
                 Positioned(
-                  left: s.fraction(lo) * w,
-                  width: (s.fraction(hi) - s.fraction(lo)) * w,
+                  left: s.fraction(lowTemperature) * w,
+                  width: (s.fraction(highTemperature) - s.fraction(lowTemperature)) * w,
                   child: Container(
                     height: AppSize.sliderTrack,
                     decoration: BoxDecoration(
