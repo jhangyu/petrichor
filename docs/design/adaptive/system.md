@@ -36,8 +36,8 @@ The rail is scrollable, so 5 labelled destinations work in a 360-high window.
 
 `AppPageScaffold` lays its `children` out in an `AppGrid` inside the page margin:
 
-- **Column count** = how many columns of at least `AppLayout.gridMinColumn`
-  (340) fit the content width, clamped to 1 … `AppLayout.gridMaxColumns` (6),
+- **Column count** = how many columns of at least `AppLayout.gridMinimumColumnWidth`
+  (340) fit the content width, clamped to 1 … `AppLayout.gridMaximumColumns` (6),
   and never more than the cells need (sum of spans, a full-row cell counts 1).
   So 2 cards on a wide window → 2 half-width cards, not 2 narrow cards + gap.
 - **Gap** = `AppLayout.gridGap` (16) between columns and rows.
@@ -45,14 +45,14 @@ The rail is scrollable, so 5 labelled destinations work in a 360-high window.
   the rest of the row starts a new row. Cells in a row are top-aligned and keep
   their own height (no row stretching, no masonry). Put cards of similar height
   next to each other.
-- **Span**: a plain child spans 1 column. `AppGridItem(span: n, …)` spans `n`
+- **Span**: a plain child spans 1 column. `AppGridItem(columnSpan: n, …)` spans `n`
   (clamped to the column count). `AppGridItem.full(…)` always takes the whole row.
 - Cells fill their column width. The **page** has no max width; the grid fills
   the window edge to edge (minus margin and rail).
 - **Reading width**: cards fill their cell; only running text, banner text and
   button groups inside a card are capped at `AppLayout.readingWidth` (640).
   Charts, tables and tile rows fill the card. A map that keeps its natural
-  aspect ratio is capped at `AppLayout.paneMaxWidth` (480).
+  aspect ratio is capped at `AppLayout.paneMaximumWidth` (480).
 - **No equal-height rows** (see §5).
 
 Column counts that follow (content width = window − rail 80 − 2 × margin):
@@ -87,10 +87,10 @@ Tokens come from `app_tokens.dart`.
 
 ```dart
 final size = WindowSizeClass.of(context); // whole window
-size.width          // WindowWidthClass.compact | medium | expanded | large
-size.height         // WindowHeightClass.compact | medium | expanded
-size.isShortHeight  // height == compact (< 480): no viewport-bounded panes
-size.usesRail
+size.widthClass   // WindowWidthClass.compact | medium | expanded | large
+size.heightClass  // WindowHeightClass.compact | medium | expanded
+size.isShortHeight  // heightClass == compact (< 480): no viewport-bounded panes
+size.usesNavigationRail
 size.pageMargin
 ```
 
@@ -113,7 +113,7 @@ AppPageScaffold.fill({
 ### `AppGridItem`: span of one cell
 
 ```dart
-const AppGridItem({required int span, required Widget child}) // span >= 1, clamped to the column count
+const AppGridItem({required int columnSpan, required Widget child}) // columnSpan >= 1, clamped to the column count
 const AppGridItem.full({required Widget child})                // whole row
 ```
 
@@ -124,8 +124,8 @@ A plain child spans 1 column.
 ```dart
 const AppGrid({
   required List<Widget> children,
-  double minColumnWidth = AppLayout.gridMinColumn,
-  int maxColumns = AppLayout.gridMaxColumns,
+  double minColumnWidth = AppLayout.gridMinimumColumnWidth,
+  int maxColumns = AppLayout.gridMaximumColumns,
 })
 static int columnsFor(double width, {required int spanUnits, double minColumnWidth, int maxColumns})
 ```
@@ -137,8 +137,8 @@ scaffold. Use `columnsFor` when the code itself needs the count (e.g.
 ### `AppTwoPane`: main pane + side pane
 
 ```dart
-const AppTwoPane({required Widget main, required Widget side, bool sideFirst = false})
-static bool fits(double width) // width >= 2 × paneMinWidth + gap (656)
+const AppTwoPane({required Widget mainPane, required Widget sidePane, bool sideFirst = false})
+static bool fits(double width) // width >= 2 × paneMinimumWidth + gap (656)
 ```
 
 - The side pane width is available width × `paneSideShare` (0.4), clamped to
@@ -162,14 +162,14 @@ nothing.
 |---|---|---|
 | `AppBreakpoint.medium / expanded / large` | 600 / 840 / 1200 | width classes |
 | `AppBreakpoint.heightMedium / heightExpanded` | 480 / 900 | height classes |
-| `AppLayout.gridMinColumn` | 340 | narrowest page column (= min card width) |
-| `AppLayout.gridMaxColumns` | 6 | max page columns |
+| `AppLayout.gridMinimumColumnWidth` | 340 | narrowest page column (= min card width) |
+| `AppLayout.gridMaximumColumns` | 6 | max page columns |
 | `AppLayout.gridGap` | 16 | grid and pane gap |
 | `AppLayout.pageMarginCompact / Medium / Expanded` | 16 / 24 / 32 | page side margin per width class (`WindowSizeClass.pageMargin`) |
 | `AppLayout.readingWidth` | 640 | max width of text blocks, banner text, button groups |
 | `AppLayout.cardWideWidth` | 520 | card content width from which a card uses its wide interior |
-| `AppLayout.paneMinWidth` | 320 | min side pane, min map box side, min cell width of multi-column lists |
-| `AppLayout.paneMaxWidth` | 480 | max side pane; cap for a natural-aspect map |
+| `AppLayout.paneMinimumWidth` | 320 | min side pane, min map box side, min cell width of multi-column lists |
+| `AppLayout.paneMaximumWidth` | 480 | max side pane; cap for a natural-aspect map |
 | `AppLayout.paneSideShare` | 0.4 | side pane share of the width |
 
 ### Recipes
@@ -198,18 +198,18 @@ LayoutBuilder(builder: (context, c) => c.maxWidth >= AppLayout.cardWideWidth ? w
 Multi-column list rows (towns, stations):
 
 ```dart
-AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: rows)
+AppGrid(minColumnWidth: AppLayout.paneMinimumWidth, children: rows)
 ```
 
 Viewport-filling two panes (radar):
 
 ```dart
 final size = WindowSizeClass.of(context);
-// size.width != WindowWidthClass.compact && !size.isShortHeight, plus AppTwoPane.fits(width) from a LayoutBuilder
+// size.widthClass != WindowWidthClass.compact && !size.isShortHeight, plus AppTwoPane.fits(width) from a LayoutBuilder
 AppPageScaffold.fill(
   header: header,
   source: source,
-  body: AppTwoPane(main: mapCard, side: SingleChildScrollView(child: playbackCard)),
+  body: AppTwoPane(mainPane: mapCard, sidePane: SingleChildScrollView(child: playbackCard)),
 )
 ```
 
@@ -233,17 +233,17 @@ single screen needs is composed in that screen from the API above.
 | Per-child span, full row vs one cell (all) | **Exists**: `AppGridItem` / `.full` |
 | Reading width / per-card max width (location, weather, hazard) | **Exists**: `AppLayout.readingWidth`. Applies to text, banners and button groups inside a card, not to whole cards. |
 | Size-class helper + short-height flag (all) | **Added**: `WindowSizeClass.isShortHeight` |
-| Pane widths / two-pane helper (radar, hazard §6.3, location) | **Added**: `AppTwoPane` + `paneMinWidth / paneMaxWidth / paneSideShare` |
+| Pane widths / two-pane helper (radar, hazard §6.3, location) | **Added**: `AppTwoPane` + `paneMinimumWidth / paneMaximumWidth / paneSideShare` |
 | Card wide-interior threshold (weather hero/sun, radar playback, hazard list + detail) | **Added**: `AppLayout.cardWideWidth` (520) |
 | `MetricGrid` columns by width (weather, hazard) | **Added**: automatic, no new parameter |
-| Map card cap (hazard `mapCardMaxWidth`) | **Mapped** to `AppLayout.paneMaxWidth` (480). The radar map min box side is `AppLayout.paneMinWidth`. |
+| Map card cap (hazard `mapCardMaxWidth`) | **Mapped** to `AppLayout.paneMaximumWidth` (480). The radar map min box side is `AppLayout.paneMinimumWidth`. |
 | Radar `radarMapHeightShare`, flex 3:2 | **Cut**. The two-pane split is `paneSideShare` (0.4, i.e. 3:2). The stacked-map height share is a radar-local named constant: it is a fraction of height, not a width breakpoint. |
 | Radar `radarControlsWide` (560) | **Mapped** to `cardWideWidth`. In side-by-side mode the controls pane is ≤ 480, so the playback card is single-column there. It goes wide only when stacked at full width. |
 | Location button max width | **Mapped**: put the button row in `ConstrainedBox(maxWidth: readingWidth)` aligned end, or in its own grid cell. No new token. |
 | Equal-height grid rows (weather) | **Cut**. Weather is the only user. Stretching needs intrinsic-height layout, which throws on cards that contain a `LayoutBuilder` (72 h chart, `MetricGrid`). Rows are top-aligned; put cards of similar height side by side. |
 | Masonry / independent columns (hazard warnings §6.1b) | **Cut**. Hazard is the only user. The row grid does not stretch neighbours: expanding a card only pushes the following rows down. If hazard wants independent columns, it builds `n = AppGrid.columnsFor(width, spanUnits: cards.length)` `Column`s with item i in column i % n, inside a `LayoutBuilder`. |
-| 12-unit expanded grid, `half` spans (weather) | **Cut**. The column count is fluid. Use `span: n` or `.full`. A 2-cell row already gives halves. |
-| `AppList` multi-column (location) | **Cut** from `AppList`, whose dividers assume one column. Use `AppGrid(minColumnWidth: paneMinWidth, children: rows)` inside the card. |
+| 12-unit expanded grid, `half` spans (weather) | **Cut**. The column count is fluid. Use `columnSpan: n` or `.full`. A 2-cell row already gives halves. |
+| `AppList` multi-column (location) | **Cut** from `AppList`, whose dividers assume one column. Use `AppGrid(minColumnWidth: paneMinimumWidth, children: rows)` inside the card. |
 | `AppChip` wrap (location, hazard) | **Exists**: `Wrap(spacing: AppSpace.s8, runSpacing: AppSpace.s8)` as documented on `AppChip`. No change to `choices.dart`. |
 | Shared drag-scroll behaviour for the 72 h chart (weather) | **Cut** (parking lot). Not needed when the chart fits. |
 
@@ -252,9 +252,9 @@ single screen needs is composed in that screen from the API above.
 1. (a) Per-child full span: yes, `AppGridItem.full`. (b) Masonry: no, see the
    table above. The grid is row-aligned but top-aligned, so neighbours are not
    stretched.
-2. `cardMinWidth` → `AppLayout.gridMinColumn` (340), or `paneMinWidth` (320)
+2. `cardMinWidth` → `AppLayout.gridMinimumColumnWidth` (340), or `paneMinimumWidth` (320)
    for in-card list cells. `cardMaxWidth` → `AppLayout.readingWidth` (640), for
-   text. `mapCardMaxWidth` → `AppLayout.paneMaxWidth` (480). The short-height
+   text. `mapCardMaxWidth` → `AppLayout.paneMaximumWidth` (480). The short-height
    flag is `WindowSizeClass.of(context).isShortHeight`.
 3. Two panes: use `AppTwoPane`, shared with radar and location.
 
@@ -280,8 +280,8 @@ The skill uses three layers: primitive → semantic → component.
 Naming:
 - `AppBreakpoint` names each class by its lower bound (`medium`, `expanded`,
   `large`, `heightMedium`, `heightExpanded`).
-- `AppLayout` names say the purpose (`gridMinColumn`, `readingWidth`,
-  `paneMinWidth`, ...), which is the skill's semantic-naming rule.
+- `AppLayout` names say the purpose (`gridMinimumColumnWidth`, `readingWidth`,
+  `paneMinimumWidth`, ...), which is the skill's semantic-naming rule.
 - No renames.
 
 What it changed (commit d0ecb76, made before the freeze on 57196f2): the change
@@ -301,7 +301,7 @@ What it did not change:
    `AppTwoPane`, `WindowSizeClass` and the `AppLayout` tokens. No numeric
    width/height literals compared to sizes in `lib/features/**`, and no
    aspect-ratio checks.
-2. Decide per child: 1 column (default), `span: n`, or `.full`. Banners, error /
+2. Decide per child: 1 column (default), `columnSpan: n`, or `.full`. Banners, error /
    empty states that replace the whole page, and wide charts/tables are `.full`.
    Loading skeletons use the same spans as the cards they stand in for.
 3. A cell must lay out at any width ≥ 296 (compact 328 minus card padding) and

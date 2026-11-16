@@ -1,6 +1,6 @@
 # 地點 tab — adaptive layout
 
-File: `lib/features/location/location_screen.dart`. Layout only; no provider changes. Built on `system.md` (`AppPageScaffold`, `AppGridItem`, `AppGrid`, `AppTwoPane`, `WindowSizeClass`, `AppLayout` tokens). No width literals in the file.
+File: `lib/features/place/location_screen.dart`. Layout only; no provider changes. Built on `system.md` (`AppPageScaffold`, `AppGridItem`, `AppGrid`, `AppTwoPane`, `WindowSizeClass`, `AppLayout` tokens). No width literals in the file.
 
 ## Rules
 
@@ -28,7 +28,7 @@ Search is a full row capped at `readingWidth`. Below it one full-row cell holds 
 
 | Available width | Arrangement |
 |---|---|
-| `AppTwoPane.fits(width)` | `AppTwoPane(sideFirst: true)`: counties on the left (side pane, `paneSideShare` clamped 320–480), towns + buttons on the right. Towns render as an `AppGrid(minColumnWidth: AppLayout.paneMinWidth)` of `_RowTile` tiles when that width also fits, else the single-column `AppList` |
+| `AppTwoPane.fits(width)` | `AppTwoPane(sideFirst: true)`: counties on the left (side pane, `paneSideShare` clamped 320–480), towns + buttons on the right. Towns render as an `AppGrid(minColumnWidth: AppLayout.paneMinimumWidth)` of `_RowTile` tiles when that width also fits, else the single-column `AppList` |
 | narrower | stacked: counties, towns, buttons |
 
 Counties: compact window width = horizontal-scroll chips with the "左右滑動" hint; medium and wider = `Wrap` chips (`AppSpace.s8` spacing, no hint). A query that matches no county keeps every chip. Save / 設為目前地點: two `Expanded` buttons in a row capped at `readingWidth`, aligned end.

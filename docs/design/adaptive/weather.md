@@ -20,7 +20,7 @@ Cells outside the flow are `AppGridItem.full`: the loading pill and the warning 
 
 - **Hero** (`hero_card.dart`): unchanged. Its `MetricGrid` goes 4-in-a-row by itself from `AppLayout.cardWideWidth`, so there is no separate wide hero variant.
 - **Sun** (`sun_card.dart`): the arc is capped at `_arcMaxWidth` (360) and centered. When the card content is at least `AppLayout.cardWideWidth`, the arc sits left and the time rows, now line and tomorrow line sit right; below that, they stack.
-- **72h** (`forecast_72h_card.dart`): the chart cell width feeds `_ChartGeometry`. Px per hour = available / hours, clamped to `_minPxPerHour` (16) … `_maxPxPerHour` (32). The same 72 hours always show; wider cards widen the spacing. If the chart fits it is centered with no scroll view and no 「左右滑動看 72 小時」 hint; otherwise it scrolls horizontally (compact). Bar width is two thirds of a 3-hour slot. Chart height and row Y positions stay fixed (text rows). The chart `Semantics` label carries a max / min / rain summary and mentions scrolling only when it scrolls.
+- **72h** (`hourly_forecast_card.dart`): the chart cell width feeds `_ChartGeometry`. Px per hour = available / hours, clamped to `_minPixelsPerHour` (16) … `_maxPixelsPerHour` (32). The same 72 hours always show; wider cards widen the spacing. If the chart fits it is centered with no scroll view and no 「左右滑動看 72 小時」 hint; otherwise it scrolls horizontally (compact). Bar width is two thirds of a 3-hour slot. Chart height and row Y positions stay fixed (text rows). The chart `Semantics` label carries a max / min / rain summary and mentions scrolling only when it scrolls.
 - **Weekly** (`weekly_card.dart`): unchanged; the range bar `Expanded` absorbs extra width.
 
 ## Short height
@@ -29,7 +29,7 @@ No special case. The page scrolls as one page (no `.fill`); wide hero/sun interi
 
 ## Tokens
 
-Named constants in the weather files: `_arcMaxWidth`, `_minPxPerHour`, `_maxPxPerHour`, `_fitTolerance`, `_forecastFlex`, `_weeklyFlex`, `_cardCount`. Thresholds come only from `AppLayout` / `AppGrid`.
+Named constants in the weather files: `_arcMaxWidth`, `_minPixelsPerHour`, `_maxPixelsPerHour`, `_fitTolerance`, `_forecastFlex`, `_weeklyFlex`, `_cardCount`. Thresholds come only from `AppLayout` / `AppGrid`.
 
 ## Cut from the round 1 spec
 - Equal-height rows, 12-unit spans: cut by `system.md` §5.
