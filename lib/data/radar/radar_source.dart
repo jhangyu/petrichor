@@ -150,17 +150,17 @@ Future<List<RadarFrameReference>> _listWebsiteFrames(
   final Response<String> response;
   try {
     response = await dio.get<String>(listUrl, options: Options(responseType: ResponseType.plain), cancelToken: cancelToken);
-  } on DioException catch (e) {
-    if (CancelToken.isCancel(e)) rethrow;
-    throw RadarDataException(listUrl, expected: 'HTTP 200 with the frame list', actual: radarHttpFailure(e));
+  } on DioException catch (error) {
+    if (CancelToken.isCancel(error)) rethrow;
+    throw RadarDataException(listUrl, expected: 'HTTP 200 with the frame list', actual: radarHttpFailure(error));
   }
   final scriptText = response.data ??
       (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
   final List<RadarFrameReference> all;
   try {
     all = parse(scriptText);
-  } on FormatException catch (e) {
-    throw RadarDataException(listUrl, expected: 'a frame list for $id', actual: e);
+  } on FormatException catch (error) {
+    throw RadarDataException(listUrl, expected: 'a frame list for $id', actual: error);
   }
   final frames = selectRadarFrameWindow(all, now: now, window: window);
   if (frames.isEmpty) {

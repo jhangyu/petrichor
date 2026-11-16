@@ -79,9 +79,9 @@ class RadarFrameRepository {
       try {
         await previous;
         await _load(source, window, out.add, cancel);
-      } catch (e, s) {
+      } catch (error, stackTrace) {
         // The cancellation error is how a cancelled load ends; nobody listens.
-        if (!(cancel.isCancelled && _isCancel(e))) out.addError(e, s);
+        if (!(cancel.isCancelled && _isCancel(error))) out.addError(error, stackTrace);
       } finally {
         done.complete();
         await out.close();
@@ -128,8 +128,8 @@ class RadarFrameRepository {
     final List<RadarFrameReference> listed;
     try {
       listed = await source.listFrames(now: now, window: window, cancelToken: cancel);
-    } on RadarDataException catch (e) {
-      send(cachedSlots, loading: false, listError: e);
+    } on RadarDataException catch (error) {
+      send(cachedSlots, loading: false, listError: error);
       return;
     }
 
@@ -145,8 +145,8 @@ class RadarFrameRepository {
           } else {
             await readCached(key);
           }
-        } on RadarDataException catch (e) {
-          slots[key] = RadarSlot.failed(frameReference.time, e);
+        } on RadarDataException catch (error) {
+          slots[key] = RadarSlot.failed(frameReference.time, error);
           continue;
         }
       }
@@ -189,9 +189,9 @@ class RadarFrameRepository {
       frameTokens.add(token);
       try {
         finished[frameReference.cacheKey] = RadarSlot.ready(await _fetch(dir, source.step, frameReference, token));
-      } on Exception catch (e) {
-        if (_isCancel(e)) rethrow;
-        finished[frameReference.cacheKey] = RadarSlot.failed(frameReference.time, _frameFailure(frameReference, e));
+      } on Exception catch (error) {
+        if (_isCancel(error)) rethrow;
+        finished[frameReference.cacheKey] = RadarSlot.failed(frameReference.time, _frameFailure(frameReference, error));
       } finally {
         frameTokens.remove(token);
       }

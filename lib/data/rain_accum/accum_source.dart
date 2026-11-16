@@ -226,8 +226,8 @@ ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialI
 AccumGrid _parse(AccumPieceInput p) {
   try {
     return parseAccumGrid(utf8.decode(gzip.decode(p.gz)), url: p.url);
-  } on FormatException catch (e) {
-    throw RadarDataException(p.url, expected: 'a QPEplus 441x561 gauge grid', actual: e.message);
+  } on FormatException catch (error) {
+    throw RadarDataException(p.url, expected: 'a QPEplus 441x561 gauge grid', actual: error.message);
   }
 }
 
@@ -317,9 +317,9 @@ class _PieceCache {
             headers: {HttpHeaders.ifNoneMatchHeader: ?etag},
             validateStatus: (s) => s == HttpStatus.ok || s == HttpStatus.notModified || s == HttpStatus.notFound,
           ));
-    } on DioException catch (e) {
-      if (CancelToken.isCancel(e)) rethrow;
-      throw RadarDataException(url, expected: 'HTTP 200 with the QPEplus grid', actual: radarHttpFailure(e));
+    } on DioException catch (error) {
+      if (CancelToken.isCancel(error)) rethrow;
+      throw RadarDataException(url, expected: 'HTTP 200 with the QPEplus grid', actual: radarHttpFailure(error));
     }
     switch (response.statusCode) {
       case HttpStatus.notModified when cached:
