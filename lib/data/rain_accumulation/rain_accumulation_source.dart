@@ -202,10 +202,10 @@ ProcessedRadarFrame renderAccumulationFrame(List<AccumulationPieceInput> whole, 
   final webp = encodeRadarWebp(accumulationGridWidth, _rowMap.length, (out) {
     for (var j = 0; j < _rowMap.length; j++) {
       // Row map counts from the north edge; grid row 0 is the south edge.
-      final source = (accumulationGridHeight - 1 - _rowMap[j]) * accumulationGridWidth;
+      final sourceRowStart = (accumulationGridHeight - 1 - _rowMap[j]) * accumulationGridWidth;
       final o = j * accumulationGridWidth;
       for (var x = 0; x < accumulationGridWidth; x++) {
-        final index = accumulationColorIndex(sum[source + x]);
+        final index = accumulationColorIndex(sum[sourceRowStart + x]);
         if (index >= 0) out[o + x] = _rgba[index];
       }
     }
