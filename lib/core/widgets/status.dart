@@ -29,13 +29,13 @@ class StatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, stroke, iconColor, defaultIcon) = switch (tone) {
-      StatusTone.loading => (AppPalette.infoBg, AppPalette.infoStroke, AppPalette.infoFg, Icons.sync),
-      StatusTone.error => (AppPalette.dangerBg, AppPalette.dangerStroke, AppPalette.dangerFg, Icons.error_outline),
-      StatusTone.empty => (AppPalette.bg2, AppPalette.stroke2, AppPalette.fg3, Icons.cloud_off_outlined),
+      StatusTone.loading => (AppPalette.infoBackground, AppPalette.infoStroke, AppPalette.infoForeground, Icons.sync),
+      StatusTone.error => (AppPalette.dangerBackground, AppPalette.dangerStroke, AppPalette.dangerForeground, Icons.error_outline),
+      StatusTone.empty => (AppPalette.background2, AppPalette.stroke2, AppPalette.foreground3, Icons.cloud_off_outlined),
       StatusTone.permission =>
-        (AppPalette.warningBg, AppPalette.warningStroke, AppPalette.warningFg, Icons.location_disabled_outlined),
-      StatusTone.alert1 => (AppPalette.alert1Bg, AppPalette.alert1Stroke, AppPalette.alert1Fg, Icons.warning_amber),
-      StatusTone.alert3 => (AppPalette.alert3Bg, AppPalette.alert3Stroke, AppPalette.alert3Fg, Icons.warning_amber),
+        (AppPalette.warningBackground, AppPalette.warningStroke, AppPalette.warningForeground, Icons.location_disabled_outlined),
+      StatusTone.alert1 => (AppPalette.alert1Background, AppPalette.alert1Stroke, AppPalette.alert1Foreground, Icons.warning_amber),
+      StatusTone.alert3 => (AppPalette.alert3Background, AppPalette.alert3Stroke, AppPalette.alert3Foreground, Icons.warning_amber),
     };
     final body = text;
     return Container(
@@ -57,8 +57,8 @@ class StatusBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: AppSpace.s4,
               children: [
-                Text(title, style: AppType.body1Strong.copyWith(color: AppPalette.fg1)),
-                if (body != null) Text(body, style: AppType.body1.copyWith(color: AppPalette.fg2)),
+                Text(title, style: AppType.body1Strong.copyWith(color: AppPalette.foreground1)),
+                if (body != null) Text(body, style: AppType.body1.copyWith(color: AppPalette.foreground2)),
                 if (actions.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpace.s4),
@@ -88,8 +88,8 @@ class AppNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg, iconColor) = switch (tone) {
-      NoteTone.rain => (AppPalette.rainBg, AppPalette.rainFg, AppPalette.rainFg),
-      NoteTone.neutral => (AppPalette.bg1, AppPalette.fg1, AppPalette.brandFg),
+      NoteTone.rain => (AppPalette.rainBackground, AppPalette.rainForeground, AppPalette.rainForeground),
+      NoteTone.neutral => (AppPalette.background1, AppPalette.foreground1, AppPalette.brandForeground),
     };
     return ColoredBox(
       color: bg,
@@ -164,10 +164,10 @@ class EmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: AppSpace.s12,
         children: [
-          Icon(icon, size: AppSize.icon48, color: error ? AppPalette.dangerFg : AppPalette.fg3),
-          Text(title, textAlign: TextAlign.center, style: AppType.subtitle2.copyWith(color: AppPalette.fg1)),
+          Icon(icon, size: AppSize.icon48, color: error ? AppPalette.dangerForeground : AppPalette.foreground3),
+          Text(title, textAlign: TextAlign.center, style: AppType.subtitle2.copyWith(color: AppPalette.foreground1)),
           if (body != null)
-            Text(body, textAlign: TextAlign.center, style: AppType.body1.copyWith(color: AppPalette.fg2)),
+            Text(body, textAlign: TextAlign.center, style: AppType.body1.copyWith(color: AppPalette.foreground2)),
           if (actions.isNotEmpty)
             Wrap(alignment: WrapAlignment.center, spacing: AppSpace.s8, runSpacing: AppSpace.s8, children: actions),
         ],
@@ -186,7 +186,7 @@ class AppSpinner extends StatelessWidget {
       dimension: AppSize.spinner,
       child: CircularProgressIndicator(
         strokeWidth: AppStroke.thick,
-        color: AppPalette.brandBg,
+        color: AppPalette.brandBackground,
         backgroundColor: AppPalette.brand150,
       ),
     );
@@ -208,7 +208,7 @@ class Skeleton extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppPalette.bg6,
+        color: AppPalette.background6,
         borderRadius: BorderRadius.circular(circle ? AppRadius.full : AppRadius.extraSmall),
       ),
     );

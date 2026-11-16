@@ -36,7 +36,7 @@ class SavedPlacesCard extends ConsumerWidget {
     final addRow = AppListRow(
       leading: const SettingsTint(icon: Icons.add, brand: true),
       primary: '新增地點',
-      trailing: const Icon(Icons.chevron_right, size: AppSize.icon20, color: AppPalette.fg3),
+      trailing: const Icon(Icons.chevron_right, size: AppSize.icon20, color: AppPalette.foreground3),
       onTap: onAdd,
     );
     return switch (ref.watch(savedPlacesProvider)) {
@@ -156,7 +156,7 @@ _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
 }
 
 _WeatherView _unavailable(IconData icon, String secondary) => (
-      glyph: Icon(icon, size: AppSize.icon20, color: AppPalette.fg3),
+      glyph: Icon(icon, size: AppSize.icon20, color: AppPalette.foreground3),
       temp: _temp('—', strong: false),
       secondary: secondary,
       spoken: secondary,
@@ -167,5 +167,5 @@ Widget _temp(String text, {required bool strong}) => Text(
       textAlign: TextAlign.end,
       maxLines: 1,
       style: (strong ? AppType.body1Strong : AppType.body1)
-          .copyWith(color: strong ? AppPalette.fg1 : AppPalette.fg3, fontFeatures: AppType.tabular),
+          .copyWith(color: strong ? AppPalette.foreground1 : AppPalette.foreground3, fontFeatures: AppType.tabular),
     );

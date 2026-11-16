@@ -118,10 +118,10 @@ class _StationListCardState extends State<StationListCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: AppSpace.s4,
                   children: [
-                    Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
+                    Text('測站今日累積雨量', style: AppType.subtitle1.copyWith(color: AppPalette.foreground1)),
                     Text(
                       '${_county ?? '全部縣市'} · $count 站 · 依$sortLabel',
-                      style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                      style: AppType.caption1.copyWith(color: AppPalette.foreground3),
                     ),
                   ],
                 ),
@@ -179,7 +179,7 @@ class _StationRow extends StatelessWidget {
     final level = mm == null ? null : rainLevel(mm);
     final place = '${station.county} ${station.town}${isNearest ? ' · 目前位置' : ''}';
     return Container(
-      color: isNearest ? AppPalette.brandBgSubtle : AppPalette.bg1,
+      color: isNearest ? AppPalette.brandBackgroundSubtle : AppPalette.background1,
       constraints: const BoxConstraints(minHeight: AppSize.touch),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
       child: Row(
@@ -192,9 +192,9 @@ class _StationRow extends StatelessWidget {
               children: [
                 Text(
                   station.name,
-                  style: AppType.body1Strong.copyWith(color: isNearest ? AppPalette.brandFgStrong : AppPalette.fg1),
+                  style: AppType.body1Strong.copyWith(color: isNearest ? AppPalette.brandForegroundStrong : AppPalette.foreground1),
                 ),
-                Text(place, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                Text(place, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
                 if (mm != null && level != null) _LevelBar(fraction: (mm / _barFullMm).clamp(0, 1), level: level),
               ],
             ),
@@ -209,14 +209,14 @@ class _StationRow extends StatelessWidget {
                   TextSpan(
                     text: '${formatMm(mm)} ',
                     style: AppType.body2.copyWith(
-                      color: AppPalette.fg1,
+                      color: AppPalette.foreground1,
                       fontWeight: FontWeight.w600,
                       fontFeatures: AppType.tabular,
                     ),
                     children: [
                       TextSpan(
                         text: 'mm',
-                        style: AppType.caption1.copyWith(color: AppPalette.fg3, fontWeight: FontWeight.w400),
+                        style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontWeight: FontWeight.w400),
                       ),
                     ],
                   ),
@@ -235,7 +235,7 @@ class _NoValueBadge extends StatelessWidget {
   const _NoValueBadge();
 
   @override
-  Widget build(BuildContext context) => Text('無資料', style: AppType.caption1.copyWith(color: AppPalette.fg3));
+  Widget build(BuildContext context) => Text('無資料', style: AppType.caption1.copyWith(color: AppPalette.foreground3));
 }
 
 class _LevelBar extends StatelessWidget {
@@ -250,7 +250,7 @@ class _LevelBar extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.full),
       child: Container(
         height: AppSize.sliderTrack,
-        color: AppPalette.bg4,
+        color: AppPalette.background4,
         alignment: Alignment.centerLeft,
         child: FractionallySizedBox(
           widthFactor: fraction,

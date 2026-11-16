@@ -7,25 +7,25 @@ import 'package:flutter/material.dart';
 /// `--color-*` tokens.
 abstract final class AppPalette {
   // Neutral backgrounds
-  static const bg1 = Color(0xFFFFFFFF);
-  static const bg2 = Color(0xFFFAFAFA);
-  static const bg3 = Color(0xFFF5F5F5);
-  static const bg4 = Color(0xFFF0F0F0);
-  static const bg6 = Color(0xFFE6E6E6);
-  static const bgHover = Color(0xFFF5F5F5);
-  static const bgPressed = Color(0xFFE0E0E0);
-  static const bgDisabled = Color(0xFFF0F0F0);
-  static const bgOverlay = Color(0xEBFFFFFF); // rgba(255,255,255,0.92)
+  static const background1 = Color(0xFFFFFFFF);
+  static const background2 = Color(0xFFFAFAFA);
+  static const background3 = Color(0xFFF5F5F5);
+  static const background4 = Color(0xFFF0F0F0);
+  static const background6 = Color(0xFFE6E6E6);
+  static const backgroundHover = Color(0xFFF5F5F5);
+  static const backgroundPressed = Color(0xFFE0E0E0);
+  static const backgroundDisabled = Color(0xFFF0F0F0);
+  static const backgroundOverlay = Color(0xEBFFFFFF); // rgba(255,255,255,0.92)
   static const transparent = Color(0x00000000);
 
   // Neutral foregrounds
-  static const fg1 = Color(0xFF242424);
-  static const fg2 = Color(0xFF424242);
-  static const fg3 = Color(0xFF616161);
-  static const fg4 = Color(0xFF707070);
-  static const fgDisabled = Color(0xFFBDBDBD);
-  static const fgOnBrand = Color(0xFFFFFFFF);
-  static const fgOnSolid = Color(0xFFFFFFFF);
+  static const foreground1 = Color(0xFF242424);
+  static const foreground2 = Color(0xFF424242);
+  static const foreground3 = Color(0xFF616161);
+  static const foreground4 = Color(0xFF707070);
+  static const foregroundDisabled = Color(0xFFBDBDBD);
+  static const foregroundOnBrand = Color(0xFFFFFFFF);
+  static const foregroundOnSolid = Color(0xFFFFFFFF);
 
   // Neutral strokes
   static const stroke1 = Color(0xFFD1D1D1);
@@ -46,32 +46,32 @@ abstract final class AppPalette {
   static const brand160 = Color(0xFFEBF3FC);
 
   // Brand semantic aliases
-  static const brandBg = brand80;
-  static const brandBgHover = brand70;
-  static const brandBgPressed = brand40;
-  static const brandBgSubtle = brand160;
-  static const brandFg = brand80;
-  static const brandFgStrong = brand60;
+  static const brandBackground = brand80;
+  static const brandBackgroundHover = brand70;
+  static const brandBackgroundPressed = brand40;
+  static const brandBackgroundSubtle = brand160;
+  static const brandForeground = brand80;
+  static const brandForegroundStrong = brand60;
   static const brandStroke = brand80;
   static const brandStrokeSubtle = brand140;
 
   // Status
-  static const successBg = Color(0xFFF1FAF1);
-  static const successFg = Color(0xFF0E700E);
+  static const successBackground = Color(0xFFF1FAF1);
+  static const successForeground = Color(0xFF0E700E);
   static const successStroke = Color(0xFF9FD89F);
 
-  static const warningBg = Color(0xFFFFF9F5);
-  static const warningFg = Color(0xFFBC4B09);
+  static const warningBackground = Color(0xFFFFF9F5);
+  static const warningForeground = Color(0xFFBC4B09);
   static const warningStroke = Color(0xFFFDCFB4);
   static const warningSolid = Color(0xFFF7630C);
 
-  static const dangerBg = Color(0xFFFDF3F4);
-  static const dangerFg = Color(0xFFB10E1C);
+  static const dangerBackground = Color(0xFFFDF3F4);
+  static const dangerForeground = Color(0xFFB10E1C);
   static const dangerStroke = Color(0xFFEEACB2);
   static const dangerSolid = Color(0xFFC50F1F);
 
-  static const infoBg = brand160;
-  static const infoFg = brand60;
+  static const infoBackground = brand160;
+  static const infoForeground = brand60;
   static const infoStroke = brand140;
   static const infoSolid = brand80;
 
@@ -84,8 +84,8 @@ abstract final class AppPalette {
   static const tempBarHot = Color(0xFFE8474F); // >= 29°C
 
   // Rain probability / rainfall amounts
-  static const rainFg = Color(0xFF115EA3);
-  static const rainBg = Color(0xFFEBF3FC);
+  static const rainForeground = Color(0xFF115EA3);
+  static const rainBackground = Color(0xFFEBF3FC);
   static const rainBar = Color(0xFF479EF5);
   static const rainBarTrack = Color(0xFFE6EEF7);
 
@@ -97,20 +97,20 @@ abstract final class AppPalette {
   static const iconFog = Color(0xFFA0A0A0);
 
   // CWA rain-warning levels: 1 大雨, 2 豪雨, 3 大豪雨, 4 超大豪雨
-  static const alert1Bg = Color(0xFFFFFAD6);
-  static const alert1Fg = Color(0xFF6B5D00);
+  static const alert1Background = Color(0xFFFFFAD6);
+  static const alert1Foreground = Color(0xFF6B5D00);
   static const alert1Stroke = Color(0xFFF2D94E);
   static const alert1Solid = Color(0xFFFDE300);
-  static const alert2Bg = warningBg;
-  static const alert2Fg = warningFg;
+  static const alert2Background = warningBackground;
+  static const alert2Foreground = warningForeground;
   static const alert2Stroke = warningStroke;
   static const alert2Solid = warningSolid;
-  static const alert3Bg = dangerBg;
-  static const alert3Fg = dangerFg;
+  static const alert3Background = dangerBackground;
+  static const alert3Foreground = dangerForeground;
   static const alert3Stroke = dangerStroke;
   static const alert3Solid = dangerSolid;
-  static const alert4Bg = Color(0xFFF7F4FB);
-  static const alert4Fg = Color(0xFF5C2E91);
+  static const alert4Background = Color(0xFFF7F4FB);
+  static const alert4Foreground = Color(0xFF5C2E91);
   static const alert4Stroke = Color(0xFFC6B1DE);
   static const alert4Solid = Color(0xFF5C2E91);
 
@@ -281,7 +281,7 @@ abstract final class AppMotion {
 }
 
 /// Fluent type ramp (`--type-*`). Colour is not set; it comes from the
-/// ambient [DefaultTextStyle] / theme (fg1) unless a widget overrides it.
+/// ambient [DefaultTextStyle] / theme (foreground1) unless a widget overrides it.
 abstract final class AppType {
   static const _regular = FontWeight.w400;
   static const _semibold = FontWeight.w600;

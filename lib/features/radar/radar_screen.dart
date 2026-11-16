@@ -149,7 +149,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         : Text(
             '資料來源：中央氣象署 官網雷達回波圖',
             textAlign: TextAlign.center,
-            style: AppType.caption1.copyWith(color: AppPalette.fg3),
+            style: AppType.caption1.copyWith(color: AppPalette.foreground3),
           );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -463,7 +463,7 @@ class _FailureBanner extends StatelessWidget {
         Theme(
           data: Theme.of(context).copyWith(dividerColor: AppPalette.transparent),
           child: ExpansionTile(
-            title: Text('詳細（${failed.length} 張）', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+            title: Text('詳細（${failed.length} 張）', style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
             childrenPadding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
             children: [
               for (final f in shown)
@@ -471,13 +471,13 @@ class _FailureBanner extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '${clockText(f.time)} ${firstLine(f.error!)}',
-                    style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                    style: AppType.caption1.copyWith(color: AppPalette.foreground3),
                   ),
                 ),
               if (hidden > 0)
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('…另 $hidden 張', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                  child: Text('…另 $hidden 張', style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
                 ),
             ],
           ),

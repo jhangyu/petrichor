@@ -38,8 +38,8 @@ List<Widget> radarStationLayers(LatLngBounds bounds) {
           child: DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppPalette.brandBg,
-              border: Border.all(color: AppPalette.bg1, width: _ringStrokeWidth),
+              color: AppPalette.brandBackground,
+              border: Border.all(color: AppPalette.background1, width: _ringStrokeWidth),
             ),
           ),
         ),

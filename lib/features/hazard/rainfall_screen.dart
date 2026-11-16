@@ -209,7 +209,7 @@ class RainfallScreen extends ConsumerWidget {
         if (list != null) AppGridItem.full(child: list),
         if (result is Success)
           AppGridItem.full(
-            child: Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+            child: Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
           ),
       ],
     );

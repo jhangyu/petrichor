@@ -48,15 +48,15 @@ class _HereRow extends StatelessWidget {
         Expanded(
           child: Text(
             value == null ? '$placeName 此格無有效預測（雷達無回波或無資料）' : '$placeName預估雨量${umbrella ? ' · 出門請帶傘' : ''}',
-            style: AppType.caption1.copyWith(color: AppPalette.fg3),
+            style: AppType.caption1.copyWith(color: AppPalette.foreground3),
           ),
         ),
         Text(
           formatMm(value),
-          style: AppType.subtitle1.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
+          style: AppType.subtitle1.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
         ),
         const SizedBox(width: AppSpace.s4),
-        Text('mm', style: AppType.caption1.copyWith(color: AppPalette.fg2)),
+        Text('mm', style: AppType.caption1.copyWith(color: AppPalette.foreground2)),
       ],
     );
   }

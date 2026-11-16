@@ -77,12 +77,12 @@ class QuietTimeRow extends StatelessWidget {
                 if (nextDay) const AppBadge(label: '隔日'),
                 Text(clockOfMinute(minute),
                     style: AppType.body1Strong.copyWith(
-                      color: enabled ? AppPalette.fg1 : AppPalette.fgDisabled,
+                      color: enabled ? AppPalette.foreground1 : AppPalette.foregroundDisabled,
                       fontFeatures: AppType.tabular,
                     )),
               ],
             ),
-            const Icon(Icons.chevron_right, size: AppSize.icon20, color: AppPalette.fg3),
+            const Icon(Icons.chevron_right, size: AppSize.icon20, color: AppPalette.foreground3),
           ],
         ),
       ),
@@ -119,7 +119,7 @@ class QuietHoursBar extends StatelessWidget {
                 child: Stack(children: [
                   Container(
                     decoration: const BoxDecoration(
-                      color: AppPalette.bg4,
+                      color: AppPalette.background4,
                       borderRadius: BorderRadius.all(Radius.circular(AppRadius.full)),
                     ),
                   ),
@@ -129,7 +129,7 @@ class QuietHoursBar extends StatelessWidget {
                       width: c.maxWidth * (to - from) / minutesPerDay,
                       top: 0,
                       bottom: 0,
-                      child: const ColoredBox(color: AppPalette.brandBg),
+                      child: const ColoredBox(color: AppPalette.brandBackground),
                     ),
                 ]),
               ),
@@ -137,7 +137,7 @@ class QuietHoursBar extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (final t in _ticks) Text('$t', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                for (final t in _ticks) Text('$t', style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
               ],
             ),
           ],
@@ -156,10 +156,10 @@ class NotifyGroupLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppPalette.bg2,
+      color: AppPalette.background2,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s8),
-        child: Text(text, style: AppType.caption1.copyWith(color: AppPalette.fg3, fontWeight: FontWeight.w600)),
+        child: Text(text, style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontWeight: FontWeight.w600)),
       ),
     );
   }

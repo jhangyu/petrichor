@@ -51,7 +51,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
     final usesRail = WindowSizeClass.of(context).usesRail;
     return Scaffold(
-      backgroundColor: AppPalette.bg3,
+      backgroundColor: AppPalette.background3,
       body: usesRail ? Row(children: [_rail(tab), Expanded(child: pages)]) : pages,
       bottomNavigationBar: usesRail ? null : _bar(tab),
     );
@@ -69,13 +69,13 @@ class _AppShellState extends ConsumerState<AppShell> {
         groupAlignment: _railGroupAlignment,
         // Short landscape windows (720x360) cannot fit every labelled destination.
         scrollable: true,
-        backgroundColor: AppPalette.bg1,
-        indicatorColor: AppPalette.brandBgSubtle,
+        backgroundColor: AppPalette.background1,
+        indicatorColor: AppPalette.brandBackgroundSubtle,
         indicatorShape: const StadiumBorder(),
-        selectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.brandFgStrong),
-        unselectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.fg3),
-        selectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600),
-        unselectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.fg3),
+        selectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.brandForegroundStrong),
+        unselectedIconTheme: const IconThemeData(size: AppSize.icon24, color: AppPalette.foreground3),
+        selectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.brandForegroundStrong, fontWeight: FontWeight.w600),
+        unselectedLabelTextStyle: AppType.caption1.copyWith(color: AppPalette.foreground3),
         destinations: [
           for (final t in AppTab.values)
             NavigationRailDestination(icon: Icon(_tabs[t]!.icon), label: Text(_tabs[t]!.label)),

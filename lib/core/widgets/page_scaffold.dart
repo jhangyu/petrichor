@@ -47,7 +47,7 @@ class AppPageScaffold extends StatelessWidget {
     final fillBody = body;
     if (fillBody != null) {
       return ColoredBox(
-        color: AppPalette.bg3,
+        color: AppPalette.background3,
         child: Column(
           children: [
             header,
@@ -81,7 +81,7 @@ class AppPageScaffold extends StatelessWidget {
     );
     final refresh = onRefresh;
     return ColoredBox(
-      color: AppPalette.bg3,
+      color: AppPalette.background3,
       child: Column(
         children: [
           header,
@@ -90,8 +90,8 @@ class AppPageScaffold extends StatelessWidget {
                 ? scroll
                 : RefreshIndicator(
                     onRefresh: refresh,
-                    color: AppPalette.brandBg,
-                    backgroundColor: AppPalette.bg1,
+                    color: AppPalette.brandBackground,
+                    backgroundColor: AppPalette.background1,
                     child: scroll,
                   ),
           ),
@@ -110,7 +110,7 @@ class AppPageHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.subtitleIcon,
-    this.subtitleIconColor = AppPalette.brandFg,
+    this.subtitleIconColor = AppPalette.brandForeground,
     this.actions = const [],
     this.onTitleTap,
     this.onBack,
@@ -133,7 +133,7 @@ class AppPageHeader extends StatelessWidget {
 
     Widget titleWidget = Text(
       title,
-      style: AppType.subtitle1.copyWith(color: AppPalette.fg1),
+      style: AppType.subtitle1.copyWith(color: AppPalette.foreground1),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
@@ -146,7 +146,7 @@ class AppPageHeader extends StatelessWidget {
           children: [
             Flexible(child: titleWidget),
             const SizedBox(width: AppSpace.s4),
-            const Icon(Icons.expand_more, size: AppSize.icon20, color: AppPalette.fg3),
+            const Icon(Icons.expand_more, size: AppSize.icon20, color: AppPalette.foreground3),
           ],
         ),
       );
@@ -161,7 +161,7 @@ class AppPageHeader extends StatelessWidget {
         AppSpace.s0,
       ),
       decoration: const BoxDecoration(
-        color: AppPalette.bg1,
+        color: AppPalette.background1,
         border: Border(bottom: BorderSide(color: AppPalette.stroke2, width: AppStroke.thin)),
       ),
       child: Row(
@@ -184,7 +184,7 @@ class AppPageHeader extends StatelessWidget {
                         child: Text(
                           subtitleText,
                           style: AppType.caption1.copyWith(
-                            color: AppPalette.fg3,
+                            color: AppPalette.foreground3,
                             fontFeatures: AppType.tabular,
                           ),
                           maxLines: 1,
@@ -216,7 +216,7 @@ class SourceLine extends StatelessWidget {
     return Text(
       '資料來源：中央氣象署 開放資料（${datasetIds.join('、')}）',
       textAlign: TextAlign.center,
-      style: AppType.caption1.copyWith(color: AppPalette.fg3),
+      style: AppType.caption1.copyWith(color: AppPalette.foreground3),
     );
   }
 }

@@ -135,7 +135,7 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
       readOnly: verifying,
       errorText: fieldError,
       helperText: fieldHelper,
-      helperColor: AppPalette.warningFg,
+      helperColor: AppPalette.warningForeground,
       onChanged: (_) => setState(() {}),
       suffix: AppIconButton(
         icon: _shown ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -217,7 +217,7 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
                 SelectableText(
                   '申請方式：到「中央氣象署氣象資料開放平臺」opendata.cwa.gov.tw 註冊會員並登入，'
                   '在會員資訊頁取得「API 授權碼」，複製後貼到上方欄位。',
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                  style: AppType.caption1.copyWith(color: AppPalette.foreground3),
                 ),
           ]),
         ]),

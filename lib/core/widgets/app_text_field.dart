@@ -63,7 +63,7 @@ class AppTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpace.s8,
       children: [
-        if (head != null) Text(head, style: AppType.body1Strong.copyWith(color: AppPalette.fg1)),
+        if (head != null) Text(head, style: AppType.body1Strong.copyWith(color: AppPalette.foreground1)),
         TextField(
           controller: controller,
           readOnly: readOnly,
@@ -71,17 +71,17 @@ class AppTextField extends StatelessWidget {
           obscureText: obscureText,
           onTap: onTap,
           onChanged: onChanged,
-          style: AppType.body1.copyWith(color: AppPalette.fg1),
+          style: AppType.body1.copyWith(color: AppPalette.foreground1),
           textAlignVertical: TextAlignVertical.center,
           decoration: InputDecoration(
             isDense: true,
             filled: true,
-            fillColor: _isSearch ? AppPalette.bg1 : AppPalette.bg4,
+            fillColor: _isSearch ? AppPalette.background1 : AppPalette.background4,
             hintText: hint,
-            hintStyle: AppType.body1.copyWith(color: AppPalette.fg3),
+            hintStyle: AppType.body1.copyWith(color: AppPalette.foreground3),
             errorText: errorText,
-            errorStyle: AppType.caption1.copyWith(color: AppPalette.dangerFg),
-            prefixIcon: icon == null ? null : Icon(icon, size: AppSize.icon20, color: AppPalette.fg3),
+            errorStyle: AppType.caption1.copyWith(color: AppPalette.dangerForeground),
+            prefixIcon: icon == null ? null : Icon(icon, size: AppSize.icon20, color: AppPalette.foreground3),
             suffixIcon: suffix,
             prefixIconConstraints: _iconBox,
             suffixIconConstraints: _iconBox,
@@ -92,12 +92,12 @@ class AppTextField extends StatelessWidget {
             enabledBorder: _border(AppPalette.strokeAccessible, AppStroke.thin),
             disabledBorder: _border(AppPalette.strokeAccessible, AppStroke.thin),
             focusedBorder: _border(AppPalette.brandStroke, AppStroke.thick),
-            errorBorder: _border(AppPalette.dangerFg, AppStroke.thick),
-            focusedErrorBorder: _border(AppPalette.dangerFg, AppStroke.thick),
+            errorBorder: _border(AppPalette.dangerForeground, AppStroke.thick),
+            focusedErrorBorder: _border(AppPalette.dangerForeground, AppStroke.thick),
           ),
         ),
         if (help != null && errorText == null)
-          Text(help, style: AppType.caption1.copyWith(color: helperColor ?? AppPalette.fg3)),
+          Text(help, style: AppType.caption1.copyWith(color: helperColor ?? AppPalette.foreground3)),
       ],
     );
   }

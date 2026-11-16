@@ -16,16 +16,16 @@ class AppBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg, stroke) = switch (tone) {
-      BadgeTone.neutral => (AppPalette.bg4, AppPalette.fg2, AppPalette.transparent),
-      BadgeTone.rain => (AppPalette.rainBg, AppPalette.rainFg, AppPalette.transparent),
-      BadgeTone.brand => (AppPalette.brandBg, AppPalette.fgOnBrand, AppPalette.transparent),
-      BadgeTone.success => (AppPalette.successBg, AppPalette.successFg, AppPalette.successStroke),
-      BadgeTone.danger => (AppPalette.dangerBg, AppPalette.dangerFg, AppPalette.dangerStroke),
-      BadgeTone.warning => (AppPalette.warningBg, AppPalette.warningFg, AppPalette.warningStroke),
-      BadgeTone.alert1 => (AppPalette.alert1Bg, AppPalette.alert1Fg, AppPalette.alert1Stroke),
-      BadgeTone.alert2 => (AppPalette.alert2Bg, AppPalette.alert2Fg, AppPalette.alert2Stroke),
-      BadgeTone.alert3 => (AppPalette.alert3Bg, AppPalette.alert3Fg, AppPalette.alert3Stroke),
-      BadgeTone.alert4 => (AppPalette.alert4Bg, AppPalette.alert4Fg, AppPalette.alert4Stroke),
+      BadgeTone.neutral => (AppPalette.background4, AppPalette.foreground2, AppPalette.transparent),
+      BadgeTone.rain => (AppPalette.rainBackground, AppPalette.rainForeground, AppPalette.transparent),
+      BadgeTone.brand => (AppPalette.brandBackground, AppPalette.foregroundOnBrand, AppPalette.transparent),
+      BadgeTone.success => (AppPalette.successBackground, AppPalette.successForeground, AppPalette.successStroke),
+      BadgeTone.danger => (AppPalette.dangerBackground, AppPalette.dangerForeground, AppPalette.dangerStroke),
+      BadgeTone.warning => (AppPalette.warningBackground, AppPalette.warningForeground, AppPalette.warningStroke),
+      BadgeTone.alert1 => (AppPalette.alert1Background, AppPalette.alert1Foreground, AppPalette.alert1Stroke),
+      BadgeTone.alert2 => (AppPalette.alert2Background, AppPalette.alert2Foreground, AppPalette.alert2Stroke),
+      BadgeTone.alert3 => (AppPalette.alert3Background, AppPalette.alert3Foreground, AppPalette.alert3Stroke),
+      BadgeTone.alert4 => (AppPalette.alert4Background, AppPalette.alert4Foreground, AppPalette.alert4Stroke),
     };
     final glyph = icon;
     return Container(
@@ -88,16 +88,16 @@ class MetricTile extends StatelessWidget {
     final edged = onHero || dense;
     final next = tone == MetricTone.next;
     final valueStyle = switch (tone) {
-      MetricTone.past => AppType.body1.copyWith(color: AppPalette.fg3),
-      MetricTone.rain => AppType.body1Strong.copyWith(color: AppPalette.rainFg),
-      MetricTone.normal || MetricTone.next => AppType.body1Strong.copyWith(color: AppPalette.fg1),
+      MetricTone.past => AppType.body1.copyWith(color: AppPalette.foreground3),
+      MetricTone.rain => AppType.body1Strong.copyWith(color: AppPalette.rainForeground),
+      MetricTone.normal || MetricTone.next => AppType.body1Strong.copyWith(color: AppPalette.foreground1),
     };
     return Container(
       padding: dense
           ? const EdgeInsets.all(AppSpace.s8)
           : const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
       decoration: BoxDecoration(
-        color: next ? AppPalette.brandBgSubtle : (edged ? AppPalette.bg1 : AppPalette.bg2),
+        color: next ? AppPalette.brandBackgroundSubtle : (edged ? AppPalette.background1 : AppPalette.background2),
         borderRadius: BorderRadius.circular(AppRadius.small),
         border: next
             ? Border.all(color: AppPalette.brandStrokeSubtle, width: AppStroke.thin)
@@ -106,7 +106,7 @@ class MetricTile extends StatelessWidget {
       child: Row(
         spacing: AppSpace.s8,
         children: [
-          if (glyph != null) Icon(glyph, size: AppSize.icon20, color: AppPalette.fg2),
+          if (glyph != null) Icon(glyph, size: AppSize.icon20, color: AppPalette.foreground2),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,8 +114,8 @@ class MetricTile extends StatelessWidget {
                 Text(
                   label,
                   style: next
-                      ? AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600)
-                      : AppType.caption1.copyWith(color: AppPalette.fg3),
+                      ? AppType.caption1.copyWith(color: AppPalette.brandForegroundStrong, fontWeight: FontWeight.w600)
+                      : AppType.caption1.copyWith(color: AppPalette.foreground3),
                 ),
                 Text(
                   value,
@@ -184,7 +184,7 @@ class AppList extends StatelessWidget {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppPalette.bg1,
+        color: AppPalette.background1,
         borderRadius: BorderRadius.circular(AppRadius.medium),
         boxShadow: AppShadows.s2,
       ),
@@ -234,15 +234,15 @@ class AppListRow extends StatelessWidget {
     final end = trailing;
     final sub = secondary;
     final primaryColor = !enabled
-        ? AppPalette.fgDisabled
+        ? AppPalette.foregroundDisabled
         : selected
-            ? AppPalette.brandFgStrong
-            : AppPalette.fg1;
+            ? AppPalette.brandForegroundStrong
+            : AppPalette.foreground1;
     return Material(
-      color: selected ? AppPalette.brandBgSubtle : AppPalette.bg1,
+      color: selected ? AppPalette.brandBackgroundSubtle : AppPalette.background1,
       child: InkWell(
         onTap: enabled ? onTap : null,
-        hoverColor: AppPalette.bgHover,
+        hoverColor: AppPalette.backgroundHover,
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: sub == null ? AppSize.listRowOneLine : AppSize.listRowTwoLine),
           child: Padding(
@@ -260,13 +260,13 @@ class AppListRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(primary, style: AppType.body1Strong.copyWith(color: primaryColor)),
-                      if (sub != null) Text(sub, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                      if (sub != null) Text(sub, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
                     ],
                   ),
                 ),
                 if (end != null)
                   DefaultTextStyle.merge(
-                    style: AppType.body1.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular),
+                    style: AppType.body1.copyWith(color: AppPalette.foreground2, fontFeatures: AppType.tabular),
                     child: end,
                   ),
               ],

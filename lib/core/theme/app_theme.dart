@@ -10,34 +10,34 @@ abstract final class AppTheme {
   static const _cjkFallback = ['PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC'];
 
   static ThemeData get light {
-    final textColor = AppType.body1.copyWith(color: AppPalette.fg1);
+    final textColor = AppType.body1.copyWith(color: AppPalette.foreground1);
     return ThemeData(
       brightness: Brightness.light,
       fontFamilyFallback: _cjkFallback,
-      scaffoldBackgroundColor: AppPalette.bg3,
+      scaffoldBackgroundColor: AppPalette.background3,
       colorScheme: const ColorScheme.light(
-        primary: AppPalette.brandBg,
-        onPrimary: AppPalette.fgOnBrand,
-        primaryContainer: AppPalette.brandBgSubtle,
-        onPrimaryContainer: AppPalette.brandFgStrong,
-        secondary: AppPalette.brandBg,
-        onSecondary: AppPalette.fgOnBrand,
-        surface: AppPalette.bg1,
-        onSurface: AppPalette.fg1,
-        onSurfaceVariant: AppPalette.fg2,
+        primary: AppPalette.brandBackground,
+        onPrimary: AppPalette.foregroundOnBrand,
+        primaryContainer: AppPalette.brandBackgroundSubtle,
+        onPrimaryContainer: AppPalette.brandForegroundStrong,
+        secondary: AppPalette.brandBackground,
+        onSecondary: AppPalette.foregroundOnBrand,
+        surface: AppPalette.background1,
+        onSurface: AppPalette.foreground1,
+        onSurfaceVariant: AppPalette.foreground2,
         outline: AppPalette.stroke1,
         outlineVariant: AppPalette.stroke2,
-        error: AppPalette.dangerFg,
-        onError: AppPalette.fgOnSolid,
-        surfaceTint: AppPalette.bg1,
+        error: AppPalette.dangerForeground,
+        onError: AppPalette.foregroundOnSolid,
+        surfaceTint: AppPalette.background1,
       ),
       textTheme: TextTheme(
-        bodySmall: AppType.caption1.copyWith(color: AppPalette.fg1),
+        bodySmall: AppType.caption1.copyWith(color: AppPalette.foreground1),
         bodyMedium: textColor,
-        bodyLarge: AppType.body2.copyWith(color: AppPalette.fg1),
-        labelLarge: AppType.body1Strong.copyWith(color: AppPalette.fg1),
-        titleMedium: AppType.subtitle2.copyWith(color: AppPalette.fg1),
-        titleLarge: AppType.subtitle1.copyWith(color: AppPalette.fg1),
+        bodyLarge: AppType.body2.copyWith(color: AppPalette.foreground1),
+        labelLarge: AppType.body1Strong.copyWith(color: AppPalette.foreground1),
+        titleMedium: AppType.subtitle2.copyWith(color: AppPalette.foreground1),
+        titleLarge: AppType.subtitle1.copyWith(color: AppPalette.foreground1),
       ),
       dividerColor: AppPalette.stroke2,
       dialogTheme: const DialogThemeData(
@@ -52,26 +52,26 @@ abstract final class AppTheme {
       ),
       inputDecorationTheme: const InputDecorationTheme(
         filled: true,
-        fillColor: AppPalette.bg4,
+        fillColor: AppPalette.background4,
         border: UnderlineInputBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraSmall))),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: AppSize.bottomNav,
-        backgroundColor: AppPalette.bg1,
-        surfaceTintColor: AppPalette.bg1,
+        backgroundColor: AppPalette.background1,
+        surfaceTintColor: AppPalette.background1,
         elevation: 0,
-        indicatorColor: AppPalette.brandBgSubtle,
+        indicatorColor: AppPalette.brandBackgroundSubtle,
         indicatorShape: const StadiumBorder(),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected)
-              ? AppType.caption1.copyWith(color: AppPalette.brandFgStrong, fontWeight: FontWeight.w600)
-              : AppType.caption1.copyWith(color: AppPalette.fg3),
+              ? AppType.caption1.copyWith(color: AppPalette.brandForegroundStrong, fontWeight: FontWeight.w600)
+              : AppType.caption1.copyWith(color: AppPalette.foreground3),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
             size: AppSize.icon24,
-            color: states.contains(WidgetState.selected) ? AppPalette.brandFgStrong : AppPalette.fg3,
+            color: states.contains(WidgetState.selected) ? AppPalette.brandForegroundStrong : AppPalette.foreground3,
           ),
         ),
       ),

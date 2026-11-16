@@ -17,7 +17,7 @@ bool isLowRain(int? pop) => pop == null || pop < rainLowThresholdPercent;
 TextStyle popTextStyle(TextStyle base, int? pop) {
   final low = isLowRain(pop);
   return base.copyWith(
-    color: low ? AppPalette.fg3 : AppPalette.rainFg,
+    color: low ? AppPalette.foreground3 : AppPalette.rainForeground,
     fontWeight: low ? FontWeight.w400 : FontWeight.w600,
   );
 }

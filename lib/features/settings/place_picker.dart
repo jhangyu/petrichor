@@ -191,7 +191,7 @@ class _TownList extends ConsumerWidget {
                   primary: t.town,
                   selected: _sameTown(t, selected),
                   trailing: _sameTown(t, selected)
-                      ? const Icon(Icons.check, size: AppSize.icon20, color: AppPalette.brandFg)
+                      ? const Icon(Icons.check, size: AppSize.icon20, color: AppPalette.brandForeground)
                       : null,
                   onTap: () => onSelect(t),
                 ),
@@ -214,5 +214,5 @@ class _Meta extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(text, style: AppType.caption1.copyWith(color: AppPalette.fg3));
+  Widget build(BuildContext context) => Text(text, style: AppType.caption1.copyWith(color: AppPalette.foreground3));
 }

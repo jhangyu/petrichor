@@ -29,29 +29,29 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, bgHover, bgPressed, fg, stroke) = switch (variant) {
       AppButtonVariant.primary => (
-          AppPalette.brandBg,
-          AppPalette.brandBgHover,
-          AppPalette.brandBgPressed,
-          AppPalette.fgOnBrand,
-          AppPalette.brandBg,
+          AppPalette.brandBackground,
+          AppPalette.brandBackgroundHover,
+          AppPalette.brandBackgroundPressed,
+          AppPalette.foregroundOnBrand,
+          AppPalette.brandBackground,
         ),
       AppButtonVariant.secondary => (
-          AppPalette.bg1,
-          AppPalette.bgHover,
-          AppPalette.bgPressed,
-          AppPalette.fg1,
+          AppPalette.background1,
+          AppPalette.backgroundHover,
+          AppPalette.backgroundPressed,
+          AppPalette.foreground1,
           AppPalette.stroke1,
         ),
       AppButtonVariant.subtle => (
           AppPalette.transparent,
-          AppPalette.bgHover,
-          AppPalette.bgPressed,
-          AppPalette.fg2,
+          AppPalette.backgroundHover,
+          AppPalette.backgroundPressed,
+          AppPalette.foreground2,
           AppPalette.transparent,
         ),
     };
     final disabledBg =
-        variant == AppButtonVariant.subtle ? bg : AppPalette.bgDisabled;
+        variant == AppButtonVariant.subtle ? bg : AppPalette.backgroundDisabled;
     final disabledStroke =
         variant == AppButtonVariant.subtle ? stroke : AppPalette.strokeDisabled;
     final textStyle = (small ? AppType.caption1 : AppType.body1).copyWith(fontWeight: FontWeight.w600);
@@ -75,7 +75,7 @@ class AppButton extends StatelessWidget {
       elevation: const WidgetStatePropertyAll(0),
       overlayColor: WidgetStatePropertyAll(AppPalette.transparent),
       foregroundColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.disabled) ? AppPalette.fgDisabled : fg,
+        (s) => s.contains(WidgetState.disabled) ? AppPalette.foregroundDisabled : fg,
       ),
       backgroundColor: WidgetStateProperty.resolveWith((s) {
         if (s.contains(WidgetState.disabled)) return disabledBg;
@@ -128,10 +128,10 @@ class AppIconButton extends StatelessWidget {
       icon: Icon(icon, size: AppSize.icon24),
       tooltip: tooltip,
       onPressed: onPressed,
-      color: AppPalette.fg2,
-      disabledColor: AppPalette.fgDisabled,
-      hoverColor: AppPalette.bgHover,
-      highlightColor: AppPalette.bgPressed,
+      color: AppPalette.foreground2,
+      disabledColor: AppPalette.foregroundDisabled,
+      hoverColor: AppPalette.backgroundHover,
+      highlightColor: AppPalette.backgroundPressed,
       constraints: const BoxConstraints.tightFor(width: AppSize.touch, height: AppSize.touch),
       padding: EdgeInsets.zero,
     );

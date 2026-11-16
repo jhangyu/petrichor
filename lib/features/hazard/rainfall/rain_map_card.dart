@@ -68,7 +68,7 @@ class RainMapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final noteText = Text(note, style: AppType.caption1.copyWith(color: AppPalette.fg3));
+    final noteText = Text(note, style: AppType.caption1.copyWith(color: AppPalette.foreground3));
     if (!wide) {
       return AppCard(
         title: title,
@@ -167,7 +167,7 @@ class RainLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final caption = AppType.caption2.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular);
+    final caption = AppType.caption2.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular);
     return Semantics(
       label: semanticsLabel,
       child: Column(
@@ -176,7 +176,7 @@ class RainLegend extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600),
+            style: AppType.caption1.copyWith(color: AppPalette.foreground2, fontWeight: FontWeight.w600),
           ),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.full),

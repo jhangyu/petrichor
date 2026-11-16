@@ -146,7 +146,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
           children: [
             Text(
               '累積時距（小時）',
-              style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600),
+              style: AppType.caption1.copyWith(color: AppPalette.foreground2, fontWeight: FontWeight.w600),
             ),
             Semantics(
               label: '累積時距',

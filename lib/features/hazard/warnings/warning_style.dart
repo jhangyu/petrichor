@@ -15,17 +15,17 @@ class WarningLevelStyle {
   const WarningLevelStyle._(this.bg, this.fg, this.stroke, this.solid, this.tone);
 
   static const _info = WarningLevelStyle._(
-      AppPalette.infoBg, AppPalette.infoFg, AppPalette.infoStroke, AppPalette.infoSolid, BadgeTone.rain);
+      AppPalette.infoBackground, AppPalette.infoForeground, AppPalette.infoStroke, AppPalette.infoSolid, BadgeTone.rain);
 
   factory WarningLevelStyle.of(int? level) => switch (level) {
         1 => const WarningLevelStyle._(
-            AppPalette.alert1Bg, AppPalette.alert1Fg, AppPalette.alert1Stroke, AppPalette.alert1Solid, BadgeTone.alert1),
+            AppPalette.alert1Background, AppPalette.alert1Foreground, AppPalette.alert1Stroke, AppPalette.alert1Solid, BadgeTone.alert1),
         2 => const WarningLevelStyle._(
-            AppPalette.alert2Bg, AppPalette.alert2Fg, AppPalette.alert2Stroke, AppPalette.alert2Solid, BadgeTone.alert2),
+            AppPalette.alert2Background, AppPalette.alert2Foreground, AppPalette.alert2Stroke, AppPalette.alert2Solid, BadgeTone.alert2),
         3 => const WarningLevelStyle._(
-            AppPalette.alert3Bg, AppPalette.alert3Fg, AppPalette.alert3Stroke, AppPalette.alert3Solid, BadgeTone.alert3),
+            AppPalette.alert3Background, AppPalette.alert3Foreground, AppPalette.alert3Stroke, AppPalette.alert3Solid, BadgeTone.alert3),
         4 => const WarningLevelStyle._(
-            AppPalette.alert4Bg, AppPalette.alert4Fg, AppPalette.alert4Stroke, AppPalette.alert4Solid, BadgeTone.alert4),
+            AppPalette.alert4Background, AppPalette.alert4Foreground, AppPalette.alert4Stroke, AppPalette.alert4Solid, BadgeTone.alert4),
         _ => _info,
       };
 }

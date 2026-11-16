@@ -28,7 +28,7 @@ WeatherGlyph weatherGlyph(String? text) {
   WeatherGlyph.thunder => (Icons.thunderstorm, AppPalette.iconThunder),
   WeatherGlyph.fog => (Icons.foggy, AppPalette.iconFog),
   WeatherGlyph.snow => (Icons.ac_unit, AppPalette.iconRain),
-  WeatherGlyph.unknown => (Icons.help_outline, AppPalette.fg3),
+  WeatherGlyph.unknown => (Icons.help_outline, AppPalette.foreground3),
 };
 
 /// Weather icon for a CWA 天氣現象 text; [text] is the semantics label.
@@ -44,8 +44,8 @@ class WeatherGlyphIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final glyph = weatherGlyph(text);
     final (icon, color) = switch (glyph) {
-      WeatherGlyph.sun when night => (Icons.nightlight_outlined, AppPalette.brandFg),
-      WeatherGlyph.partly when night => (Icons.nights_stay_outlined, AppPalette.brandFg),
+      WeatherGlyph.sun when night => (Icons.nightlight_outlined, AppPalette.brandForeground),
+      WeatherGlyph.partly when night => (Icons.nights_stay_outlined, AppPalette.brandForeground),
       _ => weatherGlyphStyle(glyph),
     };
     return Icon(icon, size: size, color: color, semanticLabel: text);

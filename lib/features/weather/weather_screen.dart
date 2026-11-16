@@ -60,7 +60,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
       title: selected?.$1.name ?? (place.isLoading ? '定位中…' : '尚未選擇地點'),
       subtitle: _subtitle(place, weather),
       subtitleIcon: selected?.$2 == PlaceSource.gps ? Icons.near_me_outlined : Icons.location_on_outlined,
-      subtitleIconColor: selected == null ? AppPalette.warningFg : AppPalette.brandFg,
+      subtitleIconColor: selected == null ? AppPalette.warningForeground : AppPalette.brandForeground,
       onTitleTap: openLocationTab,
       actions: [
         AppIconButton(
@@ -241,7 +241,7 @@ class _PullHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = AppType.caption1.copyWith(color: loading ? AppPalette.brandFgStrong : AppPalette.fg3);
+    final style = AppType.caption1.copyWith(color: loading ? AppPalette.brandForegroundStrong : AppPalette.foreground3);
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: AppSize.controlSm),
       child: Center(
@@ -249,7 +249,7 @@ class _PullHint extends StatelessWidget {
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s4),
                 decoration: BoxDecoration(
-                  color: AppPalette.bg1,
+                  color: AppPalette.background1,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                   boxShadow: AppShadows.s4,
                 ),
@@ -266,7 +266,7 @@ class _PullHint extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 spacing: AppSpace.s8,
                 children: [
-                  const Icon(Icons.expand_more, size: AppSize.icon16, color: AppPalette.fg3),
+                  const Icon(Icons.expand_more, size: AppSize.icon16, color: AppPalette.foreground3),
                   Text('下拉即可重新整理', style: style),
                 ],
               ),

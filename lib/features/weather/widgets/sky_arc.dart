@@ -33,7 +33,7 @@ class TemperatureBlock extends StatelessWidget {
       children: [
         Text(
           tempText(c.temperature),
-          style: AppType.display.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+          style: AppType.display.copyWith(color: AppPalette.foreground1, fontFeatures: AppType.tabular),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,
@@ -41,7 +41,7 @@ class TemperatureBlock extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           spacing: AppSpace.s8,
           children: [
-            Text(c.weather ?? '—', style: AppType.body1.copyWith(color: AppPalette.fg2)),
+            Text(c.weather ?? '—', style: AppType.body1.copyWith(color: AppPalette.foreground2)),
             hilo('高', c.dailyHigh, AppPalette.tempHot),
             hilo('低', c.dailyLow, AppPalette.tempCold),
           ],
@@ -127,7 +127,7 @@ class _Pill extends StatelessWidget {
       height: _height,
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s8),
       decoration: BoxDecoration(
-        color: AppPalette.bg1,
+        color: AppPalette.background1,
         borderRadius: BorderRadius.circular(AppRadius.full),
         border: Border.all(color: night ? AppPalette.stroke1 : AppPalette.iconSun, width: AppStroke.thin),
       ),
@@ -139,7 +139,7 @@ class _Pill extends StatelessWidget {
           Text(
             degrees,
             style: AppType.body1Strong.copyWith(
-              color: night ? AppPalette.fg2 : AppPalette.fg1,
+              color: night ? AppPalette.foreground2 : AppPalette.foreground1,
               fontFeatures: AppType.tabular,
             ),
           ),
@@ -219,7 +219,7 @@ class _SkyPainter extends CustomPainter {
     final g = geometry;
     Paint fill(Color c) => Paint()..color = c;
     void ring(Offset c, double r, Color edge, double w) {
-      canvas.drawCircle(c, r, fill(AppPalette.bg1));
+      canvas.drawCircle(c, r, fill(AppPalette.background1));
       canvas.drawCircle(c, r, strokePaint(edge, w));
     }
 
@@ -243,7 +243,7 @@ class _SkyPainter extends CustomPainter {
       if (f > 0) canvas.drawPath(g.dayArc(0, f), strokePaint(AppPalette.iconSun, AppStroke.thicker));
     }
 
-    final compass = AppType.caption2.copyWith(color: AppPalette.fg3);
+    final compass = AppType.caption2.copyWith(color: AppPalette.foreground3);
     final compassY = _compassY * g.scale;
     paintLabel(canvas, '東', Offset(_compassInset * g.scale, compassY), compass);
     paintLabel(canvas, '西', Offset((_SkyGeometry.viewWidth - _compassInset) * g.scale, compassY), compass);
@@ -252,7 +252,7 @@ class _SkyPainter extends CustomPainter {
     final transit = g.day(
       day.transit.difference(day.sunrise).inSeconds / day.sunset.difference(day.sunrise).inSeconds,
     );
-    final markColor = night ? AppPalette.fg4 : AppPalette.iconSun;
+    final markColor = night ? AppPalette.foreground4 : AppPalette.iconSun;
     canvas.drawLine(
       transit - const Offset(0, _transitTick),
       transit + const Offset(0, _transitTick),
@@ -263,11 +263,11 @@ class _SkyPainter extends CustomPainter {
       canvas,
       '過中天 ${clockText(day.transit)} · 最高 ${day.transitAltitudeDegrees}°',
       Offset(transit.dx, _SkyGeometry.labelY * g.scale),
-      AppType.caption1.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular),
+      AppType.caption1.copyWith(color: AppPalette.foreground2, fontFeatures: AppType.tabular),
     );
 
-    ring(g.day(0), _endRadius, AppPalette.fg3, AppStroke.thin);
-    ring(g.day(1), _endRadius, AppPalette.fg3, AppStroke.thin);
+    ring(g.day(0), _endRadius, AppPalette.foreground3, AppStroke.thin);
+    ring(g.day(1), _endRadius, AppPalette.foreground3, AppStroke.thin);
     canvas.drawCircle(g.sun(sun), _sunRadius, fill(night ? AppPalette.brand120 : AppPalette.iconSun));
   }
 

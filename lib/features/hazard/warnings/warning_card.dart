@@ -42,7 +42,7 @@ class _WarningCardState extends State<WarningCard> {
     final bulletin = group.bulletin;
     return Container(
       decoration: BoxDecoration(
-        color: AppPalette.bg1,
+        color: AppPalette.background1,
         borderRadius: BorderRadius.circular(AppRadius.medium),
         boxShadow: AppShadows.s4,
       ),
@@ -84,7 +84,7 @@ class _WarningCardState extends State<WarningCard> {
   Widget _summary(WarningGroup group, WarningLevelStyle style) {
     return InkWell(
       onTap: () => setState(() => _open = !_open),
-      hoverColor: AppPalette.bgHover,
+      hoverColor: AppPalette.backgroundHover,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: AppSize.touch),
         child: Padding(
@@ -111,7 +111,7 @@ class _WarningCardState extends State<WarningCard> {
                       spacing: AppSpace.s8,
                       children: [
                         Flexible(
-                          child: Text(group.name, style: AppType.body2.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600)),
+                          child: Text(group.name, style: AppType.body2.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600)),
                         ),
                         AppBadge(label: group.isUpcoming(widget.now) ? _upcomingLabel : _activeLabel, tone: style.tone),
                       ],
@@ -127,7 +127,7 @@ class _WarningCardState extends State<WarningCard> {
                 turns: _open ? 0.25 : 0,
                 duration: AppMotion.normal,
                 curve: AppMotion.decelerateMid,
-                child: const Icon(Icons.chevron_right, color: AppPalette.fg3),
+                child: const Icon(Icons.chevron_right, color: AppPalette.foreground3),
               ),
             ],
           ),
@@ -137,12 +137,12 @@ class _WarningCardState extends State<WarningCard> {
   }
 
   Widget _meta(IconData icon, String text, {bool tabular = false}) {
-    final base = AppType.caption1.copyWith(color: AppPalette.fg2);
+    final base = AppType.caption1.copyWith(color: AppPalette.foreground2);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpace.s4,
       children: [
-        Icon(icon, size: AppSize.icon16, color: AppPalette.fg3),
+        Icon(icon, size: AppSize.icon16, color: AppPalette.foreground3),
         Expanded(child: Text(text, style: tabular ? base.copyWith(fontFeatures: AppType.tabular) : base)),
       ],
     );
@@ -152,13 +152,13 @@ class _WarningCardState extends State<WarningCard> {
     return Container(
       padding: const EdgeInsets.only(top: AppSpace.s12),
       decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppPalette.stroke3, width: AppStroke.thin))),
-      child: Text(text, style: AppType.body1.copyWith(color: AppPalette.fg1)),
+      child: Text(text, style: AppType.body1.copyWith(color: AppPalette.foreground1)),
     );
   }
 
   Widget _facts(WarningGroup group, WarningLevelStyle style) {
     final bulletin = group.bulletin;
-    final labelStyle = AppType.caption1.copyWith(color: AppPalette.fg3);
+    final labelStyle = AppType.caption1.copyWith(color: AppPalette.foreground3);
     Widget row(String label, Widget value) => Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           spacing: AppSpace.s12,
@@ -183,7 +183,7 @@ class _WarningCardState extends State<WarningCard> {
           row(
             '發布時間',
             Text(formatTaiwanMonthDayClock(bulletin.issueTime),
-                style: AppType.body1.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular)),
+                style: AppType.body1.copyWith(color: AppPalette.foreground1, fontFeatures: AppType.tabular)),
           ),
       ],
     );

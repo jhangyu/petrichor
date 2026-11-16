@@ -19,7 +19,7 @@ class RadarLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final caption = AppType.caption2.copyWith(color: AppPalette.fg3);
+    final caption = AppType.caption2.copyWith(color: AppPalette.foreground3);
     final scale = AppPalette.dbzScale.length;
     return Semantics(
       label: '雷達回波強度圖例',

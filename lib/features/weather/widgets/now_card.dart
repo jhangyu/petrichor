@@ -66,7 +66,7 @@ class NowCard extends StatelessWidget {
           Expanded(
             child: Text(
               '即時觀測 ${clockText(c.observedAt)} · ${c.stationName}測站',
-              style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+              style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
             ),
           ),
           if (top != null)
@@ -84,7 +84,7 @@ class NowCard extends StatelessWidget {
                     spacing: AppSpace.s4,
                     children: [
                       AppBadge(label: top.name, tone: WarningLevelStyle.of(top.level).tone, icon: warningIcon(top)),
-                      const Icon(Icons.expand_more, size: AppSize.icon16, color: AppPalette.fg3),
+                      const Icon(Icons.expand_more, size: AppSize.icon16, color: AppPalette.foreground3),
                     ],
                   ),
                 ),
@@ -210,11 +210,11 @@ class _TileGroup extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600),
+                style: AppType.caption1.copyWith(color: AppPalette.foreground2, fontWeight: FontWeight.w600),
               ),
             ),
             if (trailing != null)
-              Text(trailing, style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular)),
+              Text(trailing, style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular)),
           ],
         ),
         MetricGrid(columns: tiles.length, children: tiles),

@@ -160,7 +160,7 @@ class _TimeRow extends StatelessWidget {
         Text(
           (f.timeText ?? formatTaiwanMonthDayClock)(f.slots[f.current].time),
           style: AppType.subtitle2.copyWith(
-            color: AppPalette.fg1,
+            color: AppPalette.foreground1,
             fontWeight: FontWeight.w600,
             fontFeatures: AppType.tabular,
           ),
@@ -169,7 +169,7 @@ class _TimeRow extends StatelessWidget {
           f.buffering
               ? '緩衝中…'
               : '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : f.timeText != null ? '累積中' : '過去 $hours 小時'}',
-          style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+          style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
         ),
       ],
     );
@@ -201,10 +201,10 @@ class _Controls extends StatelessWidget {
           icon: Icon(f != null && f.playing ? Icons.pause : Icons.play_arrow, size: AppSize.icon20),
           onPressed: f?.onTogglePlay,
           style: IconButton.styleFrom(
-            backgroundColor: AppPalette.brandBg,
-            foregroundColor: AppPalette.fgOnBrand,
-            disabledBackgroundColor: AppPalette.bgDisabled,
-            disabledForegroundColor: AppPalette.fgDisabled,
+            backgroundColor: AppPalette.brandBackground,
+            foregroundColor: AppPalette.foregroundOnBrand,
+            disabledBackgroundColor: AppPalette.backgroundDisabled,
+            disabledForegroundColor: AppPalette.foregroundDisabled,
             fixedSize: const Size.square(AppSize.touch),
           ),
         ),
@@ -218,9 +218,9 @@ class _Controls extends StatelessWidget {
               ? const Skeleton(height: AppSize.sliderThumb)
               : SliderTheme(
                   data: radarSliderTheme.copyWith(
-                    disabledActiveTrackColor: AppPalette.bgDisabled,
-                    disabledInactiveTrackColor: AppPalette.bgDisabled,
-                    disabledThumbColor: AppPalette.fgDisabled,
+                    disabledActiveTrackColor: AppPalette.backgroundDisabled,
+                    disabledInactiveTrackColor: AppPalette.backgroundDisabled,
+                    disabledThumbColor: AppPalette.foregroundDisabled,
                   ),
                   child: Slider(
                     min: 0,
@@ -315,10 +315,10 @@ class _TimelineFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (background, stroke, label, bar) = switch (slot.state) {
-      _ when current => (AppPalette.brandBgSubtle, AppPalette.brandStroke, AppPalette.brandFgStrong, _barColour),
-      RadarSlotState.ready => (AppPalette.bg1, AppPalette.stroke2, AppPalette.fg2, _barColour),
-      RadarSlotState.pending => (AppPalette.bgDisabled, AppPalette.strokeDisabled, AppPalette.fgDisabled, AppPalette.strokeDisabled),
-      RadarSlotState.failed => (AppPalette.dangerBg, AppPalette.dangerStroke, AppPalette.dangerFg, AppPalette.dangerSolid),
+      _ when current => (AppPalette.brandBackgroundSubtle, AppPalette.brandStroke, AppPalette.brandForegroundStrong, _barColour),
+      RadarSlotState.ready => (AppPalette.background1, AppPalette.stroke2, AppPalette.foreground2, _barColour),
+      RadarSlotState.pending => (AppPalette.backgroundDisabled, AppPalette.strokeDisabled, AppPalette.foregroundDisabled, AppPalette.strokeDisabled),
+      RadarSlotState.failed => (AppPalette.dangerBackground, AppPalette.dangerStroke, AppPalette.dangerForeground, AppPalette.dangerSolid),
     };
     return Semantics(
       label: switch (slot.state) {
@@ -390,7 +390,7 @@ class _SettingsState extends State<_Settings> {
     final hours = f.window.inHours;
     return Container(
       decoration: BoxDecoration(
-        color: AppPalette.bg2,
+        color: AppPalette.background2,
         borderRadius: BorderRadius.circular(AppRadius.small),
         border: Border.all(color: AppPalette.stroke3, width: AppStroke.thin),
       ),
@@ -406,10 +406,10 @@ class _SettingsState extends State<_Settings> {
               child: Row(
                 spacing: AppSpace.s8,
                 children: [
-                  const Icon(Icons.tune, size: AppSize.icon20, color: AppPalette.fg1),
+                  const Icon(Icons.tune, size: AppSize.icon20, color: AppPalette.foreground1),
                   Text(
                     '播放設定',
-                    style: AppType.body1.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600),
+                    style: AppType.body1.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
                   ),
                   Expanded(
                     child: Text(
@@ -417,14 +417,14 @@ class _SettingsState extends State<_Settings> {
                       textAlign: TextAlign.end,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+                      style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
                     ),
                   ),
                   AnimatedRotation(
                     turns: _open ? 0.25 : 0,
                     duration: AppMotion.normal,
                     curve: AppMotion.easyEase,
-                    child: const Icon(Icons.chevron_right, size: AppSize.icon16, color: AppPalette.fg3),
+                    child: const Icon(Icons.chevron_right, size: AppSize.icon16, color: AppPalette.foreground3),
                   ),
                 ],
               ),
@@ -473,7 +473,7 @@ class _SettingsState extends State<_Settings> {
                             Text('重複播放', style: _fieldLabel),
                             Text(
                               '播放結束後等待 ${radarRepeatPause.inSeconds} 秒再重播',
-                              style: AppType.caption1.copyWith(color: AppPalette.fg3),
+                              style: AppType.caption1.copyWith(color: AppPalette.foreground3),
                             ),
                           ],
                         ),
@@ -490,7 +490,7 @@ class _SettingsState extends State<_Settings> {
   }
 }
 
-final _fieldLabel = AppType.caption1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600);
+final _fieldLabel = AppType.caption1.copyWith(color: AppPalette.foreground2, fontWeight: FontWeight.w600);
 
 class _Field extends StatelessWidget {
   const _Field({required this.label, required this.child});

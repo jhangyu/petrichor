@@ -73,7 +73,7 @@ class AppCard extends StatelessWidget {
   /// `.card__title` (subtitle1).
   final String? title;
 
-  /// `.card__meta` (caption1, fg3) under the title, e.g. 「觀測 14:10」.
+  /// `.card__meta` (caption1, foreground3) under the title, e.g. 「觀測 14:10」.
   final String? meta;
 
   /// Right side of `.card__header` (badge, small button).
@@ -125,12 +125,12 @@ class AppCard extends StatelessWidget {
   Widget _frame(List<Widget> children) {
     final solid = heroColor;
     final decoration = BoxDecoration(
-      color: hero ? solid : AppPalette.bg1,
+      color: hero ? solid : AppPalette.background1,
       gradient: hero && solid == null
           ? const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppPalette.brand160, AppPalette.bg1],
+              colors: [AppPalette.brand160, AppPalette.background1],
               stops: [0, _heroGradientStop],
             )
           : null,
@@ -159,8 +159,8 @@ class AppCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (heading != null) Text(heading, style: AppType.subtitle1.copyWith(color: AppPalette.fg1)),
-              if (metaText != null) Text(metaText, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+              if (heading != null) Text(heading, style: AppType.subtitle1.copyWith(color: AppPalette.foreground1)),
+              if (metaText != null) Text(metaText, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
             ],
           ),
         ),
@@ -186,7 +186,7 @@ class SectionHeader extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: AppSize.controlSm),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: AppType.subtitle1.copyWith(color: AppPalette.fg1))),
+          Expanded(child: Text(title, style: AppType.subtitle1.copyWith(color: AppPalette.foreground1))),
           ?end,
         ],
       ),

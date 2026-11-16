@@ -89,10 +89,10 @@ class WeeklyCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: AppType.body1Strong.copyWith(color: AppPalette.fg1)),
+                Text(label, style: AppType.body1Strong.copyWith(color: AppPalette.foreground1)),
                 Text(
                   date,
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+                  style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
                 ),
               ],
             ),
@@ -111,7 +111,7 @@ class WeeklyCard extends StatelessWidget {
             child: Text(
               tempText(d.minTemperature),
               textAlign: TextAlign.right,
-              style: num.copyWith(color: AppPalette.fg3),
+              style: num.copyWith(color: AppPalette.foreground3),
             ),
           ),
           Expanded(
@@ -126,7 +126,7 @@ class WeeklyCard extends StatelessWidget {
             width: _tempWidth,
             child: Text(
               tempText(d.maxTemperature),
-              style: num.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600),
+              style: num.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -135,7 +135,7 @@ class WeeklyCard extends StatelessWidget {
   }
 
   Widget _legend(TempScale? scale) {
-    final style = AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular);
+    final style = AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular);
     final range = scale == null ? '' : '區間 ${tempText(scale.min)}–${tempText(scale.max)}';
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -143,7 +143,7 @@ class WeeklyCard extends StatelessWidget {
         Row(
           spacing: AppSpace.s4,
           children: [
-            const Icon(Icons.umbrella_outlined, size: AppSize.icon16, color: AppPalette.rainFg),
+            const Icon(Icons.umbrella_outlined, size: AppSize.icon16, color: AppPalette.rainForeground),
             Text('降雨機率', style: style),
           ],
         ),
@@ -189,7 +189,7 @@ class _TempRange extends StatelessWidget {
               Container(
                 height: AppSize.sliderTrack,
                 decoration: BoxDecoration(
-                  color: AppPalette.bg4,
+                  color: AppPalette.background4,
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
@@ -235,9 +235,9 @@ class _NowDot extends StatelessWidget {
       width: AppSize.dot,
       height: AppSize.dot,
       decoration: BoxDecoration(
-        color: AppPalette.bg1,
+        color: AppPalette.background1,
         shape: BoxShape.circle,
-        border: Border.all(color: AppPalette.fg1, width: AppStroke.thick),
+        border: Border.all(color: AppPalette.foreground1, width: AppStroke.thick),
       ),
     );
   }

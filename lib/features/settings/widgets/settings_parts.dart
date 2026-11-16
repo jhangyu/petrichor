@@ -52,7 +52,7 @@ class SettingsGroup extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
           child: SectionHeader(
             title: title,
-            trailing: metaText == null ? null : Text(metaText, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+            trailing: metaText == null ? null : Text(metaText, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
           ),
         ),
         body,
@@ -78,8 +78,8 @@ class SettingsTint extends StatelessWidget {
       width: AppSize.controlSm,
       height: AppSize.controlSm,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: brand ? AppPalette.brandBgSubtle : AppPalette.bg3, shape: BoxShape.circle),
-      child: glyph == null ? child : Icon(glyph, size: AppSize.icon20, color: brand ? AppPalette.brandFg : AppPalette.fg2),
+      decoration: BoxDecoration(color: brand ? AppPalette.brandBackgroundSubtle : AppPalette.background3, shape: BoxShape.circle),
+      child: glyph == null ? child : Icon(glyph, size: AppSize.icon20, color: brand ? AppPalette.brandForeground : AppPalette.foreground2),
     );
   }
 }
@@ -112,8 +112,8 @@ class SettingsNote extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpace.s8,
       children: [
-        SizedBox(height: AppSize.icon16, child: Center(child: Icon(icon, size: AppSize.icon16, color: AppPalette.fg3))),
-        Expanded(child: Text(text, style: AppType.caption1.copyWith(color: AppPalette.fg3))),
+        SizedBox(height: AppSize.icon16, child: Center(child: Icon(icon, size: AppSize.icon16, color: AppPalette.foreground3))),
+        Expanded(child: Text(text, style: AppType.caption1.copyWith(color: AppPalette.foreground3))),
       ],
     );
   }

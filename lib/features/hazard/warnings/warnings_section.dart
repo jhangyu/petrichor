@@ -78,7 +78,7 @@ class _WarningsSectionState extends ConsumerState<WarningsSection> {
               ? null
               : Text(
                   '更新於 ${clockText(updated)}',
-                  style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+                  style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
                 ),
         ),
         ?chips,

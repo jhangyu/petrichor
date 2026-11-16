@@ -9,10 +9,10 @@ import '../radar_provider.dart'
 /// Slider look shared by the playback timeline and the opacity slider.
 const radarSliderTheme = SliderThemeData(
   trackHeight: AppSize.sliderTrack,
-  activeTrackColor: AppPalette.brandBg,
+  activeTrackColor: AppPalette.brandBackground,
   inactiveTrackColor: AppPalette.strokeAccessible,
-  thumbColor: AppPalette.brandBg,
-  overlayColor: AppPalette.brandBgSubtle,
+  thumbColor: AppPalette.brandBackground,
+  overlayColor: AppPalette.brandBackgroundSubtle,
   thumbShape: RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
 );
 
@@ -32,11 +32,11 @@ class RadarOpacitySlider extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('疊圖透明度', style: AppType.body1.copyWith(color: AppPalette.fg1)),
+            Text('疊圖透明度', style: AppType.body1.copyWith(color: AppPalette.foreground1)),
             Text(
               '$percent%',
               style: AppType.body1.copyWith(
-                color: AppPalette.fg1,
+                color: AppPalette.foreground1,
                 fontWeight: FontWeight.w600,
                 fontFeatures: AppType.tabular,
               ),
@@ -58,7 +58,7 @@ class RadarOpacitySlider extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             for (final v in const [radarOpacityMinPercent, radarOpacityMaxPercent])
-              Text('$v%', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+              Text('$v%', style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
           ],
         ),
       ],

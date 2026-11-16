@@ -19,7 +19,7 @@ class _MapChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = (large ? AppType.body1 : AppType.caption1).copyWith(
-      color: AppPalette.fg1,
+      color: AppPalette.foreground1,
       fontWeight: FontWeight.w600,
       fontFeatures: AppType.tabular,
     );
@@ -31,7 +31,7 @@ class _MapChip extends StatelessWidget {
         vertical: large ? AppSpace.s8 : AppSpace.s4,
       ),
       decoration: BoxDecoration(
-        color: AppPalette.bgOverlay,
+        color: AppPalette.backgroundOverlay,
         borderRadius: BorderRadius.circular(AppRadius.full),
         boxShadow: AppShadows.s4,
       ),
@@ -42,7 +42,7 @@ class _MapChip extends StatelessWidget {
           if (spinner)
             const AppSpinner()
           else if (glyph != null)
-            Icon(glyph, size: AppSize.icon16, color: AppPalette.fg1),
+            Icon(glyph, size: AppSize.icon16, color: AppPalette.foreground1),
           Text(text, style: style),
         ],
       ),
@@ -67,12 +67,12 @@ class _Attribution extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpace.s4),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: AppPalette.bgOverlay.withValues(alpha: _attributionBackAlpha),
+            color: AppPalette.backgroundOverlay.withValues(alpha: _attributionBackAlpha),
             borderRadius: BorderRadius.circular(AppRadius.extraSmall),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),
-            child: Text(_attribution, style: AppType.caption2.copyWith(color: AppPalette.fg4)),
+            child: Text(_attribution, style: AppType.caption2.copyWith(color: AppPalette.foreground4)),
           ),
         ),
       ),
@@ -102,7 +102,7 @@ class _MePin extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: AppPalette.dangerSolid,
-            border: Border.all(color: AppPalette.bg1, width: _pinBorder),
+            border: Border.all(color: AppPalette.background1, width: _pinBorder),
           ),
         ),
       ],
@@ -122,7 +122,7 @@ class _MapFab extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
     return Material(
-      color: AppPalette.bg1,
+      color: AppPalette.background1,
       shape: const CircleBorder(),
       elevation: 0,
       shadowColor: AppPalette.transparent,

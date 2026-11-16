@@ -22,10 +22,10 @@ class AppChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppPalette.brandFgStrong : AppPalette.fg1;
+    final fg = selected ? AppPalette.brandForegroundStrong : AppPalette.foreground1;
     final glyph = icon;
     return Material(
-      color: selected ? AppPalette.brandBgSubtle : AppPalette.bg1,
+      color: selected ? AppPalette.brandBackgroundSubtle : AppPalette.background1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.small),
         side: BorderSide(
@@ -36,7 +36,7 @@ class AppChip extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        hoverColor: AppPalette.bgHover,
+        hoverColor: AppPalette.backgroundHover,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: AppSize.controlSm),
           child: Padding(
@@ -82,7 +82,7 @@ class AppSegmentedControl<T> extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpace.s4),
       decoration: BoxDecoration(
-        color: AppPalette.bg4,
+        color: AppPalette.background4,
         borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: Row(
@@ -118,7 +118,7 @@ class _Segment extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12),
           decoration: BoxDecoration(
-            color: active ? AppPalette.bg1 : AppPalette.transparent,
+            color: active ? AppPalette.background1 : AppPalette.transparent,
             borderRadius: BorderRadius.circular(AppRadius.full),
             boxShadow: active ? AppShadows.s2 : null,
           ),
@@ -127,7 +127,7 @@ class _Segment extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppType.body1.copyWith(
-              color: active ? AppPalette.fg1 : AppPalette.fg2,
+              color: active ? AppPalette.foreground1 : AppPalette.foreground2,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
@@ -155,17 +155,17 @@ class AppSwitch extends StatelessWidget {
         onChanged: onChanged,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return AppPalette.fgDisabled;
-          return states.contains(WidgetState.selected) ? AppPalette.fgOnBrand : AppPalette.strokeAccessible;
+          if (states.contains(WidgetState.disabled)) return AppPalette.foregroundDisabled;
+          return states.contains(WidgetState.selected) ? AppPalette.foregroundOnBrand : AppPalette.strokeAccessible;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) return AppPalette.bgDisabled;
-          return states.contains(WidgetState.selected) ? AppPalette.brandBg : AppPalette.bg4;
+          if (states.contains(WidgetState.disabled)) return AppPalette.backgroundDisabled;
+          return states.contains(WidgetState.selected) ? AppPalette.brandBackground : AppPalette.background4;
         }),
         trackOutlineWidth: const WidgetStatePropertyAll(AppStroke.thick),
         trackOutlineColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return AppPalette.transparent;
-          return states.contains(WidgetState.disabled) ? AppPalette.fgDisabled : AppPalette.strokeAccessible;
+          return states.contains(WidgetState.disabled) ? AppPalette.foregroundDisabled : AppPalette.strokeAccessible;
         }),
       ),
     );

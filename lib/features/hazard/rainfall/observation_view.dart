@@ -38,7 +38,7 @@ class ObservationHeroCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: AppSpace.s4,
                   children: [
-                    Text('最近測站 · ${station.name}', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+                    Text('最近測站 · ${station.name}', style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -46,14 +46,14 @@ class ObservationHeroCard extends StatelessWidget {
                       children: [
                         Text(
                           formatMm(mm),
-                          style: AppType.display.copyWith(color: AppPalette.fg1, fontFeatures: AppType.tabular),
+                          style: AppType.display.copyWith(color: AppPalette.foreground1, fontFeatures: AppType.tabular),
                         ),
-                        Text('mm', style: AppType.subtitle1.copyWith(color: AppPalette.fg2, fontWeight: FontWeight.w600)),
+                        Text('mm', style: AppType.subtitle1.copyWith(color: AppPalette.foreground2, fontWeight: FontWeight.w600)),
                       ],
                     ),
                     Text(
                       '今日累積 · 觀測 ${clockText(station.obsTime)}',
-                      style: AppType.caption1.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+                      style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
                     ),
                   ],
                 ),
@@ -130,9 +130,9 @@ class _ThresholdBar extends StatelessWidget {
                       width: _markerWidth,
                       height: _markerHeight,
                       decoration: BoxDecoration(
-                        color: AppPalette.fg1,
+                        color: AppPalette.foreground1,
                         borderRadius: BorderRadius.circular(AppRadius.full),
-                        border: Border.all(color: AppPalette.bg1, width: AppStroke.thin),
+                        border: Border.all(color: AppPalette.background1, width: AppStroke.thin),
                       ),
                     ),
                   ),
@@ -146,7 +146,7 @@ class _ThresholdBar extends StatelessWidget {
                     flex: flexes[i],
                     child: Text(
                       labels[i],
-                      style: AppType.caption2.copyWith(color: AppPalette.fg3, fontFeatures: AppType.tabular),
+                      style: AppType.caption2.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
                     ),
                   ),
               ],

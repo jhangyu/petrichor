@@ -86,7 +86,7 @@ class ForecastAxisPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final style = AppType.caption1.copyWith(color: AppPalette.fg3);
+    final style = AppType.caption1.copyWith(color: AppPalette.foreground3);
     for (final (label, y) in [
       ('時段', ForecastChartGeometry.slotLabelY),
       ('天氣', ForecastChartGeometry.iconTop + AppSize.icon24 / 2),
@@ -116,7 +116,7 @@ class ForecastChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final small = AppType.caption2.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular);
+    final small = AppType.caption2.copyWith(color: AppPalette.foreground2, fontFeatures: AppType.tabular);
     final caption = AppType.caption1.copyWith(fontFeatures: AppType.tabular);
     final now = g.now;
 
@@ -132,7 +132,7 @@ class ForecastChartPainter extends CustomPainter {
         (showNow ? nowX : ForecastChartGeometry._padStart) + ForecastChartGeometry.todayLabelInset,
         ForecastChartGeometry.dayLabelY,
       ),
-      caption.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600),
+      caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
       anchor: TextAnchor.start,
     );
     while (true) {
@@ -154,7 +154,7 @@ class ForecastChartPainter extends CustomPainter {
         canvas,
         _dayTitle(day, now),
         Offset(dx + ForecastChartGeometry.dayLabelInset, ForecastChartGeometry.dayLabelY),
-        caption.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600),
+        caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
         anchor: TextAnchor.start,
       );
     }
@@ -163,13 +163,13 @@ class ForecastChartPainter extends CustomPainter {
       canvas.drawLine(
         Offset(nowX, ForecastChartGeometry.nowTop),
         Offset(nowX, ForecastChartGeometry.nowBottom),
-        strokePaint(AppPalette.brandFg, AppStroke.thick),
+        strokePaint(AppPalette.brandForeground, AppStroke.thick),
       );
       paintLabel(
         canvas,
         '現在',
         Offset(nowX, ForecastChartGeometry.dayLabelY),
-        caption.copyWith(color: AppPalette.brandFg, fontWeight: FontWeight.w600),
+        caption.copyWith(color: AppPalette.brandForeground, fontWeight: FontWeight.w600),
       );
     }
 
@@ -199,11 +199,11 @@ class ForecastChartPainter extends CustomPainter {
 
     canvas.drawPath(
       dashedPath(line((s) => s.apparentTemperature), chartDash, _apparentGap),
-      strokePaint(AppPalette.fg4, _apparentStroke),
+      strokePaint(AppPalette.foreground4, _apparentStroke),
     );
-    canvas.drawPath(line((s) => s.temperature), strokePaint(AppPalette.warningFg, _tempStroke));
+    canvas.drawPath(line((s) => s.temperature), strokePaint(AppPalette.warningForeground, _tempStroke));
 
-    final halo = AppPalette.bg1;
+    final halo = AppPalette.background1;
     for (final s in g.slots) {
       final x = g.x(s.startTime);
       final wall = taiwanWall(s.startTime);
@@ -214,19 +214,19 @@ class ForecastChartPainter extends CustomPainter {
         canvas,
         '${twoDigits(wall.hour)}–${twoDigits(endWall.hour)}',
         Offset(center, ForecastChartGeometry.slotLabelY),
-        caption.copyWith(color: AppPalette.fg2),
+        caption.copyWith(color: AppPalette.foreground2),
       );
 
       final t = s.temperature;
       if (t != null) {
         final c = Offset(x, g.tempY(t));
-        canvas.drawCircle(c, _dotRadius, Paint()..color = AppPalette.bg1);
-        canvas.drawCircle(c, _dotRadius, strokePaint(AppPalette.warningFg, AppStroke.thick));
+        canvas.drawCircle(c, _dotRadius, Paint()..color = AppPalette.background1);
+        canvas.drawCircle(c, _dotRadius, strokePaint(AppPalette.warningForeground, AppStroke.thick));
         paintLabel(
           canvas,
           tempText(t),
           c.translate(0, ForecastChartGeometry.tempLabelOffset),
-          caption.copyWith(color: AppPalette.fg1, fontWeight: FontWeight.w600),
+          caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
           halo: halo,
         );
       }
@@ -240,14 +240,14 @@ class ForecastChartPainter extends CustomPainter {
         canvas,
         '${wall.hour}時',
         Offset(x, ForecastChartGeometry.tickLabelY),
-        small.copyWith(color: AppPalette.fg4),
+        small.copyWith(color: AppPalette.foreground4),
         halo: halo,
       );
       paintLabel(
         canvas,
         tempText(s.apparentTemperature),
         Offset(x, ForecastChartGeometry.apparentLabelY),
-        small.copyWith(color: AppPalette.fg3),
+        small.copyWith(color: AppPalette.foreground3),
         halo: halo,
       );
 
@@ -313,7 +313,7 @@ class ForecastDashKeyPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = AppStroke.thick
-        ..color = AppPalette.fg4,
+        ..color = AppPalette.foreground4,
     );
   }
 

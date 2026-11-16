@@ -79,7 +79,7 @@ class Forecast72hCard extends StatelessWidget {
       children: [
         _stat('最高溫', tempText(hot?.temperature), AppPalette.tempHot, hot == null ? '—' : _when(hot)),
         _stat('最低溫', tempText(cold?.temperature), AppPalette.tempCold, cold == null ? '—' : _when(cold)),
-        _stat('降雨機率', percentText(wet?.pop), AppPalette.rainFg, wet == null ? '—' : _when(wet)),
+        _stat('降雨機率', percentText(wet?.pop), AppPalette.rainForeground, wet == null ? '—' : _when(wet)),
       ],
     );
   }
@@ -89,14 +89,14 @@ class Forecast72hCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpace.s8),
         decoration: BoxDecoration(
-          color: AppPalette.bg2,
+          color: AppPalette.background2,
           border: Border.all(color: AppPalette.stroke3, width: AppStroke.thin),
           borderRadius: BorderRadius.circular(AppRadius.small),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, maxLines: 1, style: AppType.caption1.copyWith(color: AppPalette.fg3)),
+            Text(label, maxLines: 1, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
             Text(
               value,
               style: AppType.subtitle1.copyWith(color: color, fontFeatures: AppType.tabular),
@@ -105,7 +105,7 @@ class Forecast72hCard extends StatelessWidget {
               sub,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppType.caption1.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular),
+              style: AppType.caption1.copyWith(color: AppPalette.foreground2, fontFeatures: AppType.tabular),
             ),
           ],
         ),
@@ -157,7 +157,7 @@ class Forecast72hCard extends StatelessWidget {
   }
 
   Widget _legend({required bool scrolls}) {
-    final style = AppType.caption1.copyWith(color: AppPalette.fg3);
+    final style = AppType.caption1.copyWith(color: AppPalette.foreground3);
     Widget item(Widget key, String label) => Row(
       mainAxisSize: MainAxisSize.min,
       spacing: AppSpace.s4,
@@ -178,7 +178,7 @@ class Forecast72hCard extends StatelessWidget {
                   width: AppSize.icon16,
                   height: AppStroke.thick,
                   decoration: BoxDecoration(
-                    color: AppPalette.warningFg,
+                    color: AppPalette.warningForeground,
                     borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                 ),
