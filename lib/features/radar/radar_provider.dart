@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../core/api/dio_client.dart';
+import '../../core/api/dio_providers.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/storage/stored_setting.dart';
 import '../../data/radar/radar_bounds.dart';

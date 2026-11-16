@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/api/dio_client.dart';
+import '../../../core/api/dio_providers.dart';
 import '../../../core/storage/stored_setting.dart';
 import '../../../data/radar/radar_loop.dart';
 import '../../../data/rain_accumulation/rain_accumulation_pieces.dart';

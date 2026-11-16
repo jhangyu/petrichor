@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/api/dio_client.dart';
+import '../../core/api/dio_providers.dart';
 import '../../core/api/result.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/time/taiwan_time.dart';

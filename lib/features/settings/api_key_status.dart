@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_key.dart';
-import '../../core/api/dio_client.dart';
+import '../../core/api/dio_providers.dart';
 import '../../core/constants/app_constants.dart';
 
 /// Why a stored key is shown as 無效.

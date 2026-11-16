@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:petrichor/core/api/api_key.dart';
-import 'package:petrichor/core/api/dio_client.dart';
+import 'package:petrichor/core/api/dio_providers.dart';
 import 'package:petrichor/features/settings/api_key_status.dart';
 import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/core/api/result.dart';

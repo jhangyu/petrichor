@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api/dio_client.dart';
+import '../../core/api/dio_providers.dart';
 import '../../core/constants/app_constants.dart';
 import '../models/hazard_models.dart';
 import '../../core/api/result.dart' show Failure, Result, Success, guardRequest;
