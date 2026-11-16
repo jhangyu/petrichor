@@ -148,14 +148,11 @@ void main() {
     expect(show(4, const Duration(hours: 4)), '1h - 7:50,8:50,9:50,10:50');
   });
 
-  test('unique grid downloads per window, each downloaded once', () async {
-    final counts = <int, int>{};
-    for (final w in [4, 6, 12, 24, 48, 168]) {
-      // Cold cache per window (windows share the piece cache).
-      for (final e in root.listSync()) {
-        e.deleteSync(recursive: true);
-      }
-      adapter.requests.clear();
+  // 10-min windows: every 1 h grid ending at S + 10i min (i = 0..6W);
+  // 24/48 h: W 1 h grids; 168 h: 56 3 h grids.
+  const uniqueDownloads = {4: 25, 6: 37, 12: 73, 24: 24, 48: 48, 168: 56};
+  for (final MapEntry(key: w, value: expectedCount) in uniqueDownloads.entries) {
+    test('$w h window downloads each unique grid once', () async {
       final s = source(w);
       final step = s.step as RadarComposedStep;
       for (final f in await list(s)) {
@@ -163,12 +160,9 @@ void main() {
       }
       final urls = [for (final r in adapter.requests) r.uri.toString()];
       expect(urls.length, urls.toSet().length, reason: '$w h: each grid downloaded once');
-      counts[w] = urls.length;
-    }
-    // 10-min windows: every 1 h grid ending at S + 10i min (i = 0..6W);
-    // 24/48 h: W 1 h grids; 168 h: 56 3 h grids.
-    expect(counts, {4: 25, 6: 37, 12: 73, 24: 24, 48: 48, 168: 56});
-  });
+      expect(urls.length, expectedCount);
+    });
+  }
 
   test('last 4 h frame is the exact sum of four 1 h grids', () async {
     for (final h in ['1050', '0950', '0850', '0750']) {
