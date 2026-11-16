@@ -295,17 +295,17 @@ class _NoPlaceGuide extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(openSettingsFailedMessage(what))));
     }
 
-    void useGps() => ref.read(currentPlaceProvider.notifier).useGps();
+    void startAutoLocate() => ref.read(currentPlaceProvider.notifier).startAutoLocate();
     // Settings actions lead (mockup 「前往設定」 primary); otherwise 手動選擇 leads.
     final (locateLabel, VoidCallback locate, settingsFirst) = switch (reason) {
-      LocationFailure.permissionDenied => ('使用目前位置', useGps, false),
+      LocationFailure.permissionDenied => ('使用目前位置', startAutoLocate, false),
       LocationFailure.permissionDeniedForever => (
         '前往設定',
         () => openSettings(Geolocator.openAppSettings, '應用程式設定'),
         true,
       ),
       LocationFailure.serviceDisabled => ('開啟定位服務', () => openSettings(Geolocator.openLocationSettings, '定位設定'), true),
-      _ => ('重試定位', useGps, false),
+      _ => ('重試定位', startAutoLocate, false),
     };
     AppButtonVariant lead(bool first) => first ? AppButtonVariant.primary : AppButtonVariant.secondary;
 

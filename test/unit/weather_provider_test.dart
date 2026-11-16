@@ -60,7 +60,7 @@ void main() {
   late ProviderContainer container;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: true});
+    SharedPreferences.setMockInitialValues({PlaceStore.autoLocateKey: true});
     location = MockLocationService();
     adapter = _FileApiAdapter();
     container = ProviderContainer(overrides: [

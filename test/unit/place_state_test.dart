@@ -76,7 +76,7 @@ void main() {
     );
     final first = newContainer();
     await first.read(currentPlaceProvider.future);
-    await first.read(currentPlaceProvider.notifier).useGps();
+    await first.read(currentPlaceProvider.notifier).startAutoLocate();
 
     final current = await newContainer().read(currentPlaceProvider.future) as PlaceSelected;
 
@@ -90,7 +90,7 @@ void main() {
     final container = newContainer();
     await container.read(currentPlaceProvider.future);
 
-    await container.read(currentPlaceProvider.notifier).useGps();
+    await container.read(currentPlaceProvider.notifier).startAutoLocate();
 
     expect(
       container.read(currentPlaceProvider).value,
@@ -102,11 +102,11 @@ void main() {
   });
 
   test('corrupted stored places surface a typed error', () async {
-    SharedPreferences.setMockInitialValues({PlaceStore.savedKey: '[{"county":"新北市"}]'});
+    SharedPreferences.setMockInitialValues({PlaceStore.savedPlacesKey: '[{"county":"新北市"}]'});
 
     await expectLater(
       newContainer().read(savedPlacesProvider.future),
-      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', PlaceStore.savedKey)),
+      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', PlaceStore.savedPlacesKey)),
     );
   });
 
@@ -121,7 +121,7 @@ void main() {
       );
 
   test('auto-locate off without a manual place: autoLocateOff, never locates, survives restart', () async {
-    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: false});
+    SharedPreferences.setMockInitialValues({PlaceStore.autoLocateKey: false});
 
     final first = await newContainer().read(currentPlaceProvider.future);
     final second = await newContainer().read(currentPlaceProvider.future);
@@ -134,7 +134,7 @@ void main() {
   });
 
   test('non-bool place.gps is a typed error and select() recovers', () async {
-    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: 'yes'});
+    SharedPreferences.setMockInitialValues({PlaceStore.autoLocateKey: 'yes'});
     final container = newContainer();
 
     await expectLater(
@@ -151,7 +151,7 @@ void main() {
     answerFix();
     final container = newContainer();
     await container.read(currentPlaceProvider.future);
-    await container.read(currentPlaceProvider.notifier).useGps();
+    await container.read(currentPlaceProvider.notifier).startAutoLocate();
     expect(container.read(currentPlaceProvider).value!.autoLocate, isTrue);
 
     await container.read(currentPlaceProvider.notifier).stopAutoLocate();
@@ -164,15 +164,15 @@ void main() {
     verifyNever(() => location.getCurrentLocation());
   });
 
-  test('select after useGps stores place.gps = false', () async {
+  test('select after startAutoLocate stores place.gps = false', () async {
     answerFix();
     final container = newContainer();
     await container.read(currentPlaceProvider.future);
-    await container.read(currentPlaceProvider.notifier).useGps();
+    await container.read(currentPlaceProvider.notifier).startAutoLocate();
 
     await container.read(currentPlaceProvider.notifier).select(_banqiao);
 
-    expect((await SharedPreferences.getInstance()).get(PlaceStore.gpsKey), false);
+    expect((await SharedPreferences.getInstance()).get(PlaceStore.autoLocateKey), false);
   });
 
   test('saving the same area with other coordinates keeps one entry', () async {
@@ -185,7 +185,7 @@ void main() {
   });
 
   test('clear() recovers a corrupt saved list to empty', () async {
-    SharedPreferences.setMockInitialValues({PlaceStore.savedKey: '{'});
+    SharedPreferences.setMockInitialValues({PlaceStore.savedPlacesKey: '{'});
     final container = newContainer();
     await expectLater(
       container.read(savedPlacesProvider.future),

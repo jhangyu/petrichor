@@ -113,45 +113,45 @@ final placeStoreProvider = FutureProvider<PlaceStore>(
 
 /// 已儲存地點與手動選定地點的本機存取。讀取時一次解析成 [Place]，損毀即丟 [StoredSettingException]。
 class PlaceStore {
-  static const currentKey = 'place.current';
-  static const savedKey = 'place.saved';
+  static const manualPlaceKey = 'place.current';
+  static const savedPlacesKey = 'place.saved';
 
   /// true＝自動定位開啟（啟動時定位）；false＝已關閉；不存在＝首次使用
-  static const gpsKey = 'place.gps';
+  static const autoLocateKey = 'place.gps';
 
-  final SharedPreferences _prefs;
-  PlaceStore(this._prefs);
+  final SharedPreferences _preferences;
+  PlaceStore(this._preferences);
 
   /// null＝尚未選過；非 bool＝損毀，丟 [StoredSettingException]。
-  bool? loadUseGps() {
-    final Object? raw = _prefs.get(gpsKey);
+  bool? loadAutoLocate() {
+    final Object? raw = _preferences.get(autoLocateKey);
     if (raw == null || raw is bool) return raw as bool?;
-    throw StoredSettingException(gpsKey, '儲存資料損毀：期望 true/false，實際「$raw」');
+    throw StoredSettingException(autoLocateKey, '儲存資料損毀：期望 true/false，實際「$raw」');
   }
 
-  Future<void> saveUseGps(bool value) => writeChecked(gpsKey, _prefs.setBool(gpsKey, value));
+  Future<void> saveAutoLocate(bool value) => writeChecked(autoLocateKey, _preferences.setBool(autoLocateKey, value));
 
   /// 手動選定的地點；null＝使用 GPS
-  Place? loadCurrent() {
-    final raw = _prefs.getString(currentKey);
-    return raw == null ? null : _decode(currentKey, raw, (json) => Place.fromJson(json, currentKey));
+  Place? loadManualPlace() {
+    final raw = _preferences.getString(manualPlaceKey);
+    return raw == null ? null : _decode(manualPlaceKey, raw, (json) => Place.fromJson(json, manualPlaceKey));
   }
 
-  Future<void> saveCurrent(Place? place) => place == null
-      ? writeChecked(currentKey, _prefs.remove(currentKey))
-      : writeChecked(currentKey, _prefs.setString(currentKey, jsonEncode(place.toJson())));
+  Future<void> saveManualPlace(Place? place) => place == null
+      ? writeChecked(manualPlaceKey, _preferences.remove(manualPlaceKey))
+      : writeChecked(manualPlaceKey, _preferences.setString(manualPlaceKey, jsonEncode(place.toJson())));
 
-  List<Place> loadSaved() {
-    final raw = _prefs.getString(savedKey);
+  List<Place> loadSavedPlaces() {
+    final raw = _preferences.getString(savedPlacesKey);
     if (raw == null) return const [];
-    return _decode(savedKey, raw, (json) {
+    return _decode(savedPlacesKey, raw, (json) {
       if (json is! List<Object?>) throw FormatException('期望陣列，實際 ${json.runtimeType}');
-      return [for (var i = 0; i < json.length; i++) Place.fromJson(json[i], '$savedKey[$i]')];
+      return [for (var i = 0; i < json.length; i++) Place.fromJson(json[i], '$savedPlacesKey[$i]')];
     });
   }
 
-  Future<void> saveSaved(List<Place> places) =>
-      writeChecked(savedKey, _prefs.setString(savedKey, jsonEncode([for (final p in places) p.toJson()])));
+  Future<void> saveSavedPlaces(List<Place> places) =>
+      writeChecked(savedPlacesKey, _preferences.setString(savedPlacesKey, jsonEncode([for (final p in places) p.toJson()])));
 
   T _decode<T>(String key, String raw, T Function(Object? json) parse) {
     try {
@@ -168,7 +168,7 @@ class PlaceStore {
 
 /// 目前地點：有手動選定地點就用它；自動定位開啟就定位；已關閉＝[NoPlace.autoLocateOff]；從未選過＝[NoPlace.firstRun]（皆不請求權限）。
 /// GPS 失敗＝[NoPlace]（不給預設地點）。
-/// 儲存資料損毀＝AsyncError(StoredSettingException)；呼叫 [CurrentPlaceNotifier.select]／useGps／stopAutoLocate 會覆寫並恢復。
+/// 儲存資料損毀＝AsyncError(StoredSettingException)；呼叫 [CurrentPlaceNotifier.select]／startAutoLocate／stopAutoLocate 會覆寫並恢復。
 final currentPlaceProvider = AsyncNotifierProvider<CurrentPlaceNotifier, CurrentPlace>(
   CurrentPlaceNotifier.new,
   retry: noRetry,
@@ -178,43 +178,43 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
   @override
   Future<CurrentPlace> build() async {
     final store = await ref.watch(placeStoreProvider.future);
-    final manual = store.loadCurrent();
+    final manual = store.loadManualPlace();
     if (manual != null) return PlaceSelected(manual, PlaceSource.manual);
-    final useGps = store.loadUseGps();
-    if (useGps == null) return NoPlace.firstRun();
-    if (!useGps) return NoPlace.autoLocateOff();
+    final autoLocate = store.loadAutoLocate();
+    if (autoLocate == null) return NoPlace.firstRun();
+    if (!autoLocate) return NoPlace.autoLocateOff();
     return await _locate() ?? state.requireValue;
   }
 
-  /// 每次定位或手動選擇就加一；定位回來時 epoch 已變＝期間有人改了地點，結果作廢。
-  int _epoch = 0;
+  /// 每次定位或手動選擇就加一；定位回來時 generation 已變＝期間有人改了地點，結果作廢。
+  int _locateGeneration = 0;
 
   /// 設為目前地點（手動），並存到本機。
   Future<void> select(Place place) async {
-    _epoch++;
+    _locateGeneration++;
     final store = await ref.read(placeStoreProvider.future);
-    await store.saveCurrent(place);
-    await store.saveUseGps(false);
+    await store.saveManualPlace(place);
+    await store.saveAutoLocate(false);
     state = AsyncData(PlaceSelected(place, PlaceSource.manual));
   }
 
   /// 關閉自動定位。目前顯示 GPS 地點時保留它為手動地點；否則進入 [NoPlace.autoLocateOff]。進行中的定位作廢。
   Future<void> stopAutoLocate() async {
-    _epoch++;
+    _locateGeneration++;
     final current = state.value;
     if (current is PlaceSelected && current.source == PlaceSource.gps) {
       await select(current.place);
       return;
     }
-    await (await ref.read(placeStoreProvider.future)).saveUseGps(false);
+    await (await ref.read(placeStoreProvider.future)).saveAutoLocate(false);
     state = AsyncData(NoPlace.autoLocateOff());
   }
 
   /// 改用 GPS：清除手動選定、記住「用 GPS」並重新定位（權限未決時會向系統請求權限）。
-  Future<void> useGps() async {
+  Future<void> startAutoLocate() async {
     final store = await ref.read(placeStoreProvider.future);
-    await store.saveCurrent(null);
-    await store.saveUseGps(true);
+    await store.saveManualPlace(null);
+    await store.saveAutoLocate(true);
     state = const AsyncLoading();
     final located = await _locate();
     if (located != null) state = AsyncData(located);
@@ -222,15 +222,15 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
 
   /// 定位；回傳 null＝等待期間已被更新的定位或手動選擇取代，結果作廢。
   Future<CurrentPlace?> _locate() async {
-    final epoch = ++_epoch;
+    final generation = ++_locateGeneration;
     try {
       final location = await ref.read(locationServiceProvider).getCurrentLocation();
-      if (epoch != _epoch) return null;
+      if (generation != _locateGeneration) return null;
       final fixedAt = location.fixedAt ??
           (throw StateError('GPS location for ${location.county}${location.town}: expected a fix time, got null'));
       return PlaceSelected(location.toPlace(), PlaceSource.gps, fixedAt: fixedAt);
     } on LocationException catch (error) {
-      return epoch == _epoch ? NoPlace(error) : null;
+      return generation == _locateGeneration ? NoPlace(error) : null;
     }
   }
 }
@@ -243,7 +243,7 @@ final savedPlacesProvider = AsyncNotifierProvider<SavedPlacesNotifier, List<Plac
 
 class SavedPlacesNotifier extends AsyncNotifier<List<Place>> {
   @override
-  Future<List<Place>> build() async => (await ref.watch(placeStoreProvider.future)).loadSaved();
+  Future<List<Place>> build() async => (await ref.watch(placeStoreProvider.future)).loadSavedPlaces();
 
   /// 儲存地點；已存在則不重複加入。
   Future<void> save(Place place) async {
@@ -259,7 +259,7 @@ class SavedPlacesNotifier extends AsyncNotifier<List<Place>> {
   Future<void> clear() => _persist(const []);
 
   Future<void> _persist(List<Place> places) async {
-    await (await ref.read(placeStoreProvider.future)).saveSaved(places);
+    await (await ref.read(placeStoreProvider.future)).saveSavedPlaces(places);
     state = AsyncData(places);
   }
 }

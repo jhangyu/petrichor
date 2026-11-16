@@ -24,7 +24,7 @@ class PlaceSettingsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final current = ref.watch(currentPlaceProvider);
     final notifier = ref.read(currentPlaceProvider.notifier);
-    // Locating (first load or useGps) shows the switch on; a corrupt record shows it off.
+    // Locating (first load or startAutoLocate) shows the switch on; a corrupt record shows it off.
     final autoLocate = switch (current) {
       AsyncData(:final value) => value.autoLocate,
       AsyncError() => false,
@@ -59,11 +59,11 @@ class PlaceSettingsCard extends ConsumerWidget {
               : manualPlace == null
                   ? '已關閉：尚未選擇地點'
                   : '已關閉：使用儲存的地點「${placeLabel(manualPlace)}」',
-          onTap: () => autoLocate ? notifier.stopAutoLocate() : notifier.useGps(),
+          onTap: () => autoLocate ? notifier.stopAutoLocate() : notifier.startAutoLocate(),
           trailing: AppSwitch(
             value: autoLocate,
             semanticLabel: '自動定位',
-            onChanged: (on) => on ? notifier.useGps() : notifier.stopAutoLocate(),
+            onChanged: (on) => on ? notifier.startAutoLocate() : notifier.stopAutoLocate(),
           ),
         ),
         ..._status(context, ref, current, failure),
@@ -75,7 +75,7 @@ class PlaceSettingsCard extends ConsumerWidget {
   }
 
   List<Widget> _status(BuildContext context, WidgetRef ref, AsyncValue<CurrentPlace> current, NoPlace? failure) {
-    final relocate = ref.read(currentPlaceProvider.notifier).useGps;
+    final relocate = ref.read(currentPlaceProvider.notifier).startAutoLocate;
     return switch (current) {
       AsyncData(value: PlaceSelected(source: PlaceSource.gps, :final place, :final fixedAt)) => [
           AppListRow(

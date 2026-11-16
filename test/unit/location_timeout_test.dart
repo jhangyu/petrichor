@@ -45,7 +45,7 @@ void main() {
   });
 
   test('a late GPS result after a manual selection does not override it', () async {
-    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: true});
+    SharedPreferences.setMockInitialValues({PlaceStore.autoLocateKey: true});
     final late = Completer<LocationData>();
     final location = MockLocationService();
     when(() => location.getCurrentLocation()).thenAnswer((_) => late.future);
@@ -71,7 +71,7 @@ void main() {
   });
 
   test('a late GPS failure after a manual selection does not turn into NoPlace', () async {
-    SharedPreferences.setMockInitialValues({PlaceStore.gpsKey: true});
+    SharedPreferences.setMockInitialValues({PlaceStore.autoLocateKey: true});
     final late = Completer<LocationData>();
     final location = MockLocationService();
     when(() => location.getCurrentLocation()).thenAnswer((_) => late.future);

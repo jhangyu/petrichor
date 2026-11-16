@@ -109,7 +109,7 @@ class RainfallScreen extends ConsumerWidget {
             label: '允許定位',
             variant: AppButtonVariant.primary,
             small: true,
-            onPressed: () => ref.read(currentPlaceProvider.notifier).useGps(),
+            onPressed: () => ref.read(currentPlaceProvider.notifier).startAutoLocate(),
           ),
           AppButton(
             label: '選擇地點',
