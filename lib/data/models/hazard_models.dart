@@ -44,7 +44,7 @@ final _zonePattern = RegExp(r'[+-]\d\d:\d\d$');
 DateTime _time(Object? v, String path) {
   final s = _str(v, path);
   final hasZone = s.endsWith('Z') || _zonePattern.hasMatch(s);
-  final parsed = DateTime.tryParse(hasZone ? s : '${s.replaceFirst(' ', 'T')}$taiwanOffsetText');
+  final parsed = DateTime.tryParse(hasZone ? s : '${s.replaceFirst(' ', 'T')}$taiwanUtcOffsetText');
   if (parsed == null) throw FormatException('expected timestamp at $path, got "$s"');
   return parsed;
 }

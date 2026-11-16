@@ -269,8 +269,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   String _loopSubtitle(String? name, RadarFrame newest) => name == null
-      ? '觀測 ${formatTaiwanFull(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
-      : '$name站 · 觀測 ${formatTaiwanFull(newest.time)}';
+      ? '觀測 ${formatTaiwanDateTime(newest.time)} · 每 ${radarFrameStep.inMinutes} 分鐘更新'
+      : '$name站 · 觀測 ${formatTaiwanDateTime(newest.time)}';
 
   Widget _playbackCard(
     RadarLoop loop,

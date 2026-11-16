@@ -2,7 +2,7 @@
 const taiwanUtcOffset = Duration(hours: 8);
 
 /// [taiwanUtcOffset] as an ISO-8601 offset, for CWA times that carry no zone.
-const taiwanOffsetText = '+08:00';
+const taiwanUtcOffsetText = '+08:00';
 
 /// Taiwan wall-clock fields of [t], carried in a UTC DateTime.
 DateTime taiwanWall(DateTime t) => t.toUtc().add(taiwanUtcOffset);
@@ -32,7 +32,7 @@ String formatTaiwanMonthDayClock(DateTime t) {
 }
 
 /// `2026-11-14 14:00` (Taiwan time).
-String formatTaiwanFull(DateTime t) {
+String formatTaiwanDateTime(DateTime t) {
   final w = taiwanWall(t);
   return '${w.year}-${twoDigits(w.month)}-${twoDigits(w.day)} ${clockText(t)}';
 }
