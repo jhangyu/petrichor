@@ -6,7 +6,7 @@ import 'package:petrichor/data/radar/radar_png_rows.dart';
 import 'package:petrichor/data/radar/radar_webp.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image/image.dart' as img;
+import 'package:image/image.dart' as image;
 import 'package:latlong2/latlong.dart';
 
 void main() {
@@ -14,15 +14,15 @@ void main() {
   // partly covered by a grey coastline. Expected counts measured independently
   // (PIL/numpy against the legend colours, see radar-impl-notes.md).
   final png = File('test/fixtures/radar/cv1_3600_202611142050_crop_1536_768_64.png').readAsBytesSync();
-  final src = img.decodePng(png)!;
+  final source = image.decodePng(png)!;
   final bounds = LatLngBounds(const LatLng(26.59, 119.9), const LatLng(26.8, 120.11));
   final identityRows = List<int>.generate(64, (i) => i);
   RadarImageGeometry geometry({List<int>? rowMap, List<PixelRect> decorations = const []}) =>
       RadarImageGeometry(
         size: 64, bounds: bounds, rowMap: rowMap ?? identityRows, decorations: decorations);
-  img.Image decode(ProcessedRadarFrame p) {
+  image.Image decode(ProcessedRadarFrame p) {
     final size = radarWebpSize(p.webp);
-    return img.Image.fromBytes(
+    return image.Image.fromBytes(
         width: size.width, height: size.height, bytes: decodeRadarWebp(p.webp).buffer, numChannels: 4);
   }
 
@@ -34,7 +34,7 @@ void main() {
     for (var y = 0; y < 64; y++) {
       for (var x = 0; x < 64; x++) {
         final o = keyed.getPixel(x, y);
-        final s = src.getPixel(x, y);
+        final s = source.getPixel(x, y);
         if (o.a == 255) {
           echo++;
           expect([o.r, o.g, o.b], [s.r, s.g, s.b], reason: 'echo pixel ($x,$y)');
@@ -84,7 +84,7 @@ void main() {
   test('stored image is 2048 wide: nearest source pixel, exact colours, statistics from the full source', () {
     const size = 2304; // not a multiple of 2048: exercises the uneven nearest mapping
     int level(int x, int y) => (x * 7 + y * 13) % 70; // 0..65 echo, 66..69 background
-    final rgb = img.Image(width: size, height: size);
+    final rgb = image.Image(width: size, height: size);
     final counts = List<int>.filled(66, 0);
     for (var y = 0; y < size; y++) {
       for (var x = 0; x < size; x++) {
@@ -95,7 +95,7 @@ void main() {
       }
     }
     final p = processRadarFrame(
-      img.encodePng(rgb),
+      image.encodePng(rgb),
       RadarImageGeometry(
         size: size,
         bounds: bounds,
@@ -126,15 +126,15 @@ void main() {
 
   test('row reader returns the decoded pixels for every PNG filter and rejects other formats', () {
     const size = 41;
-    final rgb = img.Image(width: size, height: size);
+    final rgb = image.Image(width: size, height: size);
     for (var y = 0; y < size; y++) {
       for (var x = 0; x < size; x++) {
         rgb.setPixelRgb(x, y, (x * 37 + y * 11) & 0xFF, (x * y * 5) & 0xFF, (x ^ y) * 7 & 0xFF);
       }
     }
-    for (final filter in img.PngFilter.values) {
+    for (final filter in image.PngFilter.values) {
       final rows = <List<int>>[];
-      readPngRgbRows(img.encodePng(rgb, filter: filter), size, (y, row) {
+      readPngRgbRows(image.encodePng(rgb, filter: filter), size, (y, row) {
         expect(y, rows.length);
         rows.add(List<int>.of(row));
       });
@@ -144,10 +144,10 @@ void main() {
             reason: '$filter row $y');
       }
     }
-    expect(() => readPngRgbRows(img.encodePng(rgb), size + 1, (_, _) {}), throwsFormatException);
-    expect(() => readPngRgbRows(img.encodePng(img.Image(width: size, height: size, numChannels: 4)), size, (_, _) {}),
+    expect(() => readPngRgbRows(image.encodePng(rgb), size + 1, (_, _) {}), throwsFormatException);
+    expect(() => readPngRgbRows(image.encodePng(image.Image(width: size, height: size, numChannels: 4)), size, (_, _) {}),
         throwsFormatException);
-    expect(() => readPngRgbRows(img.encodePng(rgb).sublist(0, 100), size, (_, _) {}), throwsFormatException);
+    expect(() => readPngRgbRows(image.encodePng(rgb).sublist(0, 100), size, (_, _) {}), throwsFormatException);
   });
 
   test('Mercator row map for the 3600 frame keeps every source row in order', () {
