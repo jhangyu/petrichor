@@ -70,7 +70,6 @@ class WeeklyCard extends StatelessWidget {
     final offset = dayOffset(wall, now);
     final label = offset <= 1 ? relativeDay(wall, now) : weekdayName(wall);
     final date = offset <= 1 ? '${weekdayName(wall)} ${monthDay(wall)}' : monthDay(wall);
-    final low = isLowRain(d.pop);
     final num = AppType.body1.copyWith(fontFeatures: AppType.tabular);
     return Container(
       constraints: const BoxConstraints(minHeight: _rowMinHeight),
@@ -104,11 +103,7 @@ class WeeklyCard extends StatelessWidget {
             child: Text(
               percentText(d.pop),
               textAlign: TextAlign.right,
-              style: AppType.caption1.copyWith(
-                color: low ? AppPalette.fg3 : AppPalette.rainFg,
-                fontWeight: low ? FontWeight.w400 : FontWeight.w600,
-                fontFeatures: AppType.tabular,
-              ),
+              style: popTextStyle(AppType.caption1.copyWith(fontFeatures: AppType.tabular), d.pop),
             ),
           ),
           SizedBox(

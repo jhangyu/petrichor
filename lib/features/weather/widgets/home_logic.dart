@@ -1,3 +1,6 @@
+import 'package:flutter/painting.dart';
+
+import '../../../core/theme/app_tokens.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import '../../../core/constants/app_constants.dart';
@@ -9,6 +12,15 @@ const rainLowThresholdPercent = 30;
 
 /// Whether a 降雨機率 is shown muted; unknown (null) counts as low.
 bool isLowRain(int? pop) => pop == null || pop < rainLowThresholdPercent;
+
+/// [base] with the 降雨機率 emphasis: muted regular when [isLowRain], rain-coloured semibold otherwise.
+TextStyle popTextStyle(TextStyle base, int? pop) {
+  final low = isLowRain(pop);
+  return base.copyWith(
+    color: low ? AppPalette.fg3 : AppPalette.rainFg,
+    fontWeight: low ? FontWeight.w400 : FontWeight.w600,
+  );
+}
 
 /// The first API-key failure among the page's datasets (they share one CWA token).
 ApiKeyIssue? firstApiKeyIssue(List<Result<Object?>?> results) {

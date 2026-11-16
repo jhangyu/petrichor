@@ -272,15 +272,11 @@ class ForecastChartPainter extends CustomPainter {
           Paint()..color = AppPalette.rainBar,
         );
       }
-      final low = isLowRain(pop);
       paintLabel(
         canvas,
         percentText(pop),
         Offset(center, ForecastChartGeometry.popLabelY),
-        small.copyWith(
-          color: low ? AppPalette.fg3 : AppPalette.rainFg,
-          fontWeight: low ? FontWeight.w400 : FontWeight.w600,
-        ),
+        popTextStyle(small, pop),
       );
       paintLabel(canvas, windDirectionLabel(s.windDirection), Offset(center, ForecastChartGeometry.windDirY), small);
       paintLabel(canvas, speedText(s.windSpeed), Offset(center, ForecastChartGeometry.windSpeedY), small);
