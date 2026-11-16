@@ -1,7 +1,7 @@
 import '../../data/radar/radar_loop.dart';
 
 /// Playback speeds offered in 播放設定 and the default.
-const radarFpsOptions = [2, 4, 8, 12, 24];
+const radarFramesPerSecondOptions = [2, 4, 8, 12, 24];
 
 /// Look-back choices; a source offers those up to its `maxWindow`.
 const radarWindowOptions = [
@@ -16,16 +16,16 @@ const radarWindowOptions = [
 /// Sources that share playback settings (look-back, fps, opacity), each group
 /// with its own defaults.
 enum RadarGroup {
-  taiwan(defaultWindow: Duration(hours: 6), defaultFps: 8),
-  regional(defaultWindow: Duration(hours: 4), defaultFps: 12),
+  taiwan(defaultWindow: Duration(hours: 6), defaultFramesPerSecond: 8),
+  regional(defaultWindow: Duration(hours: 4), defaultFramesPerSecond: 12),
 
   /// 雨量 page 累積雨量: only fps and repeat are used (the span is the accumulation window).
-  rainfall(defaultWindow: Duration(hours: 24), defaultFps: 8);
+  rainfall(defaultWindow: Duration(hours: 24), defaultFramesPerSecond: 8);
 
-  const RadarGroup({required this.defaultWindow, required this.defaultFps});
+  const RadarGroup({required this.defaultWindow, required this.defaultFramesPerSecond});
 
   final Duration defaultWindow;
-  final int defaultFps;
+  final int defaultFramesPerSecond;
 }
 
 /// Fixed wait after the last frame before the loop restarts (repeat on).
@@ -79,11 +79,11 @@ final class RadarWait extends RadarStep {
 RadarStep? radarNextStep({
   required List<RadarSlot> slots,
   required DateTime? after,
-  required int fps,
+  required int framesPerSecond,
   required bool repeat,
 }) {
   final start = after == null ? 0 : slots.indexWhere((s) => s.time.isAfter(after));
-  final frameDelay = Duration(microseconds: Duration.microsecondsPerSecond ~/ fps);
+  final frameDelay = Duration(microseconds: Duration.microsecondsPerSecond ~/ framesPerSecond);
   var delay = after == null ? Duration.zero : frameDelay;
   var i = start < 0 ? slots.length : start;
   // At most one full lap: past it every slot was seen failed.
@@ -180,13 +180,13 @@ String radarPlaybackMeta({
   required bool loading,
   required int ready,
   required int total,
-  required int fps,
+  required int framesPerSecond,
   required bool repeat,
   required String idle,
 }) => buffering
     ? '緩衝中 · 已就緒 $ready / $total 張'
     : playing
-    ? '播放中 · $fps fps${repeat ? ' · 重複' : ''}'
+    ? '播放中 · $framesPerSecond fps${repeat ? ' · 重複' : ''}'
     : loading
     ? '載入中 $ready / $total 張'
     : idle;

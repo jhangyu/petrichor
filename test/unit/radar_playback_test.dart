@@ -27,7 +27,7 @@ RadarSlot failed(int i) =>
 const _fourFramesPerSecond = Duration(milliseconds: 250);
 
 RadarStep? next(List<RadarSlot> slots, DateTime? after, {bool repeat = true}) =>
-    radarNextStep(slots: slots, after: after, fps: 4, repeat: repeat);
+    radarNextStep(slots: slots, after: after, framesPerSecond: 4, repeat: repeat);
 
 void main() {
   test('starts at the oldest at once and advances oldest to newest at 1/fps', () {

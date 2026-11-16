@@ -353,7 +353,7 @@ class _SettingsState extends State<_Settings> {
                   ),
                   Expanded(
                     child: Text(
-                      '$hours 小時 · ${playback.fps} fps · ${playback.repeat ? '重複' : '不重複'}',
+                      '$hours 小時 · ${playback.framesPerSecond} fps · ${playback.repeat ? '重複' : '不重複'}',
                       textAlign: TextAlign.end,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -397,9 +397,9 @@ class _SettingsState extends State<_Settings> {
                     label: '播放速度（fps）',
                     // Bare numbers: 「12 fps」 would ellipsize in five segments at 360–412 dp.
                     child: AppSegmentedControl<int>(
-                      segments: [for (final v in radarFpsOptions) (v, '$v')],
-                      selected: playback.fps,
-                      onChanged: playback.onFps,
+                      segments: [for (final v in radarFramesPerSecondOptions) (v, '$v')],
+                      selected: playback.framesPerSecond,
+                      onChanged: playback.onFramesPerSecondChanged,
                     ),
                   ),
                   Row(

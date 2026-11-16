@@ -58,7 +58,7 @@ class AccumulationCard extends ConsumerStatefulWidget {
 class _AccumulationCardState extends ConsumerState<AccumulationCard> {
   late final RadarPlayer _player = RadarPlayer(
     slots: () => ref.read(accumulationLoopProvider(ref.read(rainAccumulationWindowProvider).requireValue)).value?.slots,
-    fps: () => ref.read(radarFpsProvider(_group)).requireValue,
+    framesPerSecond: () => ref.read(radarFramesPerSecondProvider(_group)).requireValue,
     repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
     onChanged: () => setState(() {}),
   );
@@ -74,9 +74,9 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     unawaited(ref.read(rainAccumulationWindowProvider.notifier).set(hours));
   }
 
-  void _setFps(int fps) {
-    unawaited(ref.read(radarFpsProvider(_group).notifier).set(fps));
-    _player.onFpsChanged();
+  void _setFramesPerSecond(int framesPerSecond) {
+    unawaited(ref.read(radarFramesPerSecondProvider(_group).notifier).set(framesPerSecond));
+    _player.onFramesPerSecondChanged();
   }
 
   void _retry(int hours) {
@@ -84,9 +84,9 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     ref.invalidate(accumulationLoopProvider(hours));
   }
 
-  void _resetSettings(AsyncValue<int> window, AsyncValue<int> fps, AsyncValue<bool> repeat) {
+  void _resetSettings(AsyncValue<int> window, AsyncValue<int> framesPerSecond, AsyncValue<bool> repeat) {
     if (window.hasError) unawaited(ref.read(rainAccumulationWindowProvider.notifier).reset());
-    if (fps.hasError) unawaited(ref.read(radarFpsProvider(_group).notifier).reset());
+    if (framesPerSecond.hasError) unawaited(ref.read(radarFramesPerSecondProvider(_group).notifier).reset());
     if (repeat.hasError) unawaited(ref.read(radarRepeatProvider(_group).notifier).reset());
   }
 
@@ -100,22 +100,22 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       );
     }
     final window = ref.watch(rainAccumulationWindowProvider);
-    final fps = ref.watch(radarFpsProvider(_group));
+    final framesPerSecond = ref.watch(radarFramesPerSecondProvider(_group));
     final repeat = ref.watch(radarRepeatProvider(_group));
-    if (window.hasError || fps.hasError || repeat.hasError) {
+    if (window.hasError || framesPerSecond.hasError || repeat.hasError) {
       return AppCard(
         title: _cardTitle,
         child: StatusBanner(
           tone: StatusTone.error,
           title: '無法讀取累積雨量設定',
           text: [
-            for (final e in [window.error, fps.error, repeat.error]) ?e,
+            for (final e in [window.error, framesPerSecond.error, repeat.error]) ?e,
           ].join('；'),
-          actions: [AppButton(label: '重設設定', small: true, onPressed: () => _resetSettings(window, fps, repeat))],
+          actions: [AppButton(label: '重設設定', small: true, onPressed: () => _resetSettings(window, framesPerSecond, repeat))],
         ),
       );
     }
-    if (!window.hasValue || !fps.hasValue || !repeat.hasValue) {
+    if (!window.hasValue || !framesPerSecond.hasValue || !repeat.hasValue) {
       return const AppCard.loading(title: _cardTitle, skeletonHeight: _skeletonHeight);
     }
     final hours = window.requireValue;
@@ -123,7 +123,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final loop = ref.watch(accumulationLoopProvider(hours));
     final (meta, (:banner, :map, :playback)) = switch (loop) {
       AsyncError(:final error) => ('無法取得', _failureBody(hours, '$error')),
-      AsyncValue(:final value?) => _loopBody(hours, value, fps.requireValue, repeat.requireValue),
+      AsyncValue(:final value?) => _loopBody(hours, value, framesPerSecond.requireValue, repeat.requireValue),
       _ => ('載入中', _loadingBody()),
     };
     return RainMapCard(
@@ -202,7 +202,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     playback: null,
   );
 
-  (String, _Body) _loopBody(int hours, RadarLoop loop, int fps, bool repeat) {
+  (String, _Body) _loopBody(int hours, RadarLoop loop, int framesPerSecond, bool repeat) {
     final slots = loop.slots;
     final failed = radarFailedSlots(slots);
     final index = radarShownIndex(slots, _player.playhead);
@@ -225,7 +225,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       loading: loop.loading,
       ready: readyCount,
       total: slots.length,
-      fps: fps,
+      framesPerSecond: framesPerSecond,
       repeat: repeat,
       idle: '${slots.length} 張',
     );
@@ -275,13 +275,13 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
             buffering: waiting,
             playing: _player.playing,
-            fps: fps,
+            framesPerSecond: framesPerSecond,
             repeat: repeat,
             window: Duration(hours: hours),
             timeText: span,
             onTogglePlay: _player.togglePlay,
             onSeek: _player.seek,
-            onFps: _setFps,
+            onFramesPerSecondChanged: _setFramesPerSecond,
             onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
           ),
         ),

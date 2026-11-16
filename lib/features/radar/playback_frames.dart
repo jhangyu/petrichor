@@ -10,13 +10,13 @@ class PlaybackFrames {
     required this.current,
     required this.buffering,
     required this.playing,
-    required this.fps,
+    required this.framesPerSecond,
     required this.repeat,
     required this.window,
     this.windowOptions = const [],
     required this.onTogglePlay,
     required this.onSeek,
-    required this.onFps,
+    required this.onFramesPerSecondChanged,
     required this.onRepeat,
     this.onWindow,
     this.timeText,
@@ -40,7 +40,7 @@ class PlaybackFrames {
   /// Playing but stopped at a pending slot (緩衝中).
   final bool buffering;
   final bool playing;
-  final int fps;
+  final int framesPerSecond;
   final bool repeat;
   final Duration window;
 
@@ -54,7 +54,7 @@ class PlaybackFrames {
   /// Called with a ready slot's time only (a time, not an index: the slot list
   /// may be replaced before the screen handles the tap).
   final ValueChanged<DateTime> onSeek;
-  final ValueChanged<int> onFps;
+  final ValueChanged<int> onFramesPerSecondChanged;
   final ValueChanged<bool> onRepeat;
   final ValueChanged<Duration>? onWindow;
 

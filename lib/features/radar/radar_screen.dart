@@ -57,7 +57,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   String _selectedDatasetId = CwaDatasets.radarTaiwanDatasetId;
   late final RadarPlayer _player = RadarPlayer(
     slots: () => ref.read(radarLoopProvider(_selectedDatasetId)).value?.slots,
-    fps: () => ref.read(radarFpsProvider(_group)).requireValue,
+    framesPerSecond: () => ref.read(radarFramesPerSecondProvider(_group)).requireValue,
     repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
     onChanged: () => setState(() {}),
   );
@@ -82,9 +82,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   RadarGroup get _group => radarGroupOf(_selectedDatasetId);
 
-  void _setFps(int fps) {
-    unawaited(ref.read(radarFpsProvider(_group).notifier).set(fps));
-    _player.onFpsChanged();
+  void _setFramesPerSecond(int framesPerSecond) {
+    unawaited(ref.read(radarFramesPerSecondProvider(_group).notifier).set(framesPerSecond));
+    _player.onFramesPerSecondChanged();
   }
 
   void _setWindow(Duration window) {
@@ -109,22 +109,22 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   Widget build(BuildContext context) {
     final source = ref.watch(radarSourceProvider(_selectedDatasetId));
     final selectedWindow = ref.watch(radarWindowProvider(_group));
-    final fps = ref.watch(radarFpsProvider(_group));
+    final framesPerSecond = ref.watch(radarFramesPerSecondProvider(_group));
     final repeat = ref.watch(radarRepeatProvider(_group));
     // Each loop update may make the slot playback waits on ready (or failed).
     ref.listen(radarLoopProvider(_selectedDatasetId), (_, _) {
       _player.onLoopUpdate();
     });
     final loop = ref.watch(radarLoopProvider(_selectedDatasetId));
-    final view = switch ((selectedWindow, fps, repeat)) {
+    final view = switch ((selectedWindow, framesPerSecond, repeat)) {
       (AsyncValue(hasValue: true), AsyncValue(hasValue: true), AsyncValue(hasValue: true)) => _sourceView(
         loop,
         radarEffectiveWindow(selectedWindow.requireValue, source),
         source.maxWindow,
-        fps.requireValue,
+        framesPerSecond.requireValue,
         repeat.requireValue,
       ),
-      _ => _settingsView(selectedWindow, fps, repeat),
+      _ => _settingsView(selectedWindow, framesPerSecond, repeat),
     };
     final header = AppPageHeader(
       title: '雷達回波',
@@ -192,15 +192,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   // ---- views (one path for every source) ----
 
-  _RadarView _sourceView(AsyncValue<RadarLoop> async, Duration window, Duration maxWindow, int fps, bool repeat) {
+  _RadarView _sourceView(AsyncValue<RadarLoop> async, Duration window, Duration maxWindow, int framesPerSecond, bool repeat) {
     return switch (async) {
       AsyncError(:final error) => _errorView(error),
-      AsyncValue(:final value?) => _loopView(value, window, maxWindow, fps, repeat),
+      AsyncValue(:final value?) => _loopView(value, window, maxWindow, framesPerSecond, repeat),
       _ => _loadingView(),
     };
   }
 
-  _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow, int fps, bool repeat) {
+  _RadarView _loopView(RadarLoop loop, Duration window, Duration maxWindow, int framesPerSecond, bool repeat) {
     final opacity = ref.watch(radarOpacityProvider(_group));
     final opacityPercent = opacity.value;
     final opacityBanner = switch (opacity) {
@@ -251,7 +251,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         ),
         legend: const RadarLegend(),
       ),
-      afterHero: [_playbackCard(loop, index, window, maxWindow, fps, repeat, opacityControl)],
+      afterHero: [_playbackCard(loop, index, window, maxWindow, framesPerSecond, repeat, opacityControl)],
     );
   }
 
@@ -280,7 +280,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     int index,
     Duration window,
     Duration maxWindow,
-    int fps,
+    int framesPerSecond,
     bool repeat,
     Widget? opacityControl,
   ) {
@@ -294,7 +294,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         loading: loop.loading,
         ready: readyCount,
         total: slots.length,
-        fps: fps,
+        framesPerSecond: framesPerSecond,
         repeat: repeat,
         idle: '過去 ${window.inHours} 小時 · ${slots.length} 張',
       ),
@@ -304,13 +304,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
         buffering: _player.waitingOn != null,
         playing: _player.playing,
-        fps: fps,
+        framesPerSecond: framesPerSecond,
         repeat: repeat,
         window: window,
         windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
         onTogglePlay: _player.togglePlay,
         onSeek: _player.seek,
-        onFps: _setFps,
+        onFramesPerSecondChanged: _setFramesPerSecond,
         onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
         onWindow: _setWindow,
       ),
@@ -327,25 +327,25 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   /// Playback settings still loading, or unreadable (error without a value):
   /// the error with a reset to the group's defaults.
-  _RadarView _settingsView(AsyncValue<Duration> window, AsyncValue<int> fps, AsyncValue<bool> repeat) {
+  _RadarView _settingsView(AsyncValue<Duration> window, AsyncValue<int> framesPerSecond, AsyncValue<bool> repeat) {
     final windowBroken = window.hasError && !window.hasValue;
-    final fpsBroken = fps.hasError && !fps.hasValue;
+    final framesPerSecondBroken = framesPerSecond.hasError && !framesPerSecond.hasValue;
     final repeatBroken = repeat.hasError && !repeat.hasValue;
-    if (!windowBroken && !fpsBroken && !repeatBroken) return _loadingView();
+    if (!windowBroken && !framesPerSecondBroken && !repeatBroken) return _loadingView();
     return _RadarView(
       subtitle: _unreachableSubtitle,
       hero: _heroCard(
         banner: StatusBanner(
           tone: StatusTone.error,
           title: '無法讀取播放設定',
-          text: [if (windowBroken) '${window.error}', if (fpsBroken) '${fps.error}', if (repeatBroken) '${repeat.error}'].join('；'),
+          text: [if (windowBroken) '${window.error}', if (framesPerSecondBroken) '${framesPerSecond.error}', if (repeatBroken) '${repeat.error}'].join('；'),
           actions: [
             AppButton(
               label: '重設播放設定',
               small: true,
               onPressed: () {
                 if (windowBroken) unawaited(ref.read(radarWindowProvider(_group).notifier).reset());
-                if (fpsBroken) unawaited(ref.read(radarFpsProvider(_group).notifier).reset());
+                if (framesPerSecondBroken) unawaited(ref.read(radarFramesPerSecondProvider(_group).notifier).reset());
                 if (repeatBroken) unawaited(ref.read(radarRepeatProvider(_group).notifier).reset());
               },
             ),

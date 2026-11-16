@@ -9,7 +9,7 @@ import '../support/provider_container.dart';
 
 Future<(Duration, int, bool, int)> read(ProviderContainer c, RadarGroup g) async => (
       await c.read(radarWindowProvider(g).future),
-      await c.read(radarFpsProvider(g).future),
+      await c.read(radarFramesPerSecondProvider(g).future),
       await c.read(radarRepeatProvider(g).future),
       await c.read(radarOpacityProvider(g).future),
     );
@@ -31,7 +31,7 @@ void main() {
     final first = newContainer();
     await read(first, RadarGroup.taiwan);
     await first.read(radarWindowProvider(RadarGroup.taiwan).notifier).set(const Duration(hours: 12));
-    await first.read(radarFpsProvider(RadarGroup.taiwan).notifier).set(24);
+    await first.read(radarFramesPerSecondProvider(RadarGroup.taiwan).notifier).set(24);
     await first.read(radarRepeatProvider(RadarGroup.taiwan).notifier).set(false);
     await first.read(radarOpacityProvider(RadarGroup.taiwan).notifier).set(80);
 
@@ -44,7 +44,7 @@ void main() {
     const group = RadarGroup.regional;
     final cases = <(String, Object, Future<void> Function(ProviderContainer), Object)>[
       ('radar.regional.opacity', 55, (c) => c.read(radarOpacityProvider(group).notifier).set(30), radarOpacityProvider(group)),
-      ('radar.regional.fps', 5, (c) => c.read(radarFpsProvider(group).notifier).set(2), radarFpsProvider(group)),
+      ('radar.regional.fps', 5, (c) => c.read(radarFramesPerSecondProvider(group).notifier).set(2), radarFramesPerSecondProvider(group)),
       ('radar.regional.repeat', 2, (c) => c.read(radarRepeatProvider(group).notifier).set(false), radarRepeatProvider(group)),
       ('radar.regional.windowMinutes', '240', (c) => c.read(radarWindowProvider(group).notifier).set(const Duration(hours: 1)),
           radarWindowProvider(group)),

@@ -5,13 +5,13 @@ import 'radar_playback.dart';
 
 /// Playback state of one loop on screen: the playhead, the frame-rate / repeat
 /// pause clock and the buffering stop (緩衝中). Every state change calls
-/// [onChanged] (the owner's setState). [slots], [fps] and [repeat] are read
+/// [onChanged] (the owner's setState). [slots], [framesPerSecond] and [repeat] are read
 /// when a step is taken.
 class RadarPlayer {
-  RadarPlayer({required this.slots, required this.fps, required this.repeat, required this.onChanged});
+  RadarPlayer({required this.slots, required this.framesPerSecond, required this.repeat, required this.onChanged});
 
   final List<RadarSlot>? Function() slots;
-  final int Function() fps;
+  final int Function() framesPerSecond;
   final bool Function() repeat;
   final void Function() onChanged;
 
@@ -45,12 +45,12 @@ class RadarPlayer {
   }
 
   /// Takes the next step after the playhead: shows the next ready slot after
-  /// 1/fps (at once when [immediate]: play start, or resuming from 緩衝中), or
+  /// 1/framesPerSecond (at once when [immediate]: play start, or resuming from 緩衝中), or
   /// stops at a pending one, or ends.
   void _advance({required bool immediate}) {
     _timer?.cancel();
     final all = slots();
-    final step = all == null ? null : radarNextStep(slots: all, after: playhead, fps: fps(), repeat: repeat());
+    final step = all == null ? null : radarNextStep(slots: all, after: playhead, framesPerSecond: framesPerSecond(), repeat: repeat());
     switch (step) {
       case null:
         _halt();
@@ -96,7 +96,7 @@ class RadarPlayer {
   }
 
   /// The speed changed: the pending frame delay restarts at the new one.
-  void onFpsChanged() {
+  void onFramesPerSecondChanged() {
     if (playing && waitingOn == null) _advance(immediate: false);
   }
 

@@ -48,18 +48,18 @@ class RadarOpacitySetting extends RadarSetting<int> {
   int toStored(int value) => value;
 }
 
-/// Playback speed in frames per second, one of [radarFpsOptions].
-class RadarFps extends RadarSetting<int> {
-  RadarFps(super.group);
+/// Playback speed in frames per second, one of [radarFramesPerSecondOptions].
+class RadarFramesPerSecondSetting extends RadarSetting<int> {
+  RadarFramesPerSecondSetting(super.group);
 
   @override
   String get name => 'fps';
   @override
-  int get defaultValue => group.defaultFps;
+  int get defaultValue => group.defaultFramesPerSecond;
   @override
-  String get expectedDescription => 'one of $radarFpsOptions';
+  String get expectedDescription => 'one of $radarFramesPerSecondOptions';
   @override
-  int? fromStored(int stored) => radarFpsOptions.contains(stored) ? stored : null;
+  int? fromStored(int stored) => radarFramesPerSecondOptions.contains(stored) ? stored : null;
   @override
   int toStored(int value) => value;
 }
@@ -99,7 +99,7 @@ class RadarWindowSetting extends RadarSetting<Duration> {
 }
 
 final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacitySetting, int, RadarGroup>(RadarOpacitySetting.new, retry: noRetry);
-final radarFpsProvider = AsyncNotifierProvider.family<RadarFps, int, RadarGroup>(RadarFps.new, retry: noRetry);
+final radarFramesPerSecondProvider = AsyncNotifierProvider.family<RadarFramesPerSecondSetting, int, RadarGroup>(RadarFramesPerSecondSetting.new, retry: noRetry);
 final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeatSetting, bool, RadarGroup>(RadarRepeatSetting.new, retry: noRetry);
 final radarWindowProvider = AsyncNotifierProvider.family<RadarWindowSetting, Duration, RadarGroup>(RadarWindowSetting.new, retry: noRetry);
 
