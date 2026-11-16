@@ -242,7 +242,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             ? StatusBanner(
                 tone: StatusTone.error,
                 title: '${failed.length} 張影格無法取得',
-                text: '${clockText(failed.first.time)} ${'${failed.first.error}'.trim().split('\n').first}',
+                text: '${clockText(failed.first.time)} ${firstLine(failed.first.error!)}',
                 actions: [RetryButton(onPressed: () => _retry(hours))],
               )
             : null,

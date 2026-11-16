@@ -443,8 +443,6 @@ class _FailureBanner extends StatelessWidget {
   final List<RadarSlot> failed;
   final VoidCallback onRetry;
 
-  static String _oneLine(Object error) => '$error'.trim().split('\n').first.trim();
-
   @override
   Widget build(BuildContext context) {
     final times = [for (final f in failed) f.time];
@@ -459,7 +457,7 @@ class _FailureBanner extends StatelessWidget {
         StatusBanner(
           tone: StatusTone.error,
           title: '${failed.length} 張影格無法取得',
-          text: '$range · ${_oneLine(failed.first.error!)}',
+          text: '$range · ${firstLine(failed.first.error!)}',
           actions: [RetryButton(onPressed: onRetry)],
         ),
         Theme(
@@ -472,7 +470,7 @@ class _FailureBanner extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    '${clockText(f.time)} ${_oneLine(f.error!)}',
+                    '${clockText(f.time)} ${firstLine(f.error!)}',
                     style: AppType.caption1.copyWith(color: AppPalette.fg3),
                   ),
                 ),

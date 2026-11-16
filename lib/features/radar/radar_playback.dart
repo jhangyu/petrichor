@@ -170,6 +170,9 @@ int? radarNextReady(List<RadarSlot> slots, int index) {
 Object radarNoFrameError(RadarLoop loop, List<RadarSlot> failed) =>
     loop.listError ?? failed.map((s) => s.error).join('；');
 
+/// First line of [error]'s text, trimmed: the one-line cause in a failure banner.
+String firstLine(Object error) => '$error'.trim().split('\n').first.trim();
+
 /// Playback card meta line: buffering, playing, loading, else [idle].
 String radarPlaybackMeta({
   required bool buffering,
