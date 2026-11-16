@@ -1,6 +1,9 @@
 /// CWA data, radar file names, the CWA site and the mockup use Taiwan time (UTC+8, no DST).
 const taiwanUtcOffset = Duration(hours: 8);
 
+/// [taiwanUtcOffset] as an ISO-8601 offset, for CWA times that carry no zone.
+const taiwanOffsetText = '+08:00';
+
 /// Taiwan wall-clock fields of [t], carried in a UTC DateTime.
 DateTime taiwanWall(DateTime t) => t.toUtc().add(taiwanUtcOffset);
 

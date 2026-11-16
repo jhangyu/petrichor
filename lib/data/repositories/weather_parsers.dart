@@ -361,7 +361,7 @@ DateTime _sunTime(Object? raw, String date, String path) {
   if (text == null || !_sunClockPattern.hasMatch(text)) {
     throw FormatException('$path@$date：期望「HH:mm」，實際「$raw」');
   }
-  return DateTime.parse('${date}T$text:00+08:00');
+  return DateTime.parse('${date}T$text:00$taiwanOffsetText');
 }
 
 List<SunDay> _parseSunTimes(Map<String, dynamic> body, String county, List<String> days) {

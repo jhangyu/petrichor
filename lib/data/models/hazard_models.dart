@@ -1,14 +1,13 @@
 import 'dart:math' as math;
 
+import '../../core/time/taiwan_time.dart';
+
 // ============================================================================
 // JSON 邊界解析（錯誤一律為 FormatException，訊息含欄位路徑）
 // ============================================================================
 
 /// CWA 缺值標記（字串）
 const String _missingMarker = '-99';
-
-/// CWA 時間字串為台灣本地時間且不帶時區
-const String _taiwanOffset = '+08:00';
 
 Map<String, dynamic> _map(Object? v, String path) {
   if (v is Map<String, dynamic>) return v;
@@ -45,7 +44,7 @@ final _zonePattern = RegExp(r'[+-]\d\d:\d\d$');
 DateTime _time(Object? v, String path) {
   final s = _str(v, path);
   final hasZone = s.endsWith('Z') || _zonePattern.hasMatch(s);
-  final parsed = DateTime.tryParse(hasZone ? s : '${s.replaceFirst(' ', 'T')}$_taiwanOffset');
+  final parsed = DateTime.tryParse(hasZone ? s : '${s.replaceFirst(' ', 'T')}$taiwanOffsetText');
   if (parsed == null) throw FormatException('expected timestamp at $path, got "$s"');
   return parsed;
 }
