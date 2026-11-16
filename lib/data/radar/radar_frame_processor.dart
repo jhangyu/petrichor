@@ -22,7 +22,7 @@ import 'radar_webp.dart';
 /// source is upsampled from a ~1.27 km grid, so more width adds no echo
 /// detail (radar-perf-contract.md item 1); never lowered to fit memory (user
 /// decision). The map view never decodes wider than this.
-const radarStoredWidth = 2048;
+const _radarStoredWidth = 2048;
 
 /// Pixel rectangle, [left, right) x [top, bottom).
 typedef PixelRect = ({int left, int top, int right, int bottom});
@@ -38,7 +38,7 @@ class RadarImageGeometry {
   final LatLngBounds bounds;
 
   /// Full-resolution output row j is source row `rowMap[j]`; non-decreasing, within 0..size-1.
-  /// The stored image samples this map at [radarStoredWidth] scale.
+  /// The stored image samples this map at [_radarStoredWidth] scale.
   final List<int> rowMap;
 
   /// Rectangles (source px) drawn in legend colours that are not echo.
@@ -72,7 +72,7 @@ Uint32List _rgbaOfIndex(List<int> colours) {
 /// never held in memory):
 /// key echo pixels to palette indices (decorations → transparent), count the
 /// echo statistics (on the full-resolution source), copy each index row,
-/// sampled nearest-neighbour to [radarStoredWidth] px wide, to the output rows
+/// sampled nearest-neighbour to [_radarStoredWidth] px wide, to the output rows
 /// [g.rowMap] maps to it, encode one lossless WebP. Pure
 /// and synchronous: run it in a background isolate.
 ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
@@ -87,7 +87,7 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
           'output row $j maps to ${g.rowMap[j]} (previous ${j > 0 ? g.rowMap[j - 1] : 'none'})');
     }
   }
-  final outWidth = min(width, radarStoredWidth);
+  final outWidth = min(width, _radarStoredWidth);
   final outHeight = (g.rowMap.length * outWidth / width).round();
   final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
   final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);

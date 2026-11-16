@@ -14,8 +14,8 @@ library;
 import '../../core/time/taiwan_time.dart';
 
 const radarFrameListUrl = 'https://www.cwa.gov.tw/Data/js/obs_img/Observe_radar.js';
-const radarFrameBaseUrl = 'https://www.cwa.gov.tw/Data/radar/';
-const radarFrameSetPrefix = 'CV1_3600_';
+const _radarFrameBaseUrl = 'https://www.cwa.gov.tw/Data/radar/';
+const _radarFrameSetPrefix = 'CV1_3600_';
 
 /// Website frame cadence.
 const radarFrameStep = Duration(minutes: 10);
@@ -29,7 +29,7 @@ const radarStationBaseUrl = 'https://www.cwa.gov.tw/Data/radar_rain/';
 /// Longest look-back of a station loop: what the station list covers (~6.2 h).
 const radarStationMaxWindow = Duration(hours: 6);
 
-final _framePattern = RegExp("'$radarFrameSetPrefix(\\d{12})\\.png'");
+final _framePattern = RegExp("'$_radarFrameSetPrefix(\\d{12})\\.png'");
 
 /// One frame of a source: its time and the URL that names it (the frame PNG
 /// of a radar loop; failures of the frame are reported against it).
@@ -42,7 +42,7 @@ class RadarFrameRef {
 
   /// Website frame from the timestamp in its file name.
   RadarFrameRef.website(String stamp)
-      : this(time: radarStampTime(stamp), url: '$radarFrameBaseUrl$radarFrameSetPrefix$stamp.png');
+      : this(time: radarStampTime(stamp), url: '$_radarFrameBaseUrl$_radarFrameSetPrefix$stamp.png');
 
   @override
   bool operator ==(Object other) => other is RadarFrameRef && other.url == url;
@@ -85,7 +85,7 @@ List<RadarFrameRef> parseRadarFrameList(String js) {
   final frames = _framePattern.allMatches(js).map((m) => RadarFrameRef.website(m.group(1)!)).toSet().toList();
   if (frames.isEmpty) {
     throw FormatException(
-      "Observe_radar.js: expected entries matching '$radarFrameSetPrefix<yyyyMMddHHmm>.png', found none "
+      "Observe_radar.js: expected entries matching '$_radarFrameSetPrefix<yyyyMMddHHmm>.png', found none "
       '(${js.length} chars)',
     );
   }

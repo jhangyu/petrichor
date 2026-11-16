@@ -21,12 +21,12 @@ export 'radar_loop.dart';
 /// Frames processed at once (one isolate each). Measured on the Mac
 /// (docs/logs/2026-11-15/radar-perf-handover.md §9): 2 workers are 2.1x
 /// faster than 1 for ~+100 MB RSS; 4 workers cost +410 MB RSS (rejected).
-const radarProcessWorkers = 2;
+const _radarProcessWorkers = 2;
 
 /// Frames downloaded at once. Each download worker holds at most one body, so
-/// at most `radarFetchWorkers - radarProcessWorkers` = 2 downloaded bodies
+/// at most `_radarFetchWorkers - _radarProcessWorkers` = 2 downloaded bodies
 /// (~0.7 MB composite, ~1.1 MB station each) wait for a processing slot.
-const radarFetchWorkers = 4;
+const _radarFetchWorkers = 4;
 
 /// Turns a downloaded frame PNG into the cached frame ([RadarPngStep]);
 /// [radarProcessOffUiIsolate] except in tests.
@@ -76,8 +76,8 @@ class RadarFrame {
 
 /// Loads a source's frames: cached frames first, then the frame list, then
 /// the missing frames: the newest alone first (it is the one shown), then the
-/// rest oldest first (playback order). Up to [radarFetchWorkers] downloads run
-/// at once, processing (off the UI isolate) is limited to [radarProcessWorkers],
+/// rest oldest first (playback order). Up to [_radarFetchWorkers] downloads run
+/// at once, processing (off the UI isolate) is limited to [_radarProcessWorkers],
 /// and slots are published strictly in that order, one event per slot. Keeps
 /// [RadarSource.maxWindow] of frames on disk per source, so changing the
 /// window never deletes or reprocesses frames. How a frame is obtained is the
@@ -89,7 +89,7 @@ class RadarFrameRepository {
   final RadarFrameProcess process;
 
   /// Shared by all loads so the processing bound holds across back-to-back loads.
-  final _processPool = Pool(radarProcessWorkers);
+  final _processPool = Pool(_radarProcessWorkers);
 
   /// The last started load per cache family (first segment of
   /// [RadarSource.cachePath]). Loads of a family run one after another (they
@@ -253,7 +253,7 @@ class RadarFrameRepository {
       }
     }
 
-    await Future.wait([for (var i = 0; i < radarFetchWorkers; i++) worker()]);
+    await Future.wait([for (var i = 0; i < _radarFetchWorkers; i++) worker()]);
     sendSlots(loading: false);
   }
 

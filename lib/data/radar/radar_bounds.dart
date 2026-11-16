@@ -9,7 +9,7 @@ import 'radar_frame_processor.dart';
 const radarFrameSize = 3600;
 
 /// Decorations of the 3600 frame drawn in legend colours (measured on real frames).
-const websiteFrameDecorations = <PixelRect>[
+const _websiteFrameDecorations = <PixelRect>[
   (left: 3419, top: 2507, right: 3488, bottom: 3572), // dBZ colour bar
   (left: 97, top: 223, right: 146, bottom: 718), // radar station status dots
 ];
@@ -17,33 +17,33 @@ const websiteFrameDecorations = <PixelRect>[
 /// Decorations of the website station frames drawn in legend colours: only
 /// the dBZ colour bar (identical on all three stations, 66 x 1032 px; no other
 /// legend-colour pixels outside the 150 km circle, measured 2026-11-14).
-const stationFrameDecorations = <PixelRect>[
+const _stationFrameDecorations = <PixelRect>[
   (left: 3461, top: 2541, right: 3527, bottom: 3573),
 ];
 
 /// Extent of the 3600 frame (see [websiteRadarFrameBounds]).
-const radarFrameSouth = 17.75;
-const radarFrameNorth = 29.25;
-const radarFrameWest = 115.0;
-const radarFrameEast = 126.5;
+const _radarFrameSouth = 17.75;
+const _radarFrameNorth = 29.25;
+const _radarFrameWest = 115.0;
+const _radarFrameEast = 126.5;
 
 /// Mercator row map of the 3600 frame (3748 output rows).
-final radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: radarFrameSouth, north: radarFrameNorth);
+final _radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: _radarFrameSouth, north: _radarFrameNorth);
 
-/// Extent of the website `CV1_3600_` frames ([radarFrameWest] etc.). Same grid as open-data O-A0058-001
+/// Extent of the website `CV1_3600_` frames ([_radarFrameWest] etc.). Same grid as open-data O-A0058-001
 /// (pixel-identical image; graticule lines verified at whole degrees), see
 /// docs/logs/2026-11-14/radar-impl-notes.md. The source image is linear in
-/// latitude; the processor reprojects rows to Web Mercator ([radarFrameRowMap])
+/// latitude; the processor reprojects rows to Web Mercator ([_radarFrameRowMap])
 /// so this box can be used directly by flutter_map's `OverlayImage`.
 final websiteRadarFrameBounds =
-    LatLngBounds(const LatLng(radarFrameSouth, radarFrameWest), const LatLng(radarFrameNorth, radarFrameEast));
+    LatLngBounds(const LatLng(_radarFrameSouth, _radarFrameWest), const LatLng(_radarFrameNorth, _radarFrameEast));
 
 /// Processing of the website frames.
 final websiteRadarGeometry = RadarImageGeometry(
   size: radarFrameSize,
   bounds: websiteRadarFrameBounds,
-  rowMap: radarFrameRowMap,
-  decorations: websiteFrameDecorations,
+  rowMap: _radarFrameRowMap,
+  decorations: _websiteFrameDecorations,
 );
 
 /// Processing of one station image covering [bounds]: rows kept as they are
@@ -52,7 +52,7 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
       size: radarFrameSize,
       bounds: bounds,
       rowMap: List<int>.generate(radarFrameSize, (i) => i),
-      decorations: stationFrameDecorations,
+      decorations: _stationFrameDecorations,
     );
 
 /// A station radar: image-name code in the website station list, dataset id
