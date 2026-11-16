@@ -144,7 +144,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       ),
       _ => null,
     };
-    final sourceLine = view.sourceIds == null
+    final sourceLine = !view.showSourceLine
         ? null
         : Text(
             '資料來源：中央氣象署 官網雷達回波圖',
@@ -221,7 +221,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final name = _stationName(_source);
     return _RadarView(
       subtitle: _loopSubtitle(name, newest),
-      sourceIds: [_source],
+      showSourceLine: true,
       loading: loop.loading,
       hero: _heroCard(
         banner: switch ((_loopBanner(loop, failed, newest), opacityBanner)) {
@@ -416,7 +416,7 @@ class _RadarView {
     required this.subtitle,
     required this.hero,
     this.afterHero = const [],
-    this.sourceIds,
+    this.showSourceLine = false,
     this.loading = false,
   });
 
@@ -425,8 +425,8 @@ class _RadarView {
   final Widget Function(double? mapHeight) hero;
   final List<Widget> afterHero;
 
-  /// Dataset ids for the 資料來源 line; null on loading / error frames.
-  final List<String>? sourceIds;
+  /// Whether the 資料來源 line shows; false on loading / error frames.
+  final bool showSourceLine;
   final bool loading;
 }
 
