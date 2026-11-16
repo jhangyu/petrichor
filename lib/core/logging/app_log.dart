@@ -22,8 +22,9 @@ void appLog(String tag, String message) {
   }
   try {
     sink.write(tag, message);
-  } catch (e, st) {
-    debugPrint('[applog-write-failed] $e\n$st\nlost line: [$tag] $message');
+  } catch (error, stackTrace) {
+    debugPrint('[applog-write-failed] $error\n$stackTrace\n'
+        'lost line: [$tag] $message');
   }
 }
 

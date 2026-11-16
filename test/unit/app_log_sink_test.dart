@@ -12,22 +12,22 @@ void main() {
   test('each line is readable from disk right after write (flushed)', () {
     final sink = AppLogSink(dir)..open();
     sink.write('t', 'hello');
-    final text = File('${dir.path}/$kLogFileName').readAsStringSync();
+    final text = File('${dir.path}/$logFileName').readAsStringSync();
     expect(text, contains('[t] hello'));
   });
 
   test('rotates once the cap is reached and keeps one old generation', () {
     final sink = AppLogSink(dir)..open();
     final chunk = 'x' * 1024;
-    for (var i = 0; i < kLogMaxBytes ~/ 1024 + 2; i++) {
+    for (var i = 0; i < logMaximumBytes ~/ 1024 + 2; i++) {
       sink.write('fill', chunk);
     }
     sink.write('after', 'rotation');
-    expect(File('${dir.path}/$kLogRotatedFileName').existsSync(), isTrue);
-    final active = File('${dir.path}/$kLogFileName').readAsStringSync();
+    expect(File('${dir.path}/$rotatedLogFileName').existsSync(), isTrue);
+    final active = File('${dir.path}/$logFileName').readAsStringSync();
     expect(active, contains('[after] rotation'));
-    expect(File('${dir.path}/$kLogFileName').lengthSync(),
-        lessThan(kLogMaxBytes));
+    expect(File('${dir.path}/$logFileName').lengthSync(),
+        lessThan(logMaximumBytes));
   });
 
   test('previous session is unclean unless the marker was removed', () {
