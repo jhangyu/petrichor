@@ -57,19 +57,19 @@ class WindowSizeClass {
       };
 }
 
-/// Places [child] in an [AppGrid] cell spanning [span] columns, or the whole
+/// Places [child] in an [AppGrid] cell spanning [columnSpan] columns, or the whole
 /// row with [AppGridItem.full]. Children of an [AppGrid] that are not an
 /// [AppGridItem] span one column.
 class AppGridItem extends StatelessWidget {
-  const AppGridItem({super.key, required this.span, required this.child}) : assert(span >= 1);
+  const AppGridItem({super.key, required this.columnSpan, required this.child}) : assert(columnSpan >= 1);
 
-  const AppGridItem.full({super.key, required this.child}) : span = fullRow;
+  const AppGridItem.full({super.key, required this.child}) : columnSpan = spanFullRow;
 
-  /// [span] value meaning "the whole row, whatever the column count".
-  static const fullRow = 0;
+  /// [columnSpan] value meaning "the whole row, whatever the column count".
+  static const spanFullRow = 0;
 
-  /// Columns covered; clamped to the grid's column count. [fullRow] = whole row.
-  final int span;
+  /// Columns covered; clamped to the grid's column count. [spanFullRow] = whole row.
+  final int columnSpan;
   final Widget child;
 
   @override
@@ -110,7 +110,7 @@ class AppGrid extends StatelessWidget {
     return math.max(1, math.min(math.min(fit, maxColumns), spanUnits));
   }
 
-  static int _spanOf(Widget child) => child is AppGridItem ? child.span : 1;
+  static int _spanOf(Widget child) => child is AppGridItem ? child.columnSpan : 1;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +134,7 @@ class AppGrid extends StatelessWidget {
 
         for (final child in children) {
           final raw = _spanOf(child);
-          final span = raw == AppGridItem.fullRow ? columns : math.min(raw, columns);
+          final span = raw == AppGridItem.spanFullRow ? columns : math.min(raw, columns);
           if (used + span > columns) flush();
           row.add(SizedBox(width: cellWidth(span), child: child));
           used += span;
