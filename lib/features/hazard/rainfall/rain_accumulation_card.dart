@@ -18,6 +18,7 @@ import '../../radar/playback_frames.dart';
 import '../../radar/radar_playback.dart';
 import '../../radar/radar_player.dart';
 import '../../radar/radar_provider.dart';
+import '../../radar/radar_webp_image.dart';
 import '../../radar/widgets/playback_card.dart';
 import '../../radar/widgets/radar_map_view.dart';
 import 'rain_accumulation_provider.dart';

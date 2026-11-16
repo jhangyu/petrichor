@@ -1,10 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/painting.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 import 'radar_source.dart';
-import 'radar_webp_image.dart';
 
 /// One processed, cached frame: transparent lossless WebP with rows linear in
 /// Web Mercator, shown as one `OverlayImage` over [bounds]. Of the echo
@@ -37,10 +35,6 @@ class RadarFrame {
 
   /// Height / width of the decoded image.
   double get aspect => height / width;
-
-  /// Decoded at the stored size (~17 MB for a website frame); the map and its
-  /// pre-decode share this provider's cache entry.
-  ImageProvider get imageProvider => RadarWebpImage(file);
 }
 
 enum RadarSlotState { pending, ready, failed }

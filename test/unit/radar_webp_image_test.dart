@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:petrichor/data/radar/radar_webp_image.dart';
+import 'package:petrichor/features/radar/radar_webp_image.dart';
 
 import '../support/temporary_directory.dart';
 

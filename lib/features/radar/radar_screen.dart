@@ -27,6 +27,7 @@ import 'playback_frames.dart';
 import 'radar_playback.dart';
 import 'radar_player.dart';
 import 'radar_provider.dart';
+import 'radar_webp_image.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';

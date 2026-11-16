@@ -10,6 +10,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_frame_repository.dart';
+import '../radar_webp_image.dart';
 import 'basemap_theme.dart';
 import 'content_scaled_layer.dart';
 

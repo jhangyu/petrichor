@@ -5,7 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
-import 'radar_webp.dart';
+import '../../data/radar/radar_loop.dart';
+import '../../data/radar/radar_webp.dart';
 
 /// A cached radar frame (lossless WebP) decoded by libwebp on a background
 /// isolate at its stored size (the GPU scales it when drawing; an engine
@@ -72,4 +73,10 @@ class RadarWebpImage extends ImageProvider<RadarWebpImage> {
 
   @override
   String toString() => '${objectRuntimeType(this, 'RadarWebpImage')}("${file.path}")';
+}
+
+extension RadarFrameImage on RadarFrame {
+  /// Decoded at the stored size (~17 MB for a website frame); the map and its
+  /// pre-decode share this provider's cache entry.
+  ImageProvider get imageProvider => RadarWebpImage(file);
 }
