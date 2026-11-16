@@ -15,18 +15,18 @@ const int _weeklyDayCount = 7;
 const int _daySlotStartHour = 6;
 const String _wgs84 = 'WGS84';
 
-Map<String, dynamic> _obj(Object? v, String path) {
+Map<String, dynamic> _asObject(Object? v, String path) {
   if (v is Map<String, dynamic>) return v;
   throw FormatException('$path：期望物件，實際 ${v.runtimeType}');
 }
 
-List<Object?> _list(Object? v, String path) {
+List<Object?> _asList(Object? v, String path) {
   if (v is List<Object?>) return v;
   throw FormatException('$path：期望陣列，實際 ${v.runtimeType}');
 }
 
 /// 沿路徑取值；中途缺少即回 null（欄位可選）。
-Object? _dig(Map<String, dynamic> m, List<String> path) {
+Object? _digPath(Map<String, dynamic> m, List<String> path) {
   Object? cur = m;
   for (final key in path) {
     if (cur is! Map<String, dynamic>) return null;
@@ -37,23 +37,23 @@ Object? _dig(Map<String, dynamic> m, List<String> path) {
 
 /// `records.Station`, at least one station.
 List<Object?> _stationList(Map<String, dynamic> body) {
-  final stations = _list(_dig(body, ['records', 'Station']), 'records.Station');
+  final stations = _asList(_digPath(body, ['records', 'Station']), 'records.Station');
   if (stations.isEmpty) throw const FormatException('records.Station：期望至少 1 站，實際 0 站');
   return stations;
 }
 
 /// `records.Locations[0]`, which must exist.
 Map<String, dynamic> _firstLocationGroup(Map<String, dynamic> body) {
-  final groups = _list(_dig(body, ['records', 'Locations']), 'records.Locations');
+  final groups = _asList(_digPath(body, ['records', 'Locations']), 'records.Locations');
   if (groups.isEmpty) throw const FormatException('records.Locations：期望 1 組，實際 0 組');
-  return _obj(groups.first, 'records.Locations[0]');
+  return _asObject(groups.first, 'records.Locations[0]');
 }
 
 /// CWA 以「-」表示該時間槽無值（例如 12 小時降雨機率）。
 const _noValueMarker = '-';
 
 /// 數值字串 → double；缺值（null、-99、「-」）→ null；其他非數字 → FormatException。
-double? _num(Object? raw, String path) {
+double? _asNumber(Object? raw, String path) {
   if (raw == null) return null;
   final text = raw.toString().trim();
   if (text == _noValueMarker) return null;
@@ -62,7 +62,7 @@ double? _num(Object? raw, String path) {
   return value == _missingValue ? null : value;
 }
 
-int? _int(Object? raw, String path) => _num(raw, path)?.round();
+int? _int(Object? raw, String path) => _asNumber(raw, path)?.round();
 
 /// 文字欄位；缺值（null、-99、空字串）→ null。
 String? _text(Object? raw) {
@@ -71,32 +71,32 @@ String? _text(Object? raw) {
   return (text.isEmpty || text == _missingText) ? null : text;
 }
 
-DateTime _time(Object? raw, String path) {
+DateTime _asInstant(Object? raw, String path) {
   if (raw is! String) throw FormatException('$path：期望時間字串，實際 ${raw.runtimeType}');
   return DateTime.parse(raw);
 }
 
 double _distanceKilometers(double lat1, double lon1, double lat2, double lon2) {
-  double rad(double deg) => deg * math.pi / 180;
-  final dLat = rad(lat2 - lat1);
-  final dLon = rad(lon2 - lon1);
-  final a = math.pow(math.sin(dLat / 2), 2) +
-      math.cos(rad(lat1)) * math.cos(rad(lat2)) * math.pow(math.sin(dLon / 2), 2);
+  double radians(double degrees) => degrees * math.pi / 180;
+  final latitudeDelta = radians(lat2 - lat1);
+  final longitudeDelta = radians(lon2 - lon1);
+  final a = math.pow(math.sin(latitudeDelta / 2), 2) +
+      math.cos(radians(lat1)) * math.cos(radians(lat2)) * math.pow(math.sin(longitudeDelta / 2), 2);
   return 2 * AppConstants.earthRadiusKm * math.asin(math.sqrt(a));
 }
 
-CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double lon) {
+CurrentWeather _parseObservation(Map<String, dynamic> body, double latitude, double longitude) {
   final stations = _stationList(body);
 
   Map<String, dynamic>? best;
   double bestKm = double.infinity;
   for (var i = 0; i < stations.length; i++) {
     final path = 'records.Station[$i]';
-    final station = _obj(stations[i], path);
-    final temp = _num(_dig(station, ['WeatherElement', 'AirTemperature']), '$path.AirTemperature');
+    final station = _asObject(stations[i], path);
+    final temp = _asNumber(_digPath(station, ['WeatherElement', 'AirTemperature']), '$path.AirTemperature');
     if (temp == null) continue;
-    final (sLat, sLon) = _wgs84Of(station, path);
-    final km = _distanceKilometers(lat, lon, sLat, sLon);
+    final (stationLatitude, stationLongitude) = _wgs84Of(station, path);
+    final km = _distanceKilometers(latitude, longitude, stationLatitude, stationLongitude);
     if (km < bestKm) {
       bestKm = km;
       best = station;
@@ -106,21 +106,21 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
     throw FormatException('期望至少 1 站有氣溫讀數，實際 ${stations.length} 站皆缺氣溫');
   }
 
-  final we = _obj(best['WeatherElement'], 'WeatherElement');
+  final weatherElement = _asObject(best['WeatherElement'], 'WeatherElement');
   return CurrentWeather(
     stationName: _text(best['StationName']) ?? '',
-    observedAt: _time(_dig(best, ['ObsTime', 'DateTime']), 'ObsTime.DateTime'),
-    temperature: _num(we['AirTemperature'], 'AirTemperature')!,
-    humidity: _int(we['RelativeHumidity'], 'RelativeHumidity'),
-    windSpeed: _num(we['WindSpeed'], 'WindSpeed'),
-    windDirection: _observedWind(we['WindDirection']),
-    weather: _text(we['Weather']),
-    dailyHigh: _num(
-      _dig(we, ['DailyExtreme', 'DailyHigh', 'TemperatureInfo', 'AirTemperature']),
+    observedAt: _asInstant(_digPath(best, ['ObsTime', 'DateTime']), 'ObsTime.DateTime'),
+    temperature: _asNumber(weatherElement['AirTemperature'], 'AirTemperature')!,
+    humidity: _int(weatherElement['RelativeHumidity'], 'RelativeHumidity'),
+    windSpeed: _asNumber(weatherElement['WindSpeed'], 'WindSpeed'),
+    windDirection: _observedWind(weatherElement['WindDirection']),
+    weather: _text(weatherElement['Weather']),
+    dailyHigh: _asNumber(
+      _digPath(weatherElement, ['DailyExtreme', 'DailyHigh', 'TemperatureInfo', 'AirTemperature']),
       'DailyHigh',
     ),
-    dailyLow: _num(
-      _dig(we, ['DailyExtreme', 'DailyLow', 'TemperatureInfo', 'AirTemperature']),
+    dailyLow: _asNumber(
+      _digPath(weatherElement, ['DailyExtreme', 'DailyLow', 'TemperatureInfo', 'AirTemperature']),
       'DailyLow',
     ),
   );
@@ -134,38 +134,38 @@ class _StationCounty {
 }
 
 /// 全部測站依距離由近到遠排序；縣市名正規化成「臺」。
-List<_StationCounty> _parseStationCounties(Map<String, dynamic> body, double lat, double lon) {
+List<_StationCounty> _parseStationCounties(Map<String, dynamic> body, double latitude, double longitude) {
   final stations = _stationList(body);
   return [
     for (var i = 0; i < stations.length; i++)
-      _stationCounty(_obj(stations[i], 'records.Station[$i]'), lat, lon, 'records.Station[$i]'),
+      _stationCounty(_asObject(stations[i], 'records.Station[$i]'), latitude, longitude, 'records.Station[$i]'),
   ]..sort((a, b) => a.km.compareTo(b.km));
 }
 
-_StationCounty _stationCounty(Map<String, dynamic> station, double lat, double lon, String path) {
-  final county = _text(_dig(station, ['GeoInfo', 'CountyName'])) ??
+_StationCounty _stationCounty(Map<String, dynamic> station, double latitude, double longitude, String path) {
+  final county = _text(_digPath(station, ['GeoInfo', 'CountyName'])) ??
       (throw FormatException('$path.GeoInfo.CountyName：期望縣市名，實際缺值'));
-  final (sLat, sLon) = _wgs84Of(station, path);
-  return _StationCounty(normalizeCwaPlaceName(county), _distanceKilometers(lat, lon, sLat, sLon));
+  final (stationLatitude, stationLongitude) = _wgs84Of(station, path);
+  return _StationCounty(normalizeCwaPlaceName(county), _distanceKilometers(latitude, longitude, stationLatitude, stationLongitude));
 }
 
 (double, double) _wgs84Of(Map<String, dynamic> station, String path) {
-  final coords = _list(_dig(station, ['GeoInfo', 'Coordinates']), '$path.GeoInfo.Coordinates')
-      .map((c) => _obj(c, '$path.GeoInfo.Coordinates[]'))
+  final coords = _asList(_digPath(station, ['GeoInfo', 'Coordinates']), '$path.GeoInfo.Coordinates')
+      .map((c) => _asObject(c, '$path.GeoInfo.Coordinates[]'))
       .firstWhere(
         (c) => c['CoordinateName'] == _wgs84,
         orElse: () => throw FormatException('$path：缺少 $_wgs84 座標'),
       );
   return (
-    _num(coords['StationLatitude'], '$path.StationLatitude') ??
+    _asNumber(coords['StationLatitude'], '$path.StationLatitude') ??
         (throw FormatException('$path.StationLatitude：期望緯度，實際缺值')),
-    _num(coords['StationLongitude'], '$path.StationLongitude') ??
+    _asNumber(coords['StationLongitude'], '$path.StationLongitude') ??
         (throw FormatException('$path.StationLongitude：期望經度，實際缺值')),
   );
 }
 
-Place _nearestPlace(List<Place> places, double lat, double lon) => places.reduce((a, b) =>
-    _distanceKilometers(lat, lon, a.latitude, a.longitude) <= _distanceKilometers(lat, lon, b.latitude, b.longitude) ? a : b);
+Place _nearestPlace(List<Place> places, double latitude, double longitude) => places.reduce((a, b) =>
+    _distanceKilometers(latitude, longitude, a.latitude, a.longitude) <= _distanceKilometers(latitude, longitude, b.latitude, b.longitude) ? a : b);
 
 final _issueTimePattern = RegExp(r'"IssueTime"\s*:\s*"([^"]+)"');
 final _sunClockPattern = RegExp(r'^\d{2}:\d{2}$');
@@ -179,7 +179,7 @@ DateTime _parseIssueTime(String head, String dataset) {
       '$dataset 前 ${head.length} 位元組：期望含 DatasetInfo.IssueTime，實際開頭「${head.substring(0, math.min(head.length, 80))}」',
     );
   }
-  return _time(match.group(1), 'DatasetInfo.IssueTime');
+  return _asInstant(match.group(1), 'DatasetInfo.IssueTime');
 }
 
 /// 觀測風向的特殊值（度）：0＝靜風，990＝風向不定；其餘 1–360 為方位角（360＝北）。
@@ -189,37 +189,37 @@ const double _fullCircleDegrees = 360;
 
 /// 觀測風向（度，字串）→ [ObservedWind]；缺值 → null；範圍外 → FormatException。
 ObservedWind? _observedWind(Object? raw) {
-  final deg = _num(raw, 'WindDirection');
-  if (deg == null) return null;
-  if (deg == _calmWindDegrees) return const ObservedWind.calm();
-  if (deg == _variableWindDegrees) return const ObservedWind.variable();
-  if (deg < 0 || deg > _fullCircleDegrees) {
+  final degrees = _asNumber(raw, 'WindDirection');
+  if (degrees == null) return null;
+  if (degrees == _calmWindDegrees) return const ObservedWind.calm();
+  if (degrees == _variableWindDegrees) return const ObservedWind.variable();
+  if (degrees < 0 || degrees > _fullCircleDegrees) {
     throw FormatException(
       'WindDirection：期望 0（靜風）、1–360 度或 990（風向不定），實際「$raw」',
     );
   }
-  return ObservedWind.degrees(deg);
+  return ObservedWind.degrees(degrees);
 }
 
 List<Place> _parseTowns(Map<String, dynamic> body, String county) {
   final group = _firstLocationGroup(body);
   final actual = normalizeCwaPlaceName(_text(group['LocationsName']) ?? '');
   if (actual != county) throw FormatException('LocationsName：期望「$county」，實際「$actual」');
-  final list = _list(group['Location'], 'Location');
+  final list = _asList(group['Location'], 'Location');
   if (list.isEmpty) throw FormatException('$county Location：期望至少 1 個鄉鎮，實際 0 個');
   return [
     for (var i = 0; i < list.length; i++)
-      _town(_obj(list[i], 'Location[$i]'), county, 'Location[$i]'),
+      _town(_asObject(list[i], 'Location[$i]'), county, 'Location[$i]'),
   ];
 }
 
-Place _town(Map<String, dynamic> loc, String county, String path) {
-  final town = _text(loc['LocationName']) ?? (throw FormatException('$path.LocationName：期望鄉鎮名，實際「${loc['LocationName']}」'));
+Place _town(Map<String, dynamic> locationJson, String county, String path) {
+  final town = _text(locationJson['LocationName']) ?? (throw FormatException('$path.LocationName：期望鄉鎮名，實際「${locationJson['LocationName']}」'));
   return Place(
     county: county,
     town: normalizeCwaPlaceName(town),
-    latitude: _num(loc['Latitude'], '$path.Latitude') ?? (throw FormatException('$path.Latitude：期望緯度，實際缺值')),
-    longitude: _num(loc['Longitude'], '$path.Longitude') ?? (throw FormatException('$path.Longitude：期望經度，實際缺值')),
+    latitude: _asNumber(locationJson['Latitude'], '$path.Latitude') ?? (throw FormatException('$path.Latitude：期望緯度，實際缺值')),
+    longitude: _asNumber(locationJson['Longitude'], '$path.Longitude') ?? (throw FormatException('$path.Longitude：期望經度，實際缺值')),
   );
 }
 
@@ -234,27 +234,27 @@ class _Slot {
 typedef _Elements = Map<String, Map<DateTime, _Slot>>;
 
 _Elements _parseElements(Map<String, dynamic> body, String township) {
-  final list = _list(_firstLocationGroup(body)['Location'], 'Location');
+  final list = _asList(_firstLocationGroup(body)['Location'], 'Location');
   final names = <String>[];
   for (final item in list) {
-    final loc = _obj(item, 'Location[]');
-    final name = _text(loc['LocationName']) ?? '';
+    final locationJson = _asObject(item, 'Location[]');
+    final name = _text(locationJson['LocationName']) ?? '';
     names.add(name);
     if (name != township) continue;
     final elements = <String, Map<DateTime, _Slot>>{};
-    for (final e in _list(loc['WeatherElement'], '$name.WeatherElement')) {
-      final em = _obj(e, '$name.WeatherElement[]');
-      final elementName = _text(em['ElementName']) ?? '';
+    for (final e in _asList(locationJson['WeatherElement'], '$name.WeatherElement')) {
+      final elementJson = _asObject(e, '$name.WeatherElement[]');
+      final elementName = _text(elementJson['ElementName']) ?? '';
       final slots = <DateTime, _Slot>{};
-      for (final t in _list(em['Time'], '$elementName.Time')) {
-        final tm = _obj(t, '$elementName.Time[]');
-        final rawStart = tm['StartTime'] ?? tm['DataTime'];
-        final rawEnd = tm['EndTime'];
-        final values = _list(tm['ElementValue'], '$elementName.ElementValue');
+      for (final t in _asList(elementJson['Time'], '$elementName.Time')) {
+        final timeJson = _asObject(t, '$elementName.Time[]');
+        final rawStart = timeJson['StartTime'] ?? timeJson['DataTime'];
+        final rawEnd = timeJson['EndTime'];
+        final values = _asList(timeJson['ElementValue'], '$elementName.ElementValue');
         if (values.isEmpty) throw FormatException('$elementName：ElementValue 為空');
-        slots[_time(rawStart, '$elementName.StartTime')] = _Slot(
-          rawEnd == null ? null : _time(rawEnd, '$elementName.EndTime'),
-          _obj(values.first, '$elementName.ElementValue[0]'),
+        slots[_asInstant(rawStart, '$elementName.StartTime')] = _Slot(
+          rawEnd == null ? null : _asInstant(rawEnd, '$elementName.EndTime'),
+          _asObject(values.first, '$elementName.ElementValue[0]'),
         );
       }
       elements[elementName] = Map.fromEntries(
@@ -272,23 +272,23 @@ Map<DateTime, _Slot> _element(_Elements elements, String name) =>
     elements[name] ?? (throw FormatException('缺少要素「$name」，實際要素：${elements.keys.join('、')}'));
 
 List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
-  final els = _parseElements(body, township);
-  final weather = _element(els, '天氣現象');
-  final temperature = _element(els, '溫度');
-  final apparent = _element(els, '體感溫度');
-  final humidity = _element(els, '相對濕度');
-  final windSpeed = _element(els, '風速');
-  final windDirection = _element(els, '風向');
-  final pop = _element(els, '3小時降雨機率');
-  final description = _element(els, '天氣預報綜合描述');
+  final elementsByName = _parseElements(body, township);
+  final weather = _element(elementsByName, '天氣現象');
+  final temperature = _element(elementsByName, '溫度');
+  final apparent = _element(elementsByName, '體感溫度');
+  final humidity = _element(elementsByName, '相對濕度');
+  final windSpeed = _element(elementsByName, '風速');
+  final windDirection = _element(elementsByName, '風向');
+  final pop = _element(elementsByName, '3小時降雨機率');
+  final description = _element(elementsByName, '天氣預報綜合描述');
   return [
     for (final start in weather.keys)
       HourlyForecast(
         startTime: start,
-        temperature: _num(temperature[start]?.value['Temperature'], '溫度@$start'),
-        apparentTemperature: _num(apparent[start]?.value['ApparentTemperature'], '體感溫度@$start'),
+        temperature: _asNumber(temperature[start]?.value['Temperature'], '溫度@$start'),
+        apparentTemperature: _asNumber(apparent[start]?.value['ApparentTemperature'], '體感溫度@$start'),
         humidity: _int(humidity[start]?.value['RelativeHumidity'], '相對濕度@$start'),
-        windSpeed: _num(windSpeed[start]?.value['WindSpeed'], '風速@$start'),
+        windSpeed: _asNumber(windSpeed[start]?.value['WindSpeed'], '風速@$start'),
         windDirection: _text(windDirection[start]?.value['WindDirection']),
         pop: _int(pop[start]?.value['ProbabilityOfPrecipitation'], '3小時降雨機率@$start'),
         weather: _text(weather[start]!.value['Weather']),
@@ -301,15 +301,15 @@ List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
 /// 一週預報為 12 小時時段（白天 06–18、夜間 18–06）。
 /// 單日最高／最低溫 = 該臺灣曆日所涉時段的最高／最低；其餘欄位取該日白天時段（今天只剩夜間時只取夜間）。
 List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
-  final els = _parseElements(body, township);
-  final maxT = _element(els, '最高溫度');
-  final minT = _element(els, '最低溫度');
-  final maxA = _element(els, '最高體感溫度');
-  final minA = _element(els, '最低體感溫度');
-  final humidity = _element(els, '平均相對濕度');
-  final windSpeed = _element(els, '風速');
-  final pop = _element(els, '12小時降雨機率');
-  final weather = _element(els, '天氣現象');
+  final elementsByName = _parseElements(body, township);
+  final maxT = _element(elementsByName, '最高溫度');
+  final minT = _element(elementsByName, '最低溫度');
+  final maxA = _element(elementsByName, '最高體感溫度');
+  final minA = _element(elementsByName, '最低體感溫度');
+  final humidity = _element(elementsByName, '平均相對濕度');
+  final windSpeed = _element(elementsByName, '風速');
+  final pop = _element(elementsByName, '12小時降雨機率');
+  final weather = _element(elementsByName, '天氣現象');
 
   final slotsByDate = <String, List<DateTime>>{};
   for (final entry in maxT.entries) {
@@ -326,7 +326,7 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
 
   double? extreme(Map<DateTime, _Slot> element, String key, List<DateTime> starts, bool max) {
     final values = [
-      for (final s in starts) _num(element[s]?.value[key], '$key@$s'),
+      for (final s in starts) _asNumber(element[s]?.value[key], '$key@$s'),
     ].whereType<double>();
     if (values.isEmpty) return null;
     return values.reduce((a, b) => max ? math.max(a, b) : math.min(a, b));
@@ -335,7 +335,7 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
   final days = <DailyForecast>[];
   for (final entry in slotsByDate.entries.take(_weeklyDayCount)) {
     final starts = entry.value;
-    final rep = starts.firstWhere(
+    final representativeStart = starts.firstWhere(
       (s) => s.add(taiwanUtcOffset).hour == _daySlotStartHour && isoDate(s.add(taiwanUtcOffset)) == entry.key,
       orElse: () => starts.first,
     );
@@ -345,11 +345,11 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
       minTemperature: extreme(minT, 'MinTemperature', starts, false),
       maxApparentTemperature: extreme(maxA, 'MaxApparentTemperature', starts, true),
       minApparentTemperature: extreme(minA, 'MinApparentTemperature', starts, false),
-      humidity: _int(humidity[rep]?.value['RelativeHumidity'], '平均相對濕度@$rep'),
-      windSpeed: _num(windSpeed[rep]?.value['WindSpeed'], '風速@$rep'),
-      pop: _int(pop[rep]?.value['ProbabilityOfPrecipitation'], '12小時降雨機率@$rep'),
-      weather: _text(weather[rep]?.value['Weather']),
-      weatherCode: _text(weather[rep]?.value['WeatherCode']),
+      humidity: _int(humidity[representativeStart]?.value['RelativeHumidity'], '平均相對濕度@$representativeStart'),
+      windSpeed: _asNumber(windSpeed[representativeStart]?.value['WindSpeed'], '風速@$representativeStart'),
+      pop: _int(pop[representativeStart]?.value['ProbabilityOfPrecipitation'], '12小時降雨機率@$representativeStart'),
+      weather: _text(weather[representativeStart]?.value['Weather']),
+      weatherCode: _text(weather[representativeStart]?.value['WeatherCode']),
     ));
   }
   return days;
@@ -365,16 +365,16 @@ DateTime _sunTime(Object? raw, String date, String path) {
 }
 
 List<SunDay> _parseSunTimes(Map<String, dynamic> body, String county, List<String> days) {
-  final locations = _list(_dig(body, ['records', 'locations', 'location']), 'records.locations.location');
+  final locations = _asList(_digPath(body, ['records', 'locations', 'location']), 'records.locations.location');
   final names = <String>[];
   for (final item in locations) {
-    final loc = _obj(item, 'location[]');
-    final name = _text(loc['CountyName']) ?? '';
+    final locationJson = _asObject(item, 'location[]');
+    final name = _text(locationJson['CountyName']) ?? '';
     names.add(name);
     if (name != county) continue;
     final byDate = {
-      for (final t in _list(loc['time'], '$name.time'))
-        _text(_obj(t, '$name.time[]')['Date']): _obj(t, '$name.time[]'),
+      for (final t in _asList(locationJson['time'], '$name.time'))
+        _text(_asObject(t, '$name.time[]')['Date']): _asObject(t, '$name.time[]'),
     };
     return [
       for (final date in days)
