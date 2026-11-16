@@ -55,7 +55,7 @@ class AccumulationCard extends ConsumerStatefulWidget {
 
 class _AccumulationCardState extends ConsumerState<AccumulationCard> {
   late final RadarPlayer _player = RadarPlayer(
-    slots: () => ref.read(accumLoopProvider(ref.read(rainAccumWindowProvider).requireValue)).value?.slots,
+    slots: () => ref.read(accumulationLoopProvider(ref.read(rainAccumulationWindowProvider).requireValue)).value?.slots,
     fps: () => ref.read(radarFpsProvider(_group)).requireValue,
     repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
     onChanged: () => setState(() {}),
@@ -69,7 +69,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
 
   void _setWindow(int hours) {
     _player.reset();
-    unawaited(ref.read(rainAccumWindowProvider.notifier).set(hours));
+    unawaited(ref.read(rainAccumulationWindowProvider.notifier).set(hours));
   }
 
   void _setFps(int fps) {
@@ -79,11 +79,11 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
 
   void _retry(int hours) {
     _player.reset();
-    ref.invalidate(accumLoopProvider(hours));
+    ref.invalidate(accumulationLoopProvider(hours));
   }
 
   void _resetSettings(AsyncValue<int> window, AsyncValue<int> fps, AsyncValue<bool> repeat) {
-    if (window.hasError) unawaited(ref.read(rainAccumWindowProvider.notifier).reset());
+    if (window.hasError) unawaited(ref.read(rainAccumulationWindowProvider.notifier).reset());
     if (fps.hasError) unawaited(ref.read(radarFpsProvider(_group).notifier).reset());
     if (repeat.hasError) unawaited(ref.read(radarRepeatProvider(_group).notifier).reset());
   }
@@ -97,7 +97,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
         child: StatusBanner(tone: StatusTone.error, title: '網頁版無法取得此資料', text: '累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。'),
       );
     }
-    final window = ref.watch(rainAccumWindowProvider);
+    final window = ref.watch(rainAccumulationWindowProvider);
     final fps = ref.watch(radarFpsProvider(_group));
     final repeat = ref.watch(radarRepeatProvider(_group));
     if (window.hasError || fps.hasError || repeat.hasError) {
@@ -117,8 +117,8 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       return const AppCard.loading(title: _cardTitle, skeletonHeight: _skeletonHeight);
     }
     final hours = window.requireValue;
-    ref.listen(accumLoopProvider(hours), (_, _) => _player.onLoopUpdate());
-    final loop = ref.watch(accumLoopProvider(hours));
+    ref.listen(accumulationLoopProvider(hours), (_, _) => _player.onLoopUpdate());
+    final loop = ref.watch(accumulationLoopProvider(hours));
     final (meta, (:banner, :map, :playback)) = switch (loop) {
       AsyncError(:final error) => ('無法取得', _failureBody(hours, '$error')),
       AsyncValue(:final value?) => _loopBody(hours, value, fps.requireValue, repeat.requireValue),

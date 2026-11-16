@@ -92,7 +92,7 @@ class RainfallScreen extends ConsumerWidget {
             for (final retry in retries) {
               retry();
             }
-            ref.invalidate(accumLoopProvider);
+            ref.invalidate(accumulationLoopProvider);
           };
   }
 
