@@ -97,7 +97,7 @@ class WeatherNotifier extends Notifier<WeatherState> {
       repo.getHourlyForecast(place.county, place.town),
       repo.getWeeklyForecast(place.county, place.town),
       repo.getSunTimes(place.county, ref.read(weatherClockProvider)()),
-      repo.getForecastIssueTime(place.county),
+      repo.getForecastIssuedAt(place.county),
     ).wait;
     // 地點已變更（重新 build）則丟棄舊結果
     if (!buildRef.mounted) return;

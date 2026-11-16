@@ -150,10 +150,10 @@ void main() {
     });
   });
 
-  group('getForecastIssueTime (file API head of the 3-day dataset)', () {
+  group('getForecastIssuedAt (file API head of the 3-day dataset)', () {
     test('reads DatasetInfo.IssueTime from the first bytes only', () async {
       adapter.routes['F-D0047-061'] = (206, File('test/fixtures/cwa/F-D0047-061-head.txt').readAsStringSync());
-      final r = await repository.getForecastIssueTime('台北市');
+      final r = await repository.getForecastIssuedAt('台北市');
 
       final request = adapter.requests.single;
       expect(request.path, '/fileapi/v1/opendataapi/F-D0047-061');
@@ -162,7 +162,7 @@ void main() {
 
     test('a head without IssueTime is a Failure naming the dataset', () async {
       adapter.routes['F-D0047-061'] = (206, '{"cwaopendata": {"Sent": "2026-11-14T19:18:40+08:00"');
-      final r = await repository.getForecastIssueTime('臺北市');
+      final r = await repository.getForecastIssuedAt('臺北市');
 
       final f = r as Failure;
       expect(f.dataset, 'F-D0047-061');

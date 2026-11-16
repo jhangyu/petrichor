@@ -166,7 +166,7 @@ class WeatherRepository {
 
   /// 取得 [county] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
   /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
-  Future<Result<DateTime>> getForecastIssueTime(String county) {
+  Future<Result<DateTime>> getForecastIssuedAt(String county) {
     final countyName = normalizeCwaPlaceName(county);
     final ids = AppConstants.townshipForecastDatasets[countyName];
     if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
