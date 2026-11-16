@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:petrichor/data/models/weather_models.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/core/api/result.dart';
@@ -152,7 +150,7 @@ void main() {
 
   group('getForecastIssuedAt (file API head of the 3-day dataset)', () {
     test('reads DatasetInfo.IssueTime from the first bytes only', () async {
-      adapter.routes['F-D0047-061'] = (206, File('test/fixtures/cwa/F-D0047-061-head.txt').readAsStringSync());
+      adapter.routes['F-D0047-061'] = (206, readCwaFixture('F-D0047-061-head.txt'));
       final r = await repository.getForecastIssuedAt('台北市');
 
       final request = adapter.requests.single;
@@ -221,6 +219,32 @@ void main() {
       final f = r as Failure;
       expect(f.dataset, 'F-D0047-063');
       expect(f.message, contains('期望地點「中正區」'));
+    });
+
+    test('"-" 12-hour rain probability is a missing slot (null), other values intact', () async {
+      adapter.serveFixture('F-D0047-091', (json) {
+        _weeklyValue(json, '12小時降雨機率', 1)['ProbabilityOfPrecipitation'] = '-';
+        return null;
+      }, 'F-D0047-063');
+      final r = await repository.getWeeklyForecast('臺北市', '臺北市');
+
+      final days = r.data;
+      expect(days[1].pop, isNull);
+      expect(days[1].maxTemperature, 24);
+      expect(days[1].humidity, 92);
+      expect(days[2].pop, 30);
+    });
+
+    test('non-numeric value other than "-" is still a Failure naming expected and actual', () async {
+      adapter.serveFixture('F-D0047-091', (json) {
+        _weeklyValue(json, '12小時降雨機率', 1)['ProbabilityOfPrecipitation'] = 'abc';
+        return null;
+      }, 'F-D0047-063');
+      final r = await repository.getWeeklyForecast('臺北市', '臺北市');
+
+      final f = r as Failure;
+      expect(f.dataset, 'F-D0047-063');
+      expect(f.message, contains('期望數字，實際「abc」'));
     });
   });
 

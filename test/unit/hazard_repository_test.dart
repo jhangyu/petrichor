@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:petrichor/core/api/api_key.dart';
 import 'package:petrichor/core/api/dio_providers.dart';
@@ -12,9 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/provider_container.dart';
 import '../support/fake_cwa_adapter.dart';
 
-String _fixture(String id) => File('test/fixtures/cwa/$id.json').readAsStringSync();
-
-Map<String, dynamic> _fixtureJson(String id) => jsonDecode(_fixture(id)) as Map<String, dynamic>;
+Map<String, dynamic> _fixtureJson(String id) => jsonDecode(readCwaFixture('$id.json')) as Map<String, dynamic>;
 
 (int, String) _ok(Object body) => (200, body is String ? body : jsonEncode(body));
 
@@ -43,8 +40,8 @@ void main() {
   group('getActiveWarnings', () {
     test('joins county warnings with bulletins by county and valid period', () async {
       final repository = _hazardRepository({
-        'W-C0033-001': _ok(_fixture('W-C0033-001')),
-        'W-C0033-002': _ok(_fixture('W-C0033-002')),
+        'W-C0033-001': _ok(readCwaFixture('W-C0033-001.json')),
+        'W-C0033-002': _ok(readCwaFixture('W-C0033-002.json')),
       });
       final w = (await repository.getActiveWarnings()).data;
 
@@ -70,8 +67,8 @@ void main() {
     test('updatedAt is the newest bulletin update, fetchedAt comes from the injected clock', () async {
       final fetched = _taiwanTime('2026-11-14T22:50:00');
       final repository = _hazardRepository({
-        'W-C0033-001': _ok(_fixture('W-C0033-001')),
-        'W-C0033-002': _ok(_fixture('W-C0033-002')),
+        'W-C0033-001': _ok(readCwaFixture('W-C0033-001.json')),
+        'W-C0033-002': _ok(readCwaFixture('W-C0033-002.json')),
       }, clock: () => fetched);
       final w = (await repository.getActiveWarnings()).data;
       expect(w.fetchedAt, fetched);
@@ -96,7 +93,7 @@ void main() {
 
     test('active warnings without any bulletin is Failure naming -002', () async {
       final repository = _hazardRepository({
-        'W-C0033-001': _ok(_fixture('W-C0033-001')),
+        'W-C0033-001': _ok(readCwaFixture('W-C0033-001.json')),
         'W-C0033-002': _ok({'success': 'true', 'records': <String, dynamic>{}}),
       });
       final r = await repository.getActiveWarnings();
@@ -106,10 +103,10 @@ void main() {
 
     test('lifted bulletin without hazardConditions is skipped, active ones still join', () async {
       final w2 = _fixtureJson('W-C0033-002');
-      final lifted = jsonDecode(_fixture('W-C0033-002-lifted-record'));
+      final lifted = jsonDecode(readCwaFixture('W-C0033-002-lifted-record.json'));
       (w2['records']['record'] as List).insert(0, lifted);
       final repository = _hazardRepository({
-        'W-C0033-001': _ok(_fixture('W-C0033-001')),
+        'W-C0033-001': _ok(readCwaFixture('W-C0033-001.json')),
         'W-C0033-002': _ok(w2),
       });
       final r = await repository.getActiveWarnings();
@@ -122,7 +119,7 @@ void main() {
     test('-001 without records.location is Failure, not empty', () async {
       final repository = _hazardRepository({
         'W-C0033-001': _ok({'success': 'true', 'records': <String, dynamic>{}}),
-        'W-C0033-002': _ok(_fixture('W-C0033-002')),
+        'W-C0033-002': _ok(readCwaFixture('W-C0033-002.json')),
       });
       final r = await repository.getActiveWarnings();
       expect(r, isA<Failure<ActiveWarnings>>());
@@ -131,7 +128,7 @@ void main() {
   });
 
   group('getRainfall', () {
-    final routes = {'O-A0002-001': _ok(_fixture('O-A0002-001'))};
+    final routes = {'O-A0002-001': _ok(readCwaFixture('O-A0002-001.json'))};
 
     test('returns county stations and nearest station today accumulated', () async {
       final r = (await _hazardRepository(routes).getRainfall(county: '基隆市', latitude: 25.13, longitude: 121.74)).data;
@@ -218,7 +215,7 @@ void main() {
     });
 
     test('truncated fixture (200 of 247401 values) is Failure', () async {
-      final r = await _hazardRepository({'F-B0046-001': _ok(_fixture('F-B0046-001'))}).getRainForecast(latitude: 25.0, longitude: 121.5);
+      final r = await _hazardRepository({'F-B0046-001': _ok(readCwaFixture('F-B0046-001.json'))}).getRainForecast(latitude: 25.0, longitude: 121.5);
       expect((r as Failure).message, allOf(contains('F-B0046-001'), contains('247401')));
     });
   });

@@ -5,6 +5,9 @@ import 'dart:typed_data';
 import 'package:petrichor/core/api/cwa_http_config.dart';
 import 'package:dio/dio.dart';
 
+/// test/fixtures/cwa 內 [fileName] 檔的內容。
+String readCwaFixture(String fileName) => File('test/fixtures/cwa/$fileName').readAsStringSync();
+
 /// 離線 HTTP 轉接器：依資料集代號（路徑最後一段）回傳 test/fixtures/cwa 內的範例回應。
 class FakeCwaAdapter implements HttpClientAdapter {
   /// 資料集代號 → (HTTP 狀態碼, 回應本文)
@@ -15,7 +18,7 @@ class FakeCwaAdapter implements HttpClientAdapter {
 
   /// 以 [fixture] 檔回應 [dataset] 請求（township 資料集與縣市級樣本結構相同，可借用）。
   void serveFixture(String fixture, [Object? Function(Map<String, dynamic>)? edit, String? dataset]) {
-    final json = jsonDecode(File('test/fixtures/cwa/$fixture.json').readAsStringSync()) as Map<String, dynamic>;
+    final json = jsonDecode(readCwaFixture('$fixture.json')) as Map<String, dynamic>;
     edit?.call(json);
     routes[dataset ?? fixture] = (200, jsonEncode(json));
   }

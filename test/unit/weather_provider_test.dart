@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:petrichor/data/location/location_service.dart';
@@ -27,7 +26,7 @@ class _FileApiAdapter extends FakeCwaAdapter {
   Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) {
     if (!options.uri.path.startsWith('/fileapi/')) return super.fetch(options, requestStream, cancelFuture);
     fileRequests.add(options.uri);
-    return Future.value(ResponseBody.fromString(File('test/fixtures/cwa/F-D0047-061-head.txt').readAsStringSync(), 206));
+    return Future.value(ResponseBody.fromString(readCwaFixture('F-D0047-061-head.txt'), 206));
   }
 }
 
