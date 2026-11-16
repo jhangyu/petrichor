@@ -110,19 +110,11 @@ class ForecastChartPainter extends CustomPainter {
   static const _tempStroke = 2.5;
   static const _apparentStroke = 1.5;
   static const _dotRadius = 3.0;
-  static const _dash = 4.0;
   static const _apparentGap = 3.0;
   static const _popRadius = 4.0;
 
   @override
   void paint(Canvas canvas, Size size) {
-    Paint stroke(Color c, double w) => Paint()
-      ..style = PaintingStyle.stroke
-      ..color = c
-      ..strokeWidth = w
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-
     final small = AppType.caption2.copyWith(color: AppPalette.fg2, fontFeatures: AppType.tabular);
     final caption = AppType.caption1.copyWith(fontFeatures: AppType.tabular);
     final now = g.now;
@@ -152,10 +144,10 @@ class ForecastChartPainter extends CustomPainter {
           Path()
             ..moveTo(dx, ForecastChartGeometry.dayLineTop)
             ..lineTo(dx, ForecastChartGeometry.dayLineBottom),
-          _dash,
-          _dash,
+          chartDash,
+          chartDash,
         ),
-        stroke(AppPalette.stroke1, AppStroke.thin),
+        strokePaint(AppPalette.stroke1, AppStroke.thin),
       );
       paintLabel(
         canvas,
@@ -170,7 +162,7 @@ class ForecastChartPainter extends CustomPainter {
       canvas.drawLine(
         Offset(nowX, ForecastChartGeometry.nowTop),
         Offset(nowX, ForecastChartGeometry.nowBottom),
-        stroke(AppPalette.brandFg, AppStroke.thick),
+        strokePaint(AppPalette.brandFg, AppStroke.thick),
       );
       paintLabel(
         canvas,
@@ -184,7 +176,7 @@ class ForecastChartPainter extends CustomPainter {
     canvas.drawLine(
       Offset(g.x(g.slots.first.startTime), ForecastChartGeometry.tickAxisY),
       Offset(g.x(g.slots.last.startTime), ForecastChartGeometry.tickAxisY),
-      stroke(AppPalette.stroke1, AppStroke.thin),
+      strokePaint(AppPalette.stroke1, AppStroke.thin),
     );
 
     // Lines: 體感 (dashed) under temperature.
@@ -205,10 +197,10 @@ class ForecastChartPainter extends CustomPainter {
     }
 
     canvas.drawPath(
-      dashedPath(line((s) => s.apparentTemperature), _dash, _apparentGap),
-      stroke(AppPalette.fg4, _apparentStroke),
+      dashedPath(line((s) => s.apparentTemperature), chartDash, _apparentGap),
+      strokePaint(AppPalette.fg4, _apparentStroke),
     );
-    canvas.drawPath(line((s) => s.temperature), stroke(AppPalette.warningFg, _tempStroke));
+    canvas.drawPath(line((s) => s.temperature), strokePaint(AppPalette.warningFg, _tempStroke));
 
     final halo = AppPalette.bg1;
     for (final s in g.slots) {
@@ -228,7 +220,7 @@ class ForecastChartPainter extends CustomPainter {
       if (t != null) {
         final c = Offset(x, g.tempY(t));
         canvas.drawCircle(c, _dotRadius, Paint()..color = AppPalette.bg1);
-        canvas.drawCircle(c, _dotRadius, stroke(AppPalette.warningFg, AppStroke.thick));
+        canvas.drawCircle(c, _dotRadius, strokePaint(AppPalette.warningFg, AppStroke.thick));
         paintLabel(
           canvas,
           tempText(t),
@@ -241,7 +233,7 @@ class ForecastChartPainter extends CustomPainter {
       canvas.drawLine(
         Offset(x, ForecastChartGeometry.tickAxisY),
         Offset(x, ForecastChartGeometry.tickAxisY + ForecastChartGeometry.tickLength),
-        stroke(AppPalette.stroke1, AppStroke.thin),
+        strokePaint(AppPalette.stroke1, AppStroke.thin),
       );
       paintLabel(
         canvas,
@@ -309,7 +301,6 @@ class ForecastChartPainter extends CustomPainter {
 class ForecastDashKeyPainter extends CustomPainter {
   const ForecastDashKeyPainter();
 
-  static const _dash = 4.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -319,8 +310,8 @@ class ForecastDashKeyPainter extends CustomPainter {
         Path()
           ..moveTo(0, y)
           ..lineTo(size.width, y),
-        _dash,
-        _dash,
+        chartDash,
+        chartDash,
       ),
       Paint()
         ..style = PaintingStyle.stroke

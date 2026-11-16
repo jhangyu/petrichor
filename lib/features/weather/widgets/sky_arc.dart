@@ -205,7 +205,6 @@ class _SkyPainter extends CustomPainter {
   final _SkyGeometry geometry;
   final SunNow sun;
 
-  static const _dash = 4.0;
   static const _nightDash = 2.0;
   static const _transitTick = 4.0;
   static const _transitRadius = 3.0;
@@ -217,35 +216,30 @@ class _SkyPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final g = geometry;
-    Paint stroke(Color c, double w) => Paint()
-      ..style = PaintingStyle.stroke
-      ..color = c
-      ..strokeWidth = w
-      ..strokeCap = StrokeCap.round;
     Paint fill(Color c) => Paint()..color = c;
     void ring(Offset c, double r, Color edge, double w) {
       canvas.drawCircle(c, r, fill(AppPalette.bg1));
-      canvas.drawCircle(c, r, stroke(edge, w));
+      canvas.drawCircle(c, r, strokePaint(edge, w));
     }
 
     canvas.drawLine(
       g.view(_SkyGeometry.horizonInset, _SkyGeometry.horizonY),
       g.view(_SkyGeometry.viewWidth - _SkyGeometry.horizonInset, _SkyGeometry.horizonY),
-      stroke(AppPalette.stroke1, AppStroke.thin),
+      strokePaint(AppPalette.stroke1, AppStroke.thin),
     );
 
     final night = sun.isNight;
     final f = sun.arcFraction;
-    final dayTodo = stroke(AppPalette.stroke1, AppStroke.thick);
-    final nightTodo = stroke(AppPalette.stroke2, AppStroke.thin);
+    final dayTodo = strokePaint(AppPalette.stroke1, AppStroke.thick);
+    final nightTodo = strokePaint(AppPalette.stroke2, AppStroke.thin);
     if (night) {
-      canvas.drawPath(dashedPath(g.dayArc(0, 1), _dash, _dash), dayTodo);
-      canvas.drawPath(dashedPath(g.nightArc(f, 1), _nightDash, _dash), nightTodo);
-      if (f > 0) canvas.drawPath(g.nightArc(0, f), stroke(AppPalette.brand120, AppStroke.thick));
+      canvas.drawPath(dashedPath(g.dayArc(0, 1), chartDash, chartDash), dayTodo);
+      canvas.drawPath(dashedPath(g.nightArc(f, 1), _nightDash, chartDash), nightTodo);
+      if (f > 0) canvas.drawPath(g.nightArc(0, f), strokePaint(AppPalette.brand120, AppStroke.thick));
     } else {
-      canvas.drawPath(dashedPath(g.nightArc(0, 1), _nightDash, _dash), nightTodo);
-      canvas.drawPath(dashedPath(g.dayArc(f, 1), _dash, _dash), dayTodo);
-      if (f > 0) canvas.drawPath(g.dayArc(0, f), stroke(AppPalette.iconSun, AppStroke.thicker));
+      canvas.drawPath(dashedPath(g.nightArc(0, 1), _nightDash, chartDash), nightTodo);
+      canvas.drawPath(dashedPath(g.dayArc(f, 1), chartDash, chartDash), dayTodo);
+      if (f > 0) canvas.drawPath(g.dayArc(0, f), strokePaint(AppPalette.iconSun, AppStroke.thicker));
     }
 
     final compass = AppType.caption2.copyWith(color: AppPalette.fg3);
@@ -261,7 +255,7 @@ class _SkyPainter extends CustomPainter {
     canvas.drawLine(
       transit - const Offset(0, _transitTick),
       transit + const Offset(0, _transitTick),
-      stroke(markColor, AppStroke.thin),
+      strokePaint(markColor, AppStroke.thin),
     );
     ring(transit, _transitRadius, markColor, AppStroke.thick);
     paintLabel(

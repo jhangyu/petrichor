@@ -11,6 +11,17 @@ Path dashedPath(Path source, double dash, double gap) {
   return out;
 }
 
+/// Dash length (and the default gap) of the charts' dashed strokes.
+const chartDash = 4.0;
+
+/// Round-capped, round-joined stroke used by the sky arc and the 72-hour chart.
+Paint strokePaint(Color color, double width) => Paint()
+  ..style = PaintingStyle.stroke
+  ..color = color
+  ..strokeWidth = width
+  ..strokeCap = StrokeCap.round
+  ..strokeJoin = StrokeJoin.round;
+
 /// Horizontal anchor of a text label relative to its x position.
 enum TextAnchor { start, middle }
 
