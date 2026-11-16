@@ -37,8 +37,8 @@ class CwaApiKeyNotifier extends AsyncNotifier<CwaApiKey?> {
     }
     try {
       return CwaApiKey.parse(raw);
-    } on FormatException catch (e) {
-      throw StoredSettingException(storageKey, '儲存資料損毀：${e.message}');
+    } on FormatException catch (error) {
+      throw StoredSettingException(storageKey, '儲存資料損毀：${error.message}');
     }
   }
 
@@ -134,16 +134,16 @@ class ApiKeyStatusNotifier extends Notifier<ApiKeyStatus> {
         ApiKeyInvalidKind.unexpected,
         '期望 HTTP 200 + success "true"，實際 HTTP ${response.statusCode} success $success',
       );
-    } on DioException catch (e) {
-      final status = e.response?.statusCode;
-      return switch (e.type) {
+    } on DioException catch (error) {
+      final status = error.response?.statusCode;
+      return switch (error.type) {
         _ when status == 401 || status == 403 => ApiKeyInvalid(ApiKeyInvalidKind.rejected, '金鑰被 CWA 拒絕（HTTP $status）'),
         DioExceptionType.connectionTimeout ||
         DioExceptionType.sendTimeout ||
         DioExceptionType.receiveTimeout ||
         DioExceptionType.connectionError =>
           const ApiKeyInvalid(ApiKeyInvalidKind.unreachable, '無法連線 CWA，金鑰未驗證'),
-        _ => ApiKeyInvalid(ApiKeyInvalidKind.unexpected, '期望 HTTP 200 + success "true"，實際 ${status ?? e.type.name}'),
+        _ => ApiKeyInvalid(ApiKeyInvalidKind.unexpected, '期望 HTTP 200 + success "true"，實際 ${status ?? error.type.name}'),
       };
     }
   }

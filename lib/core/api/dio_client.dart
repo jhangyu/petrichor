@@ -33,10 +33,10 @@ final dioProvider = Provider<Dio>((ref) {
       final CwaApiKey? resolved;
       try {
         resolved = await key;
-      } on StoredSettingException catch (e) {
+      } on StoredSettingException catch (error) {
         return handler.reject(DioException(
           requestOptions: options,
-          error: CwaApiKeyException(ApiKeyIssue.unreadable, '儲存的 token 無法讀取：${e.message}'),
+          error: CwaApiKeyException(ApiKeyIssue.unreadable, '儲存的 token 無法讀取：${error.message}'),
         ));
       }
       if (resolved == null) {

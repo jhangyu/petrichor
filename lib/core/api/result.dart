@@ -94,9 +94,9 @@ Future<Result<T>> guardRequest<T>(
 }) async {
   try {
     return await request();
-  } on DioException catch (e) {
-    return failureFromDio(e, dataset: dataset, location: location);
-  } on FormatException catch (e) {
-    return Failure(_withScope('解析失敗：${e.message}', dataset, location), dataset: dataset, location: location);
+  } on DioException catch (error) {
+    return failureFromDio(error, dataset: dataset, location: location);
+  } on FormatException catch (error) {
+    return Failure(_withScope('解析失敗：${error.message}', dataset, location), dataset: dataset, location: location);
   }
 }
