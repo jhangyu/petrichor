@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:petrichor/core/logging/app_log.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/temp_dir.dart';
+import '../support/temporary_directory.dart';
 
 void main() {
   late Directory dir;
-  setUp(() => dir = newTempDir('applog_test'));
+  setUp(() => dir = newTemporaryDirectory('applog_test'));
 
   test('each line is readable from disk right after write (flushed)', () {
     final sink = AppLogSink(dir)..open();

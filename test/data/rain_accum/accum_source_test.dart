@@ -14,7 +14,7 @@ import 'package:petrichor/data/rain_accum/accum_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/temp_dir.dart';
+import '../../support/temporary_directory.dart';
 
 /// now − 6 min = 10:54Z: newest grid slot 10:50.
 final _now = DateTime.utc(2026, 11, 15, 11);
@@ -65,7 +65,7 @@ void main() {
   late Directory root;
   late _Adapter adapter;
   setUp(() {
-    root = newTempDir('accum_source_test');
+    root = newTemporaryDirectory('accum_source_test');
     adapter = _Adapter();
   });
 
