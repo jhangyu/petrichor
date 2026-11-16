@@ -144,7 +144,7 @@ class NowCard extends StatelessWidget {
         return Row(
           spacing: AppSpace.s24,
           children: [
-            ConstrainedBox(constraints: const BoxConstraints(maxWidth: skyMaxWidth), child: top),
+            ConstrainedBox(constraints: const BoxConstraints(maxWidth: skyArcMaxWidth), child: top),
             Expanded(child: side),
           ],
         );

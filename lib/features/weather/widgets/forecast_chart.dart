@@ -17,19 +17,19 @@ class ForecastChartGeometry {
     final temps = [
       for (final s in slots) ...[s.temperature, s.apparentTemperature],
     ].whereType<double>();
-    tempMin = temps.isEmpty ? 0 : temps.reduce((a, b) => a < b ? a : b);
-    tempMax = temps.isEmpty ? 0 : temps.reduce((a, b) => a > b ? a : b);
+    lowestTemperature = temps.isEmpty ? 0 : temps.reduce((a, b) => a < b ? a : b);
+    highestTemperature = temps.isEmpty ? 0 : temps.reduce((a, b) => a > b ? a : b);
     final hours = end.difference(origin).inMinutes / Duration.minutesPerHour;
-    pxPerHour = ((availableWidth - _padStart - _padEnd) / hours).clamp(_minPxPerHour, _maxPxPerHour);
+    pixelsPerHour = ((availableWidth - _padStart - _padEnd) / hours).clamp(_minPixelsPerHour, _maxPixelsPerHour);
   }
 
-  /// Width of the chart cell; the chart fills it up to [_maxPxPerHour] and scrolls below [_minPxPerHour].
+  /// Width of the chart cell; the chart fills it up to [_maxPixelsPerHour] and scrolls below [_minPixelsPerHour].
   final double availableWidth;
-  late final double pxPerHour;
+  late final double pixelsPerHour;
   bool get scrolls => width - availableWidth > _fitTolerance;
 
   /// Bar width: two thirds of a 3-hour slot.
-  double get popWidth => forecastSlotLength.inMinutes / Duration.minutesPerHour * pxPerHour * 2 / 3;
+  double get rainProbabilityWidth => forecastSlotLength.inMinutes / Duration.minutesPerHour * pixelsPerHour * 2 / 3;
 
   final List<HourlyForecast> slots;
   final DateTime now;
@@ -37,12 +37,12 @@ class ForecastChartGeometry {
   final DateTime end;
 
   /// Range of every temperature and 體感 value; only read when such a value exists.
-  late final double tempMin;
-  late final double tempMax;
+  late final double lowestTemperature;
+  late final double highestTemperature;
 
   static const height = 340.0;
-  static const _minPxPerHour = 16.0;
-  static const _maxPxPerHour = 32.0;
+  static const _minPixelsPerHour = 16.0;
+  static const _maxPixelsPerHour = 32.0;
   static const _fitTolerance = 0.5;
   static const _padStart = 32.0;
   static const _padEnd = 24.0;
@@ -55,28 +55,28 @@ class ForecastChartGeometry {
   static const dayLineBottom = 336.0;
   static const dayLabelInset = 8.0;
   static const todayLabelInset = 24.0;
-  static const tempTop = 96.0;
-  static const tempBottom = 160.0;
-  static const tempLabelOffset = 18.0;
+  static const temperatureTop = 96.0;
+  static const temperatureBottom = 160.0;
+  static const temperatureLabelOffset = 18.0;
   static const tickAxisY = 182.0;
   static const tickLength = 4.0;
   static const tickLabelY = 198.0;
   static const apparentLabelY = 216.0;
-  static const popTop = 236.0;
-  static const popHeight = 40.0;
-  static const popLabelY = 292.0;
+  static const rainProbabilityTop = 236.0;
+  static const rainProbabilityHeight = 40.0;
+  static const rainProbabilityLabelY = 292.0;
   static const windDirY = 312.0;
   static const windSpeedY = 328.0;
 
-  double x(DateTime t) => _padStart + t.difference(origin).inMinutes / Duration.minutesPerHour * pxPerHour;
+  double x(DateTime t) => _padStart + t.difference(origin).inMinutes / Duration.minutesPerHour * pixelsPerHour;
 
   double slotCenter(HourlyForecast s) => x(s.startTime.add(forecastSlotLength ~/ 2));
 
   double get width => x(end) + _padEnd;
 
-  double tempY(double t) {
-    if (tempMax == tempMin) return (tempTop + tempBottom) / 2;
-    return tempBottom - (t - tempMin) / (tempMax - tempMin) * (tempBottom - tempTop);
+  double temperatureY(double t) {
+    if (highestTemperature == lowestTemperature) return (temperatureTop + temperatureBottom) / 2;
+    return temperatureBottom - (t - lowestTemperature) / (highestTemperature - lowestTemperature) * (temperatureBottom - temperatureTop);
   }
 }
 
@@ -90,12 +90,12 @@ class ForecastAxisPainter extends CustomPainter {
     for (final (label, y) in [
       ('時段', ForecastChartGeometry.slotLabelY),
       ('天氣', ForecastChartGeometry.iconTop + AppSize.icon24 / 2),
-      ('溫度', (ForecastChartGeometry.tempTop + ForecastChartGeometry.tempBottom) / 2),
+      ('溫度', (ForecastChartGeometry.temperatureTop + ForecastChartGeometry.temperatureBottom) / 2),
       ('體感', ForecastChartGeometry.apparentLabelY),
-      ('降雨', ForecastChartGeometry.popTop + ForecastChartGeometry.popHeight / 2),
+      ('降雨', ForecastChartGeometry.rainProbabilityTop + ForecastChartGeometry.rainProbabilityHeight / 2),
       ('風', (ForecastChartGeometry.windDirY + ForecastChartGeometry.windSpeedY) / 2),
     ]) {
-      paintLabel(canvas, label, Offset(0, y), style, anchor: TextAnchor.start);
+      paintLabel(canvas, label, Offset(0, y), style, anchor: LabelAnchor.start);
     }
   }
 
@@ -104,27 +104,27 @@ class ForecastAxisPainter extends CustomPainter {
 }
 
 class ForecastChartPainter extends CustomPainter {
-  ForecastChartPainter(this.g);
+  ForecastChartPainter(this.geometry);
 
-  final ForecastChartGeometry g;
+  final ForecastChartGeometry geometry;
 
-  static const _tempStroke = 2.5;
+  static const _temperatureStroke = 2.5;
   static const _apparentStroke = 1.5;
   static const _dotRadius = 3.0;
   static const _apparentGap = 3.0;
-  static const _popRadius = 4.0;
+  static const _rainProbabilityRadius = 4.0;
 
   @override
   void paint(Canvas canvas, Size size) {
     final small = AppType.caption2.copyWith(color: AppPalette.foreground2, fontFeatures: AppType.tabular);
     final caption = AppType.caption1.copyWith(fontFeatures: AppType.tabular);
-    final now = g.now;
+    final now = geometry.now;
 
     // Day boundaries (wall-clock midnights) and day labels.
-    final firstWall = taiwanWall(g.origin);
+    final firstWall = taiwanWall(geometry.origin);
     var day = DateTime.utc(firstWall.year, firstWall.month, firstWall.day);
-    final nowX = g.x(now);
-    final showNow = !now.isBefore(g.origin) && now.isBefore(g.end);
+    final nowX = geometry.x(now);
+    final showNow = !now.isBefore(geometry.origin) && now.isBefore(geometry.end);
     paintLabel(
       canvas,
       _dayTitle(day, now),
@@ -133,20 +133,20 @@ class ForecastChartPainter extends CustomPainter {
         ForecastChartGeometry.dayLabelY,
       ),
       caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
-      anchor: TextAnchor.start,
+      anchor: LabelAnchor.start,
     );
     while (true) {
       day = day.add(const Duration(days: 1));
       final at = fromTaiwanWall(day);
-      if (!at.isBefore(g.end)) break;
-      final dx = g.x(at);
+      if (!at.isBefore(geometry.end)) break;
+      final dx = geometry.x(at);
       canvas.drawPath(
         dashedPath(
           Path()
             ..moveTo(dx, ForecastChartGeometry.dayLineTop)
             ..lineTo(dx, ForecastChartGeometry.dayLineBottom),
-          chartDash,
-          chartDash,
+          chartDashLength,
+          chartDashLength,
         ),
         strokePaint(AppPalette.stroke1, AppStroke.thin),
       );
@@ -155,7 +155,7 @@ class ForecastChartPainter extends CustomPainter {
         _dayTitle(day, now),
         Offset(dx + ForecastChartGeometry.dayLabelInset, ForecastChartGeometry.dayLabelY),
         caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
-        anchor: TextAnchor.start,
+        anchor: LabelAnchor.start,
       );
     }
 
@@ -175,8 +175,8 @@ class ForecastChartPainter extends CustomPainter {
 
     // Tick axis.
     canvas.drawLine(
-      Offset(g.x(g.slots.first.startTime), ForecastChartGeometry.tickAxisY),
-      Offset(g.x(g.slots.last.startTime), ForecastChartGeometry.tickAxisY),
+      Offset(geometry.x(geometry.slots.first.startTime), ForecastChartGeometry.tickAxisY),
+      Offset(geometry.x(geometry.slots.last.startTime), ForecastChartGeometry.tickAxisY),
       strokePaint(AppPalette.stroke1, AppStroke.thin),
     );
 
@@ -184,13 +184,13 @@ class ForecastChartPainter extends CustomPainter {
     Path line(double? Function(HourlyForecast) value) {
       final path = Path();
       var started = false;
-      for (final s in g.slots) {
+      for (final s in geometry.slots) {
         final v = value(s);
         if (v == null) {
           started = false;
           continue;
         }
-        final p = Offset(g.x(s.startTime), g.tempY(v));
+        final p = Offset(geometry.x(s.startTime), geometry.temperatureY(v));
         started ? path.lineTo(p.dx, p.dy) : path.moveTo(p.dx, p.dy);
         started = true;
       }
@@ -198,17 +198,17 @@ class ForecastChartPainter extends CustomPainter {
     }
 
     canvas.drawPath(
-      dashedPath(line((s) => s.apparentTemperature), chartDash, _apparentGap),
+      dashedPath(line((s) => s.apparentTemperature), chartDashLength, _apparentGap),
       strokePaint(AppPalette.foreground4, _apparentStroke),
     );
-    canvas.drawPath(line((s) => s.temperature), strokePaint(AppPalette.warningForeground, _tempStroke));
+    canvas.drawPath(line((s) => s.temperature), strokePaint(AppPalette.warningForeground, _temperatureStroke));
 
     final halo = AppPalette.background1;
-    for (final s in g.slots) {
-      final x = g.x(s.startTime);
+    for (final s in geometry.slots) {
+      final x = geometry.x(s.startTime);
       final wall = taiwanWall(s.startTime);
       final endWall = taiwanWall(s.startTime.add(forecastSlotLength));
-      final center = g.slotCenter(s);
+      final center = geometry.slotCenter(s);
 
       paintLabel(
         canvas,
@@ -219,13 +219,13 @@ class ForecastChartPainter extends CustomPainter {
 
       final t = s.temperature;
       if (t != null) {
-        final c = Offset(x, g.tempY(t));
+        final c = Offset(x, geometry.temperatureY(t));
         canvas.drawCircle(c, _dotRadius, Paint()..color = AppPalette.background1);
         canvas.drawCircle(c, _dotRadius, strokePaint(AppPalette.warningForeground, AppStroke.thick));
         paintLabel(
           canvas,
           temperatureText(t),
-          c.translate(0, ForecastChartGeometry.tempLabelOffset),
+          c.translate(0, ForecastChartGeometry.temperatureLabelOffset),
           caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
           halo: halo,
         );
@@ -252,22 +252,22 @@ class ForecastChartPainter extends CustomPainter {
       );
 
       final track = Rect.fromLTWH(
-        center - g.popWidth / 2,
-        ForecastChartGeometry.popTop,
-        g.popWidth,
-        ForecastChartGeometry.popHeight,
+        center - geometry.rainProbabilityWidth / 2,
+        ForecastChartGeometry.rainProbabilityTop,
+        geometry.rainProbabilityWidth,
+        ForecastChartGeometry.rainProbabilityHeight,
       );
       canvas.drawRRect(
-        RRect.fromRectAndRadius(track, const Radius.circular(_popRadius)),
+        RRect.fromRectAndRadius(track, const Radius.circular(_rainProbabilityRadius)),
         Paint()..color = AppPalette.rainBarTrack,
       );
       final pop = s.pop;
       if (pop != null && pop > 0) {
-        final h = ForecastChartGeometry.popHeight * pop / 100;
+        final h = ForecastChartGeometry.rainProbabilityHeight * pop / 100;
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(track.left, track.bottom - h, track.width, h),
-            const Radius.circular(_popRadius),
+            const Radius.circular(_rainProbabilityRadius),
           ),
           Paint()..color = AppPalette.rainBar,
         );
@@ -275,7 +275,7 @@ class ForecastChartPainter extends CustomPainter {
       paintLabel(
         canvas,
         percentText(pop),
-        Offset(center, ForecastChartGeometry.popLabelY),
+        Offset(center, ForecastChartGeometry.rainProbabilityLabelY),
         rainProbabilityTextStyle(small, pop),
       );
       paintLabel(canvas, windDirectionLabel(s.windDirection), Offset(center, ForecastChartGeometry.windDirY), small);
@@ -291,7 +291,7 @@ class ForecastChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ForecastChartPainter old) =>
-      old.g.slots != g.slots || old.g.now != g.now || old.g.pxPerHour != g.pxPerHour;
+      old.geometry.slots != geometry.slots || old.geometry.now != geometry.now || old.geometry.pixelsPerHour != geometry.pixelsPerHour;
 }
 
 /// Dashed 體感 legend key (`.fc72__key--at`).
@@ -307,8 +307,8 @@ class ForecastDashKeyPainter extends CustomPainter {
         Path()
           ..moveTo(0, y)
           ..lineTo(size.width, y),
-        chartDash,
-        chartDash,
+        chartDashLength,
+        chartDashLength,
       ),
       Paint()
         ..style = PaintingStyle.stroke

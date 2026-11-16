@@ -12,7 +12,7 @@ Path dashedPath(Path source, double dash, double gap) {
 }
 
 /// Dash length (and the default gap) of the charts' dashed strokes.
-const chartDash = 4.0;
+const chartDashLength = 4.0;
 
 /// Round-capped, round-joined stroke used by the sky arc and the 72-hour chart.
 Paint strokePaint(Color color, double width) => Paint()
@@ -23,7 +23,7 @@ Paint strokePaint(Color color, double width) => Paint()
   ..strokeJoin = StrokeJoin.round;
 
 /// Horizontal anchor of a text label relative to its x position.
-enum TextAnchor { start, middle }
+enum LabelAnchor { start, middle }
 
 /// Paints [text] with its vertical centre at [at].dy; [halo] adds a bg-coloured
 /// outline under the glyphs (SVG `paint-order: stroke`).
@@ -32,7 +32,7 @@ void paintLabel(
   String text,
   Offset at,
   TextStyle style, {
-  TextAnchor anchor = TextAnchor.middle,
+  LabelAnchor anchor = LabelAnchor.middle,
   Color? halo,
   double haloWidth = 4,
 }) {
@@ -41,7 +41,7 @@ void paintLabel(
     textDirection: TextDirection.ltr,
   )..layout();
   final painter = layout(style);
-  final dx = anchor == TextAnchor.middle ? at.dx - painter.width / 2 : at.dx;
+  final dx = anchor == LabelAnchor.middle ? at.dx - painter.width / 2 : at.dx;
   final origin = Offset(dx, at.dy - painter.height / 2);
   if (halo != null) {
     layout(

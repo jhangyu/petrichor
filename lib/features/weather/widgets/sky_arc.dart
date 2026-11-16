@@ -11,7 +11,7 @@ import '../weather_format.dart';
 import 'weather_glyph_icon.dart';
 
 /// Widest the sky arc grows (`.sky` max-width 360).
-const skyMaxWidth = 360.0;
+const skyArcMaxWidth = 360.0;
 
 /// Temperature, weather text and 高/低 (`.sky__temp` content).
 class TemperatureBlock extends StatelessWidget {
@@ -23,7 +23,7 @@ class TemperatureBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = observation;
-    Widget hilo(String label, double? value, Color color) => Text(
+    Widget highLowText(String label, double? value, Color color) => Text(
       '$label ${temperatureText(value)}',
       style: AppType.caption1.copyWith(color: color, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
     );
@@ -42,8 +42,8 @@ class TemperatureBlock extends StatelessWidget {
           spacing: AppSpace.s8,
           children: [
             Text(c.weather ?? '—', style: AppType.body1.copyWith(color: AppPalette.foreground2)),
-            hilo('高', c.dailyHigh, AppPalette.temperatureHot),
-            hilo('低', c.dailyLow, AppPalette.temperatureCold),
+            highLowText('高', c.dailyHigh, AppPalette.temperatureHot),
+            highLowText('低', c.dailyLow, AppPalette.temperatureCold),
           ],
         ),
       ],
@@ -66,7 +66,7 @@ class SkyArc extends StatelessWidget {
     final weather = observation.weather;
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: skyMaxWidth),
+        constraints: const BoxConstraints(maxWidth: skyArcMaxWidth),
         child: AspectRatio(
           aspectRatio: _SkyGeometry.viewWidth / _SkyGeometry.viewHeight,
           child: LayoutBuilder(
@@ -158,11 +158,11 @@ class _SkyGeometry {
 
   static const viewWidth = 320.0;
   static const viewHeight = 200.0;
-  static const _cx = 160.0;
+  static const _centerX = 160.0;
   static const horizonY = 156.0;
-  static const _rx = 136.0;
-  static const _dayRy = 120.0;
-  static const _nightRy = 24.0;
+  static const _radiusX = 136.0;
+  static const _dayRadiusY = 120.0;
+  static const _nightRadiusY = 24.0;
   static const horizonInset = 4.0;
   static const labelY = 13.0;
 
@@ -174,26 +174,26 @@ class _SkyGeometry {
   /// Point on the day dome at [f] (0 = sunrise, east; 1 = sunset, west).
   Offset day(double f) {
     final a = math.pi * f;
-    return view(_cx - _rx * math.cos(a), horizonY - _dayRy * math.sin(a));
+    return view(_centerX - _radiusX * math.cos(a), horizonY - _dayRadiusY * math.sin(a));
   }
 
   /// Point on the night arc at [f] (0 = sunset, west; 1 = sunrise, east).
   Offset night(double f) {
     final a = math.pi * f;
-    return view(_cx + _rx * math.cos(a), horizonY + _nightRy * math.sin(a));
+    return view(_centerX + _radiusX * math.cos(a), horizonY + _nightRadiusY * math.sin(a));
   }
 
   Offset sun(SunNow s) => s.isNight ? night(s.arcFraction) : day(s.arcFraction);
 
   /// Day dome between fractions [from] and [to].
   Path dayArc(double from, double to) {
-    final rect = Rect.fromCenter(center: view(_cx, horizonY), width: 2 * _rx * scale, height: 2 * _dayRy * scale);
+    final rect = Rect.fromCenter(center: view(_centerX, horizonY), width: 2 * _radiusX * scale, height: 2 * _dayRadiusY * scale);
     return Path()..addArc(rect, math.pi + from * math.pi, (to - from) * math.pi);
   }
 
   /// Night arc between fractions [from] and [to] (clockwise from the west end).
   Path nightArc(double from, double to) {
-    final rect = Rect.fromCenter(center: view(_cx, horizonY), width: 2 * _rx * scale, height: 2 * _nightRy * scale);
+    final rect = Rect.fromCenter(center: view(_centerX, horizonY), width: 2 * _radiusX * scale, height: 2 * _nightRadiusY * scale);
     return Path()..addArc(rect, from * math.pi, (to - from) * math.pi);
   }
 }
@@ -216,7 +216,6 @@ class _SkyPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final g = geometry;
     Paint fill(Color c) => Paint()..color = c;
     void ring(Offset c, double r, Color edge, double w) {
       canvas.drawCircle(c, r, fill(AppPalette.background1));
@@ -224,32 +223,32 @@ class _SkyPainter extends CustomPainter {
     }
 
     canvas.drawLine(
-      g.view(_SkyGeometry.horizonInset, _SkyGeometry.horizonY),
-      g.view(_SkyGeometry.viewWidth - _SkyGeometry.horizonInset, _SkyGeometry.horizonY),
+      geometry.view(_SkyGeometry.horizonInset, _SkyGeometry.horizonY),
+      geometry.view(_SkyGeometry.viewWidth - _SkyGeometry.horizonInset, _SkyGeometry.horizonY),
       strokePaint(AppPalette.stroke1, AppStroke.thin),
     );
 
     final night = sun.isNight;
     final f = sun.arcFraction;
-    final dayTodo = strokePaint(AppPalette.stroke1, AppStroke.thick);
-    final nightTodo = strokePaint(AppPalette.stroke2, AppStroke.thin);
+    final dayRemainingPaint = strokePaint(AppPalette.stroke1, AppStroke.thick);
+    final nightRemainingPaint = strokePaint(AppPalette.stroke2, AppStroke.thin);
     if (night) {
-      canvas.drawPath(dashedPath(g.dayArc(0, 1), chartDash, chartDash), dayTodo);
-      canvas.drawPath(dashedPath(g.nightArc(f, 1), _nightDash, chartDash), nightTodo);
-      if (f > 0) canvas.drawPath(g.nightArc(0, f), strokePaint(AppPalette.brand120, AppStroke.thick));
+      canvas.drawPath(dashedPath(geometry.dayArc(0, 1), chartDashLength, chartDashLength), dayRemainingPaint);
+      canvas.drawPath(dashedPath(geometry.nightArc(f, 1), _nightDash, chartDashLength), nightRemainingPaint);
+      if (f > 0) canvas.drawPath(geometry.nightArc(0, f), strokePaint(AppPalette.brand120, AppStroke.thick));
     } else {
-      canvas.drawPath(dashedPath(g.nightArc(0, 1), _nightDash, chartDash), nightTodo);
-      canvas.drawPath(dashedPath(g.dayArc(f, 1), chartDash, chartDash), dayTodo);
-      if (f > 0) canvas.drawPath(g.dayArc(0, f), strokePaint(AppPalette.iconSun, AppStroke.thicker));
+      canvas.drawPath(dashedPath(geometry.nightArc(0, 1), _nightDash, chartDashLength), nightRemainingPaint);
+      canvas.drawPath(dashedPath(geometry.dayArc(f, 1), chartDashLength, chartDashLength), dayRemainingPaint);
+      if (f > 0) canvas.drawPath(geometry.dayArc(0, f), strokePaint(AppPalette.iconSun, AppStroke.thicker));
     }
 
     final compass = AppType.caption2.copyWith(color: AppPalette.foreground3);
-    final compassY = _compassY * g.scale;
-    paintLabel(canvas, '東', Offset(_compassInset * g.scale, compassY), compass);
-    paintLabel(canvas, '西', Offset((_SkyGeometry.viewWidth - _compassInset) * g.scale, compassY), compass);
+    final compassY = _compassY * geometry.scale;
+    paintLabel(canvas, '東', Offset(_compassInset * geometry.scale, compassY), compass);
+    paintLabel(canvas, '西', Offset((_SkyGeometry.viewWidth - _compassInset) * geometry.scale, compassY), compass);
 
     final day = sun.day;
-    final transit = g.day(
+    final transit = geometry.day(
       day.transit.difference(day.sunrise).inSeconds / day.sunset.difference(day.sunrise).inSeconds,
     );
     final markColor = night ? AppPalette.foreground4 : AppPalette.iconSun;
@@ -262,13 +261,13 @@ class _SkyPainter extends CustomPainter {
     paintLabel(
       canvas,
       '過中天 ${clockText(day.transit)} · 最高 ${day.transitAltitudeDegrees}°',
-      Offset(transit.dx, _SkyGeometry.labelY * g.scale),
+      Offset(transit.dx, _SkyGeometry.labelY * geometry.scale),
       AppType.caption1.copyWith(color: AppPalette.foreground2, fontFeatures: AppType.tabular),
     );
 
-    ring(g.day(0), _endRadius, AppPalette.foreground3, AppStroke.thin);
-    ring(g.day(1), _endRadius, AppPalette.foreground3, AppStroke.thin);
-    canvas.drawCircle(g.sun(sun), _sunRadius, fill(night ? AppPalette.brand120 : AppPalette.iconSun));
+    ring(geometry.day(0), _endRadius, AppPalette.foreground3, AppStroke.thin);
+    ring(geometry.day(1), _endRadius, AppPalette.foreground3, AppStroke.thin);
+    canvas.drawCircle(geometry.sun(sun), _sunRadius, fill(night ? AppPalette.brand120 : AppPalette.iconSun));
   }
 
   @override
