@@ -156,8 +156,8 @@ class PlaceStore {
   T _decode<T>(String key, String raw, T Function(Object? json) parse) {
     try {
       return parse(jsonDecode(raw));
-    } on FormatException catch (e) {
-      throw StoredSettingException(key, '儲存資料損毀：${e.message}；實際內容「$raw」');
+    } on FormatException catch (error) {
+      throw StoredSettingException(key, '儲存資料損毀：${error.message}；實際內容「$raw」');
     }
   }
 }
@@ -229,8 +229,8 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
       final fixedAt = location.fixedAt ??
           (throw StateError('GPS location for ${location.county}${location.town}: expected a fix time, got null'));
       return PlaceSelected(location.toPlace(), PlaceSource.gps, fixedAt: fixedAt);
-    } on LocationException catch (e) {
-      return epoch == _epoch ? NoPlace(e) : null;
+    } on LocationException catch (error) {
+      return epoch == _epoch ? NoPlace(error) : null;
     }
   }
 }
