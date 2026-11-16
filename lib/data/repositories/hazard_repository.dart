@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/constants/app_constants.dart';
 import '../models/hazard_models.dart';
-import '../../core/api/result.dart' show Failure, Result, Success, failureFromDio;
+import '../../core/api/result.dart' show Failure, Result, Success, guardRequest;
 
 /// 警特報：各縣市生效特報
 const String warningsByCountyDataset = 'W-C0033-001';
@@ -40,40 +40,36 @@ class HazardRepository {
   /// 區分失敗：HTTP 錯誤、`success != "true"`、-001 缺 `records.location`
   /// 或 `records` 非物件、欄位型別不符，一律 [Failure]。
   /// -001 有特報但 -002 無任何公告 → [Failure]（兩資料集不一致，不默默丟掉內文）。
-  Future<Result<ActiveWarnings>> getActiveWarnings() async {
-    try {
-      final responses = await Future.wait([
-        _dio.get<Object?>(warningsByCountyDataset),
-        _dio.get<Object?>(warningBulletinsDataset),
-      ]);
-      final w1 = _datastoreRecords(responses[0].data, warningsByCountyDataset);
-      final w2 = _datastoreRecords(responses[1].data, warningBulletinsDataset);
-      final bulletins = _bulletins(w2);
-      final warnings = ActiveWarnings.fromJson(w1, bulletins, clock());
-      if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
-        return const Failure(
-          '[$warningBulletinsDataset] expected bulletins because $warningsByCountyDataset lists active warnings, got none',
-        );
-      }
-      return Success(warnings);
-    } on DioException catch (e) {
-      return failureFromDio(e, dataset: '$warningsByCountyDataset/$warningBulletinsDataset');
-    } on FormatException catch (e) {
-      return Failure('[$warningsByCountyDataset/$warningBulletinsDataset] 解析失敗：${e.message}');
-    }
-  }
+  Future<Result<ActiveWarnings>> getActiveWarnings() => guardRequest<ActiveWarnings>(
+        () async {
+          final responses = await Future.wait([
+            _dio.get<Object?>(warningsByCountyDataset),
+            _dio.get<Object?>(warningBulletinsDataset),
+          ]);
+          final w1 = _datastoreRecords(responses[0].data, warningsByCountyDataset);
+          final w2 = _datastoreRecords(responses[1].data, warningBulletinsDataset);
+          final bulletins = _bulletins(w2);
+          final warnings = ActiveWarnings.fromJson(w1, bulletins, clock());
+          if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
+            return const Failure(
+              '[$warningBulletinsDataset] expected bulletins because $warningsByCountyDataset lists active warnings, got none',
+            );
+          }
+          return Success(warnings);
+        },
+        dataset: '$warningsByCountyDataset/$warningBulletinsDataset',
+        parseFailure: (detail) => '[$warningsByCountyDataset/$warningBulletinsDataset] 解析失敗：$detail',
+      );
 
   /// 資料集內全部測站（所有縣市），不需要使用者位置。
-  Future<Result<List<RainStation>>> getRainStations() async {
-    try {
-      final response = await _dio.get<Object?>(rainObservationDataset);
-      return Success(parseRainStations(_datastoreRecords(response.data, rainObservationDataset)));
-    } on DioException catch (e) {
-      return failureFromDio(e, dataset: rainObservationDataset);
-    } on FormatException catch (e) {
-      return Failure('[$rainObservationDataset] 解析失敗：${e.message}');
-    }
-  }
+  Future<Result<List<RainStation>>> getRainStations() => guardRequest<List<RainStation>>(
+        () async {
+          final response = await _dio.get<Object?>(rainObservationDataset);
+          return Success(parseRainStations(_datastoreRecords(response.data, rainObservationDataset)));
+        },
+        dataset: rainObservationDataset,
+        parseFailure: (detail) => '[$rainObservationDataset] 解析失敗：$detail',
+      );
 
   /// 指定縣市的雨量觀測：該縣市所有測站與離 ([latitude], [longitude]) 最近的有值測站。
   ///
@@ -120,17 +116,15 @@ class HazardRepository {
   // 私有輔助
   // ==========================================================================
 
-  Future<Result<T>> _fileApi<T>(String dataset, T Function(Object? root) parse) async {
-    try {
-      final response = await _dio.get<Object?>(AppConstants.fileApiUrl(dataset));
-      final body = _jsonMap(response.data, dataset);
-      return Success(parse(body['cwaopendata']));
-    } on DioException catch (e) {
-      return failureFromDio(e, dataset: dataset);
-    } on FormatException catch (e) {
-      return Failure('[$dataset] 解析失敗：${e.message}');
-    }
-  }
+  Future<Result<T>> _fileApi<T>(String dataset, T Function(Object? root) parse) => guardRequest<T>(
+        () async {
+          final response = await _dio.get<Object?>(AppConstants.fileApiUrl(dataset));
+          final body = _jsonMap(response.data, dataset);
+          return Success(parse(body['cwaopendata']));
+        },
+        dataset: dataset,
+        parseFailure: (detail) => '[$dataset] 解析失敗：$detail',
+      );
 
   /// fileapi 可能回 String 或已解碼的 Map
   Map<String, dynamic> _jsonMap(Object? data, String dataset) {

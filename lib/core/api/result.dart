@@ -80,3 +80,21 @@ Failure<T> failureFromDio<T>(DioException e, {required String dataset, String? l
     apiKeyIssue: issue,
   );
 }
+
+/// The one request guard for every repository: runs [request]; a [DioException] becomes
+/// [failureFromDio], a [FormatException] a [Failure] with the message [parseFailure] builds
+/// from the exception message. Both carry [dataset] and [location].
+Future<Result<T>> guardRequest<T>(
+  Future<Result<T>> Function() request, {
+  required String dataset,
+  String? location,
+  required String Function(String detail) parseFailure,
+}) async {
+  try {
+    return await request();
+  } on DioException catch (e) {
+    return failureFromDio(e, dataset: dataset, location: location);
+  } on FormatException catch (e) {
+    return Failure(parseFailure(e.message), dataset: dataset, location: location);
+  }
+}

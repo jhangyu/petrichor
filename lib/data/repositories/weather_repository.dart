@@ -167,26 +167,27 @@ class WeatherRepository {
 
   /// 取得 [city] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
   /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
-  Future<Result<DateTime>> getForecastIssueTime(String city) async {
+  Future<Result<DateTime>> getForecastIssueTime(String city) {
     final county = normalizeCwaName(city);
     final ids = AppConstants.townshipForecastDatasets[county];
-    if (ids == null) return _unsupportedCounty(city, location: city);
+    if (ids == null) return Future.value(_unsupportedCounty(city, location: city));
     final dataset = ids.threeDay;
-    try {
-      // ponytail: 整份 file API 約 1 MB；IssueTime 位於開頭 DatasetInfo（實測位移約 1.7 KB），只取前 [_issueTimeHeadBytes]。
-      final response = await _dio.get<String>(
-        '${AppConstants.cwaFileApiBaseUrl}$dataset',
-        options: Options(
-          headers: {'Range': 'bytes=0-${_issueTimeHeadBytes - 1}'},
-          responseType: ResponseType.plain,
-        ),
-      );
-      return Success(_parseIssueTime(response.data ?? '', dataset));
-    } on DioException catch (e) {
-      return failureFromDio(e, dataset: dataset, location: county);
-    } on FormatException catch (e) {
-      return Failure('解析 $dataset 發布時間失敗（地點 $county）：${e.message}', dataset: dataset, location: county);
-    }
+    return guardRequest<DateTime>(
+      () async {
+        // ponytail: 整份 file API 約 1 MB；IssueTime 位於開頭 DatasetInfo（實測位移約 1.7 KB），只取前 [_issueTimeHeadBytes]。
+        final response = await _dio.get<String>(
+          '${AppConstants.cwaFileApiBaseUrl}$dataset',
+          options: Options(
+            headers: {'Range': 'bytes=0-${_issueTimeHeadBytes - 1}'},
+            responseType: ResponseType.plain,
+          ),
+        );
+        return Success(_parseIssueTime(response.data ?? '', dataset));
+      },
+      dataset: dataset,
+      location: county,
+      parseFailure: (detail) => '解析 $dataset 發布時間失敗（地點 $county）：$detail',
+    );
   }
 
   Future<Result<T>> _townshipForecast<T>(
@@ -217,26 +218,23 @@ class WeatherRepository {
     required String location,
     required Map<String, dynamic> query,
     required T Function(Map<String, dynamic> body) parse,
-  }) async {
-    try {
-      final response = await _dio.get(dataset, queryParameters: query);
-      final data = response.data;
-      if (data is! Map<String, dynamic>) {
-        return Failure(
-          '回應格式錯誤：期望 JSON 物件，實際 ${data.runtimeType}',
-          dataset: dataset,
-          location: location,
-        );
-      }
-      return Success(parse(data));
-    } on DioException catch (e) {
-      return failureFromDio(e, dataset: dataset, location: location);
-    } on FormatException catch (e) {
-      return Failure(
-        '解析 $dataset 失敗（地點 $location）：${e.message}',
-        dataset: dataset,
-        location: location,
-      );
-    }
+  }) {
+    return guardRequest<T>(
+      () async {
+        final response = await _dio.get(dataset, queryParameters: query);
+        final data = response.data;
+        if (data is! Map<String, dynamic>) {
+          return Failure(
+            '回應格式錯誤：期望 JSON 物件，實際 ${data.runtimeType}',
+            dataset: dataset,
+            location: location,
+          );
+        }
+        return Success(parse(data));
+      },
+      dataset: dataset,
+      location: location,
+      parseFailure: (detail) => '解析 $dataset 失敗（地點 $location）：$detail',
+    );
   }
 }
