@@ -8,8 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_cwa_adapter.dart';
 
-Place _at(double lat, double lon, String city, String district) =>
-    Place(county: city, town: district, latitude: lat, longitude: lon);
+Place _at(double lat, double lon, String county, String town) =>
+    Place(county: county, town: town, latitude: lat, longitude: lon);
 
 Map<String, dynamic> _station(Map<String, dynamic> json, String name) =>
     ((json['records'] as Map)['Station'] as List).cast<Map<String, dynamic>>().firstWhere((s) => s['StationName'] == name);

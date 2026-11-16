@@ -227,7 +227,7 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
       final location = await ref.read(locationServiceProvider).getCurrentLocation();
       if (epoch != _epoch) return null;
       final fixedAt = location.fixedAt ??
-          (throw StateError('GPS location for ${location.city}${location.district}: expected a fix time, got null'));
+          (throw StateError('GPS location for ${location.county}${location.town}: expected a fix time, got null'));
       return PlaceSelected(location.toPlace(), PlaceSource.gps, fixedAt: fixedAt);
     } on LocationException catch (e) {
       return epoch == _epoch ? NoPlace(e) : null;

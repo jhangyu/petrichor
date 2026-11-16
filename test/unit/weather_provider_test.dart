@@ -33,8 +33,8 @@ class _FileApiAdapter extends FakeCwaAdapter {
 final _taipei = LocationData(
   latitude: 25.046,
   longitude: 121.5166,
-  city: '臺北市',
-  district: '中正區',
+  county: '臺北市',
+  town: '中正區',
   fixedAt: DateTime.utc(2026, 11, 14, 4),
 );
 const _banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01154, longitude: 121.450888);

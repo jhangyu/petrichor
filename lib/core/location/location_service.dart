@@ -7,8 +7,8 @@ import '../api/result.dart';
 class LocationData {
   final double latitude;
   final double longitude;
-  final String city;
-  final String district;
+  final String county;
+  final String town;
 
   /// GPS 定位時刻（定位結果的時間戳）；非 GPS 來源（手動地點查詢）為 null
   final DateTime? fixedAt;
@@ -16,15 +16,15 @@ class LocationData {
   LocationData({
     required this.latitude,
     required this.longitude,
-    required this.city,
-    required this.district,
+    required this.county,
+    required this.town,
     this.fixedAt,
   });
 
   /// Place of this GPS fix (county/town names normalized to 「臺」).
   Place toPlace() => Place(
-        county: normalizeCwaPlaceName(city),
-        town: normalizeCwaPlaceName(district),
+        county: normalizeCwaPlaceName(county),
+        town: normalizeCwaPlaceName(town),
         latitude: latitude,
         longitude: longitude,
       );
@@ -128,8 +128,8 @@ class LocationService {
     return LocationData(
       latitude: position.latitude,
       longitude: position.longitude,
-      city: place.county,
-      district: place.town,
+      county: place.county,
+      town: place.town,
       fixedAt: position.timestamp,
     );
   }

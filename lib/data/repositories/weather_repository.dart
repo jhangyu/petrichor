@@ -74,20 +74,20 @@ class WeatherRepository {
   // ==========================================================================
 
   /// 取得鄉鎮逐 3 小時預報（未來 3 天）。
-  Future<Result<List<HourlyForecast>>> getHourlyForecast(String city, String district) {
+  Future<Result<List<HourlyForecast>>> getHourlyForecast(String county, String town) {
     return _townshipForecast(
-      city,
-      district,
+      county,
+      town,
       datasetOf: (d) => d.threeDay,
       parse: _parseHourly,
     );
   }
 
   /// 取得鄉鎮一週預報，每日含最高／最低溫（最多 [_weeklyDayCount] 天）。
-  Future<Result<List<DailyForecast>>> getWeeklyForecast(String city, String district) {
+  Future<Result<List<DailyForecast>>> getWeeklyForecast(String county, String town) {
     return _townshipForecast(
-      city,
-      district,
+      county,
+      town,
       datasetOf: (d) => d.oneWeek,
       parse: _parseWeekly,
     );
@@ -97,23 +97,23 @@ class WeatherRepository {
   // 日出日沒
   // ==========================================================================
 
-  /// 取得 [city] 縣市「[now] 所在臺灣曆日」前一日、當日與隔日的日出日沒時刻（[昨天, 今天, 明天]）。
-  Future<Result<List<SunDay>>> getSunTimes(String city, DateTime now) {
-    final county = normalizeCwaPlaceName(city);
+  /// 取得 [county] 縣市「[now] 所在臺灣曆日」前一日、當日與隔日的日出日沒時刻（[昨天, 今天, 明天]）。
+  Future<Result<List<SunDay>>> getSunTimes(String county, DateTime now) {
+    final countyName = normalizeCwaPlaceName(county);
     final today = taiwanWall(now);
     final days = [
       for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) isoDate(today.add(Duration(days: i))),
     ];
     return _query(
       dataset: AppConstants.sunTimesDataset,
-      location: county,
+      location: countyName,
       // timeTo 為不含端點，故取 days.last 的次日
       query: {
-        'CountyName': county,
+        'CountyName': countyName,
         'timeFrom': days.first,
         'timeTo': isoDate(today.add(const Duration(days: _sunDaysAfter + 1))),
       },
-      parse: (body) => _parseSunTimes(body, county, days),
+      parse: (body) => _parseSunTimes(body, countyName, days),
     );
   }
 
@@ -164,12 +164,12 @@ class WeatherRepository {
     return Success(best);
   }
 
-  /// 取得 [city] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
+  /// 取得 [county] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
   /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
-  Future<Result<DateTime>> getForecastIssueTime(String city) {
-    final county = normalizeCwaPlaceName(city);
-    final ids = AppConstants.townshipForecastDatasets[county];
-    if (ids == null) return Future.value(_unsupportedCounty(city, location: city));
+  Future<Result<DateTime>> getForecastIssueTime(String county) {
+    final countyName = normalizeCwaPlaceName(county);
+    final ids = AppConstants.townshipForecastDatasets[countyName];
+    if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
     final dataset = ids.threeDay;
     return guardRequest<DateTime>(
       () async {
@@ -184,25 +184,25 @@ class WeatherRepository {
         return Success(_parseIssueTime(response.data ?? '', dataset));
       },
       dataset: dataset,
-      location: county,
+      location: countyName,
     );
   }
 
   Future<Result<T>> _townshipForecast<T>(
-    String city,
-    String district, {
+    String county,
+    String town, {
     required String Function(({String threeDay, String oneWeek})) datasetOf,
-    required T Function(Map<String, dynamic> body, String township) parse,
+    required T Function(Map<String, dynamic> body, String townName) parse,
   }) async {
-    final county = normalizeCwaPlaceName(city);
-    final township = normalizeCwaPlaceName(district);
-    final ids = AppConstants.townshipForecastDatasets[county];
-    if (ids == null) return _unsupportedCounty(city, location: '$city$district');
+    final countyName = normalizeCwaPlaceName(county);
+    final townName = normalizeCwaPlaceName(town);
+    final ids = AppConstants.townshipForecastDatasets[countyName];
+    if (ids == null) return _unsupportedCounty(county, location: '$county$town');
     return _query(
       dataset: datasetOf(ids),
-      location: '$county$township',
-      query: {'LocationName': township},
-      parse: (body) => parse(body, township),
+      location: '$countyName$townName',
+      query: {'LocationName': townName},
+      parse: (body) => parse(body, townName),
     );
   }
 

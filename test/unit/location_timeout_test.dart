@@ -59,8 +59,8 @@ void main() {
     late.complete(LocationData(
       latitude: 23.565,
       longitude: 119.586,
-      city: '澎湖縣',
-      district: '馬公市',
+      county: '澎湖縣',
+      town: '馬公市',
       fixedAt: DateTime.utc(2026, 11, 14, 6, 10),
     ));
     await firstLoad;
