@@ -83,7 +83,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
           EmptyState(
             title: '無法讀取已選地點',
             text: '$error',
-            error: true,
+            isError: true,
             actions: [AppButton(label: '重新選擇地點', variant: AppButtonVariant.primary, onPressed: openLocationTab)],
           ),
         ],

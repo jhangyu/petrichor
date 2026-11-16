@@ -138,21 +138,21 @@ class AppNoteList extends StatelessWidget {
 }
 
 /// `.empty-state`: centred icon (48) + title + optional text + actions.
-/// [error] tints the icon danger (`.empty-state__icon--error`).
+/// [isError] tints the icon danger (`.empty-state__icon--error`).
 class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.title,
     this.text,
     this.icon = Icons.cloud_off_outlined,
-    this.error = false,
+    this.isError = false,
     this.actions = const [],
   });
 
   final String title;
   final String? text;
   final IconData icon;
-  final bool error;
+  final bool isError;
   final List<Widget> actions;
 
   @override
@@ -164,7 +164,7 @@ class EmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: AppSpace.s12,
         children: [
-          Icon(icon, size: AppSize.icon48, color: error ? AppPalette.dangerForeground : AppPalette.foreground3),
+          Icon(icon, size: AppSize.icon48, color: isError ? AppPalette.dangerForeground : AppPalette.foreground3),
           Text(title, textAlign: TextAlign.center, style: AppType.subtitle2.copyWith(color: AppPalette.foreground1)),
           if (body != null)
             Text(body, textAlign: TextAlign.center, style: AppType.body1.copyWith(color: AppPalette.foreground2)),
