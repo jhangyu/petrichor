@@ -9,7 +9,7 @@ import '../../../data/models/place.dart';
 import '../../place/place_provider.dart';
 import '../notification_settings.dart';
 import 'notification_parts.dart';
-import 'settings_parts.dart';
+import 'settings_group.dart';
 
 /// 通知設定 group (settings only: nothing is delivered yet).
 class NotificationSettingsCard extends ConsumerStatefulWidget {

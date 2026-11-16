@@ -12,7 +12,7 @@ import '../../../core/widgets/status.dart';
 import '../../place/place_provider.dart';
 import '../../place/location_failure_text.dart';
 import '../../../core/time/taiwan_time.dart';
-import 'settings_parts.dart';
+import 'settings_group.dart';
 
 /// 地點設定 (spec §6): manual search entry, the auto-locate switch and its state, in one group.
 class PlaceSettingsCard extends ConsumerWidget {

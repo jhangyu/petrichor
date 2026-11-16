@@ -4,7 +4,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/data_display.dart';
 import '../notification_settings.dart';
-import 'settings_parts.dart';
+import 'settings_group.dart';
 
 class NotifySwitchRow extends StatelessWidget {
   const NotifySwitchRow({

@@ -11,11 +11,11 @@ import '../../core/api/result.dart';
 import '../place/place_provider.dart';
 import 'api_key_status.dart';
 import 'place_picker.dart';
-import 'widgets/notification_card.dart';
+import 'widgets/notification_settings_card.dart';
 import 'widgets/place_settings_card.dart';
 import 'widgets/saved_places_card.dart';
-import 'widgets/settings_parts.dart';
-import 'widgets/token_card.dart';
+import 'widgets/settings_group.dart';
+import 'widgets/token_settings_card.dart';
 
 /// Why the page-level token banner shows (未設定 / 無效 only; 無法驗證 and 驗證中 show none).
 enum _TokenProblem { notSet, invalid }

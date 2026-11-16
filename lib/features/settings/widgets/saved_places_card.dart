@@ -13,7 +13,7 @@ import '../../../core/api/result.dart';
 import '../../place/place_provider.dart';
 import '../../../core/format/weather_format.dart';
 import '../../../core/widgets/weather_glyph_icon.dart';
-import 'settings_parts.dart';
+import 'settings_group.dart';
 
 /// Skeleton height while the saved-place list loads (three rows).
 const _loadingHeight = AppSize.touch * 3;
