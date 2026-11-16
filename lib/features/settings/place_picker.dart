@@ -197,7 +197,7 @@ class _TownList extends ConsumerWidget {
                 ),
             ];
             if (!AppTwoPane.fits(constraints.maxWidth)) return AppList(children: rows);
-            return AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: [for (final r in rows) AppList(children: [r])]);
+            return AppGrid(minColumnWidth: AppLayout.paneMinimumWidth, children: [for (final r in rows) AppList(children: [r])]);
           }),
       ],
     );

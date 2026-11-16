@@ -435,7 +435,7 @@ class _SettingsState extends State<_Settings> {
               padding: const EdgeInsets.fromLTRB(AppSpace.s12, AppSpace.s4, AppSpace.s12, AppSpace.s16),
               // One column in a narrow pane; the fields sit side by side once the card is wide enough for two.
               child: AppGrid(
-                minColumnWidth: AppLayout.paneMinWidth,
+                minColumnWidth: AppLayout.paneMinimumWidth,
                 children: [
                   if (f.windowOptions.isNotEmpty)
                     _Field(

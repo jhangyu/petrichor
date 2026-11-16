@@ -71,7 +71,7 @@ class _StationListCardState extends State<StationListCard> {
           final columns = AppGrid.columnsFor(
             box.maxWidth,
             spanUnits: sorted.length,
-            minColumnWidth: AppLayout.paneMinWidth,
+            minColumnWidth: AppLayout.paneMinimumWidth,
           );
           final chips = [
             AppChip(label: '全部縣市', selected: _county == null, onTap: () => _selectCounty(null)),
@@ -87,7 +87,7 @@ class _StationListCardState extends State<StationListCard> {
               if (columns > 1)
                 Padding(
                   padding: const EdgeInsets.all(AppSpace.s16),
-                  child: AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: rows),
+                  child: AppGrid(minColumnWidth: AppLayout.paneMinimumWidth, children: rows),
                 )
               else
                 ...rows,

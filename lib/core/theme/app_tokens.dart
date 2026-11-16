@@ -227,8 +227,8 @@ abstract final class AppBreakpoint {
 /// Fluid page grid (`AppGrid`) and reading width.
 abstract final class AppLayout {
   /// Narrowest page column: the phone card width the cards were designed at.
-  static const double gridMinColumn = 340;
-  static const int gridMaxColumns = 6;
+  static const double gridMinimumColumnWidth = 340;
+  static const int gridMaximumColumns = 6;
   static const double gridGap = AppSpace.s16;
 
   /// Left/right page margin per width class (compact / medium / expanded+).
@@ -245,11 +245,11 @@ abstract final class AppLayout {
   static const double cardWideWidth = 520;
 
   /// `AppTwoPane` side pane: width = available × [paneSideShare], clamped to
-  /// [paneMinWidth]…[paneMaxWidth]. [paneMinWidth] is also the smallest map
-  /// box side and the min cell width of multi-column lists; [paneMaxWidth]
+  /// [paneMinimumWidth]…[paneMaximumWidth]. [paneMinimumWidth] is also the smallest map
+  /// box side and the min cell width of multi-column lists; [paneMaximumWidth]
   /// caps a map that keeps its natural aspect ratio.
-  static const double paneMinWidth = 320;
-  static const double paneMaxWidth = 480;
+  static const double paneMinimumWidth = 320;
+  static const double paneMaximumWidth = 480;
   static const double paneSideShare = 0.4;
 }
 

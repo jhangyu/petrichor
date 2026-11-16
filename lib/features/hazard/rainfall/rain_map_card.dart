@@ -92,7 +92,7 @@ class RainMapCard extends StatelessWidget {
           spacing: AppSpace.s16,
           children: [
             ?banner,
-            SizedBox(height: math.max(AppLayout.paneMinWidth, window - _wideMapChromeHeight), child: map),
+            SizedBox(height: math.max(AppLayout.paneMinimumWidth, window - _wideMapChromeHeight), child: map),
             legend,
             noteText,
           ],

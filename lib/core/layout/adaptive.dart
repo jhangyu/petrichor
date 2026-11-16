@@ -86,8 +86,8 @@ class AppGrid extends StatelessWidget {
   const AppGrid({
     super.key,
     required this.children,
-    this.minColumnWidth = AppLayout.gridMinColumn,
-    this.maxColumns = AppLayout.gridMaxColumns,
+    this.minColumnWidth = AppLayout.gridMinimumColumnWidth,
+    this.maxColumns = AppLayout.gridMaximumColumns,
   });
 
   final List<Widget> children;
@@ -103,8 +103,8 @@ class AppGrid extends StatelessWidget {
   static int columnsFor(
     double width, {
     required int spanUnits,
-    double minColumnWidth = AppLayout.gridMinColumn,
-    int maxColumns = AppLayout.gridMaxColumns,
+    double minColumnWidth = AppLayout.gridMinimumColumnWidth,
+    int maxColumns = AppLayout.gridMaximumColumns,
   }) {
     final fit = ((width + _gap) / (minColumnWidth + _gap)).floor();
     return math.max(1, math.min(math.min(fit, maxColumns), spanUnits));
@@ -148,7 +148,7 @@ class AppGrid extends StatelessWidget {
 
 /// Main pane + side pane in one row, gap 16. Side pane width =
 /// available × [AppLayout.paneSideShare], clamped to
-/// [AppLayout.paneMinWidth]…[AppLayout.paneMaxWidth]; the main pane takes the
+/// [AppLayout.paneMinimumWidth]…[AppLayout.paneMaximumWidth]; the main pane takes the
 /// rest. Under a bounded height (`AppPageScaffold.fill` body) both panes get
 /// the full height and must scroll themselves; inside the scrolling page grid
 /// they are top-aligned and keep their own height, or share the taller one
@@ -172,8 +172,8 @@ class AppTwoPane extends StatelessWidget {
   /// card row with aligned edges).
   final bool matchHeight;
 
-  /// Whether [width] holds two panes of at least [AppLayout.paneMinWidth].
-  static bool fits(double width) => width >= 2 * AppLayout.paneMinWidth + AppLayout.gridGap;
+  /// Whether [width] holds two panes of at least [AppLayout.paneMinimumWidth].
+  static bool fits(double width) => width >= 2 * AppLayout.paneMinimumWidth + AppLayout.gridGap;
 
   /// Whether a map+controls split fits: side navigation, not a short window,
   /// and [width] (the content width, page margin removed) [fits] two panes.
@@ -187,7 +187,7 @@ class AppTwoPane extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final sideWidth = (constraints.maxWidth * AppLayout.paneSideShare)
-            .clamp(AppLayout.paneMinWidth, AppLayout.paneMaxWidth);
+            .clamp(AppLayout.paneMinimumWidth, AppLayout.paneMaximumWidth);
         if (matchHeight && !constraints.hasBoundedHeight) {
           final mainWidth = constraints.maxWidth - sideWidth - AppLayout.gridGap;
           final panes = [SizedBox(width: mainWidth, child: main), SizedBox(width: sideWidth, child: side)];

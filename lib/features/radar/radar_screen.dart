@@ -171,7 +171,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           body: AppTwoPane(
             main: LayoutBuilder(
               builder: (context, pane) => SingleChildScrollView(
-                child: view.hero(math.max(AppLayout.paneMinWidth, pane.maxHeight - _heroChromeHeight)),
+                child: view.hero(math.max(AppLayout.paneMinimumWidth, pane.maxHeight - _heroChromeHeight)),
               ),
             ),
             side: SingleChildScrollView(
@@ -398,7 +398,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           mapHeight == null
               ? Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: AppLayout.paneMaxWidth),
+                    constraints: const BoxConstraints(maxWidth: AppLayout.paneMaximumWidth),
                     child: map,
                   ),
                 )
