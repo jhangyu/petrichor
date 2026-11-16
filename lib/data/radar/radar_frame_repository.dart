@@ -254,9 +254,9 @@ class RadarFrameRepository {
       RadarComposedStep(:final obtain) => await obtain(f, cancel, processSlot),
     };
     final key = f.cacheKey;
-    final stats = File('${dir.path}/$key.stats');
+    final statisticsFile = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
-    await writeAtomic(stats, processed.statistics.toBytes());
+    await writeAtomic(statisticsFile, processed.statistics.toBytes());
     await writeAtomic(webp, processed.webp);
     return _frame(f.time, webp, processed.statistics, radarWebpSize(processed.webp));
   }
