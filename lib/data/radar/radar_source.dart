@@ -13,11 +13,11 @@ import 'radar_frame_processor.dart';
 /// never shown.
 const radarFrameCacheDirName = 'radar_webp_2048_v3';
 
-/// Writes [bytes] to `<target><tmpSuffix>` (flushed), then renames it onto
+/// Writes [bytes] to `<target><temporarySuffix>` (flushed), then renames it onto
 /// [target], so [target] is never seen half-written. Leftover temp files fail
 /// the cache file patterns, so cache pruning deletes them.
-Future<void> writeAtomic(File target, List<int> bytes, {String tmpSuffix = '.tmp'}) async {
-  final tmp = await File('${target.path}$tmpSuffix').writeAsBytes(bytes, flush: true);
+Future<void> writeAtomic(File target, List<int> bytes, {String temporarySuffix = '.tmp'}) async {
+  final tmp = await File('${target.path}$temporarySuffix').writeAsBytes(bytes, flush: true);
   await tmp.rename(target.path);
 }
 
@@ -115,7 +115,7 @@ class RadarSource {
           {required String id,
           required String listUrl,
           required Duration maxWindow,
-          required List<RadarFrameReference> Function(String js) parse,
+          required List<RadarFrameReference> Function(String scriptText) parse,
           required RadarImageGeometry geometry}) =>
       RadarSource(
         id: id,
@@ -139,13 +139,13 @@ class RadarSource {
       id: station.datasetId,
       listUrl: radarStationListUrl,
       maxWindow: radarStationMaxWindow,
-      parse: (js) => parseRadarStationList(js, code: station.code),
+      parse: (scriptText) => parseRadarStationList(scriptText, code: station.code),
       geometry: stationRadarGeometry(stationRadarBounds(station.site, radiusKm: radarStationRangeKm)));
 }
 
 /// [RadarFrameLister] of a website loop: the JS list at [listUrl], parsed by [parse].
 Future<List<RadarFrameReference>> _listWebsiteFrames(
-    Dio dio, String id, String listUrl, List<RadarFrameReference> Function(String js) parse,
+    Dio dio, String id, String listUrl, List<RadarFrameReference> Function(String scriptText) parse,
     {required DateTime now, required Duration window, CancelToken? cancelToken}) async {
   final Response<String> response;
   try {
@@ -154,11 +154,11 @@ Future<List<RadarFrameReference>> _listWebsiteFrames(
     if (CancelToken.isCancel(e)) rethrow;
     throw RadarDataException(listUrl, expected: 'HTTP 200 with the frame list', actual: radarHttpFailure(e));
   }
-  final js = response.data ??
+  final scriptText = response.data ??
       (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
   final List<RadarFrameReference> all;
   try {
-    all = parse(js);
+    all = parse(scriptText);
   } on FormatException catch (e) {
     throw RadarDataException(listUrl, expected: 'a frame list for $id', actual: e);
   }

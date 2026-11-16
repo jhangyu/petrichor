@@ -183,7 +183,7 @@ final _rgba = Uint32List.fromList([
   for (final c in AppPalette.rainfallMapScale) rgbToRgbaWord(c.toARGB32()),
 ]);
 
-final _rowMap = mercatorRowMap(srcHeight: accumGridHeight, south: accumBounds.south, north: accumBounds.north);
+final _rowMap = mercatorRowMap(sourceHeight: accumGridHeight, south: accumBounds.south, north: accumBounds.north);
 
 /// Parses the grids and totals them ([accumFrameSum]), colours the total
 /// ([accumColorIndex]), reprojects rows to Web Mercator and encodes one
@@ -287,7 +287,7 @@ class _PieceCache {
   Future<void> setRenderedSignature(int windowHours, DateTime frame, String signature) async {
     final file = await _renderedFile(windowHours, frame);
     await file.parent.create(recursive: true);
-    await writeAtomic(file, utf8.encode(signature), tmpSuffix: '.${_tmpSeq++}.tmp');
+    await writeAtomic(file, utf8.encode(signature), temporarySuffix: '.${_tmpSeq++}.tmp');
   }
 
   static Future<String> _readOrEmpty(File file) async => await file.exists() ? file.readAsString() : '';
@@ -332,12 +332,12 @@ class _PieceCache {
         final gz = Uint8List.fromList(gzip.encode(body));
         await dir.create(recursive: true);
         final seq = _tmpSeq++;
-        await writeAtomic(file, gz, tmpSuffix: '.$seq.tmp');
+        await writeAtomic(file, gz, temporarySuffix: '.$seq.tmp');
         final newEtag = response.headers.value(HttpHeaders.etagHeader);
         if (newEtag == null) {
           if (await etagFile.exists()) await etagFile.delete();
         } else {
-          await writeAtomic(etagFile, utf8.encode(newEtag), tmpSuffix: '.$seq.tmp');
+          await writeAtomic(etagFile, utf8.encode(newEtag), temporarySuffix: '.$seq.tmp');
         }
         return gz;
       default:

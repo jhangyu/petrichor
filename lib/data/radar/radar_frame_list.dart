@@ -83,31 +83,31 @@ DateTime radarStampTime(String s) {
   return parseUtcStamp(s).subtract(taiwanUtcOffset);
 }
 
-/// Parses every `CV1_3600_` frame in [js] (the content of Observe_radar.js).
-List<RadarFrameReference> parseRadarFrameList(String js) {
-  final frames = _framePattern.allMatches(js).map((m) => RadarFrameReference.website(m.group(1)!)).toSet().toList();
+/// Parses every `CV1_3600_` frame in [scriptText] (the content of Observe_radar.js).
+List<RadarFrameReference> parseRadarFrameList(String scriptText) {
+  final frames = _framePattern.allMatches(scriptText).map((m) => RadarFrameReference.website(m.group(1)!)).toSet().toList();
   if (frames.isEmpty) {
     throw FormatException(
       "Observe_radar.js: expected entries matching '$_radarFrameSetPrefix<yyyyMMddHHmm>.png', found none "
-      '(${js.length} chars)',
+      '(${scriptText.length} chars)',
     );
   }
   return frames;
 }
 
 /// Parses every 3600 px frame of the station with image-name code [code]
-/// (RCSL, RCNT, RCLY) in [js] (the content of Observe_radar_rain.js).
-List<RadarFrameReference> parseRadarStationList(String js, {required String code}) {
+/// (RCSL, RCNT, RCLY) in [scriptText] (the content of Observe_radar_rain.js).
+List<RadarFrameReference> parseRadarStationList(String scriptText, {required String code}) {
   final pattern = RegExp("'(CV1_${code}_3600/CV1_${code}_3600_(\\d{14})_[0-9a-f]{64}\\.png)'");
   final frames = pattern
-      .allMatches(js)
+      .allMatches(scriptText)
       .map((m) => RadarFrameReference(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}'))
       .toSet()
       .toList();
   if (frames.isEmpty) {
     throw FormatException(
       "Observe_radar_rain.js: expected entries matching 'CV1_${code}_3600/CV1_${code}_3600_<yyyyMMddHHmmss>_<hash>.png', "
-      'found none (${js.length} chars)',
+      'found none (${scriptText.length} chars)',
     );
   }
   return frames;

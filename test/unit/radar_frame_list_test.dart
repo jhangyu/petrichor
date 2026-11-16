@@ -62,8 +62,8 @@ void main() {
   });
 
   group('station list (Observe_radar_rain.js saved 2026-11-15 11:42, trimmed: 6 newest + 2 oldest per station)', () {
-    final js = File('test/fixtures/radar/Observe_radar_rain_20261115_1135.js').readAsStringSync();
-    final shulin = parseRadarStationList(js, code: 'RCSL');
+    final scriptText = File('test/fixtures/radar/Observe_radar_rain_20261115_1135.js').readAsStringSync();
+    final shulin = parseRadarStationList(scriptText, code: 'RCSL');
     List<String> stamps(List<RadarFrameReference> f) => [for (final x in f) _stamp(x, seconds: true)];
 
     test("only this station's 3600 set; time to the second from the name; URL from the list", () {
@@ -76,8 +76,8 @@ void main() {
         '815460ea9bfd85c76edf8099653ed3eb2528959a7eb5a4956f771e277900e1b4.png',
       );
       expect(shulin.every((f) => f.url.contains('/CV1_RCSL_3600/')), isTrue);
-      expect(parseRadarStationList(js, code: 'RCLY'), hasLength(8));
-      expect(() => parseRadarStationList(js, code: 'RCXX'), throwsFormatException);
+      expect(parseRadarStationList(scriptText, code: 'RCLY'), hasLength(8));
+      expect(() => parseRadarStationList(scriptText, code: 'RCXX'), throwsFormatException);
     });
 
     test('irregular spacing: the window is a time span, not a frame count', () {

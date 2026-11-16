@@ -151,7 +151,7 @@ void main() {
   });
 
   test('Mercator row map for the 3600 frame keeps every source row in order', () {
-    final rows = mercatorRowMap(srcHeight: 3600, south: 17.75, north: 29.25);
+    final rows = mercatorRowMap(sourceHeight: 3600, south: 17.75, north: 29.25);
     expect(rows.first, 0);
     expect(rows.last, 3599);
     for (var j = 1; j < rows.length; j++) {

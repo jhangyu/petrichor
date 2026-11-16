@@ -79,7 +79,7 @@ void main() {
 
   /// Peak and colour of every pixel of [processed] match the raw total [sum].
   void expectFrame(ProcessedRadarFrame processed, Int32List sum) {
-    final rowMap = mercatorRowMap(srcHeight: accumGridHeight, south: 20, north: 27);
+    final rowMap = mercatorRowMap(sourceHeight: accumGridHeight, south: 20, north: 27);
     final pixels = decodeRadarWebp(processed.webp);
     expect(radarWebpSize(processed.webp), (width: accumGridWidth, height: rowMap.length));
     var coloured = 0;

@@ -28,7 +28,7 @@ const _radarFrameWest = 115.0;
 const _radarFrameEast = 126.5;
 
 /// Mercator row map of the 3600 frame (3748 output rows).
-final _radarFrameRowMap = mercatorRowMap(srcHeight: radarFrameSize, south: _radarFrameSouth, north: _radarFrameNorth);
+final _radarFrameRowMap = mercatorRowMap(sourceHeight: radarFrameSize, south: _radarFrameSouth, north: _radarFrameNorth);
 
 /// Extent of the website `CV1_3600_` frames ([_radarFrameWest] etc.). Same grid as open-data O-A0058-001
 /// (pixel-identical image; graticule lines verified at whole degrees), see

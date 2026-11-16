@@ -60,11 +60,11 @@ typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStatistics stats});
 /// of the processed image: index 0 = transparent, index d + 1 = dBZ d
 /// ([colours], index = dBZ), opaque.
 Uint32List _rgbaOfIndex(List<int> colours) {
-  final lut = Uint32List(colours.length + 1);
+  final lookupTable = Uint32List(colours.length + 1);
   for (final (d, c) in colours.indexed) {
-    lut[d + 1] = rgbToRgbaWord(c);
+    lookupTable[d + 1] = rgbToRgbaWord(c);
   }
-  return lut;
+  return lookupTable;
 }
 
 /// Full pipeline for one downloaded image, in one pass over the source rows
@@ -137,16 +137,16 @@ Uint32List _colourBits(List<int> colours) {
   return bits;
 }
 
-/// Row map from an image linear in latitude ([south]..[north], [srcHeight]
+/// Row map from an image linear in latitude ([south]..[north], [sourceHeight]
 /// rows) to Web Mercator rows, top row first. The output height is chosen so
 /// that no source row is dropped (stretch ≥ 1 row at the southern edge, where
 /// Mercator stretches least); northern rows are duplicated.
-List<int> mercatorRowMap({required int srcHeight, required double south, required double north}) {
+List<int> mercatorRowMap({required int sourceHeight, required double south, required double north}) {
   final yS = _mercY(south), yN = _mercY(north);
-  final outHeight = (srcHeight * (yN - yS) * cos(_rad(south)) / _rad(north - south)).ceil();
+  final outHeight = (sourceHeight * (yN - yS) * cos(_rad(south)) / _rad(north - south)).ceil();
   return List<int>.generate(outHeight, (j) {
     final lat = _latOf(yN - (j + 0.5) * (yN - yS) / outHeight);
-    return ((north - lat) / (north - south) * srcHeight).floor().clamp(0, srcHeight - 1);
+    return ((north - lat) / (north - south) * sourceHeight).floor().clamp(0, sourceHeight - 1);
   });
 }
 
