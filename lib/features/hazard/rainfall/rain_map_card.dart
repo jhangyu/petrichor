@@ -80,7 +80,7 @@ class RainMapCard extends StatelessWidget {
         ),
       );
     }
-    final window = MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top;
+    final availableHeight = MediaQuery.sizeOf(context).height - MediaQuery.paddingOf(context).top;
     final side = [...leading, ...controls];
     return AppTwoPane(
       matchHeight: true,
@@ -92,7 +92,7 @@ class RainMapCard extends StatelessWidget {
           spacing: AppSpace.s16,
           children: [
             ?banner,
-            SizedBox(height: math.max(AppLayout.paneMinimumWidth, window - _wideMapChromeHeight), child: map),
+            SizedBox(height: math.max(AppLayout.paneMinimumWidth, availableHeight - _wideMapChromeHeight), child: map),
             legend,
             noteText,
           ],

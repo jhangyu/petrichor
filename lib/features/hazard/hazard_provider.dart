@@ -11,17 +11,17 @@ final activeWarningsProvider = FutureProvider<Result<ActiveWarnings>>((ref) {
 });
 
 /// 使用者縣市的雨量觀測與最近測站
-final rainfallProvider = FutureProvider.family<Result<CountyRainfall>, HazardLocation>((ref, loc) {
+final countyRainfallProvider = FutureProvider.family<Result<CountyRainfall>, HazardLocation>((ref, hazardLocation) {
   return ref.watch(hazardRepositoryProvider).getRainfall(
-        county: loc.county,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
+        county: hazardLocation.county,
+        latitude: hazardLocation.latitude,
+        longitude: hazardLocation.longitude,
       );
 });
 
 /// 使用者位置的 1 小時雨量預測（含繪圖用格點）
-final rainForecastProvider = FutureProvider.family<Result<RainForecast>, ({double latitude, double longitude})>((ref, loc) {
-  return ref.watch(hazardRepositoryProvider).getRainForecast(latitude: loc.latitude, longitude: loc.longitude);
+final rainForecastProvider = FutureProvider.family<Result<RainForecast>, ({double latitude, double longitude})>((ref, point) {
+  return ref.watch(hazardRepositoryProvider).getRainForecast(latitude: point.latitude, longitude: point.longitude);
 });
 
 /// 全部雨量測站（無目前地點時的測站列表）

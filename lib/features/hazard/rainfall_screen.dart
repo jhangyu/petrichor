@@ -155,13 +155,13 @@ class RainfallScreen extends ConsumerWidget {
   }
 
   Widget _placeBody(WidgetRef ref, Place place) {
-    final loc = place.hazardLocation;
-    final rainfall = ref.watch(rainfallProvider(loc));
-    final forecastLoc = (latitude: place.latitude, longitude: place.longitude);
+    final hazardLocation = place.hazardLocation;
+    final rainfall = ref.watch(countyRainfallProvider(hazardLocation));
+    final forecastPoint = (latitude: place.latitude, longitude: place.longitude);
     final me = LatLng(place.latitude, place.longitude);
-    final forecast = ref.watch(rainForecastProvider(forecastLoc));
-    void retryRainfall() => ref.invalidate(rainfallProvider(loc));
-    void retryForecast() => ref.invalidate(rainForecastProvider(forecastLoc));
+    final forecast = ref.watch(rainForecastProvider(forecastPoint));
+    void retryRainfall() => ref.invalidate(countyRainfallProvider(hazardLocation));
+    void retryForecast() => ref.invalidate(rainForecastProvider(forecastPoint));
     final result = rainfall.value;
     final forecastResult = forecast.value;
     // A missing token shows one notice, on the nearest-station card.
