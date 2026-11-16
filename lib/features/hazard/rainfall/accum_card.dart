@@ -241,7 +241,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             : failed.isNotEmpty
             ? StatusBanner(
                 tone: StatusTone.error,
-                title: '${failed.length} 張影格無法取得',
+                title: '無法取得 ${failed.length} 張影格',
                 text: '${clockText(failed.first.time)} ${firstLine(failed.first.error!)}',
                 actions: [RetryButton(onPressed: () => _retry(hours))],
               )

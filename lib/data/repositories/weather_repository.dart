@@ -186,7 +186,6 @@ class WeatherRepository {
       },
       dataset: dataset,
       location: county,
-      parseFailure: (detail) => '解析 $dataset 發布時間失敗（地點 $county）：$detail',
     );
   }
 
@@ -234,7 +233,6 @@ class WeatherRepository {
       },
       dataset: dataset,
       location: location,
-      parseFailure: (detail) => '解析 $dataset 失敗（地點 $location）：$detail',
     );
   }
 }

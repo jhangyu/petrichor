@@ -334,7 +334,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       hero: _heroCard(
         banner: StatusBanner(
           tone: StatusTone.error,
-          title: '播放設定無法讀取',
+          title: '無法讀取播放設定',
           text: [if (windowBroken) '${window.error}', if (fpsBroken) '${fps.error}', if (repeatBroken) '${repeat.error}'].join('；'),
           actions: [
             AppButton(
@@ -456,7 +456,7 @@ class _FailureBanner extends StatelessWidget {
       children: [
         StatusBanner(
           tone: StatusTone.error,
-          title: '${failed.length} 張影格無法取得',
+          title: '無法取得 ${failed.length} 張影格',
           text: '$range · ${firstLine(failed.first.error!)}',
           actions: [RetryButton(onPressed: onRetry)],
         ),

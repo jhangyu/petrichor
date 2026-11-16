@@ -128,37 +128,37 @@ class PlaceSettingsCard extends ConsumerWidget {
     return switch (none.reason) {
       LocationFailure.permissionDenied || LocationFailure.permissionDeniedForever => StatusBanner(
           tone: StatusTone.permission,
-          title: none.reason == LocationFailure.permissionDenied ? '未取得位置權限' : '位置權限已關閉',
+          title: locationFailureTitle(none.reason),
           text: guidance,
-          actions: [_openSettingsButton(context, Geolocator.openAppSettings), retry],
+          actions: [_openSettingsButton(context, Geolocator.openAppSettings, '應用程式設定'), retry],
         ),
       LocationFailure.serviceDisabled => StatusBanner(
           tone: StatusTone.error,
-          title: '定位服務已關閉',
+          title: locationFailureTitle(none.reason),
           text: guidance,
-          actions: [_openSettingsButton(context, Geolocator.openLocationSettings), retry],
+          actions: [_openSettingsButton(context, Geolocator.openLocationSettings, '定位設定'), retry],
         ),
       LocationFailure.positionUnavailable || LocationFailure.addressUnresolved => StatusBanner(
           tone: StatusTone.error,
-          title: '無法取得目前位置',
+          title: locationFailureTitle(none.reason),
           text: guidance,
           actions: [retry],
         ),
     };
   }
 
-  Widget _openSettingsButton(BuildContext context, Future<bool> Function() open) => AppButton(
+  Widget _openSettingsButton(BuildContext context, Future<bool> Function() open, String what) => AppButton(
         label: '前往設定',
         variant: AppButtonVariant.primary,
         small: true,
-        onPressed: () => _openSystemSettings(context, open),
+        onPressed: () => _openSystemSettings(context, open, what),
       );
 }
 
 /// Opens a system settings page; tells the user when the platform refuses.
-Future<void> _openSystemSettings(BuildContext context, Future<bool> Function() open) async {
+Future<void> _openSystemSettings(BuildContext context, Future<bool> Function() open, String what) async {
   final messenger = ScaffoldMessenger.of(context);
   if (!await open()) {
-    messenger.showSnackBar(const SnackBar(content: Text('無法開啟系統設定，請手動到系統設定開啟本 App 的位置權限')));
+    messenger.showSnackBar(SnackBar(content: Text(openSettingsFailedMessage(what))));
   }
 }

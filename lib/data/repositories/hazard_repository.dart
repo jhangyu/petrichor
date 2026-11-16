@@ -46,7 +46,6 @@ class HazardRepository {
           return Success(warnings);
         },
         dataset: '${AppConstants.warningsByCountyDataset}/${AppConstants.warningBulletinsDataset}',
-        parseFailure: (detail) => '[${AppConstants.warningsByCountyDataset}/${AppConstants.warningBulletinsDataset}] 解析失敗：$detail',
       );
 
   /// 資料集內全部測站（所有縣市），不需要使用者位置。
@@ -56,7 +55,6 @@ class HazardRepository {
           return Success(parseRainStations(_datastoreRecords(response.data, AppConstants.rainObservationDataset)));
         },
         dataset: AppConstants.rainObservationDataset,
-        parseFailure: (detail) => '[${AppConstants.rainObservationDataset}] 解析失敗：$detail',
       );
 
   /// 指定縣市的雨量觀測：該縣市所有測站與離 ([latitude], [longitude]) 最近的有值測站。
@@ -111,7 +109,6 @@ class HazardRepository {
           return Success(parse(body['cwaopendata']));
         },
         dataset: dataset,
-        parseFailure: (detail) => '[$dataset] 解析失敗：$detail',
       );
 
   /// fileapi 可能回 String 或已解碼的 Map

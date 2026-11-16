@@ -286,17 +286,13 @@ class _NoPlaceGuide extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reason = noPlace.reason;
-    final title = switch (reason) {
-      LocationFailure.permissionDenied || LocationFailure.permissionDeniedForever => '未取得位置權限',
-      LocationFailure.serviceDisabled => '定位服務已關閉',
-      LocationFailure.positionUnavailable || LocationFailure.addressUnresolved => '無法取得目前位置',
-    };
+    final title = locationFailureTitle(reason);
     final text = locationFailureMessage(reason);
 
     Future<void> openSettings(Future<bool> Function() open, String what) async {
       if (await open()) return;
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('無法開啟$what，請手動前往系統設定')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(openSettingsFailedMessage(what))));
     }
 
     void useGps() => ref.read(currentPlaceProvider.notifier).useGps();

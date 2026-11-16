@@ -47,7 +47,7 @@ class Forecast72hCard extends StatelessWidget {
         title: _title,
         meta: switch (issuedAt) {
           Success(:final data) => issuedText(data),
-          Failure() => '發布時間無法取得',
+          Failure() => '無法取得發布時間',
           null => null,
         },
         child: LayoutBuilder(

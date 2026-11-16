@@ -74,27 +74,29 @@ Failure<T> failureFromDio<T>(DioException e, {required String dataset, String? l
       },
   };
   return Failure(
-    location == null ? '$message（資料集 $dataset）' : '$message（資料集 $dataset，地點 $location）',
+    _withScope(message, dataset, location),
     dataset: dataset,
     location: location,
     apiKeyIssue: issue,
   );
 }
 
+/// 受影響的資料集與地點附在訊息尾端（全 App 唯一格式）。
+String _withScope(String message, String dataset, String? location) =>
+    location == null ? '$message（資料集 $dataset）' : '$message（資料集 $dataset，地點 $location）';
+
 /// The one request guard for every repository: runs [request]; a [DioException] becomes
-/// [failureFromDio], a [FormatException] a [Failure] with the message [parseFailure] builds
-/// from the exception message. Both carry [dataset] and [location].
+/// [failureFromDio], a [FormatException] a 「解析失敗」 [Failure]. Both carry [dataset] and [location].
 Future<Result<T>> guardRequest<T>(
   Future<Result<T>> Function() request, {
   required String dataset,
   String? location,
-  required String Function(String detail) parseFailure,
 }) async {
   try {
     return await request();
   } on DioException catch (e) {
     return failureFromDio(e, dataset: dataset, location: location);
   } on FormatException catch (e) {
-    return Failure(parseFailure(e.message), dataset: dataset, location: location);
+    return Failure(_withScope('解析失敗：${e.message}', dataset, location), dataset: dataset, location: location);
   }
 }
