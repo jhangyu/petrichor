@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../layout/adaptive.dart';
 import '../theme/app_tokens.dart';
-import 'buttons.dart';
+import 'app_button.dart';
 
 /// `.app-bar` + `.page` + bottom `資料來源` line. One per tab screen.
 ///

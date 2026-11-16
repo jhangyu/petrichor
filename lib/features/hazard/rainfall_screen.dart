@@ -8,7 +8,7 @@ import '../../core/location/location_service.dart' show LocationFailure;
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/api_key_notice.dart';
 import '../../core/widgets/app_card.dart';
-import '../../core/widgets/buttons.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/hazard_models.dart' show CountyRainfall;

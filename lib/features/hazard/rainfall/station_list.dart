@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/layout/adaptive.dart';
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/buttons.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../data/models/hazard_models.dart';
 import 'level_style.dart';

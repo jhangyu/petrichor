@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../api/result.dart' show ApiKeyIssue;
-import 'buttons.dart';
+import 'app_button.dart';
 import 'status.dart';
 
 /// Replaces a data card or page when the CWA token is missing, rejected or unreadable.

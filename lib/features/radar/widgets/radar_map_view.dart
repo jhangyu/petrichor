@@ -7,7 +7,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../core/logging/logging.dart';
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/buttons.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_frame_repository.dart';
 import 'basemap_theme.dart';

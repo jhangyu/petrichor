@@ -8,7 +8,7 @@ import '../../core/location/location_service.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/time/taiwan_time.dart';
 import '../../core/widgets/api_key_notice.dart';
-import '../../core/widgets/buttons.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
-import 'buttons.dart';
+import 'app_button.dart';
 
 /// `.status-banner--*` tones.
 enum StatusTone { loading, error, empty, permission, alert1, alert3 }

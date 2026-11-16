@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/buttons.dart';
+import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/status.dart';
 import '../radar_provider.dart'
     show radarOpacityDefaultPercent, radarOpacityMaxPercent, radarOpacityMinPercent, radarOpacityStepPercent;
