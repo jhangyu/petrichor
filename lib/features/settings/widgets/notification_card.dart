@@ -45,13 +45,12 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
   Future<void> _resetScalars() async {
     for (final toggle in NotifyToggle.values) {
       if (ref.read(notifyToggleProvider(toggle)).hasError) {
-        await ref.read(notifyToggleProvider(toggle).notifier).set(false);
+        await ref.read(notifyToggleProvider(toggle).notifier).reset();
       }
     }
     for (final edge in QuietEdge.values) {
       if (ref.read(quietMinuteProvider(edge)).hasError) {
-        final defaults = ref.read(quietMinuteProvider(edge).notifier).defaultValue;
-        await ref.read(quietMinuteProvider(edge).notifier).set(defaults);
+        await ref.read(quietMinuteProvider(edge).notifier).reset();
       }
     }
   }

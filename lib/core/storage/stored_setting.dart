@@ -61,4 +61,7 @@ abstract class IntSetting<T> extends AsyncNotifier<T> {
     // A later set() may have replaced the state meanwhile; only a failure overrides it.
     if (written is AsyncError || state.value == value) state = written;
   }
+
+  /// Stores [defaultValue]: an explicit reset, same path as [set].
+  Future<void> reset() => set(defaultValue);
 }

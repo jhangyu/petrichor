@@ -84,18 +84,9 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
   }
 
   void _resetSettings(AsyncValue<int> window, AsyncValue<int> fps, AsyncValue<bool> repeat) {
-    if (window.hasError) {
-      final n = ref.read(rainAccumWindowProvider.notifier);
-      unawaited(n.set(n.defaultValue));
-    }
-    if (fps.hasError) {
-      final n = ref.read(radarFpsProvider(_group).notifier);
-      unawaited(n.set(n.defaultValue));
-    }
-    if (repeat.hasError) {
-      final n = ref.read(radarRepeatProvider(_group).notifier);
-      unawaited(n.set(n.defaultValue));
-    }
+    if (window.hasError) unawaited(ref.read(rainAccumWindowProvider.notifier).reset());
+    if (fps.hasError) unawaited(ref.read(radarFpsProvider(_group).notifier).reset());
+    if (repeat.hasError) unawaited(ref.read(radarRepeatProvider(_group).notifier).reset());
   }
 
   @override

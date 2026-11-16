@@ -341,18 +341,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               label: '重設播放設定',
               small: true,
               onPressed: () {
-                if (windowBroken) {
-                  final n = ref.read(radarWindowProvider(_group).notifier);
-                  unawaited(n.set(n.defaultValue));
-                }
-                if (fpsBroken) {
-                  final n = ref.read(radarFpsProvider(_group).notifier);
-                  unawaited(n.set(n.defaultValue));
-                }
-                if (repeatBroken) {
-                  final n = ref.read(radarRepeatProvider(_group).notifier);
-                  unawaited(n.set(n.defaultValue));
-                }
+                if (windowBroken) unawaited(ref.read(radarWindowProvider(_group).notifier).reset());
+                if (fpsBroken) unawaited(ref.read(radarFpsProvider(_group).notifier).reset());
+                if (repeatBroken) unawaited(ref.read(radarRepeatProvider(_group).notifier).reset());
               },
             ),
           ],
