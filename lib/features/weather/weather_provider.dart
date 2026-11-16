@@ -5,7 +5,7 @@ import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
 import '../../core/api/result.dart';
 import '../../data/repositories/weather_repository.dart';
-import '../location/place_provider.dart';
+import '../place/place_provider.dart';
 
 /// 首頁狀態。四組資料各自成敗（null＝尚未載入或尚無地點），單一資料集失敗不影響其他。
 class WeatherState {

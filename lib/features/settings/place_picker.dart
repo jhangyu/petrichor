@@ -12,7 +12,7 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../data/models/place.dart';
 import '../../core/api/result.dart';
-import '../location/place_provider.dart';
+import '../place/place_provider.dart';
 
 /// 鄉鎮清單載入骨架高度
 const _townsSkeletonHeight = 240.0;

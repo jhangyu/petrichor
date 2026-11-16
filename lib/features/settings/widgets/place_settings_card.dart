@@ -9,7 +9,7 @@ import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/status.dart';
-import '../../location/place_provider.dart';
+import '../../place/place_provider.dart';
 import '../../../core/time/taiwan_time.dart';
 import 'settings_parts.dart';
 

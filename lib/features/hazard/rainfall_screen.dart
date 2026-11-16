@@ -15,7 +15,7 @@ import '../../data/models/hazard_models.dart' show CountyRainfall;
 import '../../data/models/place.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/api/result.dart' show Failure, Result, Success;
-import '../location/place_provider.dart';
+import '../place/place_provider.dart';
 import '../../core/time/taiwan_time.dart';
 import '../radar/widgets/radar_map_view.dart' show RadarCameraLink;
 import 'hazard_provider.dart';

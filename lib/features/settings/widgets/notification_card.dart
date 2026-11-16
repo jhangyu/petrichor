@@ -6,7 +6,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
-import '../../location/place_provider.dart';
+import '../../place/place_provider.dart';
 import '../notification_settings.dart';
 import 'notification_parts.dart';
 import 'settings_parts.dart';

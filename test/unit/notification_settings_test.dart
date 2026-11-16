@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/data/models/place.dart';
-import 'package:petrichor/features/location/place_provider.dart';
+import 'package:petrichor/features/place/place_provider.dart';
 import 'package:petrichor/features/settings/notification_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

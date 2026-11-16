@@ -9,7 +9,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../core/api/result.dart';
-import '../location/place_provider.dart';
+import '../place/place_provider.dart';
 import 'place_picker.dart';
 import 'widgets/notification_card.dart';
 import 'widgets/place_settings_card.dart';

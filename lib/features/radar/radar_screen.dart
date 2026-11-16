@@ -21,7 +21,7 @@ import '../../data/radar/radar_bounds.dart' show radarStationById, radarStations
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_loop.dart';
 import '../../data/radar/radar_source.dart' show RadarStaleListException;
-import '../location/place_provider.dart';
+import '../place/place_provider.dart';
 import 'radar_playback.dart';
 import 'radar_player.dart';
 import 'radar_provider.dart';

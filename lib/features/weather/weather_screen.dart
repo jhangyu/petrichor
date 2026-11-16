@@ -17,7 +17,7 @@ import '../../core/api/result.dart';
 import '../hazard/hazard_provider.dart';
 import '../hazard/warnings/warning_groups.dart';
 import '../hazard/warnings/warnings_section.dart';
-import '../location/place_provider.dart';
+import '../place/place_provider.dart';
 import 'weather_provider.dart';
 import 'widgets/hourly_forecast_card.dart';
 import 'weather_logic.dart';
