@@ -135,8 +135,8 @@ ForecastExtremes forecastExtremes(List<HourlyForecast> slots) {
       if (hottest == null || t > hottest.temperature!) hottest = s;
       if (coldest == null || t < coldest.temperature!) coldest = s;
     }
-    final p = s.pop;
-    if (p != null && (wettest == null || p > wettest.pop!)) wettest = s;
+    final p = s.rainProbabilityPercent;
+    if (p != null && (wettest == null || p > wettest.rainProbabilityPercent!)) wettest = s;
   }
   return ForecastExtremes(hottest: hottest, coldest: coldest, wettest: wettest);
 }

@@ -32,7 +32,7 @@ HourlyForecast slot(DateTime start, {double? t, int? pop}) => HourlyForecast(
   humidity: null,
   windSpeed: null,
   windDirection: null,
-  pop: pop,
+  rainProbabilityPercent: pop,
   weather: null,
   weatherCode: null,
   description: null,
@@ -180,7 +180,7 @@ void main() {
       minApparentTemperature: null,
       humidity: null,
       windSpeed: null,
-      pop: null,
+      rainProbabilityPercent: null,
       weather: null,
       weatherCode: null,
     );

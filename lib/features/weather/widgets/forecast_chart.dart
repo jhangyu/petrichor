@@ -261,7 +261,7 @@ class ForecastChartPainter extends CustomPainter {
         RRect.fromRectAndRadius(track, const Radius.circular(_rainProbabilityRadius)),
         Paint()..color = AppPalette.rainBarTrack,
       );
-      final pop = s.pop;
+      final pop = s.rainProbabilityPercent;
       if (pop != null && pop > 0) {
         final h = ForecastChartGeometry.rainProbabilityHeight * pop / 100;
         canvas.drawRRect(

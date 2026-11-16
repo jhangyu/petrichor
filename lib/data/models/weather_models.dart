@@ -105,7 +105,7 @@ class HourlyForecast {
   final String? windDirection;
 
   /// 3 小時降雨機率（%）
-  final int? pop;
+  final int? rainProbabilityPercent;
   final String? weather;
   final String? weatherCode;
 
@@ -119,7 +119,7 @@ class HourlyForecast {
     required this.humidity,
     required this.windSpeed,
     required this.windDirection,
-    required this.pop,
+    required this.rainProbabilityPercent,
     required this.weather,
     required this.weatherCode,
     required this.description,
@@ -138,7 +138,7 @@ class DailyForecast {
   final double? windSpeed;
 
   /// 12 小時降雨機率（%）
-  final int? pop;
+  final int? rainProbabilityPercent;
   final String? weather;
   final String? weatherCode;
 
@@ -150,7 +150,7 @@ class DailyForecast {
     required this.minApparentTemperature,
     required this.humidity,
     required this.windSpeed,
-    required this.pop,
+    required this.rainProbabilityPercent,
     required this.weather,
     required this.weatherCode,
   });

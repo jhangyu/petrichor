@@ -125,13 +125,13 @@ void main() {
       expect(first.humidity, 96);
       expect(first.windSpeed, 2);
       expect(first.windDirection, '偏北風');
-      expect(first.pop, 50);
+      expect(first.rainProbabilityPercent, 50);
       expect(first.weather, '短暫陣雨');
       expect(first.weatherCode, '08');
       expect(first.description, startsWith('短暫陣雨。降雨機率50%。'));
       expect(hours[1].temperature, 23);
       expect(hours[2].temperature, isNull, reason: 'fixture has no hourly temperature at 00:00');
-      expect(hours[2].pop, 80);
+      expect(hours[2].rainProbabilityPercent, 80);
       expect(hours[3].weatherCode, '04');
     });
 
@@ -187,14 +187,14 @@ void main() {
       expect(days[1].maxApparentTemperature, 27);
       expect(days[1].minApparentTemperature, 22);
       // day fields come from the 06:00–18:00 slot
-      expect(days[1].pop, 50);
+      expect(days[1].rainProbabilityPercent, 50);
       expect(days[1].humidity, 92);
       expect(days[1].windSpeed, 3);
       expect(days[1].weather, '陰短暫陣雨');
       expect(days[1].weatherCode, '11');
       expect(days[2].maxTemperature, 23);
       expect(days[2].minTemperature, 19);
-      expect(days[2].pop, 30);
+      expect(days[2].rainProbabilityPercent, 30);
     });
 
     test('-99 temperature is missing, never a fabricated number', () async {
@@ -229,10 +229,10 @@ void main() {
       final r = await repository.getWeeklyForecast('臺北市', '臺北市');
 
       final days = r.data;
-      expect(days[1].pop, isNull);
+      expect(days[1].rainProbabilityPercent, isNull);
       expect(days[1].maxTemperature, 24);
       expect(days[1].humidity, 92);
-      expect(days[2].pop, 30);
+      expect(days[2].rainProbabilityPercent, 30);
     });
 
     test('non-numeric value other than "-" is still a Failure naming expected and actual', () async {

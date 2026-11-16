@@ -101,9 +101,9 @@ class WeeklyCard extends StatelessWidget {
           SizedBox(
             width: _rainWidth,
             child: Text(
-              percentText(d.pop),
+              percentText(d.rainProbabilityPercent),
               textAlign: TextAlign.right,
-              style: rainProbabilityTextStyle(AppType.caption1.copyWith(fontFeatures: AppType.tabular), d.pop),
+              style: rainProbabilityTextStyle(AppType.caption1.copyWith(fontFeatures: AppType.tabular), d.rainProbabilityPercent),
             ),
           ),
           SizedBox(

@@ -279,7 +279,7 @@ List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
   final humidity = _element(elementsByName, '相對濕度');
   final windSpeed = _element(elementsByName, '風速');
   final windDirection = _element(elementsByName, '風向');
-  final pop = _element(elementsByName, '3小時降雨機率');
+  final rainProbabilityElement = _element(elementsByName, '3小時降雨機率');
   final description = _element(elementsByName, '天氣預報綜合描述');
   return [
     for (final start in weather.keys)
@@ -290,7 +290,7 @@ List<HourlyForecast> _parseHourly(Map<String, dynamic> body, String township) {
         humidity: _int(humidity[start]?.value['RelativeHumidity'], '相對濕度@$start'),
         windSpeed: _asNumber(windSpeed[start]?.value['WindSpeed'], '風速@$start'),
         windDirection: _text(windDirection[start]?.value['WindDirection']),
-        pop: _int(pop[start]?.value['ProbabilityOfPrecipitation'], '3小時降雨機率@$start'),
+        rainProbabilityPercent: _int(rainProbabilityElement[start]?.value['ProbabilityOfPrecipitation'], '3小時降雨機率@$start'),
         weather: _text(weather[start]!.value['Weather']),
         weatherCode: _text(weather[start]!.value['WeatherCode']),
         description: _text(description[start]?.value['WeatherDescription']),
@@ -308,7 +308,7 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
   final minA = _element(elementsByName, '最低體感溫度');
   final humidity = _element(elementsByName, '平均相對濕度');
   final windSpeed = _element(elementsByName, '風速');
-  final pop = _element(elementsByName, '12小時降雨機率');
+  final rainProbabilityElement = _element(elementsByName, '12小時降雨機率');
   final weather = _element(elementsByName, '天氣現象');
 
   final slotsByDate = <String, List<DateTime>>{};
@@ -347,7 +347,7 @@ List<DailyForecast> _parseWeekly(Map<String, dynamic> body, String township) {
       minApparentTemperature: extreme(minA, 'MinApparentTemperature', starts, false),
       humidity: _int(humidity[representativeStart]?.value['RelativeHumidity'], '平均相對濕度@$representativeStart'),
       windSpeed: _asNumber(windSpeed[representativeStart]?.value['WindSpeed'], '風速@$representativeStart'),
-      pop: _int(pop[representativeStart]?.value['ProbabilityOfPrecipitation'], '12小時降雨機率@$representativeStart'),
+      rainProbabilityPercent: _int(rainProbabilityElement[representativeStart]?.value['ProbabilityOfPrecipitation'], '12小時降雨機率@$representativeStart'),
       weather: _text(weather[representativeStart]?.value['Weather']),
       weatherCode: _text(weather[representativeStart]?.value['WeatherCode']),
     ));

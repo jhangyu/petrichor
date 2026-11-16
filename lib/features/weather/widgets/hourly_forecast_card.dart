@@ -79,7 +79,7 @@ class HourlyForecastCard extends StatelessWidget {
       children: [
         _stat('最高溫', temperatureText(hot?.temperature), AppPalette.temperatureHot, hot == null ? '—' : _when(hot)),
         _stat('最低溫', temperatureText(cold?.temperature), AppPalette.temperatureCold, cold == null ? '—' : _when(cold)),
-        _stat('降雨機率', percentText(wet?.pop), AppPalette.rainForeground, wet == null ? '—' : _when(wet)),
+        _stat('降雨機率', percentText(wet?.rainProbabilityPercent), AppPalette.rainForeground, wet == null ? '—' : _when(wet)),
       ],
     );
   }
@@ -152,7 +152,7 @@ class HourlyForecastCard extends StatelessWidget {
   String _chartLabel(List<HourlyForecast> slots, bool scrolls) {
     final e = forecastExtremes(slots);
     final summary =
-        '最高溫 ${temperatureText(e.hottest?.temperature)}、最低溫 ${temperatureText(e.coldest?.temperature)}、降雨機率最高 ${percentText(e.wettest?.pop)}';
+        '最高溫 ${temperatureText(e.hottest?.temperature)}、最低溫 ${temperatureText(e.coldest?.temperature)}、降雨機率最高 ${percentText(e.wettest?.rainProbabilityPercent)}';
     return '未來 72 小時逐時溫度、體感溫度、降雨機率與風${scrolls ? '，可左右捲動' : ''}。$summary';
   }
 
