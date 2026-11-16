@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:petrichor/data/radar/radar_echo_stats.dart';import 'package:petrichor/data/radar/radar_frame_processor.dart';
+import 'package:petrichor/data/radar/radar_echo_statistics.dart';import 'package:petrichor/data/radar/radar_frame_processor.dart';
 import 'package:petrichor/data/radar/radar_png_rows.dart';
 import 'package:petrichor/data/radar/radar_webp.dart';
 import 'package:flutter_map/flutter_map.dart';

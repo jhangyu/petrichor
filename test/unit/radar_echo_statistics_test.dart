@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:petrichor/data/radar/radar_bounds.dart';
-import 'package:petrichor/data/radar/radar_echo_stats.dart';
+import 'package:petrichor/data/radar/radar_echo_statistics.dart';
 import 'package:petrichor/data/radar/radar_frame_processor.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +13,7 @@ import 'package:latlong2/latlong.dart';
 const _frameMinPixels = 104;
 
 /// Full website-frame stats from per-dBZ [counts].
-RadarEchoStats _stats({Map<int, int> counts = const {}}) => RadarEchoStats(
+RadarEchoStatistics _stats({Map<int, int> counts = const {}}) => RadarEchoStatistics(
       frame: websiteRadarFrameBounds,
       imageWidth: radarFrameSize,
       imageHeight: radarFrameSize,
@@ -29,7 +29,7 @@ void main() {
     const LatLng(26.592222222222222, 119.90666666666667),
     const LatLng(26.796666666666667, 120.11111111111111),
   );
-  RadarEchoStats cropStats({List<PixelRect> decorations = const []}) => processRadarFrame(
+  RadarEchoStatistics cropStats({List<PixelRect> decorations = const []}) => processRadarFrame(
         png,
         RadarImageGeometry(
           size: 64,
@@ -71,13 +71,13 @@ void main() {
 
   test('bytes round trip; wrong length fails loudly', () {
     final s = cropStats();
-    final back = RadarEchoStats.fromBytes(s.toBytes(), source: 'mem');
+    final back = RadarEchoStatistics.fromBytes(s.toBytes(), source: 'mem');
     expect((back.imageWidth, back.imageHeight), (64, 64));
     expect([back.frame.south, back.frame.west, back.frame.north, back.frame.east],
         [cropFrame.south, cropFrame.west, cropFrame.north, cropFrame.east]);
     expect(back.pixelsPerDbz, s.pixelsPerDbz);
     final bytes = s.toBytes();
-    expect(() => RadarEchoStats.fromBytes(bytes.sublist(0, bytes.length - 1), source: 'mem'), throwsFormatException);
-    expect(() => RadarEchoStats.fromBytes(Uint8List(4), source: 'mem'), throwsFormatException);
+    expect(() => RadarEchoStatistics.fromBytes(bytes.sublist(0, bytes.length - 1), source: 'mem'), throwsFormatException);
+    expect(() => RadarEchoStatistics.fromBytes(Uint8List(4), source: 'mem'), throwsFormatException);
   });
 }

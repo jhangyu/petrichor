@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_map/flutter_map.dart';
 
-import 'radar_echo_stats.dart';
+import 'radar_echo_statistics.dart';
 import 'radar_png_rows.dart';
 import 'radar_webp.dart';
 
@@ -54,7 +54,7 @@ class RadarImageGeometry {
 
 /// A processed frame: lossless WebP (transparent background, opaque echo in the
 /// source colours) and the echo statistics of the source image.
-typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStats stats});
+typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStatistics stats});
 
 /// RGBA pixel (bytes R, G, B, A in memory, little-endian host) per palette index
 /// of the processed image: index 0 = transparent, index d + 1 = dBZ d
@@ -118,7 +118,7 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   }));
   return (
     webp: webp,
-    stats: RadarEchoStats(
+    stats: RadarEchoStatistics(
       frame: g.bounds,
       imageWidth: width,
       imageHeight: height,

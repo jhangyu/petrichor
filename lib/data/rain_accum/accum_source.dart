@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../core/time/taiwan_time.dart';
-import '../radar/radar_echo_stats.dart';
+import '../radar/radar_echo_statistics.dart';
 import '../radar/radar_frame_list.dart';
 import '../radar/radar_frame_processor.dart';
 import '../radar/radar_source.dart';
@@ -212,7 +212,7 @@ ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialI
   });
   return (
     webp: webp,
-    stats: RadarEchoStats(
+    stats: RadarEchoStatistics(
       frame: accumBounds,
       imageWidth: accumGridWidth,
       imageHeight: accumGridHeight,

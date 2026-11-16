@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:pool/pool.dart';
 
-import 'radar_echo_stats.dart';
+import 'radar_echo_statistics.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
 import 'radar_loop.dart';
@@ -30,7 +30,7 @@ const _radarFetchWorkers = 4;
 typedef RadarFrameProcess = Future<ProcessedRadarFrame> Function(Uint8List png, RadarImageGeometry geometry);
 
 /// Cache files per frame: `<key>.webp` (lossless WebP) and `<key>.stats`
-/// ([RadarEchoStats.toBytes]); key = observation time `yyyyMMddHHmmss` UTC
+/// ([RadarEchoStatistics.toBytes]); key = observation time `yyyyMMddHHmmss` UTC
 /// (station frames have irregular seconds).
 final _cacheFilePattern = RegExp(r'^(\d{14})\.(webp|stats)$');
 
@@ -97,9 +97,9 @@ class RadarFrameRepository {
     final now = clock();
     final cached = await _pruneCache(dir, now: now, retention: source.maxWindow);
     final ready = <String, RadarFrame>{};
-    Future<RadarEchoStats> readStats(String key) async {
+    Future<RadarEchoStatistics> readStats(String key) async {
       final file = File('${dir.path}/$key.stats');
-      return RadarEchoStats.fromBytes(await file.readAsBytes(), source: file.path);
+      return RadarEchoStatistics.fromBytes(await file.readAsBytes(), source: file.path);
     }
 
     Future<void> readCached(String key) async {
@@ -274,7 +274,7 @@ class RadarFrameRepository {
 
 bool _isCancel(Object e) => e is DioException && CancelToken.isCancel(e);
 
-RadarFrame _frame(DateTime time, File webp, RadarEchoStats stats, ({int width, int height}) size) => RadarFrame(
+RadarFrame _frame(DateTime time, File webp, RadarEchoStatistics stats, ({int width, int height}) size) => RadarFrame(
       time: time,
       file: webp,
       bounds: stats.frame,

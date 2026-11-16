@@ -14,10 +14,10 @@ class RadarFrame {
   final File file;
   final LatLngBounds bounds;
 
-  /// [RadarEchoStats.strongestDbz] when the frame has significant echo, else null.
+  /// [RadarEchoStatistics.strongestDbz] when the frame has significant echo, else null.
   final int? significantDbz;
 
-  /// [RadarEchoStats.peakMm]: highest accumulated rain (mm) of an
+  /// [RadarEchoStatistics.peakMm]: highest accumulated rain (mm) of an
   /// accumulated-rainfall frame; null for radar frames.
   final double? peakMm;
 

@@ -43,7 +43,7 @@ const _headerWords = 2;
 /// Header doubles after the words: frame south, west, north, east.
 const _frameDoubles = 4;
 
-class RadarEchoStats {
+class RadarEchoStatistics {
   /// Extent of the source image (linear in latitude and longitude).
   final LatLngBounds frame;
   final int imageWidth;
@@ -56,7 +56,7 @@ class RadarEchoStats {
   /// radar images.
   final double? peakMm;
 
-  RadarEchoStats({
+  RadarEchoStatistics({
     required this.frame,
     required this.imageWidth,
     required this.imageHeight,
@@ -65,7 +65,7 @@ class RadarEchoStats {
   }) {
     if (pixelsPerDbz.length != radarEchoPalette.length) {
       throw ArgumentError(
-        'RadarEchoStats: expected ${radarEchoPalette.length} dBZ counts, got ${pixelsPerDbz.length}',
+        'RadarEchoStatistics: expected ${radarEchoPalette.length} dBZ counts, got ${pixelsPerDbz.length}',
       );
     }
   }
@@ -105,7 +105,7 @@ class RadarEchoStats {
   }
 
   /// Inverse of [toBytes]; [source] names the file in errors.
-  factory RadarEchoStats.fromBytes(Uint8List bytes, {required String source}) {
+  factory RadarEchoStatistics.fromBytes(Uint8List bytes, {required String source}) {
     const wordBytes = Uint32List.bytesPerElement, doubleBytes = Float64List.bytesPerElement;
     const countsAt = _headerWords * wordBytes + _frameDoubles * doubleBytes;
     final peakAt = countsAt + radarEchoPalette.length * wordBytes;
@@ -116,7 +116,7 @@ class RadarEchoStats {
     final data = ByteData.sublistView(bytes);
     int word(int offset) => data.getUint32(offset, Endian.host);
     double float(int i) => data.getFloat64(_headerWords * wordBytes + i * doubleBytes, Endian.host);
-    return RadarEchoStats(
+    return RadarEchoStatistics(
       frame: LatLngBounds(LatLng(float(0), float(1)), LatLng(float(2), float(3))),
       imageWidth: word(0),
       imageHeight: word(wordBytes),
