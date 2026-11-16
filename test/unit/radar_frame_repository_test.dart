@@ -13,7 +13,7 @@ import 'package:petrichor/features/radar/radar_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image/image.dart' as img;
+import 'package:image/image.dart' as image;
 import 'package:latlong2/latlong.dart';
 
 import '../support/temporary_directory.dart';
@@ -28,7 +28,7 @@ final _geometry = RadarImageGeometry(
 );
 
 /// 8x8 RGB frame: one echo pixel of 30 dBZ, the rest background.
-final _png = img.encodePng(img.Image(width: _size, height: _size)
+final _png = image.encodePng(image.Image(width: _size, height: _size)
   ..setPixelRgb(3, 3, radarEchoPalette[30] >> 16, (radarEchoPalette[30] >> 8) & 0xFF, radarEchoPalette[30] & 0xFF));
 
 RadarFrameReference _ref(Duration age) => RadarFrameReference(
