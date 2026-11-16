@@ -43,14 +43,14 @@ class CwaApiKeyNotifier extends AsyncNotifier<CwaApiKey?> {
   }
 
   /// Stores [key]; a failed write becomes the state.
-  Future<void> save(CwaApiKey key) => _write(key, (prefs) => prefs.setString(storageKey, key.value));
+  Future<void> save(CwaApiKey key) => _write(key, (preferences) => preferences.setString(storageKey, key.value));
 
-  Future<void> clear() => _write(null, (prefs) => prefs.remove(storageKey));
+  Future<void> clear() => _write(null, (preferences) => preferences.remove(storageKey));
 
-  Future<void> _write(CwaApiKey? value, Future<bool> Function(SharedPreferences prefs) write) async {
+  Future<void> _write(CwaApiKey? value, Future<bool> Function(SharedPreferences preferences) write) async {
     state = await AsyncValue.guard(() async {
-      final prefs = await ref.read(sharedPreferencesProvider.future);
-      await writeChecked(storageKey, write(prefs));
+      final preferences = await ref.read(sharedPreferencesProvider.future);
+      await writeChecked(storageKey, write(preferences));
       return value;
     });
   }

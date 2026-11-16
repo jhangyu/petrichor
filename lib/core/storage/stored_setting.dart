@@ -54,8 +54,8 @@ abstract class IntSetting<T> extends AsyncNotifier<T> {
     if (fromStored(toStored(value)) == null) throw ArgumentError.value(value, 'value', 'expected $expected');
     state = AsyncData(value);
     final written = await AsyncValue.guard(() async {
-      final prefs = await ref.read(sharedPreferencesProvider.future);
-      await writeChecked(key, prefs.setInt(key, toStored(value)));
+      final preferences = await ref.read(sharedPreferencesProvider.future);
+      await writeChecked(key, preferences.setInt(key, toStored(value)));
       return value;
     });
     // A later set() may have replaced the state meanwhile; only a failure overrides it.
