@@ -102,18 +102,18 @@ class LocationService {
       position = await Geolocator.getCurrentPosition(
         locationSettings: _positionSettings,
       ).timeout(positionTimeout);
-    } on TimeoutException catch (e) {
+    } on TimeoutException catch (error) {
       // 逾時只計「取得座標」這一步；權限詢問是使用者在回答的系統對話框，不計時。
       throw LocationException(
         LocationFailure.positionUnavailable,
         '${positionTimeout.inSeconds} 秒內未取得位置（getCurrentPosition 無回應，權限狀態 $permission）',
-        cause: e,
+        cause: error,
       );
-    } on Exception catch (e) {
+    } on Exception catch (error) {
       throw LocationException(
         LocationFailure.positionUnavailable,
-        'Step getCurrentPosition failed after permission was granted ($permission); expected a position, got: $e',
-        cause: e,
+        'Step getCurrentPosition failed after permission was granted ($permission); expected a position, got: $error',
+        cause: error,
       );
     }
 
