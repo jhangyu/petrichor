@@ -30,7 +30,7 @@ void main() {
     GeolocatorPlatform.instance = _HangingPositionPlatform();
     final service = LocationService(
       (lat, lon) async => throw StateError('unreachable: no position'),
-      timeout: const Duration(milliseconds: 20),
+      positionTimeout: const Duration(milliseconds: 20),
     );
 
     await expectLater(

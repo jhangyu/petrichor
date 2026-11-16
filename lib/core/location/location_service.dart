@@ -56,9 +56,9 @@ const _locationTimeout = Duration(seconds: 10);
 
 class LocationService {
   final Future<Result<Place>> Function(double latitude, double longitude) _nearestTown;
-  final Duration timeout;
+  final Duration positionTimeout;
 
-  LocationService(this._nearestTown, {this.timeout = _locationTimeout});
+  LocationService(this._nearestTown, {this.positionTimeout = _locationTimeout});
 
   static const _positionSettings = LocationSettings(
     accuracy: LocationAccuracy.high,
@@ -101,12 +101,12 @@ class LocationService {
     try {
       position = await Geolocator.getCurrentPosition(
         locationSettings: _positionSettings,
-      ).timeout(timeout);
+      ).timeout(positionTimeout);
     } on TimeoutException catch (e) {
       // 逾時只計「取得座標」這一步；權限詢問是使用者在回答的系統對話框，不計時。
       throw LocationException(
         LocationFailure.positionUnavailable,
-        '${timeout.inSeconds} 秒內未取得位置（getCurrentPosition 無回應，權限狀態 $permission）',
+        '${positionTimeout.inSeconds} 秒內未取得位置（getCurrentPosition 無回應，權限狀態 $permission）',
         cause: e,
       );
     } on Exception catch (e) {
