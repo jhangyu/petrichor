@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds libwebp 1.6.0 plus the radar shim into ONE shared library.
 
-    python3 tools/build_libwebp.py --os <os> --arch <arch> --out-dir <dir>
+    python3 tools/build_radar_webp.py --os <os> --arch <arch> --out-dir <dir>
         [--cache-dir <dir>] [--cc <compiler>] [--vcvars <script>]
         [--ios-sdk iphoneos|iphonesimulator] [--min-os-version <n>]
         [--android-ndk <ndk root>]
@@ -307,10 +307,10 @@ def main() -> int:
     try:
         library = build(args)
     except (BuildError, OSError, tarfile.TarError) as e:
-        print(f"build_libwebp.py: {e}", file=sys.stderr)
+        print(f"build_radar_webp.py: {e}", file=sys.stderr)
         return 1
     if not library.is_file():
-        print(f"build_libwebp.py: expected {library} after linking, not found", file=sys.stderr)
+        print(f"build_radar_webp.py: expected {library} after linking, not found", file=sys.stderr)
         return 1
     print(library)
     return 0

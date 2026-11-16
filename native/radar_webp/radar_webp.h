@@ -1,5 +1,5 @@
 // C shim over libwebp for radar frames: lossless RGBA encode and RGBA decode.
-// Built into one shared library together with libwebp by tools/build_libwebp.py.
+// Built into one shared library together with libwebp by tools/build_radar_webp.py.
 // Dart binds it in lib/data/radar/radar_webp.dart.
 #ifndef RADAR_WEBP_H_
 #define RADAR_WEBP_H_

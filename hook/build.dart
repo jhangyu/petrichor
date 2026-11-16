@@ -1,4 +1,4 @@
-// Builds libwebp + the radar shim by running tools/build_libwebp.py and
+// Builds libwebp + the radar shim by running tools/build_radar_webp.py and
 // declares the resulting shared library as a code asset. All compile logic
 // lives in the Python script.
 import 'dart:io';
@@ -15,7 +15,7 @@ void main(List<String> args) async {
     if (!input.config.buildCodeAssets) return;
     final code = input.config.code;
     final os = code.targetOS;
-    final script = input.packageRoot.resolve('tools/build_libwebp.py');
+    final script = input.packageRoot.resolve('tools/build_radar_webp.py');
     final cc = code.cCompiler;
     final scriptArgs = [
       script.toFilePath(),
@@ -38,14 +38,14 @@ void main(List<String> args) async {
     final result = await Process.run(exe, [...prefix, ...scriptArgs]);
     if (result.exitCode != 0) {
       throw StateError(
-        'build_libwebp.py failed: expected exit 0, got ${result.exitCode} '
+        'build_radar_webp.py failed: expected exit 0, got ${result.exitCode} '
         'for $exe ${[...prefix, ...scriptArgs].join(' ')}\n${result.stdout}${result.stderr}',
       );
     }
     final lines = (result.stdout as String).trim().split('\n');
     final library = File(lines.last.trim());
     if (!library.existsSync()) {
-      throw StateError('build_libwebp.py reported ${library.path}, which does not exist');
+      throw StateError('build_radar_webp.py reported ${library.path}, which does not exist');
     }
     output.dependencies.addAll([
       script,

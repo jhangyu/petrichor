@@ -1,4 +1,4 @@
-// Force-included (tools/build_libwebp.py) into libwebp's src/utils/utils.c, the
+// Force-included (tools/build_radar_webp.py) into libwebp's src/utils/utils.c, the
 // only libwebp file on our encode/decode path that calls the C allocator.
 // Routes libwebp's heap to the per-call arena in radar_webp.c.
 // stdlib.h comes first so its own malloc/calloc/free declarations stay intact.

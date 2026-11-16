@@ -17,7 +17,7 @@
 // free is a no-op, and the whole arena is unmapped when the call returns, which
 // hands every page back to the OS at once. libwebp reaches the arena through
 // libwebp_alloc.h, force-included into its allocator file by
-// tools/build_libwebp.py. Measurements: .claude/tmp/heap-uniform/.
+// tools/build_radar_webp.py. Measurements: .claude/tmp/heap-uniform/.
 #define RADAR_WEBP_ARENA_CHUNK_BYTES ((size_t)64 << 20)
 // Windows' allocation granularity; a multiple of every page size we target.
 #define RADAR_WEBP_ARENA_GRANULE_BYTES ((size_t)64 << 10)
