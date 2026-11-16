@@ -6,9 +6,9 @@ import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 
-/// The only FFI entry to libwebp (through the C adapter `radar_webp.h`, built by
-/// the package build hook): lossless WebP encode and decode of radar frames.
-/// Pure synchronous calls, safe from any isolate.
+// The only FFI entry to libwebp (through the C adapter `radar_webp.h`, built by
+// the package build hook): lossless WebP encode and decode of radar frames.
+// Pure synchronous calls, safe from any isolate.
 
 /// libwebp lossless compression level of stored frames (0 fastest .. 9 smallest;
 /// 6 measured in .claude/tmp/stream-impl/size-probe/report.md).

@@ -18,9 +18,9 @@ import '../radar/radar_webp.dart';
 import 'accum_grid.dart';
 import 'accum_pieces.dart';
 
-/// 累積雨量 frames as a [RadarSource]: frame k of a W-hour window shows the
-/// rain from the window start S to S + k·step, summed from QPEplus gauge grids
-/// (contract decisions 10–12), so playback grows from 0 to the W-hour total.
+// 累積雨量 frames as a [RadarSource]: frame k of a W-hour window shows the
+// rain from the window start S to S + k·step, summed from QPEplus gauge grids
+// (contract decisions 10–12), so playback grows from 0 to the W-hour total.
 
 /// Downloaded grids (gzipped), shared by every window:
 /// `<root>/rain_accum_pieces_v1/<WW>h/<yyyyMMddHHmm>.dat.gz` (+ `.etag`).

@@ -7,15 +7,15 @@ import 'radar_echo_stats.dart';
 import 'radar_png_rows.dart';
 import 'radar_webp.dart';
 
-/// Post-processing of a radar image (website `CV1_3600_` frame or website
-/// station image): background → transparent, rows reprojected as the
-/// [RadarImageGeometry] says, stored as one lossless WebP.
-///
-/// Background key (evidence: docs/logs/2026-11-14/radar-impl-notes.md): echo
-/// pixels are drawn only in the 66 colours of the dBZ legend (one per dBZ,
-/// 0–65); everything else (land/sea fill, coast/county lines, grid, text,
-/// logo) is background. The legend bar and the station-status dots also use
-/// legend-like colours, so their rectangles are always background.
+// Post-processing of a radar image (website `CV1_3600_` frame or website
+// station image): background → transparent, rows reprojected as the
+// [RadarImageGeometry] says, stored as one lossless WebP.
+//
+// Background key (evidence: docs/logs/2026-11-14/radar-impl-notes.md): echo
+// pixels are drawn only in the 66 colours of the dBZ legend (one per dBZ,
+// 0–65); everything else (land/sea fill, coast/county lines, grid, text,
+// logo) is background. The legend bar and the station-status dots also use
+// legend-like colours, so their rectangles are always background.
 
 /// Width of the stored image (nearest-neighbour from the source, so the palette
 /// stays exact); narrower sources are stored at their own width. The CWA
