@@ -8,8 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_cwa_adapter.dart';
 
-Place _at(double lat, double lon, String county, String town) =>
-    Place(county: county, town: town, latitude: lat, longitude: lon);
+Place _at(double latitude, double longitude, String county, String town) =>
+    Place(county: county, town: town, latitude: latitude, longitude: longitude);
 
 Map<String, dynamic> _station(Map<String, dynamic> json, String name) =>
     ((json['records'] as Map)['Station'] as List).cast<Map<String, dynamic>>().firstWhere((s) => s['StationName'] == name);
@@ -24,17 +24,17 @@ Map<String, dynamic> _weeklyValue(Map<String, dynamic> json, String element, int
 
 void main() {
   late FakeCwaAdapter adapter;
-  late WeatherRepository repo;
+  late WeatherRepository repository;
 
   setUp(() {
     adapter = FakeCwaAdapter();
-    repo = WeatherRepository(adapter.createDio());
+    repository = WeatherRepository(adapter.createDio());
   });
 
   group('getCurrentWeather (O-A0003-001)', () {
     test('picks the nearest station and parses its observation', () async {
       adapter.serveFixture('O-A0003-001');
-      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+      final r = await repository.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
       final w = r.data;
       expect(w.stationName, '淡水');
@@ -54,7 +54,7 @@ void main() {
           (_station(json, '淡水')['WeatherElement'] as Map<String, dynamic>)['WindDirection'] = raw;
           return null;
         });
-        return repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+        return repository.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
       }
 
       expect((await withWind('0.0')).data.windDirection, isA<CalmWind>());
@@ -74,7 +74,7 @@ void main() {
         xinbei['Weather'] = '-99';
         return null;
       });
-      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+      final r = await repository.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
       final w = r.data;
       expect(w.stationName, isNot('淡水'));
@@ -92,7 +92,7 @@ void main() {
         }
         return null;
       });
-      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+      final r = await repository.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
       final f = r as Failure;
       expect(f.dataset, 'O-A0003-001');
@@ -101,7 +101,7 @@ void main() {
 
     test('HTTP 500 becomes a Failure carrying status, dataset and location', () async {
       adapter.serveStatus('O-A0003-001', 500);
-      final r = await repo.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
+      final r = await repository.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
       final f = r as Failure;
       expect(f.message, contains('伺服器回應錯誤：500'));
@@ -114,7 +114,7 @@ void main() {
   group('getHourlyForecast (3-day township dataset)', () {
     test('joins hourly and 3-hourly elements per 3-hour slot', () async {
       adapter.serveFixture('F-D0047-061');
-      final r = await repo.getHourlyForecast('台北市', '中正區');
+      final r = await repository.getHourlyForecast('台北市', '中正區');
 
       expect(adapter.requests.single.path, endsWith('/F-D0047-061'));
       expect(adapter.requests.single.queryParameters['LocationName'], '中正區');
@@ -142,7 +142,7 @@ void main() {
         ((((json['records'] as Map)['Locations'] as List).first as Map))['Location'] = <Object?>[];
         return null;
       });
-      final r = await repo.getHourlyForecast('臺北市', '中正區');
+      final r = await repository.getHourlyForecast('臺北市', '中正區');
 
       final f = r as Failure;
       expect(f.dataset, 'F-D0047-061');
@@ -153,7 +153,7 @@ void main() {
   group('getForecastIssueTime (file API head of the 3-day dataset)', () {
     test('reads DatasetInfo.IssueTime from the first bytes only', () async {
       adapter.routes['F-D0047-061'] = (206, File('test/fixtures/cwa/F-D0047-061-head.txt').readAsStringSync());
-      final r = await repo.getForecastIssueTime('台北市');
+      final r = await repository.getForecastIssueTime('台北市');
 
       final request = adapter.requests.single;
       expect(request.path, '/fileapi/v1/opendataapi/F-D0047-061');
@@ -162,7 +162,7 @@ void main() {
 
     test('a head without IssueTime is a Failure naming the dataset', () async {
       adapter.routes['F-D0047-061'] = (206, '{"cwaopendata": {"Sent": "2026-11-14T19:18:40+08:00"');
-      final r = await repo.getForecastIssueTime('臺北市');
+      final r = await repository.getForecastIssueTime('臺北市');
 
       final f = r as Failure;
       expect(f.dataset, 'F-D0047-061');
@@ -176,7 +176,7 @@ void main() {
         _weeklyValue(json, '最低溫度', 2)['MinTemperature'] = '19';
         return null;
       }, 'F-D0047-063');
-      final r = await repo.getWeeklyForecast('臺北市', '臺北市');
+      final r = await repository.getWeeklyForecast('臺北市', '臺北市');
 
       expect(adapter.requests.single.path, endsWith('/F-D0047-063'));
       final days = r.data;
@@ -205,7 +205,7 @@ void main() {
         _weeklyValue(json, '最高溫度', 0)['MaxTemperature'] = '-99';
         return null;
       }, 'F-D0047-063');
-      final r = await repo.getWeeklyForecast('臺北市', '臺北市');
+      final r = await repository.getWeeklyForecast('臺北市', '臺北市');
 
       final today = r.data.first;
       expect(today.date, '2026-11-14');
@@ -216,7 +216,7 @@ void main() {
 
     test('township absent from the response is a Failure listing what was returned', () async {
       adapter.serveFixture('F-D0047-091', null, 'F-D0047-063');
-      final r = await repo.getWeeklyForecast('臺北市', '中正區');
+      final r = await repository.getWeeklyForecast('臺北市', '中正區');
 
       final f = r as Failure;
       expect(f.dataset, 'F-D0047-063');
@@ -231,7 +231,7 @@ void main() {
     // 夾具只含 11-14、11-15（缺 11-13、11-16）：三日成功解析待真實金鑰重錄後補上
     test('queries yesterday through tomorrow with a 臺 county name', () async {
       adapter.serveFixture('A-B0062-001');
-      await repo.getSunTimes('台北市', now);
+      await repository.getSunTimes('台北市', now);
 
       final q = adapter.requests.single.queryParameters;
       expect(q['CountyName'], '臺北市');
@@ -241,7 +241,7 @@ void main() {
 
     test('uses the Taiwan calendar day of now (UTC evening is already tomorrow)', () async {
       adapter.serveFixture('A-B0062-001');
-      await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 14, 17));
+      await repository.getSunTimes('臺北市', DateTime.utc(2026, 11, 14, 17));
 
       final q = adapter.requests.single.queryParameters;
       expect(q['timeFrom'], '2026-11-14');
@@ -250,7 +250,7 @@ void main() {
 
     test('missing day is a Failure naming dataset, county, the date and dates returned', () async {
       adapter.serveFixture('A-B0062-001');
-      final r = await repo.getSunTimes('臺北市', now);
+      final r = await repository.getSunTimes('臺北市', now);
 
       final f = r as Failure;
       expect(f.dataset, 'A-B0062-001');
@@ -261,11 +261,11 @@ void main() {
 
     test('unknown transit altitude format is a Failure, not a guess', () async {
       adapter.serveFixture('A-B0062-001', (json) {
-        final loc = ((json['records'] as Map)['locations'] as Map)['location'] as List;
-        (((loc.first as Map)['time'] as List).first as Map)['SunTransitAlt'] = '47E';
+        final location = ((json['records'] as Map)['locations'] as Map)['location'] as List;
+        (((location.first as Map)['time'] as List).first as Map)['SunTransitAlt'] = '47E';
         return null;
       });
-      final r = await repo.getSunTimes('臺北市', DateTime.utc(2026, 11, 15, 4));
+      final r = await repository.getSunTimes('臺北市', DateTime.utc(2026, 11, 15, 4));
 
       final f = r as Failure;
       expect(f.dataset, 'A-B0062-001');

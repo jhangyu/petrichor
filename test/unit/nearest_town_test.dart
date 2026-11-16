@@ -10,14 +10,14 @@ import '../support/fake_cwa_adapter.dart';
 /// 各縣市鄉鎮清單借臺北市 3 天預報樣本，只留一個鄉鎮並改縣市名、鄉鎮名與座標。
 FakeCwaAdapter _serve(Map<String, (String, double, double)> townByCounty) {
   final adapter = FakeCwaAdapter()..serveFixture(AppConstants.countyLookupDataset);
-  for (final MapEntry(key: county, value: (town, lat, lon)) in townByCounty.entries) {
+  for (final MapEntry(key: county, value: (town, latitude, longitude)) in townByCounty.entries) {
     adapter.serveFixture('F-D0047-061', (json) {
       final group = ((json['records'] as Map)['Locations'] as List).first as Map;
       group['LocationsName'] = county;
-      final loc = (group['Location'] as List).first as Map;
-      loc['LocationName'] = town;
-      loc['Latitude'] = '$lat';
-      loc['Longitude'] = '$lon';
+      final location = (group['Location'] as List).first as Map;
+      location['LocationName'] = town;
+      location['Latitude'] = '$latitude';
+      location['Longitude'] = '$longitude';
       return null;
     }, AppConstants.townshipForecastDatasets[county]!.threeDay);
   }

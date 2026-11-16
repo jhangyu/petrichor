@@ -14,11 +14,11 @@ Map<String, dynamic> _weeklyValue(Map<String, dynamic> json, String element, int
 
 void main() {
   late FakeCwaAdapter adapter;
-  late WeatherRepository repo;
+  late WeatherRepository repository;
 
   setUp(() {
     adapter = FakeCwaAdapter();
-    repo = WeatherRepository(adapter.createDio());
+    repository = WeatherRepository(adapter.createDio());
   });
 
   test('"-" 12-hour rain probability is a missing slot (null), other values intact', () async {
@@ -26,7 +26,7 @@ void main() {
       _weeklyValue(json, '12小時降雨機率', 1)['ProbabilityOfPrecipitation'] = '-';
       return null;
     }, 'F-D0047-063');
-    final r = await repo.getWeeklyForecast('臺北市', '臺北市');
+    final r = await repository.getWeeklyForecast('臺北市', '臺北市');
 
     final days = r.data;
     expect(days[1].pop, isNull);
@@ -40,7 +40,7 @@ void main() {
       _weeklyValue(json, '12小時降雨機率', 1)['ProbabilityOfPrecipitation'] = 'abc';
       return null;
     }, 'F-D0047-063');
-    final r = await repo.getWeeklyForecast('臺北市', '臺北市');
+    final r = await repository.getWeeklyForecast('臺北市', '臺北市');
 
     final f = r as Failure;
     expect(f.dataset, 'F-D0047-063');

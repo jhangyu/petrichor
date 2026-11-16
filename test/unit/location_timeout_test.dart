@@ -29,7 +29,7 @@ void main() {
   test('no position within the limit fails as positionUnavailable naming the step and the limit', () async {
     GeolocatorPlatform.instance = _HangingPositionPlatform();
     final service = LocationService(
-      (lat, lon) async => throw StateError('unreachable: no position'),
+      (latitude, longitude) async => throw StateError('unreachable: no position'),
       positionTimeout: const Duration(milliseconds: 20),
     );
 
