@@ -80,7 +80,7 @@ void main() {
         final container = newContainer();
         await expectLater(
           container.read(cwaApiKeyProvider.future),
-          throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', _storageKey)),
+          throwsA(isA<StoredSettingException>().having((e) => e.storageKey, 'key', _storageKey)),
         );
         await container.read(cwaApiKeyProvider.notifier).save(CwaApiKey.parse(_sample));
         expect(container.read(cwaApiKeyProvider).value?.value, _sample);

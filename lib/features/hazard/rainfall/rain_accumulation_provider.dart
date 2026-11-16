@@ -10,11 +10,11 @@ import '../../radar/radar_provider.dart';
 /// Accumulation window of the 累積雨量 card in hours, one of [accumWindowHours].
 class RainAccumulationWindowSetting extends IntSetting<int> {
   @override
-  String get key => 'rainfall.accumWindowHours';
+  String get storageKey => 'rainfall.accumWindowHours';
   @override
   int get defaultValue => accumulationDefaultWindowHours;
   @override
-  String get expected => 'one of $accumWindowHours';
+  String get expectedDescription => 'one of $accumWindowHours';
   @override
   int? fromStored(int stored) => accumWindowHours.contains(stored) ? stored : null;
   @override

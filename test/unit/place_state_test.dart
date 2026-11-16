@@ -106,7 +106,7 @@ void main() {
 
     await expectLater(
       newContainer().read(savedPlacesProvider.future),
-      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', PlaceStore.savedPlacesKey)),
+      throwsA(isA<StoredSettingException>().having((e) => e.storageKey, 'key', PlaceStore.savedPlacesKey)),
     );
   });
 
@@ -139,7 +139,7 @@ void main() {
 
     await expectLater(
       container.read(currentPlaceProvider.future),
-      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', 'place.gps')),
+      throwsA(isA<StoredSettingException>().having((e) => e.storageKey, 'key', 'place.gps')),
     );
     await container.read(currentPlaceProvider.notifier).select(_banqiao);
 
@@ -189,7 +189,7 @@ void main() {
     final container = newContainer();
     await expectLater(
       container.read(savedPlacesProvider.future),
-      throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', 'place.saved')),
+      throwsA(isA<StoredSettingException>().having((e) => e.storageKey, 'key', 'place.saved')),
     );
 
     await container.read(savedPlacesProvider.notifier).clear();

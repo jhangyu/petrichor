@@ -29,7 +29,7 @@ abstract class RadarSetting<T> extends IntSetting<T> {
   String get name;
 
   @override
-  String get key => 'radar.${group.name}.$name';
+  String get storageKey => 'radar.${group.name}.$name';
 }
 
 /// Overlay opacity in percent.
@@ -41,7 +41,7 @@ class RadarOpacitySetting extends RadarSetting<int> {
   @override
   int get defaultValue => radarOpacityDefaultPercent;
   @override
-  String get expected => '$radarOpacityMinPercent–$radarOpacityMaxPercent in steps of $radarOpacityStepPercent';
+  String get expectedDescription => '$radarOpacityMinPercent–$radarOpacityMaxPercent in steps of $radarOpacityStepPercent';
   @override
   int? fromStored(int stored) => _isOpacityPercent(stored) ? stored : null;
   @override
@@ -57,7 +57,7 @@ class RadarFps extends RadarSetting<int> {
   @override
   int get defaultValue => group.defaultFps;
   @override
-  String get expected => 'one of $radarFpsOptions';
+  String get expectedDescription => 'one of $radarFpsOptions';
   @override
   int? fromStored(int stored) => radarFpsOptions.contains(stored) ? stored : null;
   @override
@@ -73,7 +73,7 @@ class RadarRepeatSetting extends RadarSetting<bool> {
   @override
   bool get defaultValue => true;
   @override
-  String get expected => '0 or 1';
+  String get expectedDescription => '0 or 1';
   @override
   bool? fromStored(int stored) => switch (stored) { 1 => true, 0 => false, _ => null };
   @override
@@ -90,7 +90,7 @@ class RadarWindowSetting extends RadarSetting<Duration> {
   @override
   Duration get defaultValue => group.defaultWindow;
   @override
-  String get expected => 'one of ${[for (final w in radarWindowOptions) w.inMinutes]} minutes';
+  String get expectedDescription => 'one of ${[for (final w in radarWindowOptions) w.inMinutes]} minutes';
   @override
   Duration? fromStored(int stored) =>
       radarWindowOptions.where((w) => w.inMinutes == stored).firstOrNull;

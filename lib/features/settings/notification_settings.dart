@@ -24,11 +24,11 @@ class NotifyToggleSetting extends IntSetting<bool> {
   final NotifyToggle toggle;
 
   @override
-  String get key => 'notify.${toggle.name}';
+  String get storageKey => 'notify.${toggle.name}';
   @override
   bool get defaultValue => false;
   @override
-  String get expected => '0 or 1';
+  String get expectedDescription => '0 or 1';
   @override
   bool? fromStored(int stored) => switch (stored) { 1 => true, 0 => false, _ => null };
   @override
@@ -41,11 +41,11 @@ class QuietMinuteSetting extends IntSetting<int> {
   final QuietEdge edge;
 
   @override
-  String get key => edge == QuietEdge.start ? 'notify.quietStart' : 'notify.quietEnd';
+  String get storageKey => edge == QuietEdge.start ? 'notify.quietStart' : 'notify.quietEnd';
   @override
   int get defaultValue => edge == QuietEdge.start ? _defaultQuietStartMinute : _defaultQuietEndMinute;
   @override
-  String get expected => '0..${minutesPerDay - 1}';
+  String get expectedDescription => '0..${minutesPerDay - 1}';
   @override
   int? fromStored(int stored) => stored >= 0 && stored < minutesPerDay ? stored : null;
   @override

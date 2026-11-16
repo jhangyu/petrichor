@@ -20,7 +20,7 @@ Future<Object?> readOutcome(Future<Object?> Function() read) async {
 }
 
 void expectCorrupt(Object? outcome, String key) {
-  expect(outcome, isA<StoredSettingException>().having((e) => e.key, 'key', key));
+  expect(outcome, isA<StoredSettingException>().having((e) => e.storageKey, 'key', key));
 }
 
 void main() {

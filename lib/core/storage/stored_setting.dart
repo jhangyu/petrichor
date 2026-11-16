@@ -9,14 +9,14 @@ final sharedPreferencesProvider = FutureProvider<SharedPreferences>(
   retry: noRetry,
 );
 
-/// Stored setting is corrupt or could not be written ([key] = storage key).
+/// Stored setting is corrupt or could not be written ([storageKey] = storage key).
 class StoredSettingException implements Exception {
-  final String key;
+  final String storageKey;
   final String message;
-  const StoredSettingException(this.key, this.message);
+  const StoredSettingException(this.storageKey, this.message);
 
   @override
-  String toString() => 'StoredSettingException($key): $message';
+  String toString() => 'StoredSettingException($storageKey): $message';
 }
 
 /// Awaits [write] (a SharedPreferences write); false = the write failed.
@@ -24,17 +24,17 @@ Future<void> writeChecked(String key, Future<bool> write) async {
   if (!await write) throw StoredSettingException(key, '寫入失敗：期望 true，實際 false');
 }
 
-/// One setting remembered across restarts as an int under [key]. A corrupt
+/// One setting remembered across restarts as an int under [storageKey]. A corrupt
 /// stored value is an [AsyncError]; [set] overwrites it and recovers.
 abstract class IntSetting<T> extends AsyncNotifier<T> {
   /// Storage key, e.g. `radar.taiwan.opacity`.
-  String get key;
+  String get storageKey;
 
   /// Value of a fresh install.
   T get defaultValue;
 
   /// Human-readable list of valid stored ints, for messages.
-  String get expected;
+  String get expectedDescription;
 
   /// The setting for a stored int, or null when it is not a valid one.
   T? fromStored(int stored);
@@ -43,19 +43,19 @@ abstract class IntSetting<T> extends AsyncNotifier<T> {
 
   @override
   Future<T> build() async {
-    final Object? raw = (await ref.watch(sharedPreferencesProvider.future)).get(key);
+    final Object? raw = (await ref.watch(sharedPreferencesProvider.future)).get(storageKey);
     if (raw == null) return defaultValue;
     final value = raw is int ? fromStored(raw) : null;
-    return value ?? (throw StoredSettingException(key, '儲存資料損毀：期望 $expected，實際「$raw」'));
+    return value ?? (throw StoredSettingException(storageKey, '儲存資料損毀：期望 $expectedDescription，實際「$raw」'));
   }
 
   /// Shows [value] at once, then stores it; a failed write becomes the state.
   Future<void> set(T value) async {
-    if (fromStored(toStored(value)) == null) throw ArgumentError.value(value, 'value', 'expected $expected');
+    if (fromStored(toStored(value)) == null) throw ArgumentError.value(value, 'value', 'expected $expectedDescription');
     state = AsyncData(value);
     final written = await AsyncValue.guard(() async {
       final preferences = await ref.read(sharedPreferencesProvider.future);
-      await writeChecked(key, preferences.setInt(key, toStored(value)));
+      await writeChecked(storageKey, preferences.setInt(storageKey, toStored(value)));
       return value;
     });
     // A later set() may have replaced the state meanwhile; only a failure overrides it.
