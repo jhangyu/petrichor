@@ -136,12 +136,12 @@ void main() {
     test('returns county stations and nearest station today accumulated', () async {
       final r = (await _hazardRepository(routes).getRainfall(county: '基隆市', latitude: 25.13, longitude: 121.74)).data;
       expect(r.nearest.name, '基隆');
-      expect(r.nearest.todayMm, 3.0);
+      expect(r.nearest.todayMillimeters, 3.0);
       expect(r.stations.length, 1);
 
       final nantou = (await _hazardRepository(routes).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9)).data;
       expect(nantou.nearest.name, '九份二山');
-      expect(nantou.nearest.todayMm, 27.5);
+      expect(nantou.nearest.todayMillimeters, 27.5);
     });
 
     test('unknown county (e.g. 台 instead of 臺) is Failure with context', () async {
@@ -162,7 +162,7 @@ void main() {
       stations.add(extra);
       final repository = _hazardRepository({'O-A0002-001': _ok(body)});
       final r = (await repository.getRainfall(county: '基隆市', latitude: 25.13, longitude: 121.74)).data;
-      expect(r.stations.firstWhere((s) => s.name == '基隆').todayMm, isNull);
+      expect(r.stations.firstWhere((s) => s.name == '基隆').todayMillimeters, isNull);
       expect(r.nearest.name, '遠站');
     });
 
@@ -173,9 +173,9 @@ void main() {
       element['Past3hr']['Precipitation'] = 'abc';
       final r = (await _hazardRepository({'O-A0002-001': _ok(body)}).getRainfall(county: '南投縣', latitude: 23.9, longitude: 120.9)).data;
       final station = r.stations.single;
-      expect(station.todayMm, 27.5);
-      expect(station.past1hrMm, isNull);
-      expect(station.past3hrMm, isNull);
+      expect(station.todayMillimeters, 27.5);
+      expect(station.past1HourMillimeters, isNull);
+      expect(station.past3HoursMillimeters, isNull);
       expect(r.allStations.length, 3);
     });
 
@@ -194,7 +194,7 @@ void main() {
     test('value at coordinate comes from hand-computed grid index', () async {
       final repository = _hazardRepository({'F-B0046-001': _ok(_fullGrid({cell: '1.250E+01'}))});
       final f = (await repository.getRainForecast(latitude: 25.0375, longitude: 121.5)).data;
-      expect(f.mmAtLocation, 12.5);
+      expect(f.millimetersAtLocation, 12.5);
       expect(f.grid.baseTime, _taiwanTime('2026-11-14T20:30:00'));
       expect(f.grid.issuedAt, _taiwanTime('2026-11-14T20:45:09'));
       expect(f.grid.columns, 441);
@@ -203,12 +203,12 @@ void main() {
       expect([f.grid.startLongitude, f.grid.startLatitude], [118.0, 20.0]);
       // 相鄰格不受影響
       final neighbour = (await repository.getRainForecast(latitude: 25.0375, longitude: 121.5125)).data;
-      expect(neighbour.mmAtLocation, isNull);
+      expect(neighbour.millimetersAtLocation, isNull);
     });
 
     test('-99 cell is null, not zero', () async {
       final repository = _hazardRepository({'F-B0046-001': _ok(_fullGrid({}))});
-      expect((await repository.getRainForecast(latitude: 25.0, longitude: 121.5)).data.mmAtLocation, isNull);
+      expect((await repository.getRainForecast(latitude: 25.0, longitude: 121.5)).data.millimetersAtLocation, isNull);
     });
 
     test('coordinate outside grid is Failure', () async {

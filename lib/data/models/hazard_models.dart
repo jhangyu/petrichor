@@ -196,7 +196,7 @@ class ActiveWarnings {
 // 雨量觀測（O-A0002-001）
 // ============================================================================
 
-/// 雨量站：今日累積雨量 [todayMm]、近 1／3 小時 [past1hrMm]／[past3hrMm]（null = 缺值或非數字）
+/// 雨量站：今日累積雨量 [todayMillimeters]、近 1／3 小時 [past1HourMillimeters]／[past3HoursMillimeters]（null = 缺值或非數字）
 class RainStation {
   final String id;
   final String name;
@@ -204,12 +204,12 @@ class RainStation {
   final String town;
   final double latitude;
   final double longitude;
-  final double? todayMm;
-  final double? past1hrMm;
-  final double? past3hrMm;
+  final double? todayMillimeters;
+  final double? past1HourMillimeters;
+  final double? past3HoursMillimeters;
 
   /// 近 10 分鐘雨量（`Past10Min`）
-  final double? past10MinMm;
+  final double? past10MinutesMillimeters;
   final DateTime obsTime;
 
   const RainStation({
@@ -219,10 +219,10 @@ class RainStation {
     required this.town,
     required this.latitude,
     required this.longitude,
-    required this.todayMm,
-    this.past1hrMm,
-    this.past3hrMm,
-    this.past10MinMm,
+    required this.todayMillimeters,
+    this.past1HourMillimeters,
+    this.past3HoursMillimeters,
+    this.past10MinutesMillimeters,
     required this.obsTime,
   });
 
@@ -246,10 +246,10 @@ class RainStation {
       town: _str(geo['TownName'], '$path.GeoInfo.TownName'),
       latitude: _num(c['StationLatitude'], '$path.WGS84.StationLatitude'),
       longitude: _num(c['StationLongitude'], '$path.WGS84.StationLongitude'),
-      todayMm: precipitation('Now'),
-      past1hrMm: precipitation('Past1hr'),
-      past3hrMm: precipitation('Past3hr'),
-      past10MinMm: precipitation('Past10Min'),
+      todayMillimeters: precipitation('Now'),
+      past1HourMillimeters: precipitation('Past1hr'),
+      past3HoursMillimeters: precipitation('Past3hr'),
+      past10MinutesMillimeters: precipitation('Past10Min'),
       obsTime: _time(_map(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
     );
   }
@@ -368,7 +368,7 @@ class RainForecast {
   final RainForecastGrid grid;
 
   /// 使用者所在格的預測 mm；null = 該格無效值
-  final double? mmAtLocation;
+  final double? millimetersAtLocation;
 
-  const RainForecast({required this.grid, required this.mmAtLocation});
+  const RainForecast({required this.grid, required this.millimetersAtLocation});
 }

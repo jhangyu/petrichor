@@ -19,7 +19,7 @@ class ObservationHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final station = rainfall.nearest;
-    final mm = station.todayMm!; // CountyRainfall.nearest always has a value
+    final mm = station.todayMillimeters!; // CountyRainfall.nearest always has a value
     final next = nextWarning(mm);
     return AppCard(
       hero: true,
@@ -63,8 +63,8 @@ class ObservationHeroCard extends StatelessWidget {
           ),
           _ThresholdBar(mm: mm),
           MetricGrid(children: [
-            MetricTile(icon: Icons.schedule, label: '近 1 小時', value: _millimetersWithUnitText(station.past1hrMm), onHero: true),
-            MetricTile(icon: Icons.schedule, label: '近 3 小時', value: _millimetersWithUnitText(station.past3hrMm), onHero: true),
+            MetricTile(icon: Icons.schedule, label: '近 1 小時', value: _millimetersWithUnitText(station.past1HourMillimeters), onHero: true),
+            MetricTile(icon: Icons.schedule, label: '近 3 小時', value: _millimetersWithUnitText(station.past3HoursMillimeters), onHero: true),
             if (next != null)
               MetricTile(
                 icon: Icons.warning_amber_outlined,
@@ -75,7 +75,7 @@ class ObservationHeroCard extends StatelessWidget {
             MetricTile(
               icon: Icons.water_drop_outlined,
               label: '目前',
-              value: currentRainText(station.past10MinMm),
+              value: currentRainText(station.past10MinutesMillimeters),
               onHero: true,
             ),
           ]),

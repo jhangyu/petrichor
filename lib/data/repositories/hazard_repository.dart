@@ -77,7 +77,7 @@ class HazardRepository {
     if (inCounty.isEmpty) {
       return Failure('[${AppConstants.rainObservationDatasetId}] 查無縣市「$county」的雨量站（共 ${all.length} 站，CWA 縣市名須用「臺」）');
     }
-    final withValue = inCounty.where((s) => s.todayMm != null).toList();
+    final withValue = inCounty.where((s) => s.todayMillimeters != null).toList();
     if (withValue.isEmpty) {
       return Failure('[${AppConstants.rainObservationDatasetId}] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
     }
@@ -92,7 +92,7 @@ class HazardRepository {
   Future<Result<RainForecast>> getRainForecast({required double latitude, required double longitude}) async {
     return switch (await getRainForecastGrid()) {
       Success(data: final g) => g.contains(latitude, longitude)
-          ? Success(RainForecast(grid: g, mmAtLocation: g.valueAt(latitude, longitude)))
+          ? Success(RainForecast(grid: g, millimetersAtLocation: g.valueAt(latitude, longitude)))
           : Failure<RainForecast>('[${AppConstants.rainForecastOneHourDatasetId}] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
       final Failure<RainForecastGrid> f => f.retype<RainForecast>(),
     };

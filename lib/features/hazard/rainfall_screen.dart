@@ -180,7 +180,7 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryForecast,
       builder: (f) => ForecastMapCard(
         grid: f.grid,
-        currentPlaceForecast: (name: place.name, point: me, millimeters: f.mmAtLocation),
+        currentPlaceForecast: (name: place.name, point: me, millimeters: f.millimetersAtLocation),
         cameraLink: link,
         wide: wide,
       ),

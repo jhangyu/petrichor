@@ -175,7 +175,7 @@ class _StationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mm = station.todayMm;
+    final mm = station.todayMillimeters;
     final level = mm == null ? null : rainLevel(mm);
     final place = '${station.county} ${station.town}${isNearest ? ' · 目前位置' : ''}';
     return Container(

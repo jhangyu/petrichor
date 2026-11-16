@@ -9,7 +9,7 @@ RainStation _station(String name, double? mm) => RainStation(
       town: '信義區',
       latitude: 25,
       longitude: 121.5,
-      todayMm: mm,
+      todayMillimeters: mm,
       obsTime: DateTime.utc(2026, 11, 14, 6),
     );
 
@@ -49,7 +49,7 @@ void main() {
           town: 't',
           latitude: 25,
           longitude: 121.5,
-          todayMm: 1,
+          todayMillimeters: 1,
           obsTime: DateTime.utc(2026, 11, 14),
         );
     final stations = [inCounty('基隆市'), inCounty('臺北市'), inCounty('基隆市'), inCounty('宜蘭縣')];

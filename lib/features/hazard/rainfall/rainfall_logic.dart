@@ -56,9 +56,9 @@ List<String> countyChipOrder(List<RainStation> stations, String? current) {
 const rainingMinimumPast10MinutesMillimeters = 0.0;
 
 /// Hero 「目前」 tile text; null (no value) → `—`.
-String currentRainText(double? past10MinMm) {
-  if (past10MinMm == null) return '—';
-  return past10MinMm > rainingMinimumPast10MinutesMillimeters ? '持續降雨' : '無降雨';
+String currentRainText(double? past10MinutesMillimeters) {
+  if (past10MinutesMillimeters == null) return '—';
+  return past10MinutesMillimeters > rainingMinimumPast10MinutesMillimeters ? '持續降雨' : '無降雨';
 }
 
 /// Stations sorted high → low (missing values last) or by name.
@@ -69,8 +69,8 @@ List<RainStation> sortStations(List<RainStation> stations, StationSort sort) {
   switch (sort) {
     case StationSort.rainfall:
       sorted.sort((a, b) {
-        final x = a.todayMm;
-        final y = b.todayMm;
+        final x = a.todayMillimeters;
+        final y = b.todayMillimeters;
         if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
         return y.compareTo(x);
       });
