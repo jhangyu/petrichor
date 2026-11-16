@@ -278,13 +278,13 @@ void main() {
     await load(window).drain<void>();
     final gated = _GatedAdapter();
     final dio = Dio()..httpClientAdapter = gated;
-    final repo = repository(dio);
+    final frameRepository = repository(dio);
     final uncached = _ref(const Duration(seconds: 100));
-    final first = repo.watch(source(dio, [...window, uncached]), window: span).listen(null);
+    final first = frameRepository.watch(source(dio, [...window, uncached]), window: span).listen(null);
     await gated.firstFrameRequest.future;
     await first.cancel();
 
-    final events = await repo.watch(source(dio, window), window: const Duration(minutes: 30)).toList();
+    final events = await frameRepository.watch(source(dio, window), window: const Duration(minutes: 30)).toList();
     final shown = [for (final f in window.skip(1)) f.time];
     expect(stamps(events.first), shown, reason: 'cached frames first');
     expect(stamps(events.last), shown);
@@ -298,15 +298,15 @@ void main() {
   test('two overlapping loads: events in order, one load after the other, no partial files', () async {
     final gated = _GatedAdapter();
     final dio = Dio()..httpClientAdapter = gated;
-    final repo = repository(dio);
+    final frameRepository = repository(dio);
     final log = <(String, RadarLoop)>[];
     Future<List<RadarLoop>> collect(String name, Stream<RadarLoop> s) =>
         s.map((l) => (log..add((name, l))).last.$2).toList();
 
-    final first = collect('first', repo.watch(source(dio, window), window: span));
+    final first = collect('first', frameRepository.watch(source(dio, window), window: span));
     await gated.firstFrameRequest.future;
     const short = Duration(minutes: 10);
-    final second = collect('second', repo.watch(source(dio, window), window: short));
+    final second = collect('second', frameRepository.watch(source(dio, window), window: short));
     gated.release.complete();
     final (a, b) = (await first, await second);
 
@@ -324,8 +324,8 @@ void main() {
   test('a load of another cache family does not wait for a running load', () async {
     final gated = _GatedAdapter();
     final dio = Dio()..httpClientAdapter = gated;
-    final repo = repository(dio);
-    final radar = repo.watch(source(dio, window), window: span).listen(null);
+    final frameRepository = repository(dio);
+    final radar = frameRepository.watch(source(dio, window), window: span).listen(null);
     await gated.firstFrameRequest.future;
     final other = RadarSource(
         id: 'other',
@@ -333,7 +333,7 @@ void main() {
         maxWindow: const Duration(hours: 24),
         listFrames: ({required now, required window, cancelToken}) async => const [],
         step: RadarPngStep(_geometry));
-    final first = await repo.watch(other, window: span).first;
+    final first = await frameRepository.watch(other, window: span).first;
     expect(first.loading, isTrue, reason: 'first event arrived while the radar load is still blocked');
     expect(gated.release.isCompleted, isFalse);
     await radar.cancel();
