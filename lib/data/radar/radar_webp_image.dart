@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
-import '../../../data/radar/radar_webp.dart';
+import 'radar_webp.dart';
 
 /// A cached radar frame (lossless WebP) decoded by libwebp on a background
 /// isolate at its stored size (the GPU scales it when drawing; an engine

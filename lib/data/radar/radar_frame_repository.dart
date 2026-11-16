@@ -8,12 +8,12 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:pool/pool.dart';
 
-import '../../features/radar/widgets/radar_webp_image.dart';
 import 'radar_echo_stats.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
 import 'radar_loop.dart';
 import 'radar_source.dart';
+import 'radar_webp_image.dart';
 import 'radar_webp.dart';
 
 export 'radar_loop.dart';
