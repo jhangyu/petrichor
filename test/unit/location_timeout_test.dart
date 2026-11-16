@@ -9,7 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class MockLocationService extends Mock implements LocationService {}
+import '../support/mock_location_service.dart';
 
 /// 權限已允許，但 getCurrentPosition 永不完成（macOS 上定位服務不回應的情況）。
 class _HangingPositionPlatform extends GeolocatorPlatform {

@@ -14,6 +14,8 @@ import 'package:petrichor/data/rain_accum/accum_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/temp_dir.dart';
+
 /// now − 6 min = 10:54Z: newest grid slot 10:50.
 final _now = DateTime.utc(2026, 11, 15, 11);
 final _newest = DateTime.utc(2026, 11, 15, 10, 50);
@@ -63,10 +65,9 @@ void main() {
   late Directory root;
   late _Adapter adapter;
   setUp(() {
-    root = Directory.systemTemp.createTempSync('accum_source_test');
+    root = newTempDir('accum_source_test');
     adapter = _Adapter();
   });
-  tearDown(() => root.deleteSync(recursive: true));
 
   RadarSource source(int w) => accumRadarSource(Dio()..httpClientAdapter = adapter,
       windowHours: w, cacheRoot: () async => root, clock: () => _now);

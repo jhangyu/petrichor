@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/container.dart';
 import '../support/fake_cwa_adapter.dart';
 
 const _sample = 'CWA-00000000-0000-0000-0000-000000000000';
@@ -29,8 +30,7 @@ class _ConnectionErrorAdapter implements HttpClientAdapter {
 /// Container over mock prefs; the shared Dio talks to [adapter] instead of the network.
 ProviderContainer _container(Map<String, Object> prefs, HttpClientAdapter adapter) {
   SharedPreferences.setMockInitialValues(prefs);
-  final container = ProviderContainer();
-  addTearDown(container.dispose);
+  final container = newContainer();
   container.read(dioProvider).httpClientAdapter = adapter;
   return container;
 }
@@ -62,26 +62,22 @@ void main() {
   group('cwaApiKeyProvider', () {
     test('save persists across containers and clear removes it', () async {
       SharedPreferences.setMockInitialValues({});
-      final first = ProviderContainer();
-      addTearDown(first.dispose);
+      final first = newContainer();
       expect(await first.read(cwaApiKeyProvider.future), isNull);
       await first.read(cwaApiKeyProvider.notifier).save(CwaApiKey.parse(_sample));
 
-      final second = ProviderContainer();
-      addTearDown(second.dispose);
+      final second = newContainer();
       expect((await second.read(cwaApiKeyProvider.future))?.value, _sample);
 
       await second.read(cwaApiKeyProvider.notifier).clear();
-      final third = ProviderContainer();
-      addTearDown(third.dispose);
+      final third = newContainer();
       expect(await third.read(cwaApiKeyProvider.future), isNull);
     });
 
     test('corrupt stored value is a StoredSettingException naming the key, and save recovers', () async {
       for (final Object bad in ['abc', 42]) {
         SharedPreferences.setMockInitialValues({_storageKey: bad});
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
+        final container = newContainer();
         await expectLater(
           container.read(cwaApiKeyProvider.future),
           throwsA(isA<StoredSettingException>().having((e) => e.key, 'key', _storageKey)),

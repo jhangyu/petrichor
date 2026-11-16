@@ -16,8 +16,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_cwa_adapter.dart';
-
-class MockLocationService extends Mock implements LocationService {}
+import '../support/mock_location_service.dart';
 
 /// file API 請求（72 小時預報發布時間）一律回臺北市 3 天預報的開頭樣本；其餘照 [FakeCwaAdapter] 路由。
 class _FileApiAdapter extends FakeCwaAdapter {

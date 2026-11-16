@@ -9,8 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_cwa_adapter.dart';
-
-class MockLocationService extends Mock implements LocationService {}
+import '../support/mock_location_service.dart';
 
 const _banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01154, longitude: 121.450888);
 const _magong = Place(county: '澎湖縣', town: '馬公市', latitude: 23.565, longitude: 119.586);

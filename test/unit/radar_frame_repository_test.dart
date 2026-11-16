@@ -16,6 +16,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:latlong2/latlong.dart';
 
+import '../support/temp_dir.dart';
+
 const _size = 8;
 final _now = DateTime.utc(2026, 11, 14, 12, 55);
 final _geometry = RadarImageGeometry(
@@ -169,8 +171,7 @@ class _HeldProcess {
 
 void main() {
   late Directory root;
-  setUp(() => root = Directory.systemTemp.createTempSync('radar_repo_test'));
-  tearDown(() => root.deleteSync(recursive: true));
+  setUp(() => root = newTempDir('radar_repo_test'));
 
   // Irregular cadence with seconds, like the station lists (~108 s apart), oldest first.
   final window = [for (final s in [2242, 1011, 497, 303]) _ref(Duration(seconds: s))];

@@ -6,10 +6,10 @@ import 'package:petrichor/core/api/dio_client.dart';
 import 'package:petrichor/data/models/hazard_models.dart';
 import 'package:petrichor/data/repositories/hazard_repository.dart';
 import 'package:petrichor/core/api/result.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/container.dart';
 import '../support/fake_cwa_adapter.dart';
 
 String _fixture(String id) => File('test/fixtures/cwa/$id.json').readAsStringSync();
@@ -227,8 +227,7 @@ void main() {
     test('url carries no key and the interceptor adds it as a query parameter', () async {
       const dummyKey = 'CWA-00000000-0000-0000-0000-000000000000';
       SharedPreferences.setMockInitialValues({CwaApiKeyNotifier.storageKey: dummyKey});
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final container = newContainer();
       final adapter = FakeCwaAdapter()..routes['F-B0046-001'] = _ok(_fullGrid({}));
       container.read(dioProvider).httpClientAdapter = adapter;
 
