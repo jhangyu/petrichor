@@ -18,7 +18,7 @@ const _radarFrameBaseUrl = 'https://www.cwa.gov.tw/Data/radar/';
 const _radarFrameSetPrefix = 'CV1_3600_';
 
 /// Website frame cadence.
-const radarFrameStep = Duration(minutes: 10);
+const radarWebsiteFrameInterval = Duration(minutes: 10);
 
 /// Longest look-back of the website loop: all the site lists (144 frames).
 const radarWebsiteMaxWindow = Duration(hours: 24);
@@ -42,7 +42,7 @@ class RadarFrameReference {
 
   /// Website frame from the timestamp in its file name.
   RadarFrameReference.website(String stamp)
-      : this(time: radarStampTime(stamp), url: '$_radarFrameBaseUrl$_radarFrameSetPrefix$stamp.png');
+      : this(time: parseRadarTaiwanStamp(stamp), url: '$_radarFrameBaseUrl$_radarFrameSetPrefix$stamp.png');
 
   /// Cache file key: observation time `yyyyMMddHHmmss` UTC (station frames have irregular seconds).
   String get cacheKey => formatUtcStamp(time, seconds: true);
@@ -78,7 +78,7 @@ DateTime parseUtcStamp(String s) => DateTime.utc(
 final _stampPattern = RegExp(r'^\d{12}(\d{2})?$');
 
 /// Time of a `yyyyMMddHHmm[ss]` Taiwan-time stamp, in UTC.
-DateTime radarStampTime(String s) {
+DateTime parseRadarTaiwanStamp(String s) {
   if (!_stampPattern.hasMatch(s)) throw FormatException('radar stamp: expected yyyyMMddHHmm[ss], got "$s"');
   return parseUtcStamp(s).subtract(taiwanUtcOffset);
 }
@@ -101,7 +101,7 @@ List<RadarFrameReference> parseRadarStationList(String scriptText, {required Str
   final pattern = RegExp("'(CV1_${code}_3600/CV1_${code}_3600_(\\d{14})_[0-9a-f]{64}\\.png)'");
   final frames = pattern
       .allMatches(scriptText)
-      .map((m) => RadarFrameReference(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}'))
+      .map((m) => RadarFrameReference(time: parseRadarTaiwanStamp(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}'))
       .toSet()
       .toList();
   if (frames.isEmpty) {
