@@ -1,4 +1,4 @@
-import 'package:petrichor/core/constants/app_constants.dart';
+import 'package:petrichor/core/api/cwa_datasets.dart';
 import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/features/radar/radar_playback.dart';
 import 'package:petrichor/features/radar/radar_provider.dart';
@@ -20,8 +20,8 @@ void main() {
     final c = newContainer();
     expect(await read(c, RadarGroup.taiwan), (const Duration(hours: 6), 8, true, 60));
     expect(await read(c, RadarGroup.regional), (const Duration(hours: 4), 12, true, 60));
-    expect(radarGroupOf(AppConstants.radarTaiwanDatasetId), RadarGroup.taiwan);
-    for (final id in [AppConstants.radarShulinDatasetId, AppConstants.radarNantunDatasetId, AppConstants.radarLinyuanDatasetId]) {
+    expect(radarGroupOf(CwaDatasets.radarTaiwanDatasetId), RadarGroup.taiwan);
+    for (final id in [CwaDatasets.radarShulinDatasetId, CwaDatasets.radarNantunDatasetId, CwaDatasets.radarLinyuanDatasetId]) {
       expect(radarGroupOf(id), RadarGroup.regional);
     }
   });

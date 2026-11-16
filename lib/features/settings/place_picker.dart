@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_card.dart';
@@ -30,7 +30,7 @@ class PlacePicker extends ConsumerStatefulWidget {
 }
 
 class _PlacePickerState extends ConsumerState<PlacePicker> {
-  static final _counties = AppConstants.townshipForecastDatasets.keys.toList();
+  static final _counties = CwaDatasets.townshipForecastDatasets.keys.toList();
 
   late String _county = widget.current?.county ?? _counties.first;
   late Place? _town = widget.current;

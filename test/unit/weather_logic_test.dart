@@ -1,7 +1,7 @@
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/models/weather_models.dart';
 import 'package:petrichor/core/api/result.dart';
-import 'package:petrichor/core/constants/app_constants.dart';
+import 'package:petrichor/core/api/cwa_datasets.dart';
 import 'package:petrichor/core/time/taiwan_time.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
 import 'package:petrichor/features/weather/weather_logic.dart';
@@ -108,7 +108,7 @@ void main() {
       tw(14, 14),
     ) as NowCardReady;
 
-    final failed = card(const Failure('逾時', dataset: AppConstants.sunTimesDatasetId));
+    final failed = card(const Failure('逾時', dataset: CwaDatasets.sunTimesDatasetId));
     expect(failed.observation, same(obs));
     expect((failed.sun as Failure).message, '逾時');
     expect(failed.slot, isNull);
@@ -133,12 +133,12 @@ void main() {
     final state = WeatherState(
       location: taipei,
       current: Success(obs),
-      sun: const Failure('逾時', dataset: AppConstants.sunTimesDatasetId, location: '臺北市中正區'),
+      sun: const Failure('逾時', dataset: CwaDatasets.sunTimesDatasetId, location: '臺北市中正區'),
       isLoading: false,
     );
     final sun = (nowCard(state, tw(14, 14)) as NowCardReady).sun as Failure;
     expect(sun.location, '臺北市中正區');
-    expect(sun.dataset, AppConstants.sunTimesDatasetId);
+    expect(sun.dataset, CwaDatasets.sunTimesDatasetId);
   });
 
   test('day labels use the Taiwan calendar date, not UTC', () {

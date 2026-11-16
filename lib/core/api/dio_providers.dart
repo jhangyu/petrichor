@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'result.dart' show ApiKeyIssue, CwaApiKeyException;
-import '../constants/app_constants.dart';
+import 'cwa_http_config.dart';
 import '../storage/stored_setting.dart';
 import 'api_key.dart';
 
@@ -9,10 +9,10 @@ import 'api_key.dart';
 BaseOptions _commonOptions({String baseUrl = '', Map<String, dynamic>? queryParameters}) => BaseOptions(
       baseUrl: baseUrl,
       queryParameters: queryParameters,
-      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMilliseconds),
-      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMilliseconds),
+      connectTimeout: Duration(milliseconds: CwaHttpConfig.connectTimeoutMilliseconds),
+      receiveTimeout: Duration(milliseconds: CwaHttpConfig.receiveTimeoutMilliseconds),
       followRedirects: true,
-      maxRedirects: AppConstants.maxRedirects,
+      maxRedirects: CwaHttpConfig.maxRedirects,
       headers: {'Accept': 'application/json'},
     );
 
@@ -25,7 +25,7 @@ BaseOptions _commonOptions({String baseUrl = '', Map<String, dynamic>? queryPara
 /// 監看 [cwaApiKeyProvider]：金鑰變更後本 provider 重建，下游 repository 隨之重建。
 final cwaDioProvider = Provider<Dio>((ref) {
   final key = ref.watch(cwaApiKeyProvider.future);
-  final dio = Dio(_commonOptions(baseUrl: AppConstants.cwaApiBaseUrl, queryParameters: {'format': 'JSON'}));
+  final dio = Dio(_commonOptions(baseUrl: CwaHttpConfig.cwaApiBaseUrl, queryParameters: {'format': 'JSON'}));
 
   // query 不會隨 fileapi 的 302 轉址帶到 S3
   dio.interceptors.add(InterceptorsWrapper(

@@ -1,4 +1,4 @@
-import 'package:petrichor/core/constants/app_constants.dart';
+import 'package:petrichor/core/api/cwa_datasets.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
@@ -9,7 +9,7 @@ import '../support/fake_cwa_adapter.dart';
 /// 測站清單用 O-A0001-001 樣本（臺北、三重〔新北市〕、澎湖、新興〔高雄市〕、臺中）；
 /// 各縣市鄉鎮清單借臺北市 3 天預報樣本，只留一個鄉鎮並改縣市名、鄉鎮名與座標。
 FakeCwaAdapter _serve(Map<String, (String, double, double)> townByCounty) {
-  final adapter = FakeCwaAdapter()..serveFixture(AppConstants.countyLookupDatasetId);
+  final adapter = FakeCwaAdapter()..serveFixture(CwaDatasets.countyLookupDatasetId);
   for (final MapEntry(key: county, value: (town, latitude, longitude)) in townByCounty.entries) {
     adapter.serveFixture('F-D0047-061', (json) {
       final group = ((json['records'] as Map)['Locations'] as List).first as Map;
@@ -19,7 +19,7 @@ FakeCwaAdapter _serve(Map<String, (String, double, double)> townByCounty) {
       location['Latitude'] = '$latitude';
       location['Longitude'] = '$longitude';
       return null;
-    }, AppConstants.townshipForecastDatasets[county]!.threeDay);
+    }, CwaDatasets.townshipForecastDatasets[county]!.threeDay);
   }
   return adapter;
 }
@@ -71,7 +71,7 @@ void main() {
   });
 
   test('a station list failure names the station dataset and coordinates', () async {
-    final adapter = FakeCwaAdapter()..serveStatus(AppConstants.countyLookupDatasetId, 500);
+    final adapter = FakeCwaAdapter()..serveStatus(CwaDatasets.countyLookupDatasetId, 500);
 
     final failure = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51) as Failure<Place>;
 

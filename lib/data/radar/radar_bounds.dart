@@ -3,7 +3,8 @@ import 'dart:math';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
+import '../../core/geography/earth.dart';
 import 'radar_frame_processor.dart';
 
 const radarFrameSize = 3600;
@@ -61,9 +62,9 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
 typedef RadarStation = ({String code, String datasetId, String name, LatLng site});
 
 const radarStations = <RadarStation>[
-  (code: 'RCSL', datasetId: AppConstants.radarShulinDatasetId, name: '樹林', site: LatLng(25.00, 121.40)),
-  (code: 'RCNT', datasetId: AppConstants.radarNantunDatasetId, name: '南屯', site: LatLng(24.14, 120.58)),
-  (code: 'RCLY', datasetId: AppConstants.radarLinyuanDatasetId, name: '林園', site: LatLng(22.53, 120.38)),
+  (code: 'RCSL', datasetId: CwaDatasets.radarShulinDatasetId, name: '樹林', site: LatLng(25.00, 121.40)),
+  (code: 'RCNT', datasetId: CwaDatasets.radarNantunDatasetId, name: '南屯', site: LatLng(24.14, 120.58)),
+  (code: 'RCLY', datasetId: CwaDatasets.radarLinyuanDatasetId, name: '林園', site: LatLng(22.53, 120.38)),
 ];
 
 /// The station radar with dataset id [id]; null for any other id (e.g. the composite).
@@ -80,7 +81,7 @@ const radarStationRangeKm = 150.0;
 /// so a reprojection could not be shown to be more correct. Revisit if CWA
 /// publishes the projection.
 LatLngBounds stationRadarBounds(LatLng centre, {required double radiusKm}) {
-  final dLat = radiusKm / AppConstants.earthRadiusKilometers * 180 / pi;
+  final dLat = radiusKm / earthRadiusKilometers * 180 / pi;
   final dLon = dLat / cos(centre.latitude * pi / 180);
   return LatLngBounds(
     LatLng(centre.latitude - dLat, centre.longitude - dLon),

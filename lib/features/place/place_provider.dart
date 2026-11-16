@@ -264,7 +264,7 @@ class SavedPlacesNotifier extends AsyncNotifier<List<Place>> {
   }
 }
 
-/// [county] 的鄉鎮清單（縣市名用「臺」；可選縣市＝AppConstants.townshipForecastDatasets.keys）
+/// [county] 的鄉鎮清單（縣市名用「臺」；可選縣市＝CwaDatasets.townshipForecastDatasets.keys）
 final townsProvider = FutureProvider.family<Result<List<Place>>, String>((ref, county) {
   return ref.watch(weatherRepositoryProvider).getTowns(county);
 });

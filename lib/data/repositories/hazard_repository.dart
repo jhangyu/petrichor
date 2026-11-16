@@ -4,7 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/dio_providers.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_http_config.dart';
+import '../../core/api/cwa_datasets.dart';
 import '../models/hazard_models.dart';
 import '../../core/api/result.dart' show Failure, Result, Success, guardRequest;
 
@@ -31,30 +32,30 @@ class HazardRepository {
   Future<Result<ActiveWarnings>> getActiveWarnings() => guardRequest<ActiveWarnings>(
         () async {
           final responses = await Future.wait([
-            _dio.get<Object?>(AppConstants.warningsByCountyDatasetId),
-            _dio.get<Object?>(AppConstants.warningBulletinsDatasetId),
+            _dio.get<Object?>(CwaDatasets.warningsByCountyDatasetId),
+            _dio.get<Object?>(CwaDatasets.warningBulletinsDatasetId),
           ]);
-          final warningsByCounty = _datastoreRecords(responses[0].data, AppConstants.warningsByCountyDatasetId);
-          final warningBulletins = _datastoreRecords(responses[1].data, AppConstants.warningBulletinsDatasetId);
+          final warningsByCounty = _datastoreRecords(responses[0].data, CwaDatasets.warningsByCountyDatasetId);
+          final warningBulletins = _datastoreRecords(responses[1].data, CwaDatasets.warningBulletinsDatasetId);
           final bulletins = _bulletins(warningBulletins);
           final warnings = ActiveWarnings.fromJson(warningsByCounty, bulletins, clock());
           if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
             return const Failure(
-              '[${AppConstants.warningBulletinsDatasetId}] expected bulletins because ${AppConstants.warningsByCountyDatasetId} lists active warnings, got none',
+              '[${CwaDatasets.warningBulletinsDatasetId}] expected bulletins because ${CwaDatasets.warningsByCountyDatasetId} lists active warnings, got none',
             );
           }
           return Success(warnings);
         },
-        dataset: '${AppConstants.warningsByCountyDatasetId}/${AppConstants.warningBulletinsDatasetId}',
+        dataset: '${CwaDatasets.warningsByCountyDatasetId}/${CwaDatasets.warningBulletinsDatasetId}',
       );
 
   /// 資料集內全部測站（所有縣市），不需要使用者位置。
   Future<Result<List<RainStation>>> getRainStations() => guardRequest<List<RainStation>>(
         () async {
-          final response = await _dio.get<Object?>(AppConstants.rainObservationDatasetId);
-          return Success(parseRainStations(_datastoreRecords(response.data, AppConstants.rainObservationDatasetId)));
+          final response = await _dio.get<Object?>(CwaDatasets.rainObservationDatasetId);
+          return Success(parseRainStations(_datastoreRecords(response.data, CwaDatasets.rainObservationDatasetId)));
         },
-        dataset: AppConstants.rainObservationDatasetId,
+        dataset: CwaDatasets.rainObservationDatasetId,
       );
 
   /// 指定縣市的雨量觀測：該縣市所有測站與離 ([latitude], [longitude]) 最近的有值測站。
@@ -75,25 +76,25 @@ class HazardRepository {
   Result<CountyRainfall> _countyRainfall(List<RainStation> all, String county, double latitude, double longitude) {
     final inCounty = all.where((s) => s.county == county).toList();
     if (inCounty.isEmpty) {
-      return Failure('[${AppConstants.rainObservationDatasetId}] 查無縣市「$county」的雨量站（共 ${all.length} 站，CWA 縣市名須用「臺」）');
+      return Failure('[${CwaDatasets.rainObservationDatasetId}] 查無縣市「$county」的雨量站（共 ${all.length} 站，CWA 縣市名須用「臺」）');
     }
     final withValue = inCounty.where((s) => s.todayMillimeters != null).toList();
     if (withValue.isEmpty) {
-      return Failure('[${AppConstants.rainObservationDatasetId}] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
+      return Failure('[${CwaDatasets.rainObservationDatasetId}] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
     }
     withValue.sort((a, b) => a.squaredDistanceTo(latitude, longitude).compareTo(b.squaredDistanceTo(latitude, longitude)));
     return Success(CountyRainfall(county: county, stations: inCounty, allStations: all, nearest: withValue.first));
   }
 
   /// 1 小時雨量預測整張格點，不需要使用者位置。
-  Future<Result<RainForecastGrid>> getRainForecastGrid() => _fileApi(AppConstants.rainForecastOneHourDatasetId, RainForecastGrid.fromJson);
+  Future<Result<RainForecastGrid>> getRainForecastGrid() => _fileApi(CwaDatasets.rainForecastOneHourDatasetId, RainForecastGrid.fromJson);
 
   /// 使用者位置的 1 小時雨量預測；座標不在格點範圍內 → [Failure]。
   Future<Result<RainForecast>> getRainForecast({required double latitude, required double longitude}) async {
     return switch (await getRainForecastGrid()) {
       Success(data: final g) => g.contains(latitude, longitude)
           ? Success(RainForecast(grid: g, millimetersAtLocation: g.valueAt(latitude, longitude)))
-          : Failure<RainForecast>('[${AppConstants.rainForecastOneHourDatasetId}] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
+          : Failure<RainForecast>('[${CwaDatasets.rainForecastOneHourDatasetId}] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
       final Failure<RainForecastGrid> f => f.retype<RainForecast>(),
     };
   }
@@ -104,7 +105,7 @@ class HazardRepository {
 
   Future<Result<T>> _fileApi<T>(String dataset, T Function(Object? root) parse) => guardRequest<T>(
         () async {
-          final response = await _dio.get<Object?>(AppConstants.fileApiUrl(dataset));
+          final response = await _dio.get<Object?>(CwaHttpConfig.fileApiUrl(dataset));
           final body = _jsonMap(response.data, dataset);
           return Success(parse(body['cwaopendata']));
         },

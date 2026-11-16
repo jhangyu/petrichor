@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/navigation/app_tab.dart' show AppTab, appTabProvider;
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/time/taiwan_time.dart';
@@ -33,7 +33,7 @@ import 'widgets/station_layers.dart';
 
 String? _stationName(String id) => radarStationById(id)?.name;
 
-final _radarSources = [(AppConstants.radarTaiwanDatasetId, '全台合成'), for (final s in radarStations) (s.datasetId, s.name)];
+final _radarSources = [(CwaDatasets.radarTaiwanDatasetId, '全台合成'), for (final s in radarStations) (s.datasetId, s.name)];
 
 const _loadingSubtitle = '正在取得最新觀測…';
 const _unreachableSubtitle = '無法連線中央氣象署';
@@ -51,7 +51,7 @@ class RadarScreen extends ConsumerStatefulWidget {
 }
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
-  String _selectedDatasetId = AppConstants.radarTaiwanDatasetId;
+  String _selectedDatasetId = CwaDatasets.radarTaiwanDatasetId;
   late final RadarPlayer _player = RadarPlayer(
     slots: () => ref.read(radarLoopProvider(_selectedDatasetId)).value?.slots,
     fps: () => ref.read(radarFpsProvider(_group)).requireValue,

@@ -3,7 +3,7 @@ import 'package:flutter/painting.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../data/models/weather_models.dart';
 import '../../core/api/result.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 import 'weather_provider.dart';
 import 'sun_now.dart';
 
@@ -33,13 +33,13 @@ ApiKeyIssue? firstApiKeyIssue(List<Result<Object?>?> results) {
 /// Dataset ids credited under the home page: only datasets whose data is on screen; none while loading.
 List<String> creditedDatasets(WeatherState weather, String county, Result<Object?>? warnings) {
   if (weather.isLoading) return const <String>[];
-  final datasets = AppConstants.townshipForecastDatasets[county];
+  final datasets = CwaDatasets.townshipForecastDatasets[county];
   return [
-    if (weather.current is Success) AppConstants.observationDatasetId,
+    if (weather.current is Success) CwaDatasets.observationDatasetId,
     if (weather.weekly is Success && datasets != null) datasets.oneWeek,
     if (weather.hourly is Success && datasets != null) datasets.threeDay,
-    if (weather.sun is Success) AppConstants.sunTimesDatasetId,
-    if (warnings is Success) ...[AppConstants.warningsByCountyDatasetId, AppConstants.warningBulletinsDatasetId],
+    if (weather.sun is Success) CwaDatasets.sunTimesDatasetId,
+    if (warnings is Success) ...[CwaDatasets.warningsByCountyDatasetId, CwaDatasets.warningBulletinsDatasetId],
   ];
 }
 
@@ -95,7 +95,7 @@ NowCardState nowCard(WeatherState state, DateTime now) {
     final Failure<List<SunDay>> failure => failure.retype<SunNow>(),
     Success(:final data) when place != null => sunNow(data, place, now),
     // Invariant: WeatherState carries data only for a loaded place; surface the break instead of hiding the arc.
-    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: AppConstants.sunTimesDatasetId),
+    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: CwaDatasets.sunTimesDatasetId),
   };
   final slot = switch (state.hourly) {
     Success(:final data) => currentSlot(data, now),

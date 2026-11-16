@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:petrichor/core/constants/app_constants.dart';
+import 'package:petrichor/core/api/cwa_http_config.dart';
 import 'package:dio/dio.dart';
 
 /// 離線 HTTP 轉接器：依資料集代號（路徑最後一段）回傳 test/fixtures/cwa 內的範例回應。
@@ -22,7 +22,7 @@ class FakeCwaAdapter implements HttpClientAdapter {
 
   void serveStatus(String dataset, int status) => routes[dataset] = (status, '{}');
 
-  Dio createDio() => Dio(BaseOptions(baseUrl: AppConstants.cwaApiBaseUrl))..httpClientAdapter = this;
+  Dio createDio() => Dio(BaseOptions(baseUrl: CwaHttpConfig.cwaApiBaseUrl))..httpClientAdapter = this;
 
   @override
   Future<ResponseBody> fetch(

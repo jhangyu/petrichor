@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../core/constants/app_constants.dart';
+import '../../core/geography/earth.dart';
 import '../../core/theme/app_tokens.dart';
 
 // Echo statistics of one radar image (website frame or station image),
@@ -35,7 +35,7 @@ const radarSignificantEchoDbz = 20;
 /// show up.
 const radarEchoMinAreaKm2 = 12.0;
 
-const _earthKmPerDegree = AppConstants.earthRadiusKilometers * pi / 180;
+const _earthKmPerDegree = earthRadiusKilometers * pi / 180;
 
 /// Header words (uint32): image width, image height.
 const _headerWords = 2;

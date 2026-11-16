@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 import 'radar_bounds.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
@@ -128,7 +128,7 @@ class RadarSource {
 
   /// Composite (全台合成): website `CV1_3600_` loop, 10-minute frames, 24 h.
   factory RadarSource.composite(Dio dio) => RadarSource.website(dio,
-      id: AppConstants.radarTaiwanDatasetId,
+      id: CwaDatasets.radarTaiwanDatasetId,
       listUrl: radarFrameListUrl,
       maxWindow: radarWebsiteMaxWindow,
       parse: parseRadarFrameList,

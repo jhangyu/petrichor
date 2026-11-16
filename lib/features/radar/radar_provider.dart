@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/api/dio_providers.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 import '../../core/storage/stored_setting.dart';
 import '../../data/radar/radar_bounds.dart';
 import '../../data/radar/radar_frame_repository.dart';
@@ -104,7 +104,7 @@ final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeatSetting, boo
 final radarWindowProvider = AsyncNotifierProvider.family<RadarWindowSetting, Duration, RadarGroup>(RadarWindowSetting.new, retry: noRetry);
 
 /// Settings group of the source with dataset [id].
-RadarGroup radarGroupOf(String id) => id == AppConstants.radarTaiwanDatasetId ? RadarGroup.taiwan : RadarGroup.regional;
+RadarGroup radarGroupOf(String id) => id == CwaDatasets.radarTaiwanDatasetId ? RadarGroup.taiwan : RadarGroup.regional;
 
 /// Clock for the frame window and cache retention; override in tests.
 final radarClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -119,13 +119,13 @@ final radarFrameRepositoryProvider = Provider<RadarFrameRepository>((ref) => Rad
 Duration radarEffectiveWindow(Duration selected, RadarSource source) =>
     selected > source.maxWindow ? source.maxWindow : selected;
 
-/// Source by dataset id: the composite loop for [AppConstants.radarTaiwanDatasetId],
+/// Source by dataset id: the composite loop for [CwaDatasets.radarTaiwanDatasetId],
 /// a station loop for each [radarStations] id.
 final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) {
   final dio = ref.watch(cwaWebsiteDioProvider);
-  if (id == AppConstants.radarTaiwanDatasetId) return RadarSource.composite(dio);
+  if (id == CwaDatasets.radarTaiwanDatasetId) return RadarSource.composite(dio);
   final station = radarStationById(id) ??
-      (throw ArgumentError.value(id, 'id', 'expected ${AppConstants.radarTaiwanDatasetId} or a radarStations dataset id'));
+      (throw ArgumentError.value(id, 'id', 'expected ${CwaDatasets.radarTaiwanDatasetId} or a radarStations dataset id'));
   return RadarSource.station(dio, station);
 });
 

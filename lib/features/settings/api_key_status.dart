@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_key.dart';
 import '../../core/api/dio_providers.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 
 /// Why a stored key is shown as 無效.
 enum ApiKeyInvalidKind { rejected, unreachable, unexpected, unreadable }
@@ -42,7 +42,7 @@ final class ApiKeyUnchecked extends ApiKeyStatus {
 }
 
 /// Dataset used to probe the key (one station is enough).
-const String _verifyDatasetId = AppConstants.observationDatasetId;
+const String _verifyDatasetId = CwaDatasets.observationDatasetId;
 
 class ApiKeyStatusNotifier extends Notifier<ApiKeyStatus> {
   /// Bumped on every rebuild and verify; a verify result of an older one is dropped.

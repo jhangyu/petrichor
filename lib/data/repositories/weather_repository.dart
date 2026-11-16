@@ -3,7 +3,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_providers.dart';
 import '../../core/api/result.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_http_config.dart';
+import '../../core/api/cwa_datasets.dart';
+import '../../core/geography/earth.dart';
 import '../../core/time/taiwan_time.dart';
 import '../models/place.dart';
 import '../models/weather_models.dart';
@@ -29,7 +31,7 @@ const double _countyBorderSlackKilometers = 1.0;
 
 /// [actual] = the county name as the caller passed it.
 Failure<T> _unsupportedCounty<T>(String actual, {required String location}) => Failure(
-      '不支援的縣市：期望 ${AppConstants.townshipForecastDatasets.keys.join('、')} 其一，實際「$actual」',
+      '不支援的縣市：期望 ${CwaDatasets.townshipForecastDatasets.keys.join('、')} 其一，實際「$actual」',
       location: location,
     );
 
@@ -62,9 +64,9 @@ class WeatherRepository {
   /// 取得離 [place] 最近、且有氣溫讀數的觀測站即時觀測（O-A0003-001）。
   Future<Result<CurrentWeather>> getCurrentWeather(Place place) {
     return _query(
-      dataset: AppConstants.observationDatasetId,
+      dataset: CwaDatasets.observationDatasetId,
       location: place.name,
-      query: {'limit': AppConstants.observationStationLimit},
+      query: {'limit': CwaDatasets.observationStationLimit},
       parse: (body) => _parseObservation(body, place.latitude, place.longitude),
     );
   }
@@ -105,7 +107,7 @@ class WeatherRepository {
       for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) isoDate(today.add(Duration(days: i))),
     ];
     return _query(
-      dataset: AppConstants.sunTimesDatasetId,
+      dataset: CwaDatasets.sunTimesDatasetId,
       location: countyName,
       // timeTo 為不含端點，故取 days.last 的次日
       query: {
@@ -124,7 +126,7 @@ class WeatherRepository {
   /// 取得 [county] 全部鄉鎮與經緯度（取自該縣市 3 天鄉鎮預報資料集的地點清單）。
   Future<Result<List<Place>>> getTowns(String county) {
     final name = normalizeCwaPlaceName(county);
-    final ids = AppConstants.townshipForecastDatasets[name];
+    final ids = CwaDatasets.townshipForecastDatasets[name];
     if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
     return _query(
       dataset: ids.threeDay,
@@ -136,13 +138,13 @@ class WeatherRepository {
   }
 
   /// 取得離 ([latitude], [longitude]) 最近的鄉鎮。
-  /// 先以最近的自動氣象站（[AppConstants.countyLookupDatasetId]）判定縣市，只抓該縣市鄉鎮清單；
+  /// 先以最近的自動氣象站（[CwaDatasets.countyLookupDatasetId]）判定縣市，只抓該縣市鄉鎮清單；
   /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[_countyBorderSlackKilometers]」遠（疑似縣市交界），
   /// 再抓該縣市清單一併比較。最多 3 次請求（測站＋2 縣市）。任一請求失敗即失敗。
   Future<Result<Place>> nearestTown(double latitude, double longitude) async {
     final where = '($latitude, $longitude)';
     final stations = await _query(
-      dataset: AppConstants.countyLookupDatasetId,
+      dataset: CwaDatasets.countyLookupDatasetId,
       location: where,
       // 只取一個要素與縣市／座標，縮小回應
       query: {'WeatherElement': _countyLookupElement, 'GeoInfo': 'Coordinates,CountyName'},
@@ -168,14 +170,14 @@ class WeatherRepository {
   /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
   Future<Result<DateTime>> getForecastIssuedAt(String county) {
     final countyName = normalizeCwaPlaceName(county);
-    final ids = AppConstants.townshipForecastDatasets[countyName];
+    final ids = CwaDatasets.townshipForecastDatasets[countyName];
     if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
     final dataset = ids.threeDay;
     return guardRequest<DateTime>(
       () async {
         // ponytail: 整份 file API 約 1 MB；IssueTime 位於開頭 DatasetInfo（實測位移約 1.7 KB），只取前 [_issueTimeHeadBytes]。
         final response = await _dio.get<String>(
-          '${AppConstants.cwaFileApiBaseUrl}$dataset',
+          '${CwaHttpConfig.cwaFileApiBaseUrl}$dataset',
           options: Options(
             headers: {'Range': 'bytes=0-${_issueTimeHeadBytes - 1}'},
             responseType: ResponseType.plain,
@@ -196,7 +198,7 @@ class WeatherRepository {
   }) async {
     final countyName = normalizeCwaPlaceName(county);
     final townName = normalizeCwaPlaceName(town);
-    final ids = AppConstants.townshipForecastDatasets[countyName];
+    final ids = CwaDatasets.townshipForecastDatasets[countyName];
     if (ids == null) return _unsupportedCounty(county, location: '$county$town');
     return _query(
       dataset: datasetOf(ids),

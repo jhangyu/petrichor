@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/app_constants.dart';
+import '../../core/api/cwa_datasets.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_button.dart';
@@ -68,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     };
     return AppPageScaffold(
       header: AppPageHeader(title: '設定', subtitle: _subtitle(problem, current)),
-      source: _hasObservation() ? const SourceLine(datasetIds: [AppConstants.observationDatasetId]) : null,
+      source: _hasObservation() ? const SourceLine(datasetIds: [CwaDatasets.observationDatasetId]) : null,
       onRefresh: _refreshWeather,
       children: [
         if (problem != null) AppGridItem.full(child: _tokenBanner(problem)),

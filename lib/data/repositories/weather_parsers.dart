@@ -82,7 +82,7 @@ double _distanceKilometers(double lat1, double lon1, double lat2, double lon2) {
   final longitudeDelta = radians(lon2 - lon1);
   final a = math.pow(math.sin(latitudeDelta / 2), 2) +
       math.cos(radians(lat1)) * math.cos(radians(lat2)) * math.pow(math.sin(longitudeDelta / 2), 2);
-  return 2 * AppConstants.earthRadiusKilometers * math.asin(math.sqrt(a));
+  return 2 * earthRadiusKilometers * math.asin(math.sqrt(a));
 }
 
 CurrentWeather _parseObservation(Map<String, dynamic> body, double latitude, double longitude) {
