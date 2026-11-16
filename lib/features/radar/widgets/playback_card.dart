@@ -86,7 +86,6 @@ class PlaybackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final f = playback;
     final bottom = opacity;
     return Semantics(
       label: '雷達動畫播放',
@@ -98,7 +97,7 @@ class PlaybackCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppSpace.s16,
           children: [
-            PlaybackBody(playback: f, loading: loading),
+            PlaybackBody(playback: playback, loading: loading),
             if (bottom != null)
               Container(
                 padding: const EdgeInsets.only(top: AppSpace.s16),
@@ -124,16 +123,16 @@ class PlaybackBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final f = playback;
+    final playback = this.playback;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: AppSpace.s16,
       children: [
-        if (f != null) _TimeRow(f),
-        _Controls(playback: f, loading: loading),
-        if (f != null) ...[
-          _Timeline(f),
-          _Settings(f),
+        if (playback != null) _TimeRow(playback),
+        _Controls(playback: playback, loading: loading),
+        if (playback != null) ...[
+          _Timeline(playback),
+          _Settings(playback),
         ],
       ],
     );
@@ -141,15 +140,15 @@ class PlaybackBody extends StatelessWidget {
 }
 
 class _TimeRow extends StatelessWidget {
-  const _TimeRow(this.f);
+  const _TimeRow(this.playback);
 
-  final PlaybackFrames f;
+  final PlaybackFrames playback;
 
   @override
   Widget build(BuildContext context) {
-    final count = f.slots.length;
-    final isLatest = radarNextReadyIndex(f.slots, f.index) == null;
-    final hours = f.window.inHours;
+    final count = playback.slots.length;
+    final isLatest = radarNextReadyIndex(playback.slots, playback.index) == null;
+    final hours = playback.window.inHours;
     // Wraps the caption under the time when both do not fit on one line.
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
@@ -158,7 +157,7 @@ class _TimeRow extends StatelessWidget {
       runSpacing: AppSpace.s4,
       children: [
         Text(
-          (f.timeText ?? formatTaiwanMonthDayClock)(f.slots[f.current].time),
+          (playback.timeText ?? formatTaiwanMonthDayClock)(playback.slots[playback.current].time),
           style: AppType.subtitle2.copyWith(
             color: AppPalette.foreground1,
             fontWeight: FontWeight.w600,
@@ -166,9 +165,9 @@ class _TimeRow extends StatelessWidget {
           ),
         ),
         Text(
-          f.buffering
+          playback.buffering
               ? '緩衝中…'
-              : '第 ${f.index + 1} / $count 張 · ${isLatest ? '最新' : f.timeText != null ? '累積中' : '過去 $hours 小時'}',
+              : '第 ${playback.index + 1} / $count 張 · ${isLatest ? '最新' : playback.timeText != null ? '累積中' : '過去 $hours 小時'}',
           style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
         ),
       ],
@@ -184,22 +183,22 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final f = playback;
-    final last = f == null ? 0 : f.slots.length - 1;
-    final previous = f == null ? null : radarPreviousReadyIndex(f.slots, f.index);
-    final next = f == null ? null : radarNextReadyIndex(f.slots, f.index);
+    final playback = this.playback;
+    final last = playback == null ? 0 : playback.slots.length - 1;
+    final previous = playback == null ? null : radarPreviousReadyIndex(playback.slots, playback.index);
+    final next = playback == null ? null : radarNextReadyIndex(playback.slots, playback.index);
     return Row(
       spacing: AppSpace.s8,
       children: [
         AppIconButton(
           icon: Icons.skip_previous,
           tooltip: '上一張',
-          onPressed: previous == null ? null : () => f!.onSeek(f.slots[previous].time),
+          onPressed: previous == null ? null : () => playback!.onSeek(playback.slots[previous].time),
         ),
         IconButton.filled(
-          tooltip: f != null && f.playing ? '暫停' : '播放',
-          icon: Icon(f != null && f.playing ? Icons.pause : Icons.play_arrow, size: AppSize.icon20),
-          onPressed: f?.onTogglePlay,
+          tooltip: playback != null && playback.playing ? '暫停' : '播放',
+          icon: Icon(playback != null && playback.playing ? Icons.pause : Icons.play_arrow, size: AppSize.icon20),
+          onPressed: playback?.onTogglePlay,
           style: IconButton.styleFrom(
             backgroundColor: AppPalette.brandBackground,
             foregroundColor: AppPalette.foregroundOnBrand,
@@ -211,7 +210,7 @@ class _Controls extends StatelessWidget {
         AppIconButton(
           icon: Icons.skip_next,
           tooltip: '下一張',
-          onPressed: next == null ? null : () => f!.onSeek(f.slots[next].time),
+          onPressed: next == null ? null : () => playback!.onSeek(playback.slots[next].time),
         ),
         Expanded(
           child: loading
@@ -226,13 +225,13 @@ class _Controls extends StatelessWidget {
                     min: 0,
                     max: last.toDouble(),
                     divisions: last > 0 ? last : null,
-                    value: (f?.index ?? 0).toDouble(),
+                    value: (playback?.index ?? 0).toDouble(),
                     semanticFormatterCallback: (_) => '影格時間',
                     // Pending / failed times have no frame: the thumb stays on the shown one.
-                    onChanged: f == null || last == 0
+                    onChanged: playback == null || last == 0
                         ? null
                         : (v) {
-                            if (f._ready(v.round())) f.onSeek(f.slots[v.round()].time);
+                            if (playback._ready(v.round())) playback.onSeek(playback.slots[v.round()].time);
                           },
                   ),
                 ),
@@ -245,9 +244,9 @@ class _Controls extends StatelessWidget {
 /// `.timeline`: one button per past frame, the current one highlighted and
 /// kept in view.
 class _Timeline extends StatefulWidget {
-  const _Timeline(this.f);
+  const _Timeline(this.playback);
 
-  final PlaybackFrames f;
+  final PlaybackFrames playback;
 
   @override
   State<_Timeline> createState() => _TimelineState();
@@ -265,16 +264,16 @@ class _TimelineState extends State<_Timeline> {
   @override
   void didUpdateWidget(_Timeline old) {
     super.didUpdateWidget(old);
-    if (old.f.current != widget.f.current) _revealCurrent(AppMotion.fast);
+    if (old.playback.current != widget.playback.current) _revealCurrent(AppMotion.fast);
   }
 
   void _revealCurrent(Duration duration) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ctx = _currentKey.currentContext;
-      if (ctx == null) return;
+      final buttonContext = _currentKey.currentContext;
+      if (buttonContext == null) return;
       // Nearest scrollable only: Scrollable.ensureVisible would also scroll the page.
-      Scrollable.of(ctx).position.ensureVisible(
-        ctx.findRenderObject()!,
+      Scrollable.of(buttonContext).position.ensureVisible(
+        buttonContext.findRenderObject()!,
         alignment: 0.5,
         duration: duration,
       );
@@ -283,18 +282,18 @@ class _TimelineState extends State<_Timeline> {
 
   @override
   Widget build(BuildContext context) {
-    final f = widget.f;
+    final playback = widget.playback;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         spacing: AppSpace.s8,
         children: [
-          for (var i = 0; i < f.slots.length; i++)
+          for (var i = 0; i < playback.slots.length; i++)
             _TimelineFrame(
-              key: i == f.current ? _currentKey : null,
-              slot: f.slots[i],
-              current: i == f.current,
-              onTap: () => f.onSeek(f.slots[i].time),
+              key: i == playback.current ? _currentKey : null,
+              slot: playback.slots[i],
+              current: i == playback.current,
+              onTap: () => playback.onSeek(playback.slots[i].time),
             ),
         ],
       ),
@@ -373,9 +372,9 @@ class _TimelineFrame extends StatelessWidget {
 
 /// `.pb-settings`: expandable 播放設定 (回看範圍, 播放速度, 重複播放).
 class _Settings extends StatefulWidget {
-  const _Settings(this.f);
+  const _Settings(this.playback);
 
-  final PlaybackFrames f;
+  final PlaybackFrames playback;
 
   @override
   State<_Settings> createState() => _SettingsState();
@@ -386,8 +385,8 @@ class _SettingsState extends State<_Settings> {
 
   @override
   Widget build(BuildContext context) {
-    final f = widget.f;
-    final hours = f.window.inHours;
+    final playback = widget.playback;
+    final hours = playback.window.inHours;
     return Container(
       decoration: BoxDecoration(
         color: AppPalette.background2,
@@ -413,7 +412,7 @@ class _SettingsState extends State<_Settings> {
                   ),
                   Expanded(
                     child: Text(
-                      '$hours 小時 · ${f.fps} fps · ${f.repeat ? '重複' : '不重複'}',
+                      '$hours 小時 · ${playback.fps} fps · ${playback.repeat ? '重複' : '不重複'}',
                       textAlign: TextAlign.end,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -437,18 +436,18 @@ class _SettingsState extends State<_Settings> {
               child: AppGrid(
                 minColumnWidth: AppLayout.paneMinimumWidth,
                 children: [
-                  if (f.windowOptions.isNotEmpty)
+                  if (playback.windowOptions.isNotEmpty)
                     _Field(
                       label: '回看範圍',
                       child: Wrap(
                         spacing: AppSpace.s8,
                         runSpacing: AppSpace.s8,
                         children: [
-                          for (final w in f.windowOptions)
+                          for (final w in playback.windowOptions)
                             AppChip(
                               label: '${w.inHours} 小時',
-                              selected: f.window == w,
-                              onTap: () => f.onWindow!(w),
+                              selected: playback.window == w,
+                              onTap: () => playback.onWindow!(w),
                             ),
                         ],
                       ),
@@ -458,8 +457,8 @@ class _SettingsState extends State<_Settings> {
                     // Bare numbers: 「12 fps」 would ellipsize in five segments at 360–412 dp.
                     child: AppSegmentedControl<int>(
                       segments: [for (final v in radarFpsOptions) (v, '$v')],
-                      selected: f.fps,
-                      onChanged: f.onFps,
+                      selected: playback.fps,
+                      onChanged: playback.onFps,
                     ),
                   ),
                   Row(
@@ -478,7 +477,7 @@ class _SettingsState extends State<_Settings> {
                           ],
                         ),
                       ),
-                      AppSwitch(value: f.repeat, onChanged: f.onRepeat, semanticLabel: '重複播放'),
+                      AppSwitch(value: playback.repeat, onChanged: playback.onRepeat, semanticLabel: '重複播放'),
                     ],
                   ),
                 ],
