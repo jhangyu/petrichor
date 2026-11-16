@@ -13,20 +13,15 @@ import '../../../data/radar/radar_frame_repository.dart';
 import 'basemap_theme.dart';
 import 'content_scaled_layer.dart';
 
+part 'basemap_loader.dart';
+part 'map_overlays.dart';
+
 /// Map centre and zoom: Taiwan overview when the place is unknown, else the place.
 const _taiwanCenter = LatLng(23.7, 121.0);
 const _overviewZoom = 6.5;
 const _locatedZoom = 8.0;
 
-/// OpenStreetMap's own keyless vector layer (Shortbread schema, SVWD03 style).
-/// The style ships no glyphs, so labels use each device's system fonts.
-const _styleUrl = 'https://vector.openstreetmap.org/styles/svwd/svwd03style.json';
-
-/// OSMF vector tile policy: a User-Agent that identifies the app.
-const _userAgent = 'us.jhangy.petrichor';
-const _attribution = '© OpenStreetMap';
 const _styleFailedText = '底圖載入失敗，點按重試';
-const _logTag = 'basemap';
 
 /// Basemap content scale, like a browser page zoomed to 50%: the basemap
 /// alone is laid out on a surface twice the card's size at camera zoom + 1
@@ -75,113 +70,8 @@ int _rasterCacheBytes(Size card, double dpr) {
 
 /// How long the camera has to rest before its zoom is written to the log.
 const _zoomLogDebounce = Duration(milliseconds: 400);
-
-typedef _Basemap = ({vt.Style style, vt.Theme theme, vt.TileProviders tiles});
-
-/// The basemap style load shared by every map. Only [retryRadarBasemap]
-/// replaces it (after a failure), and every mounted map follows.
-// ponytail: a loaded style is never disposed; it lives as long as the app.
-final _basemapLoad = ValueNotifier<Future<_Basemap>>(_startLoad());
-var _basemapFailed = false;
-
-/// Loads the basemap style again if the last load failed; no-op while a load
-/// is running or after it succeeded. Mounting a map calls it; the radar
-/// screen's refresh should too.
-void retryRadarBasemap() {
-  if (!_basemapFailed) return;
-  _basemapLoad.value = _startLoad();
-}
-
-/// A load whose failure is already reported (and shown by the map), so the
-/// future itself is marked handled: until a map's FutureBuilder subscribes
-/// it would otherwise surface a second time as an uncaught error.
-Future<_Basemap> _startLoad() => _loadBasemap()..ignore();
-
-Future<_Basemap> _loadBasemap() async {
-  _basemapFailed = false;
-  appLog(_logTag, 'style load start $_styleUrl content scale $_basemapContentScale');
-  try {
-    final style = await vt.StyleReader(
-      uri: _styleUrl,
-      headers: const {'User-Agent': _userAgent},
-      logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
-    ).read();
-    final sources = style.providers.providers;
-    appLog(_logTag, 'style load ok, sources ${sources.keys.join(',')}');
-    final tiles = vt.TileProviders({
-      for (final MapEntry(:key, :value) in sources.entries) key: _LoggedTiles(key, value),
-    }, promoteIds: style.providers.promoteIds);
-    final patternFree = withoutPatterns(style.theme);
-    appLog(
-      _logTag,
-      'sprite patterns removed: ${patternFree.recoloured} fill-pattern layers recoloured, '
-      '${patternFree.dropped.length} patterned layers dropped (${patternFree.dropped.join(',')})',
-    );
-    return (style: style, theme: patternFree.theme, tiles: tiles);
-  } catch (error, stack) {
-    _basemapFailed = true;
-    appLog(_logTag, 'style load failed: $error');
-    FlutterError.reportError(
-      FlutterErrorDetails(
-        exception: error,
-        stack: stack,
-        library: 'radar basemap',
-        context: ErrorDescription('loading $_styleUrl'),
-      ),
-    );
-    rethrow;
-  }
-}
-
-void _pluginLog(String message) => appLog(_logTag, message);
-void _pluginWarn(String message) => appLog(_logTag, 'warning: $message');
-
-/// Passes every tile load through and logs its outcome (cancelled loads
-/// are not logged). Disk-cache hits never reach a provider, so these are
-/// network loads.
-class _LoggedTiles extends vt.VectorTileProvider {
-  _LoggedTiles(this._source, this._inner);
-
-  final String _source;
-  final vt.VectorTileProvider _inner;
-
-  @override
-  int get maximumZoom => _inner.maximumZoom;
-  @override
-  int get minimumZoom => _inner.minimumZoom;
-  @override
-  String get cacheKey => _inner.cacheKey;
-  @override
-  bool get cacheBytesToDisk => _inner.cacheBytesToDisk;
-
-  @override
-  Future<vt.TileResponse> load(vt.TileKey tile, {vt.CancellationToken? cancellation}) async {
-    final response = await _inner.load(tile, cancellation: cancellation);
-    final where = '$_source ${tile.z}/${tile.x}/${tile.y}';
-    switch (response) {
-      case vt.TileResponseData(:final bytes):
-        appLog(_logTag, 'tile ok $where ${bytes.length} B');
-      case vt.TileResponseNotFound():
-        appLog(_logTag, 'tile not found $where');
-      case vt.TileResponseError(:final error):
-        appLog(_logTag, 'tile failed $where: $error');
-      case vt.TileResponseCancelled():
-        break;
-    }
-    return response;
-  }
-
-  @override
-  void dispose() => _inner.dispose();
-}
-
 /// Frames decoded ahead of the shown one.
 const radarPreDecodeCount = 2;
-
-const _pinDot = 9.0;
-const _pinHalo = 20.0;
-const _pinHaloAlpha = 0.2;
-const _pinBorder = 2.0;
 
 /// Camera shared by maps side by side: a map that the user moves reports its
 /// camera, the others follow it. Reports only come from gestures, so a
@@ -206,6 +96,9 @@ class RadarCameraLink extends ChangeNotifier {
 
 /// Default map shape of [RadarMapView.aspectRatio].
 const radarMapDefaultAspectRatio = 5 / 6;
+
+/// Base map opacity of `.radar-map--muted` (loading / no data).
+const _mutedOpacity = 0.6;
 
 /// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 button
 /// (top right) and the current place's pin. [overlayImages] holds the one shown
@@ -368,7 +261,7 @@ class _RadarMapViewState extends State<RadarMapView> {
                 fit: StackFit.expand,
                 children: [
                   Opacity(
-                    opacity: widget.muted ? 0.6 : 1,
+                    opacity: widget.muted ? _mutedOpacity : 1,
                     child: FlutterMap(
                       mapController: _controller,
                       options: MapOptions(
@@ -459,136 +352,5 @@ class _RadarMapViewState extends State<RadarMapView> {
     );
     final label = widget.semanticsLabel;
     return label == null ? map : Semantics(label: label, image: true, child: map);
-  }
-}
-
-/// `.map-chip`: overlay pill with an icon (or spinner) and text.
-class _MapChip extends StatelessWidget {
-  const _MapChip({this.icon, required this.text, this.spinner = false, this.large = false});
-
-  final IconData? icon;
-  final String text;
-  final bool spinner;
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = (large ? AppType.body1 : AppType.caption1).copyWith(
-      color: AppPalette.fg1,
-      fontWeight: FontWeight.w600,
-      fontFeatures: AppType.tabular,
-    );
-    final glyph = icon;
-    return Container(
-      constraints: BoxConstraints(minHeight: large ? AppSize.touch : AppSize.controlSm),
-      padding: EdgeInsets.symmetric(
-        horizontal: large ? AppSpace.s16 : AppSpace.s12,
-        vertical: large ? AppSpace.s8 : AppSpace.s4,
-      ),
-      decoration: BoxDecoration(
-        color: AppPalette.bgOverlay,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        boxShadow: AppShadows.s4,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: large ? AppSpace.s8 : AppSpace.s4,
-        children: [
-          if (spinner)
-            const AppSpinner()
-          else if (glyph != null)
-            Icon(glyph, size: AppSize.icon16, color: AppPalette.fg1),
-          Text(text, style: style),
-        ],
-      ),
-    );
-  }
-}
-
-/// Half-transparent backing so the attribution stays legible over the map
-/// without drawing attention.
-const _attributionBackAlpha = 0.5;
-
-/// OSM licence attribution (OSMF tile policy), kept unobtrusive: a small
-/// low-contrast label tucked into the bottom-right corner.
-class _Attribution extends StatelessWidget {
-  const _Attribution();
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomRight,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpace.s4),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppPalette.bgOverlay.withValues(alpha: _attributionBackAlpha),
-            borderRadius: BorderRadius.circular(AppRadius.extraSmall),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s4),
-            child: Text(_attribution, style: AppType.caption2.copyWith(color: AppPalette.fg4)),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MePin extends StatelessWidget {
-  const _MePin();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: _pinHalo,
-          height: _pinHalo,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppPalette.dangerSolid.withValues(alpha: _pinHaloAlpha),
-          ),
-        ),
-        Container(
-          width: _pinDot,
-          height: _pinDot,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppPalette.dangerSolid,
-            border: Border.all(color: AppPalette.bg1, width: _pinBorder),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// `.fab` 「回到我的位置」; disabled without a current place.
-class _MapFab extends StatelessWidget {
-  const _MapFab({required this.icon, required this.tooltip, required this.onPressed});
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    return Material(
-      color: AppPalette.bg1,
-      shape: const CircleBorder(),
-      elevation: 0,
-      shadowColor: AppPalette.transparent,
-      child: DecoratedBox(
-        decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: enabled ? AppShadows.s4 : AppShadows.s2),
-        child: AppIconButton(
-          icon: icon,
-          tooltip: tooltip,
-          onPressed: onPressed,
-        ),
-      ),
-    );
   }
 }
