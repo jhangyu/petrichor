@@ -33,8 +33,8 @@ abstract class RadarSetting<T> extends IntSetting<T> {
 }
 
 /// Overlay opacity in percent.
-class RadarOpacity extends RadarSetting<int> {
-  RadarOpacity(super.group);
+class RadarOpacitySetting extends RadarSetting<int> {
+  RadarOpacitySetting(super.group);
 
   @override
   String get name => 'opacity';
@@ -65,8 +65,8 @@ class RadarFps extends RadarSetting<int> {
 }
 
 /// Whether playback restarts after the newest frame (stored as 1 / 0).
-class RadarRepeat extends RadarSetting<bool> {
-  RadarRepeat(super.group);
+class RadarRepeatSetting extends RadarSetting<bool> {
+  RadarRepeatSetting(super.group);
 
   @override
   String get name => 'repeat';
@@ -82,8 +82,8 @@ class RadarRepeat extends RadarSetting<bool> {
 
 /// Selected look-back, one of [radarWindowOptions] (stored in minutes); each
 /// source applies it capped at its own `maxWindow` ([radarEffectiveWindow]).
-class RadarWindow extends RadarSetting<Duration> {
-  RadarWindow(super.group);
+class RadarWindowSetting extends RadarSetting<Duration> {
+  RadarWindowSetting(super.group);
 
   @override
   String get name => 'windowMinutes';
@@ -98,10 +98,10 @@ class RadarWindow extends RadarSetting<Duration> {
   int toStored(Duration value) => value.inMinutes;
 }
 
-final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacity, int, RadarGroup>(RadarOpacity.new, retry: noRetry);
+final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacitySetting, int, RadarGroup>(RadarOpacitySetting.new, retry: noRetry);
 final radarFpsProvider = AsyncNotifierProvider.family<RadarFps, int, RadarGroup>(RadarFps.new, retry: noRetry);
-final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeat, bool, RadarGroup>(RadarRepeat.new, retry: noRetry);
-final radarWindowProvider = AsyncNotifierProvider.family<RadarWindow, Duration, RadarGroup>(RadarWindow.new, retry: noRetry);
+final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeatSetting, bool, RadarGroup>(RadarRepeatSetting.new, retry: noRetry);
+final radarWindowProvider = AsyncNotifierProvider.family<RadarWindowSetting, Duration, RadarGroup>(RadarWindowSetting.new, retry: noRetry);
 
 /// Settings group of the source with dataset [id].
 RadarGroup radarGroupOf(String id) => id == AppConstants.radarTaiwan ? RadarGroup.taiwan : RadarGroup.regional;
