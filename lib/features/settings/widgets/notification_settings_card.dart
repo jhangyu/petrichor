@@ -8,7 +8,7 @@ import '../../../core/widgets/status.dart';
 import '../../../data/models/place.dart';
 import '../../place/place_provider.dart';
 import '../notification_settings.dart';
-import 'notification_parts.dart';
+import 'notification_settings_rows.dart';
 import 'settings_group.dart';
 
 /// 通知設定 group (settings only: nothing is delivered yet).
