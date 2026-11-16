@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../support/container.dart';
+import '../support/provider_container.dart';
 import '../support/fake_cwa_adapter.dart';
 
 const _sample = 'CWA-00000000-0000-0000-0000-000000000000';

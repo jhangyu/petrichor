@@ -9,7 +9,7 @@ import 'package:petrichor/core/api/result.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../support/container.dart';
+import '../support/provider_container.dart';
 import '../support/fake_cwa_adapter.dart';
 
 String _fixture(String id) => File('test/fixtures/cwa/$id.json').readAsStringSync();

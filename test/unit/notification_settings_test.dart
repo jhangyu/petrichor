@@ -6,7 +6,7 @@ import 'package:petrichor/features/location/place_provider.dart';
 import 'package:petrichor/features/settings/notification_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../support/container.dart';
+import '../support/provider_container.dart';
 
 const taipei = Place(county: '臺北市', town: '中正區', latitude: 25.03, longitude: 121.52);
 const banqiao = Place(county: '新北市', town: '板橋區', latitude: 25.01, longitude: 121.46);

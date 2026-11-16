@@ -2,7 +2,7 @@ import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/features/hazard/rainfall/accum_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../support/container.dart';
+import '../support/provider_container.dart';
 
 const _key = 'rainfall.accumWindowHours';
 
