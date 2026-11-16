@@ -28,7 +28,7 @@ import 'radar_provider.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';
-import 'widgets/radar_opacity.dart';
+import 'widgets/radar_opacity_slider.dart';
 import 'widgets/station_layers.dart';
 
 String? _stationName(String id) => radarStationById(id)?.name;

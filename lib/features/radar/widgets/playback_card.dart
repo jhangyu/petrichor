@@ -10,7 +10,7 @@ import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_loop.dart';
 import '../radar_playback.dart';
 import 'radar_legend.dart';
-import 'radar_opacity.dart';
+import 'radar_opacity_slider.dart';
 
 /// What the playback card shows once the loop's times are known.
 class PlaybackFrames {
