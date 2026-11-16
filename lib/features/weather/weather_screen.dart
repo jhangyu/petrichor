@@ -120,7 +120,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
     WeatherState weather,
     VoidCallback refresh,
   ) {
-    // Decision 13: the now card's 「現在 HH:mm」, countdown and sun position follow the
+    // The now card's 「現在 HH:mm」, countdown and sun position follow the
     // minute tick. Until its first event is delivered, the same injected clock is read directly.
     final now = switch (ref.watch(minuteTickProvider)) {
       AsyncData(:final value) => value,
@@ -167,7 +167,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
       onRefresh: () async => refresh(),
       source: sources.isEmpty ? null : SourceLine(datasetIds: sources),
       children: [
-        if (weather.isLoading || WindowSizeClass.of(context).width == WindowWidthClass.compact)
+        if (weather.isLoading || WindowSizeClass.of(context).isCompactWidth)
           AppGridItem.full(child: _PullHint(loading: weather.isLoading)),
         AppGridItem.full(
           child: NowCard(

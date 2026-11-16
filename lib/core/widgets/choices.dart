@@ -62,9 +62,8 @@ class AppChip extends StatelessWidget {
   }
 }
 
-/// `.segmented.segmented--block`: full-width single-choice switcher. Team A
-/// uses this for view tabs (雨量 觀測／未來 1 小時) and playback settings
-/// instead of underline tabs.
+/// `.segmented.segmented--block`: full-width single-choice switcher, used for
+/// view tabs (雨量 觀測／未來 1 小時) and playback settings instead of underline tabs.
 class AppSegmented<T> extends StatelessWidget {
   const AppSegmented({
     super.key,
