@@ -18,7 +18,7 @@ void main() {
 
   setUp(() {
     adapter = FakeCwaAdapter();
-    repo = WeatherRepository(adapter.dio());
+    repo = WeatherRepository(adapter.createDio());
   });
 
   test('"-" 12-hour rain probability is a missing slot (null), other values intact', () async {

@@ -28,7 +28,7 @@ void main() {
 
   setUp(() {
     adapter = FakeCwaAdapter();
-    repo = WeatherRepository(adapter.dio());
+    repo = WeatherRepository(adapter.createDio());
   });
 
   group('getCurrentWeather (O-A0003-001)', () {

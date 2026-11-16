@@ -22,7 +22,7 @@ class FakeCwaAdapter implements HttpClientAdapter {
 
   void serveStatus(String dataset, int status) => routes[dataset] = (status, '{}');
 
-  Dio dio() => Dio(BaseOptions(baseUrl: AppConstants.cwaApiBaseUrl))..httpClientAdapter = this;
+  Dio createDio() => Dio(BaseOptions(baseUrl: AppConstants.cwaApiBaseUrl))..httpClientAdapter = this;
 
   @override
   Future<ResponseBody> fetch(

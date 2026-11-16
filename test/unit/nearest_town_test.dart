@@ -30,7 +30,7 @@ void main() {
   test('county from the nearest station, then only that county list (far from any other county)', () async {
     final adapter = _serve({'澎湖縣': ('馬公市', 23.566, 119.566)});
 
-    final r = await WeatherRepository(adapter.dio()).nearestTown(23.57, 119.57);
+    final r = await WeatherRepository(adapter.createDio()).nearestTown(23.57, 119.57);
 
     expect((r.data.county, r.data.town), ('澎湖縣', '馬公市'));
     expect(_datasets(adapter), ['O-A0001-001', 'F-D0047-045']);
@@ -41,7 +41,7 @@ void main() {
     // 中正區 ≈ 0.9 km, 三重 station (新北市) ≈ 2.2 km > 0.9 + 1
     final adapter = _serve({'臺北市': ('中正區', 25.046058, 121.516565)});
 
-    final r = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51);
+    final r = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51);
 
     expect((r.data.county, r.data.town), ('臺北市', '中正區'));
     expect(_datasets(adapter), ['O-A0001-001', 'F-D0047-061']);
@@ -54,7 +54,7 @@ void main() {
       '新北市': ('板橋區', 25.03, 121.50),
     });
 
-    final r = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51);
+    final r = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51);
 
     expect((r.data.county, r.data.town), ('新北市', '板橋區'));
     expect(_datasets(adapter), ['O-A0001-001', 'F-D0047-061', 'F-D0047-069']);
@@ -63,7 +63,7 @@ void main() {
   test('a county list failure names the county and dataset', () async {
     final adapter = _serve({})..serveStatus('F-D0047-061', 500);
 
-    final failure = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51) as Failure<Place>;
+    final failure = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51) as Failure<Place>;
 
     expect(failure.location, '臺北市');
     expect(failure.dataset, 'F-D0047-061');
@@ -73,7 +73,7 @@ void main() {
   test('a station list failure names the station dataset and coordinates', () async {
     final adapter = FakeCwaAdapter()..serveStatus(AppConstants.countyLookupDataset, 500);
 
-    final failure = await WeatherRepository(adapter.dio()).nearestTown(25.04, 121.51) as Failure<Place>;
+    final failure = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51) as Failure<Place>;
 
     expect(failure.dataset, 'O-A0001-001');
     expect(failure.location, '(25.04, 121.51)');

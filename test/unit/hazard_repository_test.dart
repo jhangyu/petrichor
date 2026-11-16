@@ -25,7 +25,7 @@ final _fixedNow = DateTime.utc(2026, 11, 14, 12);
 
 HazardRepository _repo(Map<String, (int, String)> routes, {DateTime Function()? clock}) {
   final adapter = FakeCwaAdapter()..routes.addAll(routes);
-  return HazardRepository(adapter.dio(), clock: clock ?? () => _fixedNow);
+  return HazardRepository(adapter.createDio(), clock: clock ?? () => _fixedNow);
 }
 
 DateTime _tw(String s) => DateTime.parse('$s+08:00');

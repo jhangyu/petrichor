@@ -65,7 +65,7 @@ void main() {
     adapter = _FileApiAdapter();
     container = ProviderContainer(overrides: [
       locationServiceProvider.overrideWithValue(location),
-      weatherRepositoryProvider.overrideWithValue(WeatherRepository(adapter.dio())),
+      weatherRepositoryProvider.overrideWithValue(WeatherRepository(adapter.createDio())),
       weatherClockProvider.overrideWithValue(() => DateTime.utc(2026, 11, 14, 4)),
     ]);
     addTearDown(container.dispose);

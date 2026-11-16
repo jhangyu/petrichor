@@ -31,7 +31,7 @@ void main() {
   test('town list parses with county in 「臺」 and coordinates', () async {
     final adapter = FakeCwaAdapter()..serveFixture('F-D0047-061');
 
-    final towns = (await WeatherRepository(adapter.dio()).getTowns('台北市')).data;
+    final towns = (await WeatherRepository(adapter.createDio()).getTowns('台北市')).data;
 
     expect(adapter.requests.single.pathSegments.last, 'F-D0047-061');
     expect(towns, [const Place(county: '臺北市', town: '中正區', latitude: 25.046058, longitude: 121.516565)]);
