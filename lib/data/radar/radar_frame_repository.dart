@@ -137,7 +137,7 @@ class RadarFrameRepository {
     final byTime = [...listed]..sort((a, b) => a.time.compareTo(b.time));
     final slots = <String, RadarSlot>{};
     for (final f in byTime) {
-      final key = formatUtcStamp(f.time, seconds: true);
+      final key = f.cacheKey;
       if (cached.contains(key)) {
         try {
           if (await source.cachedFrameStale?.call(f, cancel) ?? false) {
@@ -168,7 +168,7 @@ class RadarFrameRepository {
     void sendSlots({required bool loading}) => send([...slots.values], loading: loading);
     sendSlots(loading: true);
 
-    final pending = [for (final f in byTime) if (slots[formatUtcStamp(f.time, seconds: true)]!.state == RadarSlotState.pending) f];
+    final pending = [for (final f in byTime) if (slots[f.cacheKey]!.state == RadarSlotState.pending) f];
     final order = pending.isEmpty ? const <RadarFrameRef>[] : [pending.last, ...pending.sublist(0, pending.length - 1)];
     // Finished slots wait here until every slot before them in [order] is published.
     final finished = <String, RadarSlot>{};
@@ -188,15 +188,15 @@ class RadarFrameRepository {
       final token = CancelToken();
       frameTokens.add(token);
       try {
-        finished[formatUtcStamp(f.time, seconds: true)] = RadarSlot.ready(await _fetch(dir, source.step, f, token));
+        finished[f.cacheKey] = RadarSlot.ready(await _fetch(dir, source.step, f, token));
       } on Exception catch (e) {
         if (_isCancel(e)) rethrow;
-        finished[formatUtcStamp(f.time, seconds: true)] = RadarSlot.failed(f.time, _frameFailure(f, e));
+        finished[f.cacheKey] = RadarSlot.failed(f.time, _frameFailure(f, e));
       } finally {
         frameTokens.remove(token);
       }
       while (published < order.length) {
-        final key = formatUtcStamp(order[published].time, seconds: true);
+        final key = order[published].cacheKey;
         final slot = finished.remove(key);
         if (slot == null) break;
         slots[key] = slot;
@@ -253,7 +253,7 @@ class RadarFrameRepository {
       RadarPngStep(:final geometry) => await _downloadAndProcess(f, geometry, cancel, processSlot),
       RadarComposedStep(:final obtain) => await obtain(f, cancel, processSlot),
     };
-    final key = formatUtcStamp(f.time, seconds: true);
+    final key = f.cacheKey;
     final stats = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
     await writeAtomic(stats, processed.stats.toBytes());

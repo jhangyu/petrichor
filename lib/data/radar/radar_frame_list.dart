@@ -44,6 +44,9 @@ class RadarFrameRef {
   RadarFrameRef.website(String stamp)
       : this(time: radarStampTime(stamp), url: '$_radarFrameBaseUrl$_radarFrameSetPrefix$stamp.png');
 
+  /// Cache file key: observation time `yyyyMMddHHmmss` UTC (station frames have irregular seconds).
+  String get cacheKey => formatUtcStamp(time, seconds: true);
+
   @override
   bool operator ==(Object other) => other is RadarFrameRef && other.url == url;
 
