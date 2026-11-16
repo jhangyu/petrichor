@@ -26,7 +26,7 @@ import 'rain_map_card.dart';
 
 const _cardTitle = '累積雨量';
 const _skeletonHeight = 360.0;
-const _group = RadarGroup.rainfall;
+const _group = RadarSettingsGroup.rainfall;
 
 /// Peak under this many mm draws nothing (contract decision 11): the frame has no rain.
 const _noRainBelowMillimeters = 1;

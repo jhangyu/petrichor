@@ -15,14 +15,14 @@ const radarWindowOptions = [
 
 /// Sources that share playback settings (look-back, fps, opacity), each group
 /// with its own defaults.
-enum RadarGroup {
+enum RadarSettingsGroup {
   taiwan(defaultWindow: Duration(hours: 6), defaultFramesPerSecond: 8),
   regional(defaultWindow: Duration(hours: 4), defaultFramesPerSecond: 12),
 
   /// 雨量 page 累積雨量: only fps and repeat are used (the span is the accumulation window).
   rainfall(defaultWindow: Duration(hours: 24), defaultFramesPerSecond: 8);
 
-  const RadarGroup({required this.defaultWindow, required this.defaultFramesPerSecond});
+  const RadarSettingsGroup({required this.defaultWindow, required this.defaultFramesPerSecond});
 
   final Duration defaultWindow;
   final int defaultFramesPerSecond;

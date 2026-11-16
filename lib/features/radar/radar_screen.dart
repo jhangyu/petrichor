@@ -80,7 +80,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     super.dispose();
   }
 
-  RadarGroup get _group => radarGroupOf(_selectedDatasetId);
+  RadarSettingsGroup get _group => radarSettingsGroupOf(_selectedDatasetId);
 
   void _setFramesPerSecond(int framesPerSecond) {
     unawaited(ref.read(radarFramesPerSecondProvider(_group).notifier).set(framesPerSecond));

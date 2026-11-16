@@ -18,12 +18,12 @@ const radarOpacityDefaultPercent = 60;
 bool _isOpacityPercent(int p) =>
     p >= radarOpacityMinPercent && p <= radarOpacityMaxPercent && (p - radarOpacityMinPercent) % radarOpacityStepPercent == 0;
 
-/// One playback setting of one [RadarGroup], remembered across restarts as an
+/// One playback setting of one [RadarSettingsGroup], remembered across restarts as an
 /// int under `radar.<group>.<name>`.
 abstract class RadarSetting<T> extends IntSetting<T> {
   RadarSetting(this.group);
 
-  final RadarGroup group;
+  final RadarSettingsGroup group;
 
   /// Last key segment, e.g. `opacity`.
   String get name;
@@ -98,13 +98,13 @@ class RadarWindowSetting extends RadarSetting<Duration> {
   int toStored(Duration value) => value.inMinutes;
 }
 
-final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacitySetting, int, RadarGroup>(RadarOpacitySetting.new, retry: noRetry);
-final radarFramesPerSecondProvider = AsyncNotifierProvider.family<RadarFramesPerSecondSetting, int, RadarGroup>(RadarFramesPerSecondSetting.new, retry: noRetry);
-final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeatSetting, bool, RadarGroup>(RadarRepeatSetting.new, retry: noRetry);
-final radarWindowProvider = AsyncNotifierProvider.family<RadarWindowSetting, Duration, RadarGroup>(RadarWindowSetting.new, retry: noRetry);
+final radarOpacityProvider = AsyncNotifierProvider.family<RadarOpacitySetting, int, RadarSettingsGroup>(RadarOpacitySetting.new, retry: noRetry);
+final radarFramesPerSecondProvider = AsyncNotifierProvider.family<RadarFramesPerSecondSetting, int, RadarSettingsGroup>(RadarFramesPerSecondSetting.new, retry: noRetry);
+final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeatSetting, bool, RadarSettingsGroup>(RadarRepeatSetting.new, retry: noRetry);
+final radarWindowProvider = AsyncNotifierProvider.family<RadarWindowSetting, Duration, RadarSettingsGroup>(RadarWindowSetting.new, retry: noRetry);
 
 /// Settings group of the source with dataset [id].
-RadarGroup radarGroupOf(String id) => id == CwaDatasets.radarTaiwanDatasetId ? RadarGroup.taiwan : RadarGroup.regional;
+RadarSettingsGroup radarSettingsGroupOf(String id) => id == CwaDatasets.radarTaiwanDatasetId ? RadarSettingsGroup.taiwan : RadarSettingsGroup.regional;
 
 /// Clock for the frame window and cache retention; override in tests.
 final radarClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -135,7 +135,7 @@ final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) {
 /// timer/polling.
 final radarLoopProvider = StreamProvider.autoDispose.family<RadarLoop, String>((ref, id) {
   final source = ref.watch(radarSourceProvider(id));
-  final selected = ref.watch(radarWindowProvider(radarGroupOf(id))).value;
+  final selected = ref.watch(radarWindowProvider(radarSettingsGroupOf(id))).value;
   // Look-back not loaded (or corrupt, which the screen reports): stay loading.
   if (selected == null) return const Stream.empty();
   return ref.watch(radarFrameRepositoryProvider).watch(source, window: radarEffectiveWindow(selected, source));

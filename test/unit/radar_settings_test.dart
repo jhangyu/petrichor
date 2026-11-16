@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../support/provider_container.dart';
 
-Future<(Duration, int, bool, int)> read(ProviderContainer c, RadarGroup g) async => (
+Future<(Duration, int, bool, int)> read(ProviderContainer c, RadarSettingsGroup g) async => (
       await c.read(radarWindowProvider(g).future),
       await c.read(radarFramesPerSecondProvider(g).future),
       await c.read(radarRepeatProvider(g).future),
@@ -18,30 +18,30 @@ void main() {
   test('fresh install: each group opens at its own window and fps, 60 % opacity', () async {
     SharedPreferences.setMockInitialValues({});
     final c = newContainer();
-    expect(await read(c, RadarGroup.taiwan), (const Duration(hours: 6), 8, true, 60));
-    expect(await read(c, RadarGroup.regional), (const Duration(hours: 4), 12, true, 60));
-    expect(radarGroupOf(CwaDatasets.radarTaiwanDatasetId), RadarGroup.taiwan);
+    expect(await read(c, RadarSettingsGroup.taiwan), (const Duration(hours: 6), 8, true, 60));
+    expect(await read(c, RadarSettingsGroup.regional), (const Duration(hours: 4), 12, true, 60));
+    expect(radarSettingsGroupOf(CwaDatasets.radarTaiwanDatasetId), RadarSettingsGroup.taiwan);
     for (final id in [CwaDatasets.radarShulinDatasetId, CwaDatasets.radarNantunDatasetId, CwaDatasets.radarLinyuanDatasetId]) {
-      expect(radarGroupOf(id), RadarGroup.regional);
+      expect(radarSettingsGroupOf(id), RadarSettingsGroup.regional);
     }
   });
 
   test('a change stays in its group and survives a restart', () async {
     SharedPreferences.setMockInitialValues({});
     final first = newContainer();
-    await read(first, RadarGroup.taiwan);
-    await first.read(radarWindowProvider(RadarGroup.taiwan).notifier).set(const Duration(hours: 12));
-    await first.read(radarFramesPerSecondProvider(RadarGroup.taiwan).notifier).set(24);
-    await first.read(radarRepeatProvider(RadarGroup.taiwan).notifier).set(false);
-    await first.read(radarOpacityProvider(RadarGroup.taiwan).notifier).set(80);
+    await read(first, RadarSettingsGroup.taiwan);
+    await first.read(radarWindowProvider(RadarSettingsGroup.taiwan).notifier).set(const Duration(hours: 12));
+    await first.read(radarFramesPerSecondProvider(RadarSettingsGroup.taiwan).notifier).set(24);
+    await first.read(radarRepeatProvider(RadarSettingsGroup.taiwan).notifier).set(false);
+    await first.read(radarOpacityProvider(RadarSettingsGroup.taiwan).notifier).set(80);
 
     final second = newContainer();
-    expect(await read(second, RadarGroup.taiwan), (const Duration(hours: 12), 24, false, 80));
-    expect(await read(second, RadarGroup.regional), (const Duration(hours: 4), 12, true, 60));
+    expect(await read(second, RadarSettingsGroup.taiwan), (const Duration(hours: 12), 24, false, 80));
+    expect(await read(second, RadarSettingsGroup.regional), (const Duration(hours: 4), 12, true, 60));
   });
 
   test('a corrupt stored value is an error, and set() overwrites it', () async {
-    const group = RadarGroup.regional;
+    const group = RadarSettingsGroup.regional;
     final cases = <(String, Object, Future<void> Function(ProviderContainer), Object)>[
       ('radar.regional.opacity', 55, (c) => c.read(radarOpacityProvider(group).notifier).set(30), radarOpacityProvider(group)),
       ('radar.regional.fps', 5, (c) => c.read(radarFramesPerSecondProvider(group).notifier).set(2), radarFramesPerSecondProvider(group)),
