@@ -279,7 +279,7 @@ RadarFrame _frame(DateTime time, File webp, RadarEchoStatistics statistics, ({in
       file: webp,
       bounds: statistics.bounds,
       significantDbz: statistics.hasSignificantEcho ? statistics.strongestDbz : null,
-      peakMm: statistics.peakMm,
+      peakMillimeters: statistics.peakMillimeters,
       width: size.width,
       height: size.height,
     );

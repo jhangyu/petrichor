@@ -54,14 +54,14 @@ class RadarEchoStatistics {
 
   /// Highest accumulated rain (mm) over an accumulated-rainfall grid; null for
   /// radar images.
-  final double? peakMm;
+  final double? peakMillimeters;
 
   RadarEchoStatistics({
     required this.bounds,
     required this.imageWidth,
     required this.imageHeight,
     required this.pixelsPerDbz,
-    this.peakMm,
+    this.peakMillimeters,
   }) {
     if (pixelsPerDbz.length != radarEchoPalette.length) {
       throw ArgumentError(
@@ -100,7 +100,7 @@ class RadarEchoStatistics {
           ..add(doubles.buffer.asUint8List())
           ..add(Uint32List.fromList(pixelsPerDbz).buffer.asUint8List())
           // NaN = no peak (radar).
-          ..add(Float64List.fromList([peakMm ?? double.nan]).buffer.asUint8List()))
+          ..add(Float64List.fromList([peakMillimeters ?? double.nan]).buffer.asUint8List()))
         .takeBytes();
   }
 
@@ -121,7 +121,7 @@ class RadarEchoStatistics {
       imageWidth: word(0),
       imageHeight: word(wordBytes),
       pixelsPerDbz: [for (var d = 0; d < radarEchoPalette.length; d++) word(countsAt + d * wordBytes)],
-      peakMm: switch (data.getFloat64(peakAt, Endian.host)) { final p when p.isNaN => null, final p => p },
+      peakMillimeters: switch (data.getFloat64(peakAt, Endian.host)) { final p when p.isNaN => null, final p => p },
     );
   }
 }

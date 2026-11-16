@@ -187,7 +187,7 @@ final _rowMap = mercatorRowMap(sourceHeight: accumGridHeight, south: accumBounds
 
 /// Parses the grids and totals them ([accumFrameSum]), colours the total
 /// ([accumColorIndex]), reprojects rows to Web Mercator and encodes one
-/// lossless WebP (441 px wide); peakMm is the highest total. Pure and
+/// lossless WebP (441 px wide); peakMillimeters is the highest total. Pure and
 /// synchronous: run it in a background isolate. A grid that does not parse
 /// throws [RadarDataException] naming its URL.
 ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialInput? partial}) {
@@ -218,7 +218,7 @@ ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialI
       imageHeight: accumGridHeight,
       // No echo statistics for rain totals: significantDbz stays null.
       pixelsPerDbz: List.filled(radarEchoPalette.length, 0),
-      peakMm: peak / accumRawPerMm,
+      peakMillimeters: peak / accumRawPerMm,
     ),
   );
 }

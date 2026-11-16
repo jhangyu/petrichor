@@ -17,9 +17,9 @@ class RadarFrame {
   /// [RadarEchoStatistics.strongestDbz] when the frame has significant echo, else null.
   final int? significantDbz;
 
-  /// [RadarEchoStatistics.peakMm]: highest accumulated rain (mm) of an
+  /// [RadarEchoStatistics.peakMillimeters]: highest accumulated rain (mm) of an
   /// accumulated-rainfall frame; null for radar frames.
-  final double? peakMm;
+  final double? peakMillimeters;
 
   /// Pixel size of [file] (website frames: 2048 x 2132 Mercator rows).
   final int width;
@@ -30,7 +30,7 @@ class RadarFrame {
     required this.file,
     required this.bounds,
     required this.significantDbz,
-    this.peakMm,
+    this.peakMillimeters,
     required this.width,
     required this.height,
   });

@@ -96,7 +96,7 @@ void main() {
     }
     expect(coloured, greaterThan(0));
     expect(processed.statistics.bounds, accumBounds);
-    expect(processed.statistics.peakMm, sum.reduce(max) / accumRawPerMm);
+    expect(processed.statistics.peakMillimeters, sum.reduce(max) / accumRawPerMm);
   }
 
   test('frame list per window: S = newest - W, frames S + step*k for k = 1..N, last = newest', () async {
@@ -173,7 +173,7 @@ void main() {
     expect(frame.time, _newest);
     final processed = await render(s, frame);
     expectFrame(processed, accumFrameSum([for (final h in ['1050', '0950', '0850', '0750']) _grid('g01_20261115_$h')]));
-    expect(processed.statistics.peakMm, greaterThan(1));
+    expect(processed.statistics.peakMillimeters, greaterThan(1));
   });
 
   test('first 24 h frame is the 1 h grid ending at S + 1 h', () async {
@@ -228,7 +228,7 @@ void main() {
       File('${root.path}/$accumPieceCacheDirName/01h/202611150750.dat.gz').deleteSync();
       adapter.missing.add('GAGE_PCP_1H.20261115.0750.dat');
       final second = await load();
-      expect(second.peakMm, first.peakMm);
+      expect(second.peakMillimeters, first.peakMillimeters);
     });
 
     test('200: the frame is made again from the new newest grid', () async {
@@ -236,7 +236,7 @@ void main() {
       adapter.etag = '"v2"';
       adapter.bodies['GAGE_PCP_1H.20261115.1050.dat'] = _body('g03_20261115_1050');
       final second = await load();
-      expect(second.peakMm, isNot(first.peakMm));
+      expect(second.peakMillimeters, isNot(first.peakMillimeters));
     });
   });
 
@@ -250,11 +250,11 @@ void main() {
     adapter.bodies[_name(1, DateTime.utc(2026, 11, 14, 11, 50))] = _body('g01_20261115_1050');
     final first = await watch(s, _now, window);
     expect([for (final x in first.slots) x.time], [DateTime.utc(2026, 11, 15, 9, 50), _newest]);
-    expect(first.slots.last.frame!.peakMm, greaterThan(1));
+    expect(first.slots.last.frame!.peakMillimeters, greaterThan(1));
     // An hour later S is 11-14 11:50: 10:50 no longer has that grid.
     final second = await watch(s, _now.add(const Duration(hours: 1)), window);
     expect([for (final x in second.slots) x.time], [_newest, DateTime.utc(2026, 11, 15, 11, 50)]);
-    expect(second.slots.first.frame!.peakMm, 0);
+    expect(second.slots.first.frame!.peakMillimeters, 0);
   });
 
   test('S moved by 10 min: frames of the old S leave the cache-first view', () async {
