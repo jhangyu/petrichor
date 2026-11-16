@@ -35,8 +35,8 @@ dependencies:
   dio: ^5.9.2
   geolocator: ^14.0.2
   # Exact: content_scaled_layer.dart imports flutter_map's unexported MapInheritedModel.
-  flutter_map: 8.3.0
-  latlong2: ^0.9.1
+  flutter_map: 8.3.2
+  latlong2: ^0.10.1
   shared_preferences: ^2.5.5
   path_provider: ^2.1.6
   package_info_plus: ^10.2.2
