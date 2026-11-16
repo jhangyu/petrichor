@@ -162,7 +162,7 @@ Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
             : (s.$2.isAfter(now) ? SunTileTone.normal : SunTileTone.past),
       ),
   ];
-  final dayLabel = tilesAreTomorrow ? '明天 ${monthDay(taiwanDate(tilesDay.date))}' : '今天';
+  final dayLabel = tilesAreTomorrow ? '明天 ${monthDayText(taiwanDate(tilesDay.date))}' : '今天';
   final tilesMeta = '$dayLabel · 白晝 ${durationText(tilesDay.sunset.difference(tilesDay.sunrise))}';
 
   return Success(

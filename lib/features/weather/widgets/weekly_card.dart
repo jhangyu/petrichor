@@ -53,7 +53,7 @@ class WeeklyCard extends StatelessWidget {
     final last = taiwanDate(days.last.date);
     return AppCard(
       title: _title,
-      meta: '${monthDay(first)} – ${monthDay(last)}',
+      meta: '${monthDayText(first)} – ${monthDayText(last)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -69,7 +69,7 @@ class WeeklyCard extends StatelessWidget {
     final wall = taiwanDate(d.date);
     final offset = dayOffset(wall, now);
     final label = offset <= 1 ? relativeDay(wall, now) : weekdayName(wall);
-    final date = offset <= 1 ? '${weekdayName(wall)} ${monthDay(wall)}' : monthDay(wall);
+    final date = offset <= 1 ? '${weekdayName(wall)} ${monthDayText(wall)}' : monthDayText(wall);
     final numberStyle = AppType.body1.copyWith(fontFeatures: AppType.tabular);
     return Container(
       constraints: const BoxConstraints(minHeight: _rowMinHeight),

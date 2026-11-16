@@ -286,7 +286,7 @@ class ForecastChartPainter extends CustomPainter {
   /// `今天 11/14（六）` for today…後天, `週二 11/17` beyond.
   String _dayTitle(DateTime wall, DateTime now) {
     final rel = relativeDay(wall, now);
-    return dayOffset(wall, now) <= 2 ? '$rel ${monthDayWeekday(wall)}' : '$rel ${monthDay(wall)}';
+    return dayOffset(wall, now) <= 2 ? '$rel ${monthDayWeekday(wall)}' : '$rel ${monthDayText(wall)}';
   }
 
   @override

@@ -3,10 +3,10 @@ import '../time/taiwan_time.dart';
 const _weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
 
 /// `11/14（六）` for a wall date (see [taiwanWall] / [taiwanDate]).
-String monthDayWeekday(DateTime wall) => '${monthDay(wall)}（${_weekdayNames[wall.weekday - 1]}）';
+String monthDayWeekday(DateTime wall) => '${monthDayText(wall)}（${_weekdayNames[wall.weekday - 1]}）';
 
 /// `11/14` for a wall date.
-String monthDay(DateTime wall) => '${wall.month}/${wall.day}';
+String monthDayText(DateTime wall) => '${wall.month}/${wall.day}';
 
 /// `週六` for a wall date.
 String weekdayName(DateTime wall) => '週${_weekdayNames[wall.weekday - 1]}';
@@ -55,4 +55,4 @@ String windDirectionLabel(String? direction) {
 }
 
 /// `發布 11/14 17:00` (Taiwan time).
-String issuedText(DateTime t) => '發布 ${monthDay(taiwanWall(t))} ${clockText(t)}';
+String issuedText(DateTime t) => '發布 ${monthDayText(taiwanWall(t))} ${clockText(t)}';
