@@ -34,7 +34,7 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     final minute = picked.hour * Duration.minutesPerHour + picked.minute;
     if (minute == other) {
       final (start, end) = edge == QuietEdge.start ? (minute, other) : (other, minute);
-      setState(() => _quietError = '開始與結束時間相同，靜音時段無效。實際：${clockOfMinute(start)} 至 ${clockOfMinute(end)}');
+      setState(() => _quietError = '開始與結束時間相同，靜音時段無效。實際：${clockTextOfMinuteOfDay(start)} 至 ${clockTextOfMinuteOfDay(end)}');
       return;
     }
     setState(() => _quietError = null);
@@ -43,9 +43,9 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
 
   /// Overwrites every unreadable scalar setting with its default (explicit user action).
   Future<void> _resetScalars() async {
-    for (final toggle in NotifyToggle.values) {
-      if (ref.read(notifyToggleProvider(toggle)).hasError) {
-        await ref.read(notifyToggleProvider(toggle).notifier).reset();
+    for (final toggle in NotificationToggle.values) {
+      if (ref.read(notificationToggleProvider(toggle)).hasError) {
+        await ref.read(notificationToggleProvider(toggle).notifier).reset();
       }
     }
     for (final edge in QuietEdge.values) {
@@ -57,10 +57,10 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
 
   @override
   Widget build(BuildContext context) {
-    final toggles = {for (final t in NotifyToggle.values) t: ref.watch(notifyToggleProvider(t))};
+    final toggles = {for (final t in NotificationToggle.values) t: ref.watch(notificationToggleProvider(t))};
     final edges = {for (final e in QuietEdge.values) e: ref.watch(quietMinuteProvider(e))};
     final scalars = [...toggles.values, ...edges.values];
-    final masterOn = toggles[NotifyToggle.master]!.value ?? false;
+    final masterOn = toggles[NotificationToggle.master]!.value ?? false;
 
     final Widget body;
     if (scalars.any((s) => s.hasError)) {
@@ -90,44 +90,44 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
   }
 
   List<Widget> _rows(
-    Map<NotifyToggle, AsyncValue<bool>> toggles,
+    Map<NotificationToggle, AsyncValue<bool>> toggles,
     Map<QuietEdge, AsyncValue<int>> edges,
     bool masterOn,
   ) {
-    final rainOn = toggles[NotifyToggle.rain]!.requireValue;
-    final quietOn = toggles[NotifyToggle.quiet]!.requireValue;
+    final rainOn = toggles[NotificationToggle.rain]!.requireValue;
+    final quietOn = toggles[NotificationToggle.quiet]!.requireValue;
     final start = edges[QuietEdge.start]!.requireValue;
     final end = edges[QuietEdge.end]!.requireValue;
     final crosses = start > end;
-    final window = '${clockOfMinute(start)} 至 ${crosses ? '隔日 ' : ''}${clockOfMinute(end)}';
+    final window = '${clockTextOfMinuteOfDay(start)} 至 ${crosses ? '隔日 ' : ''}${clockTextOfMinuteOfDay(end)}';
 
     return [
-      NotifySwitchRow(
+      NotificationSwitchRow(
         icon: Icons.notifications_outlined,
         title: '通知',
         subtitle: masterOn ? '總開關：關閉時下列設定保留但不套用' : '已關閉：下列設定保留但不套用',
         value: masterOn,
         brand: masterOn,
-        onChanged: (v) => ref.read(notifyToggleProvider(NotifyToggle.master).notifier).set(v),
+        onChanged: (v) => ref.read(notificationToggleProvider(NotificationToggle.master).notifier).set(v),
       ),
-      const NotifyGroupLabel('分區警特報通知'),
+      const NotificationGroupLabel('分區警特報通知'),
       ..._placeRows(masterOn),
-      const NotifyGroupLabel('其他'),
-      NotifySwitchRow(
+      const NotificationGroupLabel('其他'),
+      NotificationSwitchRow(
         icon: Icons.umbrella_outlined,
         title: '降雨提醒',
         subtitle: '目前地點未來 1 小時可能降雨時',
         value: rainOn,
         enabled: masterOn,
-        onChanged: (v) => ref.read(notifyToggleProvider(NotifyToggle.rain).notifier).set(v),
+        onChanged: (v) => ref.read(notificationToggleProvider(NotificationToggle.rain).notifier).set(v),
       ),
-      NotifySwitchRow(
+      NotificationSwitchRow(
         icon: Icons.bedtime_outlined,
         title: '靜音時段',
         subtitle: quietOn ? (crosses ? '$window · 跨午夜' : window) : '未開啟',
         value: quietOn,
         enabled: masterOn,
-        onChanged: (v) => ref.read(notifyToggleProvider(NotifyToggle.quiet).notifier).set(v),
+        onChanged: (v) => ref.read(notificationToggleProvider(NotificationToggle.quiet).notifier).set(v),
       ),
       if (quietOn) ...[
         QuietTimeRow(
@@ -177,13 +177,13 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
     if (places.isEmpty) return const [none];
     return [
       for (final Place p in places)
-        NotifySwitchRow(
+        NotificationSwitchRow(
           icon: Icons.warning_amber_outlined,
           title: placeLabel(p),
           subtitle: '依${p.county}的警特報',
           value: on.contains(p.areaKey),
           enabled: masterOn,
-          onChanged: (v) => ref.read(warningAreasProvider.notifier).setPlace(p, v),
+          onChanged: (v) => ref.read(warningAreasProvider.notifier).setWarningsEnabled(p, v),
         ),
     ];
   }

@@ -6,8 +6,8 @@ import '../../../core/widgets/data_display.dart';
 import '../notification_settings.dart';
 import 'settings_group.dart';
 
-class NotifySwitchRow extends StatelessWidget {
-  const NotifySwitchRow({
+class NotificationSwitchRow extends StatelessWidget {
+  const NotificationSwitchRow({
     super.key,
     required this.icon,
     required this.title,
@@ -58,7 +58,7 @@ class QuietTimeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '靜音$title時間 ${nextDay ? '隔日 ' : ''}${clockOfMinute(minute)}',
+      label: '靜音$title時間 ${nextDay ? '隔日 ' : ''}${clockTextOfMinuteOfDay(minute)}',
       button: true,
       excludeSemantics: true,
       child: AppListRow(
@@ -75,7 +75,7 @@ class QuietTimeRow extends StatelessWidget {
               spacing: AppSpace.s4,
               children: [
                 if (nextDay) const AppBadge(label: '隔日'),
-                Text(clockOfMinute(minute),
+                Text(clockTextOfMinuteOfDay(minute),
                     style: AppType.body1Strong.copyWith(
                       color: enabled ? AppPalette.foreground1 : AppPalette.foregroundDisabled,
                       fontFeatures: AppType.tabular,
@@ -148,8 +148,8 @@ class QuietHoursBar extends StatelessWidget {
 }
 
 /// Sub-label band (32 high, text centred).
-class NotifyGroupLabel extends StatelessWidget {
-  const NotifyGroupLabel(this.text, {super.key});
+class NotificationGroupLabel extends StatelessWidget {
+  const NotificationGroupLabel(this.text, {super.key});
 
   final String text;
 

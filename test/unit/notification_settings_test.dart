@@ -27,8 +27,8 @@ void main() {
   test('fresh install: everything off, quiet hours 22:00-07:00, no warning areas', () async {
     SharedPreferences.setMockInitialValues({});
     final c = newContainer();
-    for (final t in NotifyToggle.values) {
-      expect(await c.read(notifyToggleProvider(t).future), false, reason: t.name);
+    for (final t in NotificationToggle.values) {
+      expect(await c.read(notificationToggleProvider(t).future), false, reason: t.name);
     }
     expect(await c.read(quietMinuteProvider(QuietEdge.start).future), 1320);
     expect(await c.read(quietMinuteProvider(QuietEdge.end).future), 420);
@@ -39,16 +39,16 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final first = newContainer();
     await first.read(savedPlacesProvider.notifier).save(taipei);
-    for (final t in NotifyToggle.values) {
-      await first.read(notifyToggleProvider(t).notifier).set(true);
+    for (final t in NotificationToggle.values) {
+      await first.read(notificationToggleProvider(t).notifier).set(true);
     }
     await first.read(quietMinuteProvider(QuietEdge.start).notifier).set(60);
     await first.read(quietMinuteProvider(QuietEdge.end).notifier).set(1439);
-    await first.read(warningAreasProvider.notifier).setPlace(taipei, true);
+    await first.read(warningAreasProvider.notifier).setWarningsEnabled(taipei, true);
 
     final second = newContainer();
-    for (final t in NotifyToggle.values) {
-      expect(await second.read(notifyToggleProvider(t).future), true, reason: t.name);
+    for (final t in NotificationToggle.values) {
+      expect(await second.read(notificationToggleProvider(t).future), true, reason: t.name);
     }
     expect(await second.read(quietMinuteProvider(QuietEdge.start).future), 60);
     expect(await second.read(quietMinuteProvider(QuietEdge.end).future), 1439);
@@ -59,7 +59,7 @@ void main() {
     test('notify.master=2', () async {
       SharedPreferences.setMockInitialValues({'notify.master': 2});
       final c = newContainer();
-      expectCorrupt(await readOutcome(() => c.read(notifyToggleProvider(NotifyToggle.master).future)), 'notify.master');
+      expectCorrupt(await readOutcome(() => c.read(notificationToggleProvider(NotificationToggle.master).future)), 'notify.master');
     });
 
     test('notify.quietStart=1440', () async {
@@ -85,7 +85,7 @@ void main() {
         });
         final c = newContainer();
         expectCorrupt(await readOutcome(() => c.read(warningAreasProvider.future)), 'notify.warningAreas');
-        await c.read(warningAreasProvider.notifier).setPlace(taipei, true);
+        await c.read(warningAreasProvider.notifier).setWarningsEnabled(taipei, true);
         expect(c.read(warningAreasProvider).value, {taipei.areaKey});
         expect(await newContainer().read(warningAreasProvider.future), {taipei.areaKey});
       });
@@ -108,7 +108,7 @@ void main() {
     await c.read(savedPlacesProvider.notifier).save(banqiao);
     expect(await c.read(warningAreasProvider.future), isEmpty);
 
-    await c.read(warningAreasProvider.notifier).setPlace(taipei, true);
+    await c.read(warningAreasProvider.notifier).setWarningsEnabled(taipei, true);
     expect(c.read(warningAreasProvider).value, {taipei.areaKey});
 
     await c.read(savedPlacesProvider.notifier).remove(taipei);
@@ -119,6 +119,6 @@ void main() {
     expect(await c.read(warningAreasProvider.future), isEmpty);
 
     const unsaved = Place(county: '高雄市', town: '前金區', latitude: 22.63, longitude: 120.29);
-    await expectLater(c.read(warningAreasProvider.notifier).setPlace(unsaved, true), throwsArgumentError);
+    await expectLater(c.read(warningAreasProvider.notifier).setWarningsEnabled(unsaved, true), throwsArgumentError);
   });
 }

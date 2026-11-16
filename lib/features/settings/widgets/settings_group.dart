@@ -11,7 +11,7 @@ import '../../../data/models/place.dart';
 String placeLabel(Place p) => '${p.county} ${p.town}';
 
 /// 「07:00」 for a minute of day.
-String clockOfMinute(int minute) =>
+String clockTextOfMinuteOfDay(int minute) =>
     '${twoDigits(minute ~/ Duration.minutesPerHour)}:${twoDigits(minute % Duration.minutesPerHour)}';
 
 /// Error banner for unreadable stored data, with at most one small recovery button.

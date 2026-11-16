@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Settings only: the values are stored and restored; nothing delivers a notification yet.
 
-enum NotifyToggle { master, rain, quiet }
+enum NotificationToggle { master, rain, quiet }
 
 enum QuietEdge { start, end }
 
@@ -19,9 +19,9 @@ const _defaultQuietStartMinute = 22 * Duration.minutesPerHour;
 const _defaultQuietEndMinute = 7 * Duration.minutesPerHour;
 
 /// A notification on/off switch (stored as 1 / 0), off on a fresh install.
-class NotifyToggleSetting extends IntSetting<bool> {
-  NotifyToggleSetting(this.toggle);
-  final NotifyToggle toggle;
+class NotificationToggleSetting extends IntSetting<bool> {
+  NotificationToggleSetting(this.toggle);
+  final NotificationToggle toggle;
 
   @override
   String get storageKey => 'notify.${toggle.name}';
@@ -52,28 +52,28 @@ class QuietMinuteSetting extends IntSetting<int> {
   int toStored(int value) => value;
 }
 
-final notifyToggleProvider =
-    AsyncNotifierProvider.family<NotifyToggleSetting, bool, NotifyToggle>(NotifyToggleSetting.new, retry: noRetry);
+final notificationToggleProvider =
+    AsyncNotifierProvider.family<NotificationToggleSetting, bool, NotificationToggle>(NotificationToggleSetting.new, retry: noRetry);
 final quietMinuteProvider =
     AsyncNotifierProvider.family<QuietMinuteSetting, int, QuietEdge>(QuietMinuteSetting.new, retry: noRetry);
 
-final warningAreasProvider = AsyncNotifierProvider<WarningAreas, Set<String>>(WarningAreas.new, retry: noRetry);
+final warningAreasProvider = AsyncNotifierProvider<WarningAreasNotifier, Set<String>>(WarningAreasNotifier.new, retry: noRetry);
 
 /// Area keys of the saved places whose 警特報 is on. Keys of places that are no
 /// longer saved are pruned from the store whenever the saved places change.
-class WarningAreas extends AsyncNotifier<Set<String>> {
+class WarningAreasNotifier extends AsyncNotifier<Set<String>> {
   @override
   Future<Set<String>> build() async {
     final saved = {for (final p in await ref.watch(savedPlacesProvider.future)) p.areaKey};
-    final prefs = await ref.watch(sharedPreferencesProvider.future);
-    final stored = _parse(prefs.get(_warningAreasKey));
+    final preferences = await ref.watch(sharedPreferencesProvider.future);
+    final stored = _parse(preferences.get(_warningAreasKey));
     final kept = stored.intersection(saved);
     if (kept.length != stored.length) await _write(kept);
     return kept;
   }
 
   /// Turns 警特報 of [place] on or off. On a corrupt stored set, overwrites it with [place] alone or empty.
-  Future<void> setPlace(Place place, bool on) async {
+  Future<void> setWarningsEnabled(Place place, bool on) async {
     final saved = await ref.read(savedPlacesProvider.future);
     if (!saved.any((p) => p.areaKey == place.areaKey)) {
       throw ArgumentError.value(place, 'place', 'expected a saved place, key ${place.areaKey}');
@@ -85,7 +85,7 @@ class WarningAreas extends AsyncNotifier<Set<String>> {
       await _write(next);
       return next;
     });
-    // A later setPlace() may have replaced the state meanwhile; only a failure overrides it.
+    // A later setWarningsEnabled() may have replaced the state meanwhile; only a failure overrides it.
     if (written is AsyncError || state.value == next) state = written;
   }
 
@@ -96,8 +96,8 @@ class WarningAreas extends AsyncNotifier<Set<String>> {
   }
 
   Future<void> _write(Set<String> keys) async {
-    final prefs = await ref.read(sharedPreferencesProvider.future);
-    await writeChecked(_warningAreasKey, prefs.setString(_warningAreasKey, jsonEncode(keys.toList()..sort())));
+    final preferences = await ref.read(sharedPreferencesProvider.future);
+    await writeChecked(_warningAreasKey, preferences.setString(_warningAreasKey, jsonEncode(keys.toList()..sort())));
   }
 
   static Set<String> _parse(Object? raw) {

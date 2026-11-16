@@ -87,8 +87,8 @@ class _TokenSettingsCardState extends ConsumerState<TokenSettingsCard> {
     final CwaApiKey key;
     try {
       key = CwaApiKey.parse(_controller.text);
-    } on FormatException catch (e) {
-      setState(() => _inputError = '授權碼格式錯誤：${e.message}');
+    } on FormatException catch (error) {
+      setState(() => _inputError = '授權碼格式錯誤：${error.message}');
       return;
     }
     setState(() => _inputError = null);
