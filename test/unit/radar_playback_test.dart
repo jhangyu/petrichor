@@ -24,7 +24,7 @@ RadarSlot pending(int i) => RadarSlot.pending(t(i));
 RadarSlot failed(int i) =>
     RadarSlot.failed(t(i), const RadarDataException('test', expected: 'a frame', actual: 'HTTP 404'));
 
-const fps4 = Duration(milliseconds: 250);
+const _fourFramesPerSecond = Duration(milliseconds: 250);
 
 RadarStep? next(List<RadarSlot> slots, DateTime? after, {bool repeat = true}) =>
     radarNextStep(slots: slots, after: after, fps: 4, repeat: repeat);
@@ -33,22 +33,22 @@ void main() {
   test('starts at the oldest at once and advances oldest to newest at 1/fps', () {
     final slots = [ready(0), ready(1), ready(2)];
     expect(next(slots, null), RadarShow(t(0), Duration.zero));
-    expect(next(slots, t(0)), RadarShow(t(1), fps4));
-    expect(next(slots, t(1)), RadarShow(t(2), fps4));
+    expect(next(slots, t(0)), RadarShow(t(1), _fourFramesPerSecond));
+    expect(next(slots, t(1)), RadarShow(t(2), _fourFramesPerSecond));
   });
 
   test('stops at a pending slot and resumes once it is ready', () {
     final loading = [ready(0), pending(1), pending(2), ready(3)];
     expect(next(loading, t(0)), RadarWait(t(1)));
     final loaded = [ready(0), ready(1), pending(2), ready(3)];
-    expect(next(loaded, t(0)), RadarShow(t(1), fps4));
+    expect(next(loaded, t(0)), RadarShow(t(1), _fourFramesPerSecond));
     expect(next(loaded, t(1)), RadarWait(t(2)));
     // Before play with only the newest ready: waits on the oldest.
     expect(next([pending(0), pending(1), ready(2)], null), RadarWait(t(0)));
   });
 
   test('skips failed slots, also one waited on', () {
-    expect(next([ready(0), failed(1), failed(2), ready(3)], t(0)), RadarShow(t(3), fps4));
+    expect(next([ready(0), failed(1), failed(2), ready(3)], t(0)), RadarShow(t(3), _fourFramesPerSecond));
     expect(next([ready(0), failed(1), pending(2)], t(0)), RadarWait(t(2)));
   });
 
