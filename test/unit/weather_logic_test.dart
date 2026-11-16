@@ -185,7 +185,7 @@ void main() {
       weatherCode: null,
     );
     final scale = weeklyScale([day(20.4, 26), day(null, 29.5)], 31)!;
-    expect((scale.min, scale.max), (20.0, 31.0));
+    expect((scale.lowest, scale.highest), (20.0, 31.0));
     expect(scale.fraction(25.5), closeTo(0.5, 1e-9));
     expect(scale.fraction(40), 1.0);
     expect(weeklyScale([day(null, null)], null), isNull);

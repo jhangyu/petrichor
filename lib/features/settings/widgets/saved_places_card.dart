@@ -130,7 +130,7 @@ _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
       final text = data.weather;
       return (
         glyph: WeatherGlyphIcon(text: text, size: AppSize.icon20),
-        temp: _temp(tempText(data.temperature), strong: true),
+        temp: _temperatureText(temperatureText(data.temperature), strong: true),
         secondary: '${text ?? '無天氣現象資料'} · 觀測 ${clockText(data.observedAt)}',
         spoken: '${text ?? '無天氣現象資料'} ${data.temperature.round()} 度',
       );
@@ -157,12 +157,12 @@ _WeatherView _weatherView(AsyncValue<Result<CurrentWeather>> observation) {
 
 _WeatherView _unavailable(IconData icon, String secondary) => (
       glyph: Icon(icon, size: AppSize.icon20, color: AppPalette.foreground3),
-      temp: _temp('—', strong: false),
+      temp: _temperatureText('—', strong: false),
       secondary: secondary,
       spoken: secondary,
     );
 
-Widget _temp(String text, {required bool strong}) => Text(
+Widget _temperatureText(String text, {required bool strong}) => Text(
       text,
       textAlign: TextAlign.end,
       maxLines: 1,

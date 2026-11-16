@@ -8,14 +8,14 @@ import 'weather_provider.dart';
 import 'sun_now.dart';
 
 /// Below this 降雨機率 the value is shown muted (`.day__rain--low`, `.fc-t--pop-low`).
-const rainLowThresholdPercent = 30;
+const lowRainProbabilityThresholdPercent = 30;
 
 /// Whether a 降雨機率 is shown muted; unknown (null) counts as low.
-bool isLowRain(int? pop) => pop == null || pop < rainLowThresholdPercent;
+bool isLowRainProbability(int? pop) => pop == null || pop < lowRainProbabilityThresholdPercent;
 
-/// [base] with the 降雨機率 emphasis: muted regular when [isLowRain], rain-coloured semibold otherwise.
-TextStyle popTextStyle(TextStyle base, int? pop) {
-  final low = isLowRain(pop);
+/// [base] with the 降雨機率 emphasis: muted regular when [isLowRainProbability], rain-coloured semibold otherwise.
+TextStyle rainProbabilityTextStyle(TextStyle base, int? pop) {
+  final low = isLowRainProbability(pop);
   return base.copyWith(
     color: low ? AppPalette.foreground3 : AppPalette.rainForeground,
     fontWeight: low ? FontWeight.w400 : FontWeight.w600,
@@ -145,24 +145,24 @@ ForecastExtremes forecastExtremes(List<HourlyForecast> slots) {
 // 7-day temperature axis
 
 /// Shared temperature axis for the 7-day range bars (`.temp-range`).
-class TempScale {
-  const TempScale(this.min, this.max);
+class TemperatureScale {
+  const TemperatureScale(this.lowest, this.highest);
 
-  final double min;
-  final double max;
+  final double lowest;
+  final double highest;
 
-  /// Position of [t] on the axis, 0 (min) – 1 (max).
-  double fraction(double t) => max == min ? 0.5 : ((t - min) / (max - min)).clamp(0.0, 1.0);
+  /// Position of [t] on the axis, 0 (lowest) – 1 (highest).
+  double fraction(double t) => highest == lowest ? 0.5 : ((t - lowest) / (highest - lowest)).clamp(0.0, 1.0);
 }
 
 /// Axis spanning every day's low/high and [current]; null when no value exists.
-TempScale? weeklyScale(List<DailyForecast> days, double? current) {
+TemperatureScale? weeklyScale(List<DailyForecast> days, double? current) {
   final values = [
     for (final d in days) ...[d.minTemperature, d.maxTemperature],
     current,
   ].whereType<double>();
   if (values.isEmpty) return null;
-  return TempScale(
+  return TemperatureScale(
     values.reduce((a, b) => a < b ? a : b).floorToDouble(),
     values.reduce((a, b) => a > b ? a : b).ceilToDouble(),
   );

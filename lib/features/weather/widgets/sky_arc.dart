@@ -24,7 +24,7 @@ class TemperatureBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = observation;
     Widget hilo(String label, double? value, Color color) => Text(
-      '$label ${tempText(value)}',
+      '$label ${temperatureText(value)}',
       style: AppType.caption1.copyWith(color: color, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
     );
     return Column(
@@ -32,7 +32,7 @@ class TemperatureBlock extends StatelessWidget {
       crossAxisAlignment: crossAxisAlignment,
       children: [
         Text(
-          tempText(c.temperature),
+          temperatureText(c.temperature),
           style: AppType.display.copyWith(color: AppPalette.foreground1, fontFeatures: AppType.tabular),
         ),
         Row(

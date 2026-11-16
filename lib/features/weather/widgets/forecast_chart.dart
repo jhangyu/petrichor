@@ -224,7 +224,7 @@ class ForecastChartPainter extends CustomPainter {
         canvas.drawCircle(c, _dotRadius, strokePaint(AppPalette.warningForeground, AppStroke.thick));
         paintLabel(
           canvas,
-          tempText(t),
+          temperatureText(t),
           c.translate(0, ForecastChartGeometry.tempLabelOffset),
           caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
           halo: halo,
@@ -245,7 +245,7 @@ class ForecastChartPainter extends CustomPainter {
       );
       paintLabel(
         canvas,
-        tempText(s.apparentTemperature),
+        temperatureText(s.apparentTemperature),
         Offset(x, ForecastChartGeometry.apparentLabelY),
         small.copyWith(color: AppPalette.foreground3),
         halo: halo,
@@ -276,7 +276,7 @@ class ForecastChartPainter extends CustomPainter {
         canvas,
         percentText(pop),
         Offset(center, ForecastChartGeometry.popLabelY),
-        popTextStyle(small, pop),
+        rainProbabilityTextStyle(small, pop),
       );
       paintLabel(canvas, windDirectionLabel(s.windDirection), Offset(center, ForecastChartGeometry.windDirY), small);
       paintLabel(canvas, speedText(s.windSpeed), Offset(center, ForecastChartGeometry.windSpeedY), small);

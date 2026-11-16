@@ -34,7 +34,7 @@ class WeeklyCard extends StatelessWidget {
   static const _rowMinHeight = 56.0;
   static const _nameWidth = 64.0;
   static const _rainWidth = 36.0;
-  static const _tempWidth = 28.0;
+  static const _temperatureWidth = 28.0;
 
   @override
   Widget build(BuildContext context) {
@@ -65,12 +65,12 @@ class WeeklyCard extends StatelessWidget {
     );
   }
 
-  Widget _row(DailyForecast d, TempScale? scale, {required bool divider}) {
+  Widget _row(DailyForecast d, TemperatureScale? scale, {required bool divider}) {
     final wall = taiwanDate(d.date);
     final offset = dayOffset(wall, now);
     final label = offset <= 1 ? relativeDay(wall, now) : weekdayName(wall);
     final date = offset <= 1 ? '${weekdayName(wall)} ${monthDay(wall)}' : monthDay(wall);
-    final num = AppType.body1.copyWith(fontFeatures: AppType.tabular);
+    final numberStyle = AppType.body1.copyWith(fontFeatures: AppType.tabular);
     return Container(
       constraints: const BoxConstraints(minHeight: _rowMinHeight),
       padding: const EdgeInsets.symmetric(vertical: AppSpace.s8),
@@ -103,30 +103,30 @@ class WeeklyCard extends StatelessWidget {
             child: Text(
               percentText(d.pop),
               textAlign: TextAlign.right,
-              style: popTextStyle(AppType.caption1.copyWith(fontFeatures: AppType.tabular), d.pop),
+              style: rainProbabilityTextStyle(AppType.caption1.copyWith(fontFeatures: AppType.tabular), d.pop),
             ),
           ),
           SizedBox(
-            width: _tempWidth,
+            width: _temperatureWidth,
             child: Text(
-              tempText(d.minTemperature),
+              temperatureText(d.minTemperature),
               textAlign: TextAlign.right,
-              style: num.copyWith(color: AppPalette.foreground3),
+              style: numberStyle.copyWith(color: AppPalette.foreground3),
             ),
           ),
           Expanded(
-            child: _TempRange(
+            child: _TemperatureRange(
               scale: scale,
               low: d.minTemperature,
               high: d.maxTemperature,
-              now: offset == 0 ? currentTemperature : null,
+              currentTemperature: offset == 0 ? currentTemperature : null,
             ),
           ),
           SizedBox(
-            width: _tempWidth,
+            width: _temperatureWidth,
             child: Text(
-              tempText(d.maxTemperature),
-              style: num.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
+              temperatureText(d.maxTemperature),
+              style: numberStyle.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -134,9 +134,9 @@ class WeeklyCard extends StatelessWidget {
     );
   }
 
-  Widget _legend(TempScale? scale) {
+  Widget _legend(TemperatureScale? scale) {
     final style = AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular);
-    final range = scale == null ? '' : '區間 ${tempText(scale.min)}–${tempText(scale.max)}';
+    final range = scale == null ? '' : '區間 ${temperatureText(scale.lowest)}–${temperatureText(scale.highest)}';
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -163,20 +163,20 @@ class WeeklyCard extends StatelessWidget {
 }
 
 /// `.temp-range`: day low–high on the shared axis, with today's now marker.
-class _TempRange extends StatelessWidget {
-  const _TempRange({required this.scale, required this.low, required this.high, required this.now});
+class _TemperatureRange extends StatelessWidget {
+  const _TemperatureRange({required this.scale, required this.low, required this.high, required this.currentTemperature});
 
-  final TempScale? scale;
+  final TemperatureScale? scale;
   final double? low;
   final double? high;
-  final double? now;
+  final double? currentTemperature;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
     final lo = low;
     final hi = high;
-    final mark = now;
+    final mark = currentTemperature;
     return LayoutBuilder(
       builder: (context, box) {
         final w = box.maxWidth;
@@ -215,7 +215,7 @@ class _TempRange extends StatelessWidget {
               if (s != null && mark != null)
                 Positioned(
                   left: s.fraction(mark) * w - AppSize.dot / 2,
-                  child: Semantics(label: '目前 ${tempText(mark)}', child: const _NowDot()),
+                  child: Semantics(label: '目前 ${temperatureText(mark)}', child: const _NowDot()),
                 ),
             ],
           ),

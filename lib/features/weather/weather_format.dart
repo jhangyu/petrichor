@@ -37,7 +37,7 @@ String durationText(Duration d) {
 }
 
 /// Rounded temperature `28°`, or 「—」 when the value is missing.
-String tempText(double? t) => t == null ? '—' : '${t.round()}°';
+String temperatureText(double? t) => t == null ? '—' : '${t.round()}°';
 
 /// `20%`, or 「—」 when missing.
 String percentText(int? p) => p == null ? '—' : '$p%';
