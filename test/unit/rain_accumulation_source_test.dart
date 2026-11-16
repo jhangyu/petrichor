@@ -72,9 +72,9 @@ void main() {
   RadarSource source(int w) => accumRadarSource(Dio()..httpClientAdapter = adapter,
       windowHours: w, cacheRoot: () async => root, clock: () => _now);
 
-  Future<List<RadarFrameRef>> list(RadarSource s) => s.listFrames(now: _now, window: s.maxWindow);
+  Future<List<RadarFrameReference>> list(RadarSource s) => s.listFrames(now: _now, window: s.maxWindow);
 
-  Future<ProcessedRadarFrame> render(RadarSource s, RadarFrameRef f) =>
+  Future<ProcessedRadarFrame> render(RadarSource s, RadarFrameReference f) =>
       (s.step as RadarComposedStep).obtain(f, CancelToken(), (work) => work());
 
   /// Peak and colour of every pixel of [processed] match the raw total [sum].

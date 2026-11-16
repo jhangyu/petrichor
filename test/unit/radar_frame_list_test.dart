@@ -4,7 +4,7 @@ import 'package:petrichor/data/radar/radar_frame_list.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// `yyyyMMddHHmm` (or with [seconds] `yyyyMMddHHmmss`) Taiwan time of [f].
-String _stamp(RadarFrameRef f, {bool seconds = false}) {
+String _stamp(RadarFrameReference f, {bool seconds = false}) {
   final l = f.time.add(const Duration(hours: 8));
   String two(int v) => v.toString().padLeft(2, '0');
   return '${l.year}${two(l.month)}${two(l.day)}${two(l.hour)}${two(l.minute)}${seconds ? two(l.second) : ''}';
@@ -14,7 +14,7 @@ void main() {
   // Saved copy of www.cwa.gov.tw/Data/js/obs_img/Observe_radar.js (newest frame 2026-11-14 20:50 Taiwan time).
   final frames = parseRadarFrameList(File('test/fixtures/radar/Observe_radar_20261114_2050.js').readAsStringSync());
 
-  List<String> stamps(List<RadarFrameRef> f) => [for (final x in f) _stamp(x)];
+  List<String> stamps(List<RadarFrameReference> f) => [for (final x in f) _stamp(x)];
 
   test('parses only the CV1_3600 set: 145 frames, Taiwan time converted to UTC', () {
     expect(frames, hasLength(145));
@@ -43,7 +43,7 @@ void main() {
   });
 
   test('window ends at the newest frame even when the clock is past it; stale list gives nothing', () {
-    List<RadarFrameRef> at(DateTime now) => selectRadarFrameWindow(frames, now: now, window: const Duration(hours: 2));
+    List<RadarFrameReference> at(DateTime now) => selectRadarFrameWindow(frames, now: now, window: const Duration(hours: 2));
     expect(stamps(at(DateTime.utc(2026, 11, 14, 13, 5))).first, '202611141900');
     expect(at(DateTime.utc(2026, 11, 14, 14, 50)), hasLength(12));
     expect(at(DateTime.utc(2026, 11, 14, 14, 51)), isEmpty);
@@ -64,7 +64,7 @@ void main() {
   group('station list (Observe_radar_rain.js saved 2026-11-15 11:42, trimmed: 6 newest + 2 oldest per station)', () {
     final js = File('test/fixtures/radar/Observe_radar_rain_20261115_1135.js').readAsStringSync();
     final shulin = parseRadarStationList(js, code: 'RCSL');
-    List<String> stamps(List<RadarFrameRef> f) => [for (final x in f) _stamp(x, seconds: true)];
+    List<String> stamps(List<RadarFrameReference> f) => [for (final x in f) _stamp(x, seconds: true)];
 
     test("only this station's 3600 set; time to the second from the name; URL from the list", () {
       expect(shulin, hasLength(8));

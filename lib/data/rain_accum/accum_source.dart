@@ -73,7 +73,7 @@ DateTime _floor(DateTime t, Duration step) {
 /// A listed accumulation frame: the rain from [start] to [time]. Frames at the
 /// same time but another [start] differ, so [start] is part of what a cached
 /// frame was made from.
-class AccumFrameRef extends RadarFrameRef {
+class AccumFrameRef extends RadarFrameReference {
   AccumFrameRef({required super.time, required super.url, required DateTime start}) : start = start.toUtc();
 
   final DateTime start;

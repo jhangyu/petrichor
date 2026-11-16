@@ -48,7 +48,7 @@ class RadarStaleListException extends RadarDataException {
 /// first. Throws [RadarDataException] when they cannot be obtained,
 /// [RadarStaleListException] when the source has no frame that recent, and the
 /// cancellation [DioException] as is once [cancelToken] fires.
-typedef RadarFrameLister = Future<List<RadarFrameRef>> Function(
+typedef RadarFrameLister = Future<List<RadarFrameReference>> Function(
     {required DateTime now, required Duration window, CancelToken? cancelToken});
 
 /// Runs [work] in one of the repository's processing slots (radar_frame_repository.dart);
@@ -74,7 +74,7 @@ final class RadarPngStep extends RadarFrameStep {
 /// error once `cancel` fires, and reports failures as [RadarDataException]
 /// naming the URL (other exceptions are reported against the frame's URL).
 final class RadarComposedStep extends RadarFrameStep {
-  final Future<ProcessedRadarFrame> Function(RadarFrameRef frame, CancelToken cancel, RadarProcessSlot processSlot) obtain;
+  final Future<ProcessedRadarFrame> Function(RadarFrameReference frame, CancelToken cancel, RadarProcessSlot processSlot) obtain;
 
   const RadarComposedStep(this.obtain);
 }
@@ -98,7 +98,7 @@ class RadarSource {
   /// Whether the cached frame of `frame` was made from data that has changed
   /// since (it is then made again by [step]). Throws [RadarDataException] when
   /// that cannot be checked (the slot fails). Null: cached frames never change.
-  final Future<bool> Function(RadarFrameRef frame, CancelToken cancel)? cachedFrameStale;
+  final Future<bool> Function(RadarFrameReference frame, CancelToken cancel)? cachedFrameStale;
 
   const RadarSource(
       {required this.id,
@@ -115,7 +115,7 @@ class RadarSource {
           {required String id,
           required String listUrl,
           required Duration maxWindow,
-          required List<RadarFrameRef> Function(String js) parse,
+          required List<RadarFrameReference> Function(String js) parse,
           required RadarImageGeometry geometry}) =>
       RadarSource(
         id: id,
@@ -144,8 +144,8 @@ class RadarSource {
 }
 
 /// [RadarFrameLister] of a website loop: the JS list at [listUrl], parsed by [parse].
-Future<List<RadarFrameRef>> _listWebsiteFrames(
-    Dio dio, String id, String listUrl, List<RadarFrameRef> Function(String js) parse,
+Future<List<RadarFrameReference>> _listWebsiteFrames(
+    Dio dio, String id, String listUrl, List<RadarFrameReference> Function(String js) parse,
     {required DateTime now, required Duration window, CancelToken? cancelToken}) async {
   final Response<String> response;
   try {
@@ -156,7 +156,7 @@ Future<List<RadarFrameRef>> _listWebsiteFrames(
   }
   final js = response.data ??
       (throw RadarDataException(listUrl, expected: 'JS body', actual: 'HTTP ${response.statusCode} without body'));
-  final List<RadarFrameRef> all;
+  final List<RadarFrameReference> all;
   try {
     all = parse(js);
   } on FormatException catch (e) {

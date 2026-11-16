@@ -31,11 +31,11 @@ final _geometry = RadarImageGeometry(
 final _png = img.encodePng(img.Image(width: _size, height: _size)
   ..setPixelRgb(3, 3, radarEchoPalette[30] >> 16, (radarEchoPalette[30] >> 8) & 0xFF, radarEchoPalette[30] & 0xFF));
 
-RadarFrameRef _ref(Duration age) => RadarFrameRef(
+RadarFrameReference _ref(Duration age) => RadarFrameReference(
     time: _now.subtract(age), url: 'https://example.test/${_now.subtract(age).microsecondsSinceEpoch}.png');
 
 /// Cache file stem of a frame (observation time, UTC, to the second).
-String _key(RadarFrameRef f) => f.time.toIso8601String().replaceAll(RegExp(r'[^0-9]'), '').substring(0, 14);
+String _key(RadarFrameReference f) => f.time.toIso8601String().replaceAll(RegExp(r'[^0-9]'), '').substring(0, 14);
 
 const _listUrl = 'https://example.test/list.js';
 
@@ -178,14 +178,14 @@ void main() {
   const span = Duration(minutes: 40);
 
   /// A source listing [frames] (any list body parses to them).
-  RadarSource source(Dio dio, List<RadarFrameRef> frames, {Duration maxWindow = const Duration(hours: 24)}) =>
+  RadarSource source(Dio dio, List<RadarFrameReference> frames, {Duration maxWindow = const Duration(hours: 24)}) =>
       RadarSource.website(dio, id: 'test', listUrl: _listUrl, maxWindow: maxWindow, parse: (_) => frames, geometry: _geometry);
 
   RadarFrameRepository repository(Dio dio, {DateTime? now, RadarFrameProcess process = radarProcessOffUiIsolate}) =>
       RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now, process: process);
 
   /// One load of a source listing [frames] over [adapter].
-  Stream<RadarLoop> load(List<RadarFrameRef> frames,
+  Stream<RadarLoop> load(List<RadarFrameReference> frames,
       {Set<String> failing = const {},
       DateTime? now,
       Duration window = span,

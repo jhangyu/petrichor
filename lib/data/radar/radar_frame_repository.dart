@@ -125,7 +125,7 @@ class RadarFrameRepository {
     }
     send(cachedSlots, loading: true);
 
-    final List<RadarFrameRef> listed;
+    final List<RadarFrameReference> listed;
     try {
       listed = await source.listFrames(now: now, window: window, cancelToken: cancel);
     } on RadarDataException catch (e) {
@@ -169,7 +169,7 @@ class RadarFrameRepository {
     sendSlots(loading: true);
 
     final pending = [for (final f in byTime) if (slots[f.cacheKey]!.state == RadarSlotState.pending) f];
-    final order = pending.isEmpty ? const <RadarFrameRef>[] : [pending.last, ...pending.sublist(0, pending.length - 1)];
+    final order = pending.isEmpty ? const <RadarFrameReference>[] : [pending.last, ...pending.sublist(0, pending.length - 1)];
     // Finished slots wait here until every slot before them in [order] is published.
     final finished = <String, RadarSlot>{};
     var published = 0;
@@ -183,7 +183,7 @@ class RadarFrameRepository {
         token.cancel(e.error);
       }
     });
-    Future<void> fetch(RadarFrameRef f) async {
+    Future<void> fetch(RadarFrameReference f) async {
       if (cancel.cancelError case final e?) throw e;
       final token = CancelToken();
       frameTokens.add(token);
@@ -243,7 +243,7 @@ class RadarFrameRepository {
   /// once [cancel] fires, before any file is written: a frame still in
   /// processing is dropped (its isolate runs to the end unobserved) and a frame
   /// waiting for a processing slot is never processed.
-  Future<RadarFrame> _fetch(Directory dir, RadarFrameStep step, RadarFrameRef f, CancelToken cancel) async {
+  Future<RadarFrame> _fetch(Directory dir, RadarFrameStep step, RadarFrameReference f, CancelToken cancel) async {
     Future<ProcessedRadarFrame> processSlot(Future<ProcessedRadarFrame> Function() work) =>
         _processPool.withResource(() {
           if (cancel.cancelError case final e?) throw e;
@@ -263,7 +263,7 @@ class RadarFrameRepository {
 
   /// The [RadarPngStep]: download the frame PNG, then [process] it.
   Future<ProcessedRadarFrame> _downloadAndProcess(
-      RadarFrameRef f, RadarImageGeometry geometry, CancelToken cancel, RadarProcessSlot processSlot) async {
+      RadarFrameReference f, RadarImageGeometry geometry, CancelToken cancel, RadarProcessSlot processSlot) async {
     final response =
         await _dio.get<List<int>>(f.url, options: Options(responseType: ResponseType.bytes), cancelToken: cancel);
     final body = response.data ??
@@ -285,7 +285,7 @@ RadarFrame _frame(DateTime time, File webp, RadarEchoStats stats, ({int width, i
     );
 
 /// Why listed frame [f] has no cached frame, naming the frame by its URL.
-RadarDataException _frameFailure(RadarFrameRef f, Exception e) => switch (e) {
+RadarDataException _frameFailure(RadarFrameReference f, Exception e) => switch (e) {
       RadarDataException() => e,
       DioException() => RadarDataException(f.url, expected: 'HTTP 200 with the frame PNG', actual: radarHttpFailure(e)),
       _ => RadarDataException(f.url, expected: 'a radar frame PNG that processes', actual: e),

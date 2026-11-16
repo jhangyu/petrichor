@@ -33,28 +33,28 @@ final _framePattern = RegExp("'$_radarFrameSetPrefix(\\d{12})\\.png'");
 
 /// One frame of a source: its time and the URL that names it (the frame PNG
 /// of a radar loop; failures of the frame are reported against it).
-class RadarFrameRef {
+class RadarFrameReference {
   /// Observation time in UTC.
   final DateTime time;
   final String url;
 
-  RadarFrameRef({required DateTime time, required this.url}) : time = time.toUtc();
+  RadarFrameReference({required DateTime time, required this.url}) : time = time.toUtc();
 
   /// Website frame from the timestamp in its file name.
-  RadarFrameRef.website(String stamp)
+  RadarFrameReference.website(String stamp)
       : this(time: radarStampTime(stamp), url: '$_radarFrameBaseUrl$_radarFrameSetPrefix$stamp.png');
 
   /// Cache file key: observation time `yyyyMMddHHmmss` UTC (station frames have irregular seconds).
   String get cacheKey => formatUtcStamp(time, seconds: true);
 
   @override
-  bool operator ==(Object other) => other is RadarFrameRef && other.url == url;
+  bool operator ==(Object other) => other is RadarFrameReference && other.url == url;
 
   @override
   int get hashCode => url.hashCode;
 
   @override
-  String toString() => 'RadarFrameRef($time, $url)';
+  String toString() => 'RadarFrameReference($time, $url)';
 }
 
 /// `yyyyMMddHHmm` (+`ss` when [seconds]) of [t] in UTC: cache file keys.
@@ -84,8 +84,8 @@ DateTime radarStampTime(String s) {
 }
 
 /// Parses every `CV1_3600_` frame in [js] (the content of Observe_radar.js).
-List<RadarFrameRef> parseRadarFrameList(String js) {
-  final frames = _framePattern.allMatches(js).map((m) => RadarFrameRef.website(m.group(1)!)).toSet().toList();
+List<RadarFrameReference> parseRadarFrameList(String js) {
+  final frames = _framePattern.allMatches(js).map((m) => RadarFrameReference.website(m.group(1)!)).toSet().toList();
   if (frames.isEmpty) {
     throw FormatException(
       "Observe_radar.js: expected entries matching '$_radarFrameSetPrefix<yyyyMMddHHmm>.png', found none "
@@ -97,11 +97,11 @@ List<RadarFrameRef> parseRadarFrameList(String js) {
 
 /// Parses every 3600 px frame of the station with image-name code [code]
 /// (RCSL, RCNT, RCLY) in [js] (the content of Observe_radar_rain.js).
-List<RadarFrameRef> parseRadarStationList(String js, {required String code}) {
+List<RadarFrameReference> parseRadarStationList(String js, {required String code}) {
   final pattern = RegExp("'(CV1_${code}_3600/CV1_${code}_3600_(\\d{14})_[0-9a-f]{64}\\.png)'");
   final frames = pattern
       .allMatches(js)
-      .map((m) => RadarFrameRef(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}'))
+      .map((m) => RadarFrameReference(time: radarStampTime(m.group(2)!), url: '$radarStationBaseUrl${m.group(1)}'))
       .toSet()
       .toList();
   if (frames.isEmpty) {
@@ -117,8 +117,8 @@ List<RadarFrameRef> parseRadarStationList(String js, {required String code}) {
 /// first = playback order; any source, any cadence (regular or not). Missing
 /// frames stay missing. Returns nothing when the newest frame is older than
 /// [window] before [now] (stale list).
-List<RadarFrameRef> selectRadarFrameWindow(
-  List<RadarFrameRef> frames, {
+List<RadarFrameReference> selectRadarFrameWindow(
+  List<RadarFrameReference> frames, {
   required DateTime now,
   required Duration window,
 }) {
