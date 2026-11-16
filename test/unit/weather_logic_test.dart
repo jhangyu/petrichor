@@ -108,7 +108,7 @@ void main() {
       tw(14, 14),
     ) as NowCardReady;
 
-    final failed = card(const Failure('逾時', dataset: CwaDatasets.sunTimesDatasetId));
+    final failed = card(const Failure('逾時', datasetId: CwaDatasets.sunTimesDatasetId));
     expect(failed.observation, same(obs));
     expect((failed.sun as Failure).message, '逾時');
     expect(failed.slot, isNull);
@@ -133,12 +133,12 @@ void main() {
     final state = WeatherState(
       place: taipei,
       currentWeather: Success(obs),
-      sunDays: const Failure('逾時', dataset: CwaDatasets.sunTimesDatasetId, location: '臺北市中正區'),
+      sunDays: const Failure('逾時', datasetId: CwaDatasets.sunTimesDatasetId, placeName: '臺北市中正區'),
       isLoading: false,
     );
     final sun = (nowCard(state, tw(14, 14)) as NowCardReady).sun as Failure;
-    expect(sun.location, '臺北市中正區');
-    expect(sun.dataset, CwaDatasets.sunTimesDatasetId);
+    expect(sun.placeName, '臺北市中正區');
+    expect(sun.datasetId, CwaDatasets.sunTimesDatasetId);
   });
 
   test('day labels use the Taiwan calendar date, not UTC', () {

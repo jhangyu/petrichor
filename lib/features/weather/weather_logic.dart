@@ -95,7 +95,7 @@ NowCardState nowCard(WeatherState state, DateTime now) {
     final Failure<List<SunDay>> failure => failure.retype<SunNow>(),
     Success(:final data) when place != null => sunNow(data, place, now),
     // Invariant: WeatherState carries data only for a loaded place; surface the break instead of hiding the arc.
-    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: CwaDatasets.sunTimesDatasetId),
+    Success() => const Failure('沒有地點，無法計算太陽仰角', datasetId: CwaDatasets.sunTimesDatasetId),
   };
   final slot = switch (state.hourlyForecasts) {
     Success(:final data) => currentSlot(data, now),

@@ -46,7 +46,7 @@ class HazardRepository {
           }
           return Success(warnings);
         },
-        dataset: '${CwaDatasets.warningsByCountyDatasetId}/${CwaDatasets.warningBulletinsDatasetId}',
+        datasetId: '${CwaDatasets.warningsByCountyDatasetId}/${CwaDatasets.warningBulletinsDatasetId}',
       );
 
   /// 資料集內全部測站（所有縣市），不需要使用者位置。
@@ -55,7 +55,7 @@ class HazardRepository {
           final response = await _dio.get<Object?>(CwaDatasets.rainObservationDatasetId);
           return Success(parseRainStations(_datastoreRecords(response.data, CwaDatasets.rainObservationDatasetId)));
         },
-        dataset: CwaDatasets.rainObservationDatasetId,
+        datasetId: CwaDatasets.rainObservationDatasetId,
       );
 
   /// 指定縣市的雨量觀測：該縣市所有測站與離 ([latitude], [longitude]) 最近的有值測站。
@@ -103,13 +103,13 @@ class HazardRepository {
   // 私有輔助
   // ==========================================================================
 
-  Future<Result<T>> _fileApi<T>(String dataset, T Function(Object? root) parse) => guardRequest<T>(
+  Future<Result<T>> _fileApi<T>(String datasetId, T Function(Object? root) parse) => guardRequest<T>(
         () async {
-          final response = await _dio.get<Object?>(CwaHttpConfig.fileApiUrl(dataset));
-          final body = _jsonMap(response.data, dataset);
+          final response = await _dio.get<Object?>(CwaHttpConfig.fileApiUrl(datasetId));
+          final body = _jsonMap(response.data, datasetId);
           return Success(parse(body['cwaopendata']));
         },
-        dataset: dataset,
+        datasetId: datasetId,
       );
 
   /// fileapi 可能回 String 或已解碼的 Map

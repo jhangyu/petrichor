@@ -24,18 +24,18 @@ final class Success<T> extends Result<T> {
   const Success(this.data);
 }
 
-/// 失敗結果。[dataset]、[location] 為受影響的資料集代號與地點（可得時必填）。
+/// 失敗結果。[datasetId]、[placeName] 為受影響的資料集代號與地點（可得時必填）。
 final class Failure<T> extends Result<T> {
   final String message;
-  final String? dataset;
-  final String? location;
+  final String? datasetId;
+  final String? placeName;
 
   /// Non-null = the request failed because of the API key; pages show 「請到「設定」輸入 / 更新 token」.
   final ApiKeyIssue? apiKeyIssue;
-  const Failure(this.message, {this.dataset, this.location, this.apiKeyIssue});
+  const Failure(this.message, {this.datasetId, this.placeName, this.apiKeyIssue});
 
-  /// The same failure as another result type (message, dataset, location and API-key issue kept).
-  Failure<R> retype<R>() => Failure<R>(message, dataset: dataset, location: location, apiKeyIssue: apiKeyIssue);
+  /// The same failure as another result type (message, datasetId, placeName and API-key issue kept).
+  Failure<R> retype<R>() => Failure<R>(message, datasetId: datasetId, placeName: placeName, apiKeyIssue: apiKeyIssue);
 }
 
 /// Why a request failed because of the API key.
@@ -52,7 +52,7 @@ class CwaApiKeyException implements Exception {
 }
 
 /// The one DioException → [Failure] mapping for every repository.
-Failure<T> failureFromDio<T>(DioException e, {required String dataset, String? location}) {
+Failure<T> failureFromDio<T>(DioException e, {required String datasetId, String? placeName}) {
   final status = e.response?.statusCode;
   final error = e.error;
   final issue = error is CwaApiKeyException
@@ -74,29 +74,29 @@ Failure<T> failureFromDio<T>(DioException e, {required String dataset, String? l
       },
   };
   return Failure(
-    _withScope(message, dataset, location),
-    dataset: dataset,
-    location: location,
+    _withScope(message, datasetId, placeName),
+    datasetId: datasetId,
+    placeName: placeName,
     apiKeyIssue: issue,
   );
 }
 
 /// 受影響的資料集與地點附在訊息尾端（全 App 唯一格式）。
-String _withScope(String message, String dataset, String? location) =>
-    location == null ? '$message（資料集 $dataset）' : '$message（資料集 $dataset，地點 $location）';
+String _withScope(String message, String datasetId, String? placeName) =>
+    placeName == null ? '$message（資料集 $datasetId）' : '$message（資料集 $datasetId，地點 $placeName）';
 
 /// The one request guard for every repository: runs [request]; a [DioException] becomes
-/// [failureFromDio], a [FormatException] a 「解析失敗」 [Failure]. Both carry [dataset] and [location].
+/// [failureFromDio], a [FormatException] a 「解析失敗」 [Failure]. Both carry [datasetId] and [placeName].
 Future<Result<T>> guardRequest<T>(
   Future<Result<T>> Function() request, {
-  required String dataset,
-  String? location,
+  required String datasetId,
+  String? placeName,
 }) async {
   try {
     return await request();
   } on DioException catch (error) {
-    return failureFromDio(error, dataset: dataset, location: location);
+    return failureFromDio(error, datasetId: datasetId, placeName: placeName);
   } on FormatException catch (error) {
-    return Failure(_withScope('解析失敗：${error.message}', dataset, location), dataset: dataset, location: location);
+    return Failure(_withScope('解析失敗：${error.message}', datasetId, placeName), datasetId: datasetId, placeName: placeName);
   }
 }

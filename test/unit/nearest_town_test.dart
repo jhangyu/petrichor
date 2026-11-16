@@ -65,8 +65,8 @@ void main() {
 
     final failure = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51) as Failure<Place>;
 
-    expect(failure.location, '臺北市');
-    expect(failure.dataset, 'F-D0047-061');
+    expect(failure.placeName, '臺北市');
+    expect(failure.datasetId, 'F-D0047-061');
     expect(failure.message, contains('伺服器回應錯誤：500'));
   });
 
@@ -75,8 +75,8 @@ void main() {
 
     final failure = await WeatherRepository(adapter.createDio()).nearestTown(25.04, 121.51) as Failure<Place>;
 
-    expect(failure.dataset, 'O-A0001-001');
-    expect(failure.location, '(25.04, 121.51)');
+    expect(failure.datasetId, 'O-A0001-001');
+    expect(failure.placeName, '(25.04, 121.51)');
     expect(adapter.requests, hasLength(1));
   });
 }

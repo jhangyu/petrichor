@@ -30,9 +30,9 @@ final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
 const double _countyBorderSlackKilometers = 1.0;
 
 /// [actual] = the county name as the caller passed it.
-Failure<T> _unsupportedCounty<T>(String actual, {required String location}) => Failure(
+Failure<T> _unsupportedCounty<T>(String actual, {required String placeName}) => Failure(
       '不支援的縣市：期望 ${CwaDatasets.townshipForecastDatasets.keys.join('、')} 其一，實際「$actual」',
-      location: location,
+      placeName: placeName,
     );
 
 /// 日出日沒查詢範圍：今天前 1 日（夜間弧線）與後 1 日（暮光後切換明天）
@@ -64,8 +64,8 @@ class WeatherRepository {
   /// 取得離 [place] 最近、且有氣溫讀數的觀測站即時觀測（O-A0003-001）。
   Future<Result<CurrentWeather>> getCurrentWeather(Place place) {
     return _query(
-      dataset: CwaDatasets.observationDatasetId,
-      location: place.name,
+      datasetId: CwaDatasets.observationDatasetId,
+      placeName: place.name,
       query: {'limit': CwaDatasets.observationStationLimit},
       parse: (body) => _parseObservation(body, place.latitude, place.longitude),
     );
@@ -107,8 +107,8 @@ class WeatherRepository {
       for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) isoDate(today.add(Duration(days: i))),
     ];
     return _query(
-      dataset: CwaDatasets.sunTimesDatasetId,
-      location: countyName,
+      datasetId: CwaDatasets.sunTimesDatasetId,
+      placeName: countyName,
       // timeTo 為不含端點，故取 days.last 的次日
       query: {
         'CountyName': countyName,
@@ -127,10 +127,10 @@ class WeatherRepository {
   Future<Result<List<Place>>> getTowns(String county) {
     final name = normalizeCwaPlaceName(county);
     final ids = CwaDatasets.townshipForecastDatasets[name];
-    if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
+    if (ids == null) return Future.value(_unsupportedCounty(county, placeName: county));
     return _query(
-      dataset: ids.threeDay,
-      location: name,
+      datasetId: ids.threeDay,
+      placeName: name,
       // 只取單一要素，縮小回應；地點清單與經緯度不受影響
       query: {'ElementName': _townListElement},
       parse: (body) => _parseTowns(body, name),
@@ -144,8 +144,8 @@ class WeatherRepository {
   Future<Result<Place>> nearestTown(double latitude, double longitude) async {
     final where = '($latitude, $longitude)';
     final stations = await _query(
-      dataset: CwaDatasets.countyLookupDatasetId,
-      location: where,
+      datasetId: CwaDatasets.countyLookupDatasetId,
+      placeName: where,
       // 只取一個要素與縣市／座標，縮小回應
       query: {'WeatherElement': _countyLookupElement, 'GeoInfo': 'Coordinates,CountyName'},
       parse: (body) => _parseStationCounties(body, latitude, longitude),
@@ -171,22 +171,22 @@ class WeatherRepository {
   Future<Result<DateTime>> getForecastIssuedAt(String county) {
     final countyName = normalizeCwaPlaceName(county);
     final ids = CwaDatasets.townshipForecastDatasets[countyName];
-    if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
-    final dataset = ids.threeDay;
+    if (ids == null) return Future.value(_unsupportedCounty(county, placeName: county));
+    final datasetId = ids.threeDay;
     return guardRequest<DateTime>(
       () async {
         // ponytail: 整份 file API 約 1 MB；IssueTime 位於開頭 DatasetInfo（實測位移約 1.7 KB），只取前 [_issueTimeHeadBytes]。
         final response = await _dio.get<String>(
-          '${CwaHttpConfig.cwaFileApiBaseUrl}$dataset',
+          '${CwaHttpConfig.cwaFileApiBaseUrl}$datasetId',
           options: Options(
             headers: {'Range': 'bytes=0-${_issueTimeHeadBytes - 1}'},
             responseType: ResponseType.plain,
           ),
         );
-        return Success(_parseIssueTime(response.data ?? '', dataset));
+        return Success(_parseIssueTime(response.data ?? '', datasetId));
       },
-      dataset: dataset,
-      location: countyName,
+      datasetId: datasetId,
+      placeName: countyName,
     );
   }
 
@@ -199,10 +199,10 @@ class WeatherRepository {
     final countyName = normalizeCwaPlaceName(county);
     final townName = normalizeCwaPlaceName(town);
     final ids = CwaDatasets.townshipForecastDatasets[countyName];
-    if (ids == null) return _unsupportedCounty(county, location: '$county$town');
+    if (ids == null) return _unsupportedCounty(county, placeName: '$county$town');
     return _query(
-      dataset: datasetOf(ids),
-      location: '$countyName$townName',
+      datasetId: datasetOf(ids),
+      placeName: '$countyName$townName',
       query: {'LocationName': townName},
       parse: (body) => parse(body, townName),
     );
@@ -214,26 +214,26 @@ class WeatherRepository {
 
   /// 送出請求並在邊界一次解析成強型別；任何失敗都帶資料集與地點。
   Future<Result<T>> _query<T>({
-    required String dataset,
-    required String location,
+    required String datasetId,
+    required String placeName,
     required Map<String, dynamic> query,
     required T Function(Map<String, dynamic> body) parse,
   }) {
     return guardRequest<T>(
       () async {
-        final response = await _dio.get(dataset, queryParameters: query);
+        final response = await _dio.get(datasetId, queryParameters: query);
         final data = response.data;
         if (data is! Map<String, dynamic>) {
           return Failure(
             '回應格式錯誤：期望 JSON 物件，實際 ${data.runtimeType}',
-            dataset: dataset,
-            location: location,
+            datasetId: datasetId,
+            placeName: placeName,
           );
         }
         return Success(parse(data));
       },
-      dataset: dataset,
-      location: location,
+      datasetId: datasetId,
+      placeName: placeName,
     );
   }
 }

@@ -60,7 +60,7 @@ void main() {
       expect((await withWind('-99')).data.windDirection, isNull);
       final bad = await withWind('500.0') as Failure;
       expect(bad.message, contains('500.0'));
-      expect(bad.dataset, 'O-A0003-001');
+      expect(bad.datasetId, 'O-A0003-001');
     });
 
     test('skips stations without temperature and maps -99 to missing', () async {
@@ -93,8 +93,8 @@ void main() {
       final r = await repository.getCurrentWeather(_at(25.17, 121.45, '新北市', '淡水區'));
 
       final f = r as Failure;
-      expect(f.dataset, 'O-A0003-001');
-      expect(f.location, '新北市淡水區');
+      expect(f.datasetId, 'O-A0003-001');
+      expect(f.placeName, '新北市淡水區');
     });
 
     test('HTTP 500 becomes a Failure carrying status, dataset and location', () async {
@@ -103,8 +103,8 @@ void main() {
 
       final f = r as Failure;
       expect(f.message, contains('伺服器回應錯誤：500'));
-      expect(f.dataset, 'O-A0003-001');
-      expect(f.location, '新北市淡水區');
+      expect(f.datasetId, 'O-A0003-001');
+      expect(f.placeName, '新北市淡水區');
       expect(f.message, contains('O-A0003-001'));
     });
   });
@@ -143,8 +143,8 @@ void main() {
       final r = await repository.getHourlyForecast('臺北市', '中正區');
 
       final f = r as Failure;
-      expect(f.dataset, 'F-D0047-061');
-      expect(f.location, '臺北市中正區');
+      expect(f.datasetId, 'F-D0047-061');
+      expect(f.placeName, '臺北市中正區');
     });
   });
 
@@ -163,7 +163,7 @@ void main() {
       final r = await repository.getForecastIssuedAt('臺北市');
 
       final f = r as Failure;
-      expect(f.dataset, 'F-D0047-061');
+      expect(f.datasetId, 'F-D0047-061');
       expect(f.message, contains('IssueTime'));
     });
   });
@@ -217,7 +217,7 @@ void main() {
       final r = await repository.getWeeklyForecast('臺北市', '中正區');
 
       final f = r as Failure;
-      expect(f.dataset, 'F-D0047-063');
+      expect(f.datasetId, 'F-D0047-063');
       expect(f.message, contains('期望地點「中正區」'));
     });
 
@@ -243,7 +243,7 @@ void main() {
       final r = await repository.getWeeklyForecast('臺北市', '臺北市');
 
       final f = r as Failure;
-      expect(f.dataset, 'F-D0047-063');
+      expect(f.datasetId, 'F-D0047-063');
       expect(f.message, contains('期望數字，實際「abc」'));
     });
   });
@@ -277,8 +277,8 @@ void main() {
       final r = await repository.getSunTimes('臺北市', now);
 
       final f = r as Failure;
-      expect(f.dataset, 'A-B0062-001');
-      expect(f.location, '臺北市');
+      expect(f.datasetId, 'A-B0062-001');
+      expect(f.placeName, '臺北市');
       expect(f.message, contains('2026-11-13'));
       expect(f.message, contains('2026-11-14'));
     });
@@ -292,7 +292,7 @@ void main() {
       final r = await repository.getSunTimes('臺北市', DateTime.utc(2026, 11, 15, 4));
 
       final f = r as Failure;
-      expect(f.dataset, 'A-B0062-001');
+      expect(f.datasetId, 'A-B0062-001');
       expect(f.message, contains('SunTransitAlt'));
     });
   });
