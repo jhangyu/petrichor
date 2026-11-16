@@ -23,14 +23,14 @@ Future<void> writeAtomic(File target, List<int> bytes, {String tmpSuffix = '.tmp
 
 /// Radar data could not be obtained or did not have the expected shape.
 class RadarDataException implements Exception {
-  final String source;
+  final String url;
   final String expected;
   final Object? actual;
 
-  const RadarDataException(this.source, {required this.expected, required this.actual});
+  const RadarDataException(this.url, {required this.expected, required this.actual});
 
   @override
-  String toString() => 'RadarDataException($source): expected $expected, got $actual';
+  String toString() => 'RadarDataException($url): expected $expected, got $actual';
 }
 
 /// What a failed (not cancelled) request got, for [RadarDataException.actual].
@@ -41,7 +41,7 @@ String radarHttpFailure(DioException e) =>
 /// stopped updating); every other [RadarDataException] means the data could
 /// not be obtained.
 class RadarStaleListException extends RadarDataException {
-  const RadarStaleListException(super.source, {required super.expected, required super.actual});
+  const RadarStaleListException(super.url, {required super.expected, required super.actual});
 }
 
 /// Frames of the [window] span ending at a source's newest frame, oldest
