@@ -13,7 +13,7 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/hazard_models.dart' show CountyRainfall;
 import '../../data/models/place.dart';
-import '../../data/repositories/hazard_repository.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/api/result.dart' show Failure, Result, Success;
 import '../location/place_provider.dart';
 import '../../core/time/taiwan_time.dart';
@@ -144,7 +144,7 @@ class RainfallScreen extends ConsumerWidget {
     );
     return _scaffold(
       subtitle: '尚無目前地點',
-      sourceIds: [if (stations.value is Success) rainObservationDataset, if (grid.value is Success) rainForecast1hDataset],
+      sourceIds: [if (stations.value is Success) AppConstants.rainObservationDataset, if (grid.value is Success) AppConstants.rainForecast1hDataset],
       onRefresh: _refreshAll(ref, busy: stations.isLoading || grid.isLoading, retries: [retryStations, retryGrid]),
       children: [
         AppGridItem.full(child: _noPlaceCard(ref, reason)),
@@ -194,7 +194,7 @@ class RainfallScreen extends ConsumerWidget {
       builder: (r) => StationListCard(county: r.county, stations: r.allStations, nearestId: r.nearest.id),
       showError: false,
     );
-    final sourceIds = [if (result is Success) rainObservationDataset, if (forecastResult is Success) rainForecast1hDataset];
+    final sourceIds = [if (result is Success) AppConstants.rainObservationDataset, if (forecastResult is Success) AppConstants.rainForecast1hDataset];
     return _scaffold(
       subtitle: switch (result) {
         Success(:final data) => '${place.name} · 觀測 ${clockText(data.nearest.obsTime)}',

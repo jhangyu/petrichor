@@ -25,6 +25,18 @@ class AppConstants {
   /// 各縣市逐日日出日沒時刻（含民用曙暮光）
   static const String sunTimesDataset = 'A-B0062-001';
 
+  /// 警特報：各縣市生效特報
+  static const String warningsByCountyDataset = 'W-C0033-001';
+
+  /// 警特報：公告（發布時間、有效期間、內文、影響縣市）
+  static const String warningBulletinsDataset = 'W-C0033-002';
+
+  /// 雨量站今日累積（datastore）
+  static const String rainObservationDataset = 'O-A0002-001';
+
+  /// 未來 1 小時雨量預測格點（fileapi 專屬）
+  static const String rainForecast1hDataset = 'F-B0046-001';
+
   /// 單次查詢觀測站數上限（涵蓋全部約 363 站）
   static const int observationStationLimit = 1000;
 

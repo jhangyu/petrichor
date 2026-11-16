@@ -2,7 +2,6 @@ import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import '../../../core/constants/app_constants.dart';
-import '../../../data/repositories/hazard_repository.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../solar_elevation.dart';
 import '../weather_provider.dart';
@@ -30,7 +29,7 @@ List<String> creditedDatasets(WeatherState weather, String county, Result<Object
     if (weather.weekly is Success && datasets != null) datasets.oneWeek,
     if (weather.hourly is Success && datasets != null) datasets.threeDay,
     if (weather.sun is Success) AppConstants.sunTimesDataset,
-    if (warnings is Success) ...[warningsByCountyDataset, warningBulletinsDataset],
+    if (warnings is Success) ...[AppConstants.warningsByCountyDataset, AppConstants.warningBulletinsDataset],
   ];
 }
 

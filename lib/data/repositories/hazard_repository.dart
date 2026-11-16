@@ -8,18 +8,6 @@ import '../../core/constants/app_constants.dart';
 import '../models/hazard_models.dart';
 import '../../core/api/result.dart' show Failure, Result, Success, guardRequest;
 
-/// 警特報：各縣市生效特報
-const String warningsByCountyDataset = 'W-C0033-001';
-
-/// 警特報：公告（發布時間、有效期間、內文、影響縣市）
-const String warningBulletinsDataset = 'W-C0033-002';
-
-/// 雨量站今日累積（datastore）
-const String rainObservationDataset = 'O-A0002-001';
-
-/// 未來 1 小時雨量預測格點（fileapi 專屬）
-const String rainForecast1hDataset = 'F-B0046-001';
-
 final hazardRepositoryProvider = Provider<HazardRepository>((ref) {
   return HazardRepository(ref.watch(dioProvider));
 });
@@ -43,32 +31,32 @@ class HazardRepository {
   Future<Result<ActiveWarnings>> getActiveWarnings() => guardRequest<ActiveWarnings>(
         () async {
           final responses = await Future.wait([
-            _dio.get<Object?>(warningsByCountyDataset),
-            _dio.get<Object?>(warningBulletinsDataset),
+            _dio.get<Object?>(AppConstants.warningsByCountyDataset),
+            _dio.get<Object?>(AppConstants.warningBulletinsDataset),
           ]);
-          final w1 = _datastoreRecords(responses[0].data, warningsByCountyDataset);
-          final w2 = _datastoreRecords(responses[1].data, warningBulletinsDataset);
+          final w1 = _datastoreRecords(responses[0].data, AppConstants.warningsByCountyDataset);
+          final w2 = _datastoreRecords(responses[1].data, AppConstants.warningBulletinsDataset);
           final bulletins = _bulletins(w2);
           final warnings = ActiveWarnings.fromJson(w1, bulletins, clock());
           if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
             return const Failure(
-              '[$warningBulletinsDataset] expected bulletins because $warningsByCountyDataset lists active warnings, got none',
+              '[${AppConstants.warningBulletinsDataset}] expected bulletins because ${AppConstants.warningsByCountyDataset} lists active warnings, got none',
             );
           }
           return Success(warnings);
         },
-        dataset: '$warningsByCountyDataset/$warningBulletinsDataset',
-        parseFailure: (detail) => '[$warningsByCountyDataset/$warningBulletinsDataset] 解析失敗：$detail',
+        dataset: '${AppConstants.warningsByCountyDataset}/${AppConstants.warningBulletinsDataset}',
+        parseFailure: (detail) => '[${AppConstants.warningsByCountyDataset}/${AppConstants.warningBulletinsDataset}] 解析失敗：$detail',
       );
 
   /// 資料集內全部測站（所有縣市），不需要使用者位置。
   Future<Result<List<RainStation>>> getRainStations() => guardRequest<List<RainStation>>(
         () async {
-          final response = await _dio.get<Object?>(rainObservationDataset);
-          return Success(parseRainStations(_datastoreRecords(response.data, rainObservationDataset)));
+          final response = await _dio.get<Object?>(AppConstants.rainObservationDataset);
+          return Success(parseRainStations(_datastoreRecords(response.data, AppConstants.rainObservationDataset)));
         },
-        dataset: rainObservationDataset,
-        parseFailure: (detail) => '[$rainObservationDataset] 解析失敗：$detail',
+        dataset: AppConstants.rainObservationDataset,
+        parseFailure: (detail) => '[${AppConstants.rainObservationDataset}] 解析失敗：$detail',
       );
 
   /// 指定縣市的雨量觀測：該縣市所有測站與離 ([latitude], [longitude]) 最近的有值測站。
@@ -89,25 +77,25 @@ class HazardRepository {
   Result<CountyRainfall> _countyRainfall(List<RainStation> all, String county, double latitude, double longitude) {
     final inCounty = all.where((s) => s.county == county).toList();
     if (inCounty.isEmpty) {
-      return Failure('[$rainObservationDataset] 查無縣市「$county」的雨量站（共 ${all.length} 站，CWA 縣市名須用「臺」）');
+      return Failure('[${AppConstants.rainObservationDataset}] 查無縣市「$county」的雨量站（共 ${all.length} 站，CWA 縣市名須用「臺」）');
     }
     final withValue = inCounty.where((s) => s.todayMm != null).toList();
     if (withValue.isEmpty) {
-      return Failure('[$rainObservationDataset] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
+      return Failure('[${AppConstants.rainObservationDataset}] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
     }
     withValue.sort((a, b) => a.distanceSqTo(latitude, longitude).compareTo(b.distanceSqTo(latitude, longitude)));
     return Success(CountyRainfall(county: county, stations: inCounty, allStations: all, nearest: withValue.first));
   }
 
   /// 1 小時雨量預測整張格點，不需要使用者位置。
-  Future<Result<RainForecastGrid>> getRainForecastGrid() => _fileApi(rainForecast1hDataset, RainForecastGrid.fromJson);
+  Future<Result<RainForecastGrid>> getRainForecastGrid() => _fileApi(AppConstants.rainForecast1hDataset, RainForecastGrid.fromJson);
 
   /// 使用者位置的 1 小時雨量預測；座標不在格點範圍內 → [Failure]。
   Future<Result<RainForecast>> getRainForecast({required double latitude, required double longitude}) async {
     return switch (await getRainForecastGrid()) {
       Success(data: final g) => g.contains(latitude, longitude)
           ? Success(RainForecast(grid: g, mmAtLocation: g.valueAt(latitude, longitude)))
-          : Failure<RainForecast>('[$rainForecast1hDataset] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
+          : Failure<RainForecast>('[${AppConstants.rainForecast1hDataset}] 座標 ($latitude, $longitude) 不在預報格點範圍內'),
       final Failure<RainForecastGrid> f => f.retype<RainForecast>(),
     };
   }
