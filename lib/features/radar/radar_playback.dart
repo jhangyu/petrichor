@@ -151,6 +151,22 @@ List<RadarSlot> radarFailedSlots(List<RadarSlot> slots) => [
 /// Number of slots ready to show.
 int radarReadyCount(List<RadarSlot> slots) => slots.where((s) => s.state == RadarSlotState.ready).length;
 
+/// Nearest ready slot before [index]; null when none.
+int? radarPreviousReady(List<RadarSlot> slots, int index) {
+  for (var i = index - 1; i >= 0; i--) {
+    if (slots[i].state == RadarSlotState.ready) return i;
+  }
+  return null;
+}
+
+/// Nearest ready slot after [index]; null when none.
+int? radarNextReady(List<RadarSlot> slots, int index) {
+  for (var i = index + 1; i < slots.length; i++) {
+    if (slots[i].state == RadarSlotState.ready) return i;
+  }
+  return null;
+}
+
 /// Why no slot can be shown: the list error, else every failed slot's error joined by 「；」.
 Object radarNoFrameError(RadarLoop loop, List<RadarSlot> failed) =>
     loop.listError ?? failed.map((s) => s.error).join('；');

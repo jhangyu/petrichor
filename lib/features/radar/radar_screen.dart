@@ -29,6 +29,7 @@ import 'radar_provider.dart';
 import 'widgets/playback_card.dart';
 import 'widgets/radar_legend.dart';
 import 'widgets/radar_map_view.dart';
+import 'widgets/radar_opacity.dart';
 import 'widgets/station_layers.dart';
 
 String? _stationName(String id) => radarStations.where((s) => s.datasetId == id).firstOrNull?.name;
@@ -428,27 +429,6 @@ class _RadarView {
   /// Whether the 資料來源 line shows; false on loading / error frames.
   final bool showSourceLine;
   final bool loading;
-}
-
-/// Shown above the map when the opacity setting failed: unreadable saved value
-/// ([overlayHidden]: the overlay is hidden until reset) or a failed save (the
-/// overlay stays drawn with the value chosen this session).
-class RadarOpacityErrorBanner extends StatelessWidget {
-  const RadarOpacityErrorBanner({super.key, required this.error, required this.overlayHidden, required this.onReset});
-
-  final Object error;
-  final bool overlayHidden;
-  final VoidCallback onReset;
-
-  @override
-  Widget build(BuildContext context) {
-    return StatusBanner(
-      tone: StatusTone.error,
-      title: overlayHidden ? '雷達疊圖已隱藏：儲存的透明度設定無法讀取' : '透明度設定無法儲存：本次使用中的值仍有效，重新啟動後會恢復',
-      text: overlayHidden ? '$error。重設後即可再顯示雷達疊圖。' : '$error。重設會再試一次儲存。',
-      actions: [AppButton(label: '重設為 $radarOpacityDefaultPercent%', small: true, onPressed: onReset)],
-    );
-  }
 }
 
 /// Most failed frames listed in the expandable details; the title always shows

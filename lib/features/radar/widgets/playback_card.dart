@@ -9,17 +9,8 @@ import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
 import '../../../data/radar/radar_loop.dart';
 import '../radar_playback.dart';
-import '../radar_provider.dart' show radarOpacityMaxPercent, radarOpacityMinPercent, radarOpacityStepPercent;
 import 'radar_legend.dart';
-
-const _sliderTheme = SliderThemeData(
-  trackHeight: AppSize.sliderTrack,
-  activeTrackColor: AppPalette.brandBg,
-  inactiveTrackColor: AppPalette.strokeAccessible,
-  thumbColor: AppPalette.brandBg,
-  overlayColor: AppPalette.brandBgSubtle,
-  thumbShape: RoundSliderThumbShape(enabledThumbRadius: AppSize.sliderThumb / 2),
-);
+import 'radar_opacity.dart';
 
 /// What the playback card shows once the loop's times are known.
 class PlaybackFrames {
@@ -79,20 +70,6 @@ class PlaybackFrames {
 
   bool _ready(int i) => slots[i].state == RadarSlotState.ready;
 
-  /// Nearest ready slot before / after [index]; null when none.
-  int? get previousReady {
-    for (var i = index - 1; i >= 0; i--) {
-      if (_ready(i)) return i;
-    }
-    return null;
-  }
-
-  int? get nextReady {
-    for (var i = index + 1; i < slots.length; i++) {
-      if (_ready(i)) return i;
-    }
-    return null;
-  }
 }
 
 /// `動畫播放` card. [playback] null = controls disabled (loading, or a source
@@ -171,7 +148,7 @@ class _TimeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = f.slots.length;
-    final isLatest = f.nextReady == null;
+    final isLatest = radarNextReady(f.slots, f.index) == null;
     final hours = f.window.inHours;
     // Wraps the caption under the time when both do not fit on one line.
     return Wrap(
@@ -209,8 +186,8 @@ class _Controls extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = playback;
     final last = f == null ? 0 : f.slots.length - 1;
-    final previous = f?.previousReady;
-    final next = f?.nextReady;
+    final previous = f == null ? null : radarPreviousReady(f.slots, f.index);
+    final next = f == null ? null : radarNextReady(f.slots, f.index);
     return Row(
       spacing: AppSpace.s8,
       children: [
@@ -240,7 +217,7 @@ class _Controls extends StatelessWidget {
           child: loading
               ? const Skeleton(height: AppSize.sliderThumb)
               : SliderTheme(
-                  data: _sliderTheme.copyWith(
+                  data: radarSliderTheme.copyWith(
                     disabledActiveTrackColor: AppPalette.bgDisabled,
                     disabledInactiveTrackColor: AppPalette.bgDisabled,
                     disabledThumbColor: AppPalette.fgDisabled,
@@ -529,56 +506,6 @@ class _Field extends StatelessWidget {
       children: [
         Text(label, style: _fieldLabel),
         child,
-      ],
-    );
-  }
-}
-
-/// `.slider`: 疊圖透明度 10–100 % (the [PlaybackCard.opacity] content).
-class RadarOpacitySlider extends StatelessWidget {
-  const RadarOpacitySlider({super.key, required this.percent, required this.onChanged});
-
-  final int percent;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      spacing: AppSpace.s4,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('疊圖透明度', style: AppType.body1.copyWith(color: AppPalette.fg1)),
-            Text(
-              '$percent%',
-              style: AppType.body1.copyWith(
-                color: AppPalette.fg1,
-                fontWeight: FontWeight.w600,
-                fontFeatures: AppType.tabular,
-              ),
-            ),
-          ],
-        ),
-        SliderTheme(
-          data: _sliderTheme,
-          child: Slider(
-            min: radarOpacityMinPercent.toDouble(),
-            max: radarOpacityMaxPercent.toDouble(),
-            divisions: (radarOpacityMaxPercent - radarOpacityMinPercent) ~/ radarOpacityStepPercent,
-            value: percent.toDouble(),
-            semanticFormatterCallback: (_) => '疊圖透明度',
-            onChanged: (v) => onChanged(v.round()),
-          ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            for (final v in const [radarOpacityMinPercent, radarOpacityMaxPercent])
-              Text('$v%', style: AppType.caption1.copyWith(color: AppPalette.fg3)),
-          ],
-        ),
       ],
     );
   }
