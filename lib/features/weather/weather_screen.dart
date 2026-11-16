@@ -19,7 +19,7 @@ import '../hazard/warnings/warning_groups.dart';
 import '../hazard/warnings/warnings_section.dart';
 import '../location/place_provider.dart';
 import 'weather_provider.dart';
-import 'widgets/forecast_72h_card.dart';
+import 'widgets/hourly_forecast_card.dart';
 import 'weather_logic.dart';
 import 'widgets/now_card.dart';
 import 'widgets/weekly_card.dart';
@@ -186,7 +186,7 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
               now: now,
               onRetry: refresh,
             ),
-            forecast: Forecast72hCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
+            forecast: HourlyForecastCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
           ),
         ),
         AppGridItem.full(child: WarningsSection(key: _warningsKey, county: place.county)),

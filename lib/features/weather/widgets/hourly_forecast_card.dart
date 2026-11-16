@@ -17,8 +17,8 @@ const _forecastSkeletonHeight = 456.0;
 /// `.fc72`: F-D0047-061 three-day township forecast as a summary row and a
 /// horizontally scrolling chart (temperature line, 體感 dashed line, weather
 /// icons, 3-hour 降雨機率 bars, wind), placed by time.
-class Forecast72hCard extends StatelessWidget {
-  const Forecast72hCard({
+class HourlyForecastCard extends StatelessWidget {
+  const HourlyForecastCard({
     super.key,
     required this.hourly,
     required this.issuedAt,
