@@ -50,7 +50,7 @@ class AppButton extends StatelessWidget {
           AppPalette.transparent,
         ),
     };
-    final disabledBg =
+    final disabledBackground =
         variant == AppButtonVariant.subtle ? background : AppPalette.backgroundDisabled;
     final disabledStroke =
         variant == AppButtonVariant.subtle ? stroke : AppPalette.strokeDisabled;
@@ -78,7 +78,7 @@ class AppButton extends StatelessWidget {
         (s) => s.contains(WidgetState.disabled) ? AppPalette.foregroundDisabled : foreground,
       ),
       backgroundColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.disabled)) return disabledBg;
+        if (s.contains(WidgetState.disabled)) return disabledBackground;
         if (s.contains(WidgetState.pressed)) return backgroundPressed;
         if (s.contains(WidgetState.hovered)) return backgroundHover;
         return background;
