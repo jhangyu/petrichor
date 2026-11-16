@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_tokens.dart';
 
-enum WeatherGlyph { sun, partly, cloud, rain, thunder, fog, snow, unknown }
+enum WeatherGlyph { sun, partlyCloudy, cloud, rain, thunder, fog, snow, unknown }
 
 /// Buckets a CWA 天氣現象 text (forecast Wx or observation Weather) into an icon.
 /// Precipitation wins over sky cover (「多雲短暫雨」 → rain).
@@ -14,7 +14,7 @@ WeatherGlyph weatherGlyph(String? text) {
   if (has('雨')) return WeatherGlyph.rain;
   if (has('霧') || has('霾') || has('靄')) return WeatherGlyph.fog;
   final cloudy = has('雲') || has('陰');
-  if (has('晴')) return cloudy ? WeatherGlyph.partly : WeatherGlyph.sun;
+  if (has('晴')) return cloudy ? WeatherGlyph.partlyCloudy : WeatherGlyph.sun;
   if (cloudy) return WeatherGlyph.cloud;
   return WeatherGlyph.unknown;
 }
@@ -22,7 +22,7 @@ WeatherGlyph weatherGlyph(String? text) {
 /// Icon and tint for a [WeatherGlyph] (`.icon--sun/cloud/rain/thunder/fog`).
 (IconData, Color) weatherGlyphStyle(WeatherGlyph glyph) => switch (glyph) {
   WeatherGlyph.sun => (Icons.wb_sunny_outlined, AppPalette.iconSun),
-  WeatherGlyph.partly => (Icons.wb_cloudy_outlined, AppPalette.iconSun),
+  WeatherGlyph.partlyCloudy => (Icons.wb_cloudy_outlined, AppPalette.iconSun),
   WeatherGlyph.cloud => (Icons.cloud_outlined, AppPalette.iconCloud),
   WeatherGlyph.rain => (Icons.umbrella_outlined, AppPalette.iconRain),
   WeatherGlyph.thunder => (Icons.thunderstorm, AppPalette.iconThunder),
@@ -32,7 +32,7 @@ WeatherGlyph weatherGlyph(String? text) {
 };
 
 /// Weather icon for a CWA 天氣現象 text; [text] is the semantics label.
-/// [night] swaps the sun glyphs for moon glyphs (sun → moon, partly → moon-partly).
+/// [night] swaps the sun glyphs for moon glyphs (sun → moon, partlyCloudy → moon-partly).
 class WeatherGlyphIcon extends StatelessWidget {
   const WeatherGlyphIcon({super.key, required this.text, required this.size, this.night = false});
 
@@ -45,7 +45,7 @@ class WeatherGlyphIcon extends StatelessWidget {
     final glyph = weatherGlyph(text);
     final (icon, color) = switch (glyph) {
       WeatherGlyph.sun when night => (Icons.nightlight_outlined, AppPalette.brandForeground),
-      WeatherGlyph.partly when night => (Icons.nights_stay_outlined, AppPalette.brandForeground),
+      WeatherGlyph.partlyCloudy when night => (Icons.nights_stay_outlined, AppPalette.brandForeground),
       _ => weatherGlyphStyle(glyph),
     };
     return Icon(icon, size: size, color: color, semanticLabel: text);

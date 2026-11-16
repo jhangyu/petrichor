@@ -193,7 +193,7 @@ void main() {
 
   test('weather text maps to icon buckets with precipitation first', () {
     expect(weatherGlyph('晴'), WeatherGlyph.sun);
-    expect(weatherGlyph('多雲時晴'), WeatherGlyph.partly);
+    expect(weatherGlyph('多雲時晴'), WeatherGlyph.partlyCloudy);
     expect(weatherGlyph('陰'), WeatherGlyph.cloud);
     expect(weatherGlyph('多雲短暫陣雨'), WeatherGlyph.rain);
     expect(weatherGlyph('多雲午後短暫雷陣雨'), WeatherGlyph.thunder);
