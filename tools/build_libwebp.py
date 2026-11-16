@@ -11,7 +11,7 @@
           android arm64-v8a = arm64, armeabi-v7a = arm, x86_64 = x64)
 
 Prints the absolute path of the built library as the last stdout line.
-Exits nonzero with a message on any failure. stdlib only; Python >= 3.12.
+Exits nonzero with a message on any failure. stdlib only; Python >= 3.9 (Xcode runs the hook with /usr/bin/python3).
 
 How it compiles: the needed libwebp .c files (src/dec, src/enc, src/dsp,
 src/utils, sharpyuv) and native/radar_webp/radar_webp.c are compiled directly
@@ -44,7 +44,7 @@ import sys
 import tarfile
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 LIBWEBP_VERSION = "1.6.0"
 LIBWEBP_URL = (
@@ -129,8 +129,26 @@ def extract(tarball: Path, cache_dir: Path) -> Path:
         return source
     if source.exists():
         shutil.rmtree(source)
+    top = source.name
     with tarfile.open(tarball) as tar:
-        tar.extractall(cache_dir, filter="data")
+        members = tar.getmembers()
+        for member in members:
+            parts = PurePosixPath(member.name).parts
+            if (member.name.startswith("/") or not parts or parts[0] != top or ".." in parts
+                    or any(":" in p or "\\" in p for p in parts)
+                    or not (member.isfile() or member.isdir())):
+                raise BuildError(
+                    f"unsafe tar member {member.name!r} in {tarball}: expected a regular file "
+                    f"or directory under {top}/ (no absolute path, '..', drive, or link)"
+                )
+        for member in members:
+            target = cache_dir.joinpath(*PurePosixPath(member.name).parts)
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tar.extractfile(member) as src, target.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
     if not header.is_file():
         raise BuildError(f"expected {source}/src/webp/encode.h after extracting {tarball}")
     marker.write_text(LIBWEBP_SHA256)
