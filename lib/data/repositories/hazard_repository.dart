@@ -81,7 +81,7 @@ class HazardRepository {
     if (withValue.isEmpty) {
       return Failure('[${AppConstants.rainObservationDataset}] 縣市「$county」的 ${inCounty.length} 個雨量站今日累積皆為缺值');
     }
-    withValue.sort((a, b) => a.distanceSqTo(latitude, longitude).compareTo(b.distanceSqTo(latitude, longitude)));
+    withValue.sort((a, b) => a.squaredDistanceTo(latitude, longitude).compareTo(b.squaredDistanceTo(latitude, longitude)));
     return Success(CountyRainfall(county: county, stations: inCounty, allStations: all, nearest: withValue.first));
   }
 

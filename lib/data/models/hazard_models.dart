@@ -254,10 +254,10 @@ class RainStation {
     );
   }
 
-  /// 與 (lat, lon) 的等距矩形近似距離平方（度²，經度已乘 cos 緯度）
-  double distanceSqTo(double lat, double lon) {
-    final dLat = latitude - lat;
-    final dLon = (longitude - lon) * math.cos(lat * math.pi / 180);
+  /// 與 (latitude, longitude) 的等距矩形近似距離平方（度²，經度已乘 cos 緯度）
+  double squaredDistanceTo(double latitude, double longitude) {
+    final dLat = this.latitude - latitude;
+    final dLon = (this.longitude - longitude) * math.cos(latitude * math.pi / 180);
     return dLat * dLat + dLon * dLon;
   }
 }
