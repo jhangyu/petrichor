@@ -8,6 +8,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/status.dart';
+import '../api_key_status.dart';
 import 'settings_parts.dart';
 
 /// Token 設定 group: five states (未設定 / 驗證中 / 有效 / 無效 / 無法驗證) plus an unreadable-key reset.

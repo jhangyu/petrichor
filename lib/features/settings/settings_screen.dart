@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api/api_key.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/layout/adaptive.dart';
 import '../../core/theme/app_tokens.dart';
@@ -10,6 +9,7 @@ import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../core/api/result.dart';
 import '../place/place_provider.dart';
+import 'api_key_status.dart';
 import 'place_picker.dart';
 import 'widgets/notification_card.dart';
 import 'widgets/place_settings_card.dart';
