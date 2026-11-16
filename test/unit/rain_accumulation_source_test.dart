@@ -84,9 +84,9 @@ void main() {
     expect(radarWebpSize(processed.webp), (width: accumGridWidth, height: rowMap.length));
     var coloured = 0;
     for (var j = 0; j < rowMap.length; j++) {
-      final src = (accumGridHeight - 1 - rowMap[j]) * accumGridWidth;
+      final source = (accumGridHeight - 1 - rowMap[j]) * accumGridWidth;
       for (var x = 0; x < accumGridWidth; x++) {
-        final index = accumColorIndex(sum[src + x]);
+        final index = accumColorIndex(sum[source + x]);
         final o = (j * accumGridWidth + x) * 4;
         final argb = (pixels[o + 3] << 24) | (pixels[o] << 16) | (pixels[o + 1] << 8) | pixels[o + 2];
         final want = index < 0 ? 0 : AppPalette.rainfallMapScale[index].toARGB32();
@@ -222,8 +222,8 @@ void main() {
     });
 
     Future<RadarFrame> load({DateTime? now}) async {
-      final repo = RadarFrameRepository(Dio(), cacheRoot: () async => root, clock: () => now ?? _now);
-      final loop = await repo.watch(source(4), window: accumGridInterval).last;
+      final repository = RadarFrameRepository(Dio(), cacheRoot: () async => root, clock: () => now ?? _now);
+      final loop = await repository.watch(source(4), window: accumGridInterval).last;
       expect(loop.slots.single.state, RadarSlotState.ready, reason: '${loop.slots.single}');
       return loop.slots.single.frame!;
     }
