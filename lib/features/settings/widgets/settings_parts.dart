@@ -12,7 +12,7 @@ String placeLabel(Place p) => '${p.county} ${p.town}';
 
 /// 「07:00」 for a minute of day.
 String clockOfMinute(int minute) =>
-    '${twoDigits(minute ~/ 60)}:${twoDigits(minute % 60)}';
+    '${twoDigits(minute ~/ Duration.minutesPerHour)}:${twoDigits(minute % Duration.minutesPerHour)}';
 
 /// Error banner for unreadable stored data, with at most one small recovery button.
 StatusBanner settingsErrorBanner({

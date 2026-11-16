@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_key.dart';
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../core/widgets/inputs.dart';
@@ -41,7 +42,7 @@ _StatusView _view(ApiKeyStatus status) {
       ),
     ApiKeyValid(:final checkedAt) => (
         label: '有效', tone: BadgeTone.success, icon: Icons.check_circle_outline,
-        secondary: '驗證於 ${clockOfMinute(checkedAt.hour * 60 + checkedAt.minute)} · 測試請求成功',
+        secondary: '驗證於 ${twoDigits(checkedAt.hour)}:${twoDigits(checkedAt.minute)} · 測試請求成功',
         fieldError: null, fieldHelper: null, unreadable: false,
       ),
     ApiKeyUnchecked() => (

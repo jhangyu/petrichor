@@ -12,11 +12,11 @@ enum NotifyToggle { master, rain, quiet }
 enum QuietEdge { start, end }
 
 /// Minutes in a day; valid minute-of-day values are 0 ..< minutesPerDay.
-const minutesPerDay = 24 * 60;
+const minutesPerDay = Duration.minutesPerDay;
 
 const _warningAreasKey = 'notify.warningAreas';
-const _defaultQuietStartMinute = 22 * 60;
-const _defaultQuietEndMinute = 7 * 60;
+const _defaultQuietStartMinute = 22 * Duration.minutesPerHour;
+const _defaultQuietEndMinute = 7 * Duration.minutesPerHour;
 
 /// A notification on/off switch (stored as 1 / 0), off on a fresh install.
 class NotifyToggleSetting extends IntSetting<bool> {

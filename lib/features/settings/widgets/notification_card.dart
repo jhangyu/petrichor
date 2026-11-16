@@ -26,12 +26,12 @@ class _NotificationSettingsCardState extends ConsumerState<NotificationSettingsC
   Future<void> _pickTime(QuietEdge edge, int current, int other) async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+      initialTime: TimeOfDay(hour: current ~/ Duration.minutesPerHour, minute: current % Duration.minutesPerHour),
       builder: (context, child) =>
           MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), child: child!),
     );
     if (picked == null || !mounted) return;
-    final minute = picked.hour * 60 + picked.minute;
+    final minute = picked.hour * Duration.minutesPerHour + picked.minute;
     if (minute == other) {
       final (start, end) = edge == QuietEdge.start ? (minute, other) : (other, minute);
       setState(() => _quietError = '開始與結束時間相同，靜音時段無效。實際：${clockOfMinute(start)} 至 ${clockOfMinute(end)}');
