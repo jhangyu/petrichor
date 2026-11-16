@@ -44,7 +44,7 @@ class _PlacePickerState extends ConsumerState<PlacePicker> {
     final alreadySaved = town != null && saved.contains(town);
     // ponytail: a query that matches no county (e.g. a town name) keeps every chip so the user can still pick one.
     final shownCounties = counties.isEmpty ? _counties : counties;
-    final scrollChips = WindowSizeClass.of(context).width == WindowWidthClass.compact;
+    final scrollChips = WindowSizeClass.of(context).isCompactWidth;
     final chips = [
       for (final c in shownCounties)
         AppChip(
@@ -197,29 +197,9 @@ class _TownList extends ConsumerWidget {
                 ),
             ];
             if (!AppTwoPane.fits(constraints.maxWidth)) return AppList(children: rows);
-            return AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: [for (final r in rows) _RowTile(row: r)]);
+            return AppGrid(minColumnWidth: AppLayout.paneMinWidth, children: [for (final r in rows) AppList(children: [r])]);
           }),
       ],
-    );
-  }
-}
-
-/// One [AppListRow] as its own rounded card, for multi-column town grids ([AppList] assumes one column).
-class _RowTile extends StatelessWidget {
-  const _RowTile({required this.row});
-
-  final AppListRow row;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppPalette.bg1,
-        borderRadius: BorderRadius.circular(AppRadius.medium),
-        boxShadow: AppShadows.s2,
-      ),
-      child: row,
     );
   }
 }

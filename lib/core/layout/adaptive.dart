@@ -43,6 +43,9 @@ class WindowSizeClass {
   /// the page scroll.
   bool get isShortHeight => height == WindowHeightClass.compact;
 
+  /// Phone-width window (width class compact).
+  bool get isCompactWidth => width == WindowWidthClass.compact;
+
   /// Side navigation (rail) instead of the bottom bar.
   bool get usesRail => width != WindowWidthClass.compact;
 
