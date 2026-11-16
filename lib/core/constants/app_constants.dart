@@ -97,10 +97,10 @@ class AppConstants {
   // -------------------------------------------------------------------------
 
   /// 連線逾時（毫秒）
-  static const int connectTimeoutMs = 15000;
+  static const int connectTimeoutMilliseconds = 15000;
 
   /// 接收逾時（毫秒）
-  static const int receiveTimeoutMs = 15000;
+  static const int receiveTimeoutMilliseconds = 15000;
 
   /// fileapi 先回 302 再回 200，最多跟隨的轉址次數
   static const int maxRedirects = 5;

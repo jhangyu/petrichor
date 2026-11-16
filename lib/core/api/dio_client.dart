@@ -9,8 +9,8 @@ import 'api_key.dart';
 BaseOptions _commonOptions({String baseUrl = '', Map<String, dynamic>? queryParameters}) => BaseOptions(
       baseUrl: baseUrl,
       queryParameters: queryParameters,
-      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMs),
-      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMs),
+      connectTimeout: Duration(milliseconds: AppConstants.connectTimeoutMilliseconds),
+      receiveTimeout: Duration(milliseconds: AppConstants.receiveTimeoutMilliseconds),
       followRedirects: true,
       maxRedirects: AppConstants.maxRedirects,
       headers: {'Accept': 'application/json'},
