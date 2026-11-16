@@ -54,7 +54,7 @@ class RadarImageGeometry {
 
 /// A processed frame: lossless WebP (transparent background, opaque echo in the
 /// source colours) and the echo statistics of the source image.
-typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStatistics stats});
+typedef ProcessedRadarFrame = ({Uint8List webp, RadarEchoStatistics statistics});
 
 /// RGBA pixel (bytes R, G, B, A in memory, little-endian host) per palette index
 /// of the processed image: index 0 = transparent, index d + 1 = dBZ d
@@ -73,35 +73,35 @@ Uint32List _rgbaOfIndex(List<int> colours) {
 /// key echo pixels to palette indices (decorations → transparent), count the
 /// echo statistics (on the full-resolution source), copy each index row,
 /// sampled nearest-neighbour to [_radarStoredWidth] px wide, to the output rows
-/// [g.rowMap] maps to it, encode one lossless WebP. Pure
+/// [geometry.rowMap] maps to it, encode one lossless WebP. Pure
 /// and synchronous: run it in a background isolate.
-ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
-  final width = g.size;
-  final height = g.size;
+ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry geometry) {
+  final width = geometry.size;
+  final height = geometry.size;
   final echoBits = _colourBits(radarEchoPalette);
   final indexOf = {for (final (d, c) in radarEchoPalette.indexed) c: d + 1};
   final counts = List<int>.filled(radarEchoPalette.length, 0);
-  for (var j = 0; j < g.rowMap.length; j++) {
-    if (g.rowMap[j] < 0 || g.rowMap[j] >= g.size || (j > 0 && g.rowMap[j] < g.rowMap[j - 1])) {
-      throw ArgumentError('radar image: expected a non-decreasing row map within source rows 0..${g.size - 1}, '
-          'output row $j maps to ${g.rowMap[j]} (previous ${j > 0 ? g.rowMap[j - 1] : 'none'})');
+  for (var j = 0; j < geometry.rowMap.length; j++) {
+    if (geometry.rowMap[j] < 0 || geometry.rowMap[j] >= geometry.size || (j > 0 && geometry.rowMap[j] < geometry.rowMap[j - 1])) {
+      throw ArgumentError('radar image: expected a non-decreasing row map within source rows 0..${geometry.size - 1}, '
+          'output row $j maps to ${geometry.rowMap[j]} (previous ${j > 0 ? geometry.rowMap[j - 1] : 'none'})');
     }
   }
   final outWidth = min(width, _radarStoredWidth);
-  final outHeight = (g.rowMap.length * outWidth / width).round();
-  final outRows = [for (var k = 0; k < outHeight; k++) g.rowMap[k * g.rowMap.length ~/ outHeight]];
+  final outHeight = (geometry.rowMap.length * outWidth / width).round();
+  final outRows = [for (var k = 0; k < outHeight; k++) geometry.rowMap[k * geometry.rowMap.length ~/ outHeight]];
   final outColumns = Uint16List.fromList([for (var x = 0; x < outWidth; x++) x * width ~/ outWidth]);
   final rgbaOfIndex = _rgbaOfIndex(radarEchoPalette);
   final row = Uint8List(width);
   var k = 0;
-  final webp = encodeRadarWebp(outWidth, outHeight, (out) => readPngRgbRows(png, g.size, (y, rgb) {
+  final webp = encodeRadarWebp(outWidth, outHeight, (out) => readPngRgbRows(png, geometry.size, (y, rgb) {
     row.fillRange(0, width, 0);
     for (var x = 0; x < width; x++) {
       final si = x * 3;
       final c = (rgb[si] << 16) | (rgb[si + 1] << 8) | rgb[si + 2];
       if (echoBits[c >> 5] & (1 << (c & 31)) != 0) row[x] = indexOf[c]!;
     }
-    for (final rect in g.decorations) {
+    for (final rect in geometry.decorations) {
       if (y >= rect.top && y < rect.bottom) row.fillRange(rect.left, min(rect.right, width), 0);
     }
     for (var x = 0; x < width; x++) {
@@ -118,8 +118,8 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   }));
   return (
     webp: webp,
-    stats: RadarEchoStatistics(
-      bounds: g.bounds,
+    statistics: RadarEchoStatistics(
+      bounds: geometry.bounds,
       imageWidth: width,
       imageHeight: height,
       pixelsPerDbz: counts,

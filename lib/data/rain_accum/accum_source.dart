@@ -212,7 +212,7 @@ ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialI
   });
   return (
     webp: webp,
-    stats: RadarEchoStatistics(
+    statistics: RadarEchoStatistics(
       bounds: accumBounds,
       imageWidth: accumGridWidth,
       imageHeight: accumGridHeight,

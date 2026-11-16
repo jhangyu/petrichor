@@ -37,7 +37,7 @@ void main() {
           rowMap: List.generate(64, (i) => i),
           decorations: decorations,
         ),
-      ).stats;
+      ).statistics;
 
   test('per-dBZ counts and strongest level of a real frame crop', () {
     final s = cropStats();

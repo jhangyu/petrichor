@@ -72,7 +72,7 @@ void main() {
         expect(out.getPixel(x, j), keyed.getPixel(x, rowMap[j]), reason: 'output ($x,$j)');
       }
     }
-    expect(p.stats.pixelsPerDbz.reduce((a, b) => a + b), 1607);
+    expect(p.statistics.pixelsPerDbz.reduce((a, b) => a + b), 1607);
   });
 
   test('wrong source size and a row map that is not non-decreasing fail loudly', () {
@@ -120,8 +120,8 @@ void main() {
         }
       }
     }
-    expect(p.stats.pixelsPerDbz, counts);
-    expect((p.stats.imageWidth, p.stats.imageHeight), (size, size));
+    expect(p.statistics.pixelsPerDbz, counts);
+    expect((p.statistics.imageWidth, p.statistics.imageHeight), (size, size));
   });
 
   test('row reader returns the decoded pixels for every PNG filter and rejects other formats', () {

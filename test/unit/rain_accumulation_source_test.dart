@@ -95,8 +95,8 @@ void main() {
       }
     }
     expect(coloured, greaterThan(0));
-    expect(processed.stats.bounds, accumBounds);
-    expect(processed.stats.peakMm, sum.reduce(max) / accumRawPerMm);
+    expect(processed.statistics.bounds, accumBounds);
+    expect(processed.statistics.peakMm, sum.reduce(max) / accumRawPerMm);
   }
 
   test('frame list per window: S = newest - W, frames S + step*k for k = 1..N, last = newest', () async {
@@ -179,7 +179,7 @@ void main() {
     expect(frame.time, _newest);
     final processed = await render(s, frame);
     expectFrame(processed, accumFrameSum([for (final h in ['1050', '0950', '0850', '0750']) _grid('g01_20261115_$h')]));
-    expect(processed.stats.peakMm, greaterThan(1));
+    expect(processed.statistics.peakMm, greaterThan(1));
   });
 
   test('first 24 h frame is the 1 h grid ending at S + 1 h', () async {

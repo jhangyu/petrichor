@@ -18,12 +18,12 @@ void readPngRgbRows(Uint8List png, int size, void Function(int y, Uint8List rgb)
   }
   final data = ByteData.sublistView(png);
   final idat = BytesBuilder(copy: false);
-  var pos = signature.length;
+  var position = signature.length;
   var sawHeader = false;
-  while (pos + chunkHeader <= png.length) {
-    final length = data.getUint32(pos);
-    final type = String.fromCharCodes(png, pos + 4, pos + 8);
-    final body = pos + chunkHeader;
+  while (position + chunkHeader <= png.length) {
+    final length = data.getUint32(position);
+    final type = String.fromCharCodes(png, position + 4, position + 8);
+    final body = position + chunkHeader;
     if (body + length > png.length) {
       throw FormatException('radar image: expected $type chunk of $length bytes at $body, only ${png.length - body} left');
     }
@@ -42,7 +42,7 @@ void readPngRgbRows(Uint8List png, int size, void Function(int y, Uint8List rgb)
     } else if (type == 'IDAT') {
       idat.add(Uint8List.sublistView(png, body, body + length));
     }
-    pos = body + length + chunkCrc;
+    position = body + length + chunkCrc;
   }
   if (!sawHeader) throw const FormatException('radar image: expected an IHDR chunk, found none');
   final rows = _RowSink(size, onRow);
@@ -64,8 +64,8 @@ bool _startsWith(Uint8List bytes, List<int> prefix) {
 class _RowSink implements Sink<List<int>> {
   _RowSink(this.size, this.onRow)
       : rowBytes = size * _bytesPerPixel,
-        cur = Uint8List(size * _bytesPerPixel),
-        prev = Uint8List(size * _bytesPerPixel);
+        currentRow = Uint8List(size * _bytesPerPixel),
+        previousRow = Uint8List(size * _bytesPerPixel);
 
   static const _bytesPerPixel = 3;
   static const _filterNone = 0, _filterSub = 1, _filterUp = 2, _filterAverage = 3, _filterPaeth = 4;
@@ -73,7 +73,7 @@ class _RowSink implements Sink<List<int>> {
   final int size;
   final int rowBytes;
   final void Function(int y, Uint8List rgb) onRow;
-  Uint8List cur, prev;
+  Uint8List currentRow, previousRow;
   int y = 0;
   int filled = 0;
   int? filter;
@@ -91,15 +91,15 @@ class _RowSink implements Sink<List<int>> {
         continue;
       }
       final n = min(rowBytes - filled, chunk.length - i);
-      cur.setRange(filled, filled + n, chunk, i);
+      currentRow.setRange(filled, filled + n, chunk, i);
       filled += n;
       i += n;
       if (filled == rowBytes) {
         _unfilter(f);
-        onRow(y, cur);
-        final done = cur;
-        cur = prev;
-        prev = done;
+        onRow(y, currentRow);
+        final done = currentRow;
+        currentRow = previousRow;
+        previousRow = done;
         y++;
         filled = 0;
         filter = null;
@@ -122,23 +122,23 @@ class _RowSink implements Sink<List<int>> {
         break;
       case _filterSub:
         for (var i = bpp; i < rowBytes; i++) {
-          cur[i] = (cur[i] + cur[i - bpp]) & 0xFF;
+          currentRow[i] = (currentRow[i] + currentRow[i - bpp]) & 0xFF;
         }
       case _filterUp:
         for (var i = 0; i < rowBytes; i++) {
-          cur[i] = (cur[i] + prev[i]) & 0xFF;
+          currentRow[i] = (currentRow[i] + previousRow[i]) & 0xFF;
         }
       case _filterAverage:
         for (var i = 0; i < rowBytes; i++) {
-          final left = i >= bpp ? cur[i - bpp] : 0;
-          cur[i] = (cur[i] + ((left + prev[i]) >> 1)) & 0xFF;
+          final left = i >= bpp ? currentRow[i - bpp] : 0;
+          currentRow[i] = (currentRow[i] + ((left + previousRow[i]) >> 1)) & 0xFF;
         }
       case _filterPaeth:
         for (var i = 0; i < rowBytes; i++) {
-          final a = i >= bpp ? cur[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+          final a = i >= bpp ? currentRow[i - bpp] : 0, b = previousRow[i], c = i >= bpp ? previousRow[i - bpp] : 0;
           final p = a + b - c;
           final pa = (p - a).abs(), pb = (p - b).abs(), pc = (p - c).abs();
-          cur[i] = (cur[i] + (pa <= pb && pa <= pc ? a : (pb <= pc ? b : c))) & 0xFF;
+          currentRow[i] = (currentRow[i] + (pa <= pb && pa <= pc ? a : (pb <= pc ? b : c))) & 0xFF;
         }
     }
   }

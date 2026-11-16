@@ -136,21 +136,21 @@ class RadarFrameRepository {
     // One slot per listed time, oldest first (map insertion order).
     final byTime = [...listed]..sort((a, b) => a.time.compareTo(b.time));
     final slots = <String, RadarSlot>{};
-    for (final f in byTime) {
-      final key = f.cacheKey;
+    for (final frameReference in byTime) {
+      final key = frameReference.cacheKey;
       if (cached.contains(key)) {
         try {
-          if (await source.cachedFrameStale?.call(f, cancel) ?? false) {
+          if (await source.cachedFrameStale?.call(frameReference, cancel) ?? false) {
             ready.remove(key);
           } else {
             await readCached(key);
           }
         } on RadarDataException catch (e) {
-          slots[key] = RadarSlot.failed(f.time, e);
+          slots[key] = RadarSlot.failed(frameReference.time, e);
           continue;
         }
       }
-      slots[key] = switch (ready[key]) { final frame? => RadarSlot.ready(frame), null => RadarSlot.pending(f.time) };
+      slots[key] = switch (ready[key]) { final frame? => RadarSlot.ready(frame), null => RadarSlot.pending(frameReference.time) };
     }
     // Cached frames the next cache-first view would show but the list does not
     // list (an accumulation window that moved by 10 min lists other times):
@@ -158,8 +158,8 @@ class RadarFrameRepository {
     if (byTime.isNotEmpty) {
       final from = byTime.last.time.subtract(window);
       for (final key in cached) {
-        final t = parseUtcStamp(key);
-        if (t.isAfter(from) && !t.isAfter(byTime.last.time) && !slots.containsKey(key)) {
+        final time = parseUtcStamp(key);
+        if (time.isAfter(from) && !time.isAfter(byTime.last.time) && !slots.containsKey(key)) {
           await File('${dir.path}/$key.webp').delete();
           await File('${dir.path}/$key.stats').delete();
         }
@@ -168,7 +168,7 @@ class RadarFrameRepository {
     void sendSlots({required bool loading}) => send([...slots.values], loading: loading);
     sendSlots(loading: true);
 
-    final pending = [for (final f in byTime) if (slots[f.cacheKey]!.state == RadarSlotState.pending) f];
+    final pending = [for (final frameReference in byTime) if (slots[frameReference.cacheKey]!.state == RadarSlotState.pending) frameReference];
     final order = pending.isEmpty ? const <RadarFrameReference>[] : [pending.last, ...pending.sublist(0, pending.length - 1)];
     // Finished slots wait here until every slot before them in [order] is published.
     final finished = <String, RadarSlot>{};
@@ -183,15 +183,15 @@ class RadarFrameRepository {
         token.cancel(e.error);
       }
     });
-    Future<void> fetch(RadarFrameReference f) async {
+    Future<void> fetch(RadarFrameReference frameReference) async {
       if (cancel.cancelError case final e?) throw e;
       final token = CancelToken();
       frameTokens.add(token);
       try {
-        finished[f.cacheKey] = RadarSlot.ready(await _fetch(dir, source.step, f, token));
+        finished[frameReference.cacheKey] = RadarSlot.ready(await _fetch(dir, source.step, frameReference, token));
       } on Exception catch (e) {
         if (_isCancel(e)) rethrow;
-        finished[f.cacheKey] = RadarSlot.failed(f.time, _frameFailure(f, e));
+        finished[frameReference.cacheKey] = RadarSlot.failed(frameReference.time, _frameFailure(frameReference, e));
       } finally {
         frameTokens.remove(token);
       }
@@ -256,9 +256,9 @@ class RadarFrameRepository {
     final key = f.cacheKey;
     final stats = File('${dir.path}/$key.stats');
     final webp = File('${dir.path}/$key.webp');
-    await writeAtomic(stats, processed.stats.toBytes());
+    await writeAtomic(stats, processed.statistics.toBytes());
     await writeAtomic(webp, processed.webp);
-    return _frame(f.time, webp, processed.stats, radarWebpSize(processed.webp));
+    return _frame(f.time, webp, processed.statistics, radarWebpSize(processed.webp));
   }
 
   /// The [RadarPngStep]: download the frame PNG, then [process] it.
@@ -274,12 +274,12 @@ class RadarFrameRepository {
 
 bool _isCancel(Object e) => e is DioException && CancelToken.isCancel(e);
 
-RadarFrame _frame(DateTime time, File webp, RadarEchoStatistics stats, ({int width, int height}) size) => RadarFrame(
+RadarFrame _frame(DateTime time, File webp, RadarEchoStatistics statistics, ({int width, int height}) size) => RadarFrame(
       time: time,
       file: webp,
-      bounds: stats.bounds,
-      significantDbz: stats.hasSignificantEcho ? stats.strongestDbz : null,
-      peakMm: stats.peakMm,
+      bounds: statistics.bounds,
+      significantDbz: statistics.hasSignificantEcho ? statistics.strongestDbz : null,
+      peakMm: statistics.peakMm,
       width: size.width,
       height: size.height,
     );
