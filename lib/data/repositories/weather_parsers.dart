@@ -146,7 +146,7 @@ _StationCounty _stationCounty(Map<String, dynamic> station, double lat, double l
   final county = _text(_dig(station, ['GeoInfo', 'CountyName'])) ??
       (throw FormatException('$path.GeoInfo.CountyName：期望縣市名，實際缺值'));
   final (sLat, sLon) = _wgs84Of(station, path);
-  return _StationCounty(normalizeCwaName(county), _distanceKm(lat, lon, sLat, sLon));
+  return _StationCounty(normalizeCwaPlaceName(county), _distanceKm(lat, lon, sLat, sLon));
 }
 
 (double, double) _wgs84Of(Map<String, dynamic> station, String path) {
@@ -203,7 +203,7 @@ ObservedWind? _observedWind(Object? raw) {
 
 List<Place> _parseTowns(Map<String, dynamic> body, String county) {
   final group = _firstLocationGroup(body);
-  final actual = normalizeCwaName(_text(group['LocationsName']) ?? '');
+  final actual = normalizeCwaPlaceName(_text(group['LocationsName']) ?? '');
   if (actual != county) throw FormatException('LocationsName：期望「$county」，實際「$actual」');
   final list = _list(group['Location'], 'Location');
   if (list.isEmpty) throw FormatException('$county Location：期望至少 1 個鄉鎮，實際 0 個');
@@ -217,7 +217,7 @@ Place _town(Map<String, dynamic> loc, String county, String path) {
   final town = _text(loc['LocationName']) ?? (throw FormatException('$path.LocationName：期望鄉鎮名，實際「${loc['LocationName']}」'));
   return Place(
     county: county,
-    town: normalizeCwaName(town),
+    town: normalizeCwaPlaceName(town),
     latitude: _num(loc['Latitude'], '$path.Latitude') ?? (throw FormatException('$path.Latitude：期望緯度，實際缺值')),
     longitude: _num(loc['Longitude'], '$path.Longitude') ?? (throw FormatException('$path.Longitude：期望經度，實際缺值')),
   );

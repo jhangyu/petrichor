@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/api/result.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/constants/cwa_names.dart';
 import '../../core/time/taiwan_time.dart';
 import '../models/place.dart';
 import '../models/weather_models.dart';
@@ -100,7 +99,7 @@ class WeatherRepository {
 
   /// 取得 [city] 縣市「[now] 所在臺灣曆日」前一日、當日與隔日的日出日沒時刻（[昨天, 今天, 明天]）。
   Future<Result<List<SunDay>>> getSunTimes(String city, DateTime now) {
-    final county = normalizeCwaName(city);
+    final county = normalizeCwaPlaceName(city);
     final today = taiwanWall(now);
     final days = [
       for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) isoDate(today.add(Duration(days: i))),
@@ -124,7 +123,7 @@ class WeatherRepository {
 
   /// 取得 [county] 全部鄉鎮與經緯度（取自該縣市 3 天鄉鎮預報資料集的地點清單）。
   Future<Result<List<Place>>> getTowns(String county) {
-    final name = normalizeCwaName(county);
+    final name = normalizeCwaPlaceName(county);
     final ids = AppConstants.townshipForecastDatasets[name];
     if (ids == null) return Future.value(_unsupportedCounty(county, location: county));
     return _query(
@@ -168,7 +167,7 @@ class WeatherRepository {
   /// 取得 [city] 的 3 天鄉鎮預報（[getHourlyForecast] 同一資料集）發布時間。
   /// datastore 回應不含發布時間，故讀 file API 回應開頭的 `cwaopendata.Dataset.DatasetInfo.IssueTime`。
   Future<Result<DateTime>> getForecastIssueTime(String city) {
-    final county = normalizeCwaName(city);
+    final county = normalizeCwaPlaceName(city);
     final ids = AppConstants.townshipForecastDatasets[county];
     if (ids == null) return Future.value(_unsupportedCounty(city, location: city));
     final dataset = ids.threeDay;
@@ -195,8 +194,8 @@ class WeatherRepository {
     required String Function(({String threeDay, String oneWeek})) datasetOf,
     required T Function(Map<String, dynamic> body, String township) parse,
   }) async {
-    final county = normalizeCwaName(city);
-    final township = normalizeCwaName(district);
+    final county = normalizeCwaPlaceName(city);
+    final township = normalizeCwaPlaceName(district);
     final ids = AppConstants.townshipForecastDatasets[county];
     if (ids == null) return _unsupportedCounty(city, location: '$city$district');
     return _query(

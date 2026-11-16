@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import '../../data/models/place.dart';
 import '../api/result.dart';
-import '../constants/cwa_names.dart';
 
 class LocationData {
   final double latitude;
@@ -24,8 +23,8 @@ class LocationData {
 
   /// Place of this GPS fix (county/town names normalized to 「臺」).
   Place toPlace() => Place(
-        county: normalizeCwaName(city),
-        town: normalizeCwaName(district),
+        county: normalizeCwaPlaceName(city),
+        town: normalizeCwaPlaceName(district),
         latitude: latitude,
         longitude: longitude,
       );
