@@ -213,7 +213,7 @@ ProcessedRadarFrame renderAccumFrame(List<AccumPieceInput> whole, {AccumPartialI
   return (
     webp: webp,
     stats: RadarEchoStatistics(
-      frame: accumBounds,
+      bounds: accumBounds,
       imageWidth: accumGridWidth,
       imageHeight: accumGridHeight,
       // No echo statistics for rain totals: significantDbz stays null.

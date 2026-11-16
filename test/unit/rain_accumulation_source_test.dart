@@ -95,7 +95,7 @@ void main() {
       }
     }
     expect(coloured, greaterThan(0));
-    expect(processed.stats.frame, accumBounds);
+    expect(processed.stats.bounds, accumBounds);
     expect(processed.stats.peakMm, sum.reduce(max) / accumRawPerMm);
   }
 

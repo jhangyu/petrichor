@@ -14,7 +14,7 @@ const _frameMinPixels = 104;
 
 /// Full website-frame stats from per-dBZ [counts].
 RadarEchoStatistics _stats({Map<int, int> counts = const {}}) => RadarEchoStatistics(
-      frame: websiteRadarFrameBounds,
+      bounds: websiteRadarFrameBounds,
       imageWidth: radarFrameSize,
       imageHeight: radarFrameSize,
       pixelsPerDbz: [for (var d = 0; d < radarEchoPalette.length; d++) counts[d] ?? 0],
@@ -73,7 +73,7 @@ void main() {
     final s = cropStats();
     final back = RadarEchoStatistics.fromBytes(s.toBytes(), source: 'mem');
     expect((back.imageWidth, back.imageHeight), (64, 64));
-    expect([back.frame.south, back.frame.west, back.frame.north, back.frame.east],
+    expect([back.bounds.south, back.bounds.west, back.bounds.north, back.bounds.east],
         [cropFrame.south, cropFrame.west, cropFrame.north, cropFrame.east]);
     expect(back.pixelsPerDbz, s.pixelsPerDbz);
     final bytes = s.toBytes();

@@ -277,7 +277,7 @@ bool _isCancel(Object e) => e is DioException && CancelToken.isCancel(e);
 RadarFrame _frame(DateTime time, File webp, RadarEchoStatistics stats, ({int width, int height}) size) => RadarFrame(
       time: time,
       file: webp,
-      bounds: stats.frame,
+      bounds: stats.bounds,
       significantDbz: stats.hasSignificantEcho ? stats.strongestDbz : null,
       peakMm: stats.peakMm,
       width: size.width,

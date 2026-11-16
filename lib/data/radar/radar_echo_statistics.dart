@@ -45,7 +45,7 @@ const _frameDoubles = 4;
 
 class RadarEchoStatistics {
   /// Extent of the source image (linear in latitude and longitude).
-  final LatLngBounds frame;
+  final LatLngBounds bounds;
   final int imageWidth;
   final int imageHeight;
 
@@ -57,7 +57,7 @@ class RadarEchoStatistics {
   final double? peakMm;
 
   RadarEchoStatistics({
-    required this.frame,
+    required this.bounds,
     required this.imageWidth,
     required this.imageHeight,
     required this.pixelsPerDbz,
@@ -72,9 +72,9 @@ class RadarEchoStatistics {
 
   /// Pixels needed for [radarEchoMinAreaKm2] at this image's scale.
   int get minPixels {
-    final midLat = (frame.north + frame.south) / 2;
-    final pxKm2 = (frame.north - frame.south) / imageHeight * _earthKmPerDegree *
-        (frame.east - frame.west) / imageWidth * _earthKmPerDegree * cos(midLat * pi / 180);
+    final midLat = (bounds.north + bounds.south) / 2;
+    final pxKm2 = (bounds.north - bounds.south) / imageHeight * _earthKmPerDegree *
+        (bounds.east - bounds.west) / imageWidth * _earthKmPerDegree * cos(midLat * pi / 180);
     return (radarEchoMinAreaKm2 / pxKm2).ceil();
   }
 
@@ -94,7 +94,7 @@ class RadarEchoStatistics {
 
   Uint8List toBytes() {
     final words = Uint32List.fromList([imageWidth, imageHeight]);
-    final doubles = Float64List.fromList([frame.south, frame.west, frame.north, frame.east]);
+    final doubles = Float64List.fromList([bounds.south, bounds.west, bounds.north, bounds.east]);
     return (BytesBuilder(copy: false)
           ..add(words.buffer.asUint8List())
           ..add(doubles.buffer.asUint8List())
@@ -117,7 +117,7 @@ class RadarEchoStatistics {
     int word(int offset) => data.getUint32(offset, Endian.host);
     double float(int i) => data.getFloat64(_headerWords * wordBytes + i * doubleBytes, Endian.host);
     return RadarEchoStatistics(
-      frame: LatLngBounds(LatLng(float(0), float(1)), LatLng(float(2), float(3))),
+      bounds: LatLngBounds(LatLng(float(0), float(1)), LatLng(float(2), float(3))),
       imageWidth: word(0),
       imageHeight: word(wordBytes),
       pixelsPerDbz: [for (var d = 0; d < radarEchoPalette.length; d++) word(countsAt + d * wordBytes)],

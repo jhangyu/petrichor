@@ -119,7 +119,7 @@ ProcessedRadarFrame processRadarFrame(Uint8List png, RadarImageGeometry g) {
   return (
     webp: webp,
     stats: RadarEchoStatistics(
-      frame: g.bounds,
+      bounds: g.bounds,
       imageWidth: width,
       imageHeight: height,
       pixelsPerDbz: counts,
