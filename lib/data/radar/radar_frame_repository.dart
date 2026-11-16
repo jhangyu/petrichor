@@ -18,12 +18,6 @@ import 'radar_webp.dart';
 
 export 'radar_loop.dart';
 
-/// Cache sub-directory of the radar loops (one sub-directory per source,
-/// see [RadarSource.website]); the suffix changes
-/// whenever processing output changes, so frames made by an older pipeline are
-/// never shown.
-const radarFrameCacheDirName = 'radar_webp_2048_v3';
-
 /// Frames processed at once (one isolate each). Measured on the Mac
 /// (docs/logs/2026-11-15/radar-perf-handover.md §9): 2 workers are 2.1x
 /// faster than 1 for ~+100 MB RSS; 4 workers cost +410 MB RSS (rejected).

@@ -6,7 +6,12 @@ import '../../core/constants/app_constants.dart';
 import 'radar_bounds.dart';
 import 'radar_frame_list.dart';
 import 'radar_frame_processor.dart';
-import 'radar_frame_repository.dart' show radarFrameCacheDirName, radarProcessWorkers;
+
+/// Cache sub-directory of the radar loops (one sub-directory per source,
+/// see [RadarSource.website]); the suffix changes
+/// whenever processing output changes, so frames made by an older pipeline are
+/// never shown.
+const radarFrameCacheDirName = 'radar_webp_2048_v3';
 
 /// Writes [bytes] to `<target><tmpSuffix>` (flushed), then renames it onto
 /// [target], so [target] is never seen half-written. Leftover temp files fail
@@ -46,8 +51,8 @@ class RadarStaleListException extends RadarDataException {
 typedef RadarFrameLister = Future<List<RadarFrameRef>> Function(
     {required DateTime now, required Duration window, CancelToken? cancelToken});
 
-/// Runs [work] in one of the repository's [radarProcessWorkers] processing
-/// slots; throws the cancellation error instead once the frame is cancelled
+/// Runs [work] in one of the repository's processing slots (radar_frame_repository.dart);
+/// throws the cancellation error instead once the frame is cancelled
 /// (before or while [work] runs).
 typedef RadarProcessSlot = Future<ProcessedRadarFrame> Function(Future<ProcessedRadarFrame> Function() work);
 
