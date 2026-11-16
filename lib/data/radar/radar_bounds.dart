@@ -61,9 +61,9 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
 typedef RadarStation = ({String code, String datasetId, String name, LatLng site});
 
 const radarStations = <RadarStation>[
-  (code: 'RCSL', datasetId: AppConstants.radarShulin, name: '樹林', site: LatLng(25.00, 121.40)),
-  (code: 'RCNT', datasetId: AppConstants.radarNantun, name: '南屯', site: LatLng(24.14, 120.58)),
-  (code: 'RCLY', datasetId: AppConstants.radarLinyuan, name: '林園', site: LatLng(22.53, 120.38)),
+  (code: 'RCSL', datasetId: AppConstants.radarShulinDatasetId, name: '樹林', site: LatLng(25.00, 121.40)),
+  (code: 'RCNT', datasetId: AppConstants.radarNantunDatasetId, name: '南屯', site: LatLng(24.14, 120.58)),
+  (code: 'RCLY', datasetId: AppConstants.radarLinyuanDatasetId, name: '林園', site: LatLng(22.53, 120.38)),
 ];
 
 /// The station radar with dataset id [id]; null for any other id (e.g. the composite).

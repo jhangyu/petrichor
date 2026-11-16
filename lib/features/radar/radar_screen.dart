@@ -33,7 +33,7 @@ import 'widgets/station_layers.dart';
 
 String? _stationName(String id) => radarStationById(id)?.name;
 
-final _radarSources = [(AppConstants.radarTaiwan, '全台合成'), for (final s in radarStations) (s.datasetId, s.name)];
+final _radarSources = [(AppConstants.radarTaiwanDatasetId, '全台合成'), for (final s in radarStations) (s.datasetId, s.name)];
 
 const _loadingSubtitle = '正在取得最新觀測…';
 const _unreachableSubtitle = '無法連線中央氣象署';
@@ -51,7 +51,7 @@ class RadarScreen extends ConsumerStatefulWidget {
 }
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
-  String _selectedDatasetId = AppConstants.radarTaiwan;
+  String _selectedDatasetId = AppConstants.radarTaiwanDatasetId;
   late final RadarPlayer _player = RadarPlayer(
     slots: () => ref.read(radarLoopProvider(_selectedDatasetId)).value?.slots,
     fps: () => ref.read(radarFpsProvider(_group)).requireValue,

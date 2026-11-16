@@ -20,8 +20,8 @@ void main() {
     final c = newContainer();
     expect(await read(c, RadarGroup.taiwan), (const Duration(hours: 6), 8, true, 60));
     expect(await read(c, RadarGroup.regional), (const Duration(hours: 4), 12, true, 60));
-    expect(radarGroupOf(AppConstants.radarTaiwan), RadarGroup.taiwan);
-    for (final id in [AppConstants.radarShulin, AppConstants.radarNantun, AppConstants.radarLinyuan]) {
+    expect(radarGroupOf(AppConstants.radarTaiwanDatasetId), RadarGroup.taiwan);
+    for (final id in [AppConstants.radarShulinDatasetId, AppConstants.radarNantunDatasetId, AppConstants.radarLinyuanDatasetId]) {
       expect(radarGroupOf(id), RadarGroup.regional);
     }
   });

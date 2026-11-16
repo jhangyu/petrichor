@@ -128,7 +128,7 @@ class RadarSource {
 
   /// Composite (全台合成): website `CV1_3600_` loop, 10-minute frames, 24 h.
   factory RadarSource.composite(Dio dio) => RadarSource.website(dio,
-      id: AppConstants.radarTaiwan,
+      id: AppConstants.radarTaiwanDatasetId,
       listUrl: radarFrameListUrl,
       maxWindow: radarWebsiteMaxWindow,
       parse: parseRadarFrameList,

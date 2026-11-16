@@ -104,7 +104,7 @@ final radarRepeatProvider = AsyncNotifierProvider.family<RadarRepeatSetting, boo
 final radarWindowProvider = AsyncNotifierProvider.family<RadarWindowSetting, Duration, RadarGroup>(RadarWindowSetting.new, retry: noRetry);
 
 /// Settings group of the source with dataset [id].
-RadarGroup radarGroupOf(String id) => id == AppConstants.radarTaiwan ? RadarGroup.taiwan : RadarGroup.regional;
+RadarGroup radarGroupOf(String id) => id == AppConstants.radarTaiwanDatasetId ? RadarGroup.taiwan : RadarGroup.regional;
 
 /// Clock for the frame window and cache retention; override in tests.
 final radarClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
@@ -119,13 +119,13 @@ final radarFrameRepositoryProvider = Provider<RadarFrameRepository>((ref) => Rad
 Duration radarEffectiveWindow(Duration selected, RadarSource source) =>
     selected > source.maxWindow ? source.maxWindow : selected;
 
-/// Source by dataset id: the composite loop for [AppConstants.radarTaiwan],
+/// Source by dataset id: the composite loop for [AppConstants.radarTaiwanDatasetId],
 /// a station loop for each [radarStations] id.
 final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) {
   final dio = ref.watch(webDioProvider);
-  if (id == AppConstants.radarTaiwan) return RadarSource.composite(dio);
+  if (id == AppConstants.radarTaiwanDatasetId) return RadarSource.composite(dio);
   final station = radarStationById(id) ??
-      (throw ArgumentError.value(id, 'id', 'expected ${AppConstants.radarTaiwan} or a radarStations dataset id'));
+      (throw ArgumentError.value(id, 'id', 'expected ${AppConstants.radarTaiwanDatasetId} or a radarStations dataset id'));
   return RadarSource.station(dio, station);
 });
 

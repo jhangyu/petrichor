@@ -77,16 +77,16 @@ class AppConstants {
       'https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/';
 
   /// 整合雷達圖（台灣大範圍）
-  static const String radarTaiwan = 'O-A0058-001';
+  static const String radarTaiwanDatasetId = 'O-A0058-001';
 
   /// 水利署雷達（新竹）
-  static const String radarShulin = 'O-A0084-001';
+  static const String radarShulinDatasetId = 'O-A0084-001';
 
   /// 水利署雷達（南屯）
-  static const String radarNantun = 'O-A0084-002';
+  static const String radarNantunDatasetId = 'O-A0084-002';
 
   /// 水利署雷達（林園）
-  static const String radarLinyuan = 'O-A0084-003';
+  static const String radarLinyuanDatasetId = 'O-A0084-003';
 
   /// fileapi 資料集 URL。`format=JSON` 由 dioProvider 的預設 query 提供、金鑰由其攔截器加入；
   /// 同名 query 重複會讓 CWA 回 404，所以這裡不能再寫。
