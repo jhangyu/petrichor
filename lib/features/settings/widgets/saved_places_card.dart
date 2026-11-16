@@ -11,7 +11,7 @@ import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import '../../location/place_provider.dart';
-import '../../weather/widgets/home_logic.dart';
+import '../../weather/widgets/weather_format.dart';
 import '../../weather/widgets/weather_glyph_icon.dart';
 import 'settings_parts.dart';
 

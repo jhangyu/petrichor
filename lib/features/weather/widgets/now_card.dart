@@ -12,6 +12,8 @@ import '../../hazard/warnings/warning_groups.dart';
 import '../../hazard/warnings/warning_style.dart';
 import 'home_logic.dart';
 import 'sky_arc.dart';
+import 'sun_now.dart';
+import 'weather_format.dart';
 import 'weather_glyph_icon.dart';
 
 /// Height of the now card's data block at phone width (arc, two tile groups,

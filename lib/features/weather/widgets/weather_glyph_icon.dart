@@ -1,7 +1,23 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
-import 'home_logic.dart';
+
+enum WeatherGlyph { sun, partly, cloud, rain, thunder, fog, snow, unknown }
+
+/// Buckets a CWA 天氣現象 text (forecast Wx or observation Weather) into an icon.
+/// Precipitation wins over sky cover (「多雲短暫雨」 → rain).
+WeatherGlyph weatherGlyph(String? text) {
+  if (text == null) return WeatherGlyph.unknown;
+  bool has(String s) => text.contains(s);
+  if (has('雷')) return WeatherGlyph.thunder;
+  if (has('雪')) return WeatherGlyph.snow;
+  if (has('雨')) return WeatherGlyph.rain;
+  if (has('霧') || has('霾') || has('靄')) return WeatherGlyph.fog;
+  final cloudy = has('雲') || has('陰');
+  if (has('晴')) return cloudy ? WeatherGlyph.partly : WeatherGlyph.sun;
+  if (cloudy) return WeatherGlyph.cloud;
+  return WeatherGlyph.unknown;
+}
 
 /// Icon and tint for a [WeatherGlyph] (`.icon--sun/cloud/rain/thunder/fog`).
 (IconData, Color) weatherGlyphStyle(WeatherGlyph glyph) => switch (glyph) {
