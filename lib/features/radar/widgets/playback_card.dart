@@ -456,7 +456,7 @@ class _SettingsState extends State<_Settings> {
                   _Field(
                     label: '播放速度（fps）',
                     // Bare numbers: 「12 fps」 would ellipsize in five segments at 360–412 dp.
-                    child: AppSegmented<int>(
+                    child: AppSegmentedControl<int>(
                       segments: [for (final v in radarFpsOptions) (v, '$v')],
                       selected: f.fps,
                       onChanged: f.onFps,
