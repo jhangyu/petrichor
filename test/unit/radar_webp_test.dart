@@ -19,12 +19,12 @@ void main() {
       encodeRadarWebp(width, height, (p) => p.buffer.asUint8List(p.offsetInBytes, p.lengthInBytes).setAll(0, rgba));
 
   test('encode then decode returns every RGBA byte; transparent pixels stay transparent', () {
-    final src = fixture();
-    final webp = encode(src);
+    final source = fixture();
+    final webp = encode(source);
     expect(radarWebpSize(webp), (width: width, height: height));
     final out = decodeRadarWebp(webp);
     for (var i = 0; i < width * height; i++) {
-      expect(out.sublist(i * 4, i * 4 + 4), src.sublist(i * 4, i * 4 + 4), reason: 'pixel $i');
+      expect(out.sublist(i * 4, i * 4 + 4), source.sublist(i * 4, i * 4 + 4), reason: 'pixel $i');
     }
   });
 
