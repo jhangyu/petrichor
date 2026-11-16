@@ -8,6 +8,7 @@ import 'package:petrichor/data/models/weather_models.dart';
 import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:petrichor/features/place/place_provider.dart';
+import 'package:petrichor/features/place/place_store.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -1,7 +1,5 @@
-import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/location/location_service.dart';
 import '../../core/storage/stored_setting.dart';
@@ -9,6 +7,7 @@ import '../../data/models/place.dart';
 import '../../data/models/weather_models.dart';
 import '../../core/api/result.dart';
 import '../../data/repositories/weather_repository.dart';
+import 'place_store.dart';
 
 final locationServiceProvider =
     Provider((ref) => LocationService(ref.watch(weatherRepositoryProvider).nearestTown));
@@ -76,90 +75,6 @@ final class NoPlace extends CurrentPlace {
 
   /// 底層原因（[LocationException.message]，如 'Failed to read current position: …'）；頁面在引導文字下方原樣顯示。
   String get cause => error.message;
-}
-
-/// 定位失敗 → 頁面標題（全 App 唯一對照）
-String locationFailureTitle(LocationFailure failure) {
-  return switch (failure) {
-    LocationFailure.serviceDisabled => '定位服務已關閉',
-    LocationFailure.permissionDenied => '未取得位置權限',
-    LocationFailure.permissionDeniedForever => '位置權限已關閉',
-    LocationFailure.positionUnavailable || LocationFailure.addressUnresolved => '無法取得目前位置',
-  };
-}
-
-/// 無法開啟系統設定頁（[what] 如「應用程式設定」）時的提示
-String openSettingsFailedMessage(String what) => '無法開啟$what，請手動前往系統設定';
-
-/// 定位失敗 → 使用者可讀訊息（含下一步）
-String locationFailureMessage(LocationFailure failure) {
-  return switch (failure) {
-    LocationFailure.serviceDisabled => '裝置的定位服務已關閉，請開啟後重試，或手動選擇地點',
-    LocationFailure.permissionDenied => '尚未允許定位權限，請允許後重試，或手動選擇地點',
-    LocationFailure.permissionDeniedForever => '定位權限已被永久拒絕，請到系統設定開啟，或手動選擇地點',
-    LocationFailure.positionUnavailable => '無法取得目前位置，請稍後重試，或手動選擇地點',
-    LocationFailure.addressUnresolved => '無法判斷所在縣市與鄉鎮，請稍後重試，或手動選擇地點',
-  };
-}
-
-// ============================================================================
-// 本機儲存
-// ============================================================================
-
-final placeStoreProvider = FutureProvider<PlaceStore>(
-  (ref) async => PlaceStore(await ref.watch(sharedPreferencesProvider.future)),
-  retry: noRetry,
-);
-
-/// 已儲存地點與手動選定地點的本機存取。讀取時一次解析成 [Place]，損毀即丟 [StoredSettingException]。
-class PlaceStore {
-  static const manualPlaceKey = 'place.current';
-  static const savedPlacesKey = 'place.saved';
-
-  /// true＝自動定位開啟（啟動時定位）；false＝已關閉；不存在＝首次使用
-  static const autoLocateKey = 'place.gps';
-
-  final SharedPreferences _preferences;
-  PlaceStore(this._preferences);
-
-  /// null＝尚未選過；非 bool＝損毀，丟 [StoredSettingException]。
-  bool? loadAutoLocate() {
-    final Object? raw = _preferences.get(autoLocateKey);
-    if (raw == null || raw is bool) return raw as bool?;
-    throw StoredSettingException(autoLocateKey, '儲存資料損毀：期望 true/false，實際「$raw」');
-  }
-
-  Future<void> saveAutoLocate(bool value) => writeChecked(autoLocateKey, _preferences.setBool(autoLocateKey, value));
-
-  /// 手動選定的地點；null＝使用 GPS
-  Place? loadManualPlace() {
-    final raw = _preferences.getString(manualPlaceKey);
-    return raw == null ? null : _decode(manualPlaceKey, raw, (json) => Place.fromJson(json, manualPlaceKey));
-  }
-
-  Future<void> saveManualPlace(Place? place) => place == null
-      ? writeChecked(manualPlaceKey, _preferences.remove(manualPlaceKey))
-      : writeChecked(manualPlaceKey, _preferences.setString(manualPlaceKey, jsonEncode(place.toJson())));
-
-  List<Place> loadSavedPlaces() {
-    final raw = _preferences.getString(savedPlacesKey);
-    if (raw == null) return const [];
-    return _decode(savedPlacesKey, raw, (json) {
-      if (json is! List<Object?>) throw FormatException('期望陣列，實際 ${json.runtimeType}');
-      return [for (var i = 0; i < json.length; i++) Place.fromJson(json[i], '$savedPlacesKey[$i]')];
-    });
-  }
-
-  Future<void> saveSavedPlaces(List<Place> places) =>
-      writeChecked(savedPlacesKey, _preferences.setString(savedPlacesKey, jsonEncode([for (final p in places) p.toJson()])));
-
-  T _decode<T>(String key, String raw, T Function(Object? json) parse) {
-    try {
-      return parse(jsonDecode(raw));
-    } on FormatException catch (error) {
-      throw StoredSettingException(key, '儲存資料損毀：${error.message}；實際內容「$raw」');
-    }
-  }
 }
 
 // ============================================================================

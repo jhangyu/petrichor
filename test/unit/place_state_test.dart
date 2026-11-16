@@ -3,6 +3,7 @@ import 'package:petrichor/core/storage/stored_setting.dart';
 import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:petrichor/features/place/place_provider.dart';
+import 'package:petrichor/features/place/place_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

@@ -16,6 +16,7 @@ import '../../data/models/place.dart';
 import '../../core/api/cwa_datasets.dart';
 import '../../core/api/result.dart' show Failure, Result, Success;
 import '../place/place_provider.dart';
+import '../place/location_failure_text.dart';
 import '../../core/time/taiwan_time.dart';
 import '../radar/widgets/radar_map_view.dart' show RadarCameraLink;
 import 'hazard_provider.dart';
