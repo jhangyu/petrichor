@@ -52,7 +52,7 @@ class ObservationHeroCard extends StatelessWidget {
                       ],
                     ),
                     Text(
-                      '今日累積 · 觀測 ${clockText(station.obsTime)}',
+                      '今日累積 · 觀測 ${clockText(station.observedAt)}',
                       style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular),
                     ),
                   ],

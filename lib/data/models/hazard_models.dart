@@ -210,7 +210,7 @@ class RainStation {
 
   /// 近 10 分鐘雨量（`Past10Min`）
   final double? past10MinutesMillimeters;
-  final DateTime obsTime;
+  final DateTime observedAt;
 
   const RainStation({
     required this.id,
@@ -223,7 +223,7 @@ class RainStation {
     this.past1HourMillimeters,
     this.past3HoursMillimeters,
     this.past10MinutesMillimeters,
-    required this.obsTime,
+    required this.observedAt,
   });
 
   factory RainStation.fromJson(Object? json, String path) {
@@ -250,7 +250,7 @@ class RainStation {
       past1HourMillimeters: precipitation('Past1hr'),
       past3HoursMillimeters: precipitation('Past3hr'),
       past10MinutesMillimeters: precipitation('Past10Min'),
-      obsTime: _time(_map(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
+      observedAt: _time(_map(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
     );
   }
 

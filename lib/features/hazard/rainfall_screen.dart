@@ -197,7 +197,7 @@ class RainfallScreen extends ConsumerWidget {
     final sourceIds = [if (result is Success) AppConstants.rainObservationDatasetId, if (forecastResult is Success) AppConstants.rainForecastOneHourDatasetId];
     return _scaffold(
       subtitle: switch (result) {
-        Success(:final data) => '${place.name} · 觀測 ${clockText(data.nearest.obsTime)}',
+        Success(:final data) => '${place.name} · 觀測 ${clockText(data.nearest.observedAt)}',
         Failure() => '${place.name} · 無法取得觀測',
         null => _loadingSubtitle,
       },

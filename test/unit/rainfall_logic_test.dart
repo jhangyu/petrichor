@@ -10,7 +10,7 @@ RainStation _station(String name, double? mm) => RainStation(
       latitude: 25,
       longitude: 121.5,
       todayMillimeters: mm,
-      obsTime: DateTime.utc(2026, 11, 14, 6),
+      observedAt: DateTime.utc(2026, 11, 14, 6),
     );
 
 void main() {
@@ -50,7 +50,7 @@ void main() {
           latitude: 25,
           longitude: 121.5,
           todayMillimeters: 1,
-          obsTime: DateTime.utc(2026, 11, 14),
+          observedAt: DateTime.utc(2026, 11, 14),
         );
     final stations = [inCounty('基隆市'), inCounty('臺北市'), inCounty('基隆市'), inCounty('宜蘭縣')];
     expect(countyChipOrder(stations, '臺北市'), ['臺北市', '基隆市', '宜蘭縣']);
