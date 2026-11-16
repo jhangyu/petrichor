@@ -1,71 +1,79 @@
-import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 
-/// Largest size the active log file may reach before it is rotated.
-const int kLogMaxBytes = 512 * 1024;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
-/// Name of the active log file inside the log directory.
-const String kLogFileName = 'app.log';
+import 'app_log_sink.dart';
 
-/// Name the active file is renamed to on rotation (one generation kept).
-const String kLogRotatedFileName = 'app.log.1';
+AppLogSink? _sink;
 
-/// Marker file that exists while a session is running and is removed on a
-/// clean exit. Finding it at startup means the previous session did not end
-/// cleanly (crash, kill, power loss).
-const String kSessionMarkerName = 'session.running';
+/// Writes one line to the crash log file, flushed immediately.
+/// If the log is not initialised or the write fails, the line goes to the
+/// console with the failure reason (never dropped silently).
+void appLog(String tag, String message) {
+  final sink = _sink;
+  if (sink == null) {
+    debugPrint('[applog-uninitialised] [$tag] $message');
+    return;
+  }
+  try {
+    sink.write(tag, message);
+  } catch (e, st) {
+    debugPrint('[applog-write-failed] $e\n$st\nlost line: [$tag] $message');
+  }
+}
 
-/// Append-only log file. Every line is written and flushed synchronously so the
-/// last lines survive a hard crash.
-class AppLogSink {
-  AppLogSink(this._dir, {this.now = DateTime.now});
+/// Opens the log, records the startup line and routes uncaught errors into it.
+/// Call once from main() before runApp.
+Future<void> initAppLog() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final support = await getApplicationSupportDirectory();
+  final sink = AppLogSink(Directory('${support.path}/logs'));
+  final previousClean = sink.open();
+  _sink = sink;
 
-  final Directory _dir;
-  final DateTime Function() now;
-  RandomAccessFile? _file;
-  int _size = 0;
+  final info = await PackageInfo.fromPlatform();
+  appLog(
+    'startup',
+    'version=${info.version}+${info.buildNumber} '
+        'platform=${Platform.operatingSystem} os=${Platform.operatingSystemVersion} '
+        'mode=${kReleaseMode ? 'release' : kProfileMode ? 'profile' : 'debug'} '
+        'previousSessionCleanExit=$previousClean',
+  );
 
-  File get _active => File('${_dir.path}/$kLogFileName');
+  final presentError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    appLog('flutter-error', '${details.exceptionAsString()}\n${details.stack}');
+    presentError?.call(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    appLog('uncaught', '$error\n$stack');
+    return true;
+  };
+  // Uncaught errors of the main isolate that bypass the two handlers above.
+  Isolate.current.addErrorListener(RawReceivePort((dynamic pair) {
+    final list = pair as List<dynamic>;
+    appLog('isolate-error', '${list[0]}\n${list[1]}');
+  }).sendPort);
 
-  /// Opens the log and reports whether the previous session ended cleanly.
-  /// A first run (no log yet) counts as clean.
-  bool open() {
-    _dir.createSync(recursive: true);
-    final marker = File('${_dir.path}/$kSessionMarkerName');
-    final previousClean = !marker.existsSync();
-    marker.writeAsStringSync(now().toIso8601String(), flush: true);
-    _openActive();
-    return previousClean;
+  WidgetsBinding.instance.addObserver(_LifecycleLogger(sink));
+}
+
+class _LifecycleLogger with WidgetsBindingObserver {
+  _LifecycleLogger(this._sink);
+
+  final AppLogSink _sink;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    appLog('lifecycle', state.name);
+    if (state == AppLifecycleState.detached) _sink.markCleanExit();
   }
 
-  void _openActive() {
-    final f = _active;
-    _file = f.openSync(mode: FileMode.append);
-    _size = f.lengthSync();
-  }
-
-  void write(String tag, String message) {
-    final file = _file;
-    if (file == null) {
-      throw StateError('AppLogSink.write before open(): [$tag] $message');
-    }
-    final line = '${now().toIso8601String()} [$tag] $message\n';
-    if (_size >= kLogMaxBytes) _rotate();
-    final bytes = utf8.encode(line);
-    _file!.writeFromSync(bytes);
-    _file!.flushSync();
-    _size += bytes.length;
-  }
-
-  void _rotate() {
-    _file!.closeSync();
-    _active.renameSync('${_dir.path}/$kLogRotatedFileName');
-    _openActive();
-  }
-
-  /// Removes the session marker: the next start sees a clean exit.
-  void markCleanExit() {
-    final marker = File('${_dir.path}/$kSessionMarkerName');
-    if (marker.existsSync()) marker.deleteSync();
-  }
+  @override
+  void didHaveMemoryPressure() => appLog('lifecycle', 'memory-pressure');
 }

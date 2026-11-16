@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:petrichor/core/logging/app_log.dart';
+import 'package:petrichor/core/logging/app_log_sink.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/temporary_directory.dart';

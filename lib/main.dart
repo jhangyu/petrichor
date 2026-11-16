@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_shell.dart';
-import 'core/logging/logging.dart';
+import 'core/logging/app_log.dart';
 import 'core/theme/app_theme.dart';
 
 Future<void> main() async {
