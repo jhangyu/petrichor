@@ -8,7 +8,6 @@ import '../../data/repositories/weather_repository.dart';
 import '../location/place_provider.dart';
 
 /// 首頁狀態。四組資料各自成敗（null＝尚未載入或尚無地點），單一資料集失敗不影響其他。
-/// [error] 僅用於整頁級錯誤（尚無地點、地點儲存資料損毀）。
 class WeatherState {
   final Place? location;
   final Result<CurrentWeather>? current;
@@ -25,9 +24,6 @@ class WeatherState {
   final DateTime? fetchedAt;
   final bool isLoading;
 
-  /// 使用者可讀的中文錯誤訊息（整頁級）
-  final String? error;
-
   const WeatherState({
     this.location,
     this.current,
@@ -37,7 +33,6 @@ class WeatherState {
     this.hourlyIssuedAt,
     this.fetchedAt,
     this.isLoading = true,
-    this.error,
   });
 }
 
@@ -84,9 +79,7 @@ class WeatherNotifier extends Notifier<WeatherState> {
     ref.watch(weatherRepositoryProvider);
     return switch (ref.watch(currentPlaceProvider)) {
       AsyncLoading() => const WeatherState(),
-      AsyncError(:final error) => WeatherState(isLoading: false, error: '$error'),
-      AsyncData(value: NoPlace(:final reason)) =>
-        WeatherState(isLoading: false, error: locationFailureMessage(reason)),
+      AsyncError() || AsyncData(value: NoPlace()) => const WeatherState(isLoading: false),
       AsyncData(value: PlaceSelected(:final place)) => _startLoad(place),
     };
   }
@@ -122,6 +115,4 @@ class WeatherNotifier extends Notifier<WeatherState> {
   }
 }
 
-final weatherNotifierProvider = NotifierProvider<WeatherNotifier, WeatherState>(() {
-  return WeatherNotifier();
-});
+final weatherNotifierProvider = NotifierProvider<WeatherNotifier, WeatherState>(WeatherNotifier.new);

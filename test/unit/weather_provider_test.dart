@@ -85,7 +85,6 @@ void main() {
 
     final s = await _settled(container);
 
-    expect(s.error, isNull);
     expect(s.location, _taipei.toPlace());
     expect(s.current!.data.temperature, isNotNull);
     expect(s.hourly!.data, hasLength(4));
@@ -104,7 +103,7 @@ void main() {
     final place = await container.read(currentPlaceProvider.future);
 
     expect(place, isA<NoPlace>().having((p) => p.reason, 'reason', LocationFailure.permissionDenied));
-    expect(s.error, locationFailureMessage(LocationFailure.permissionDenied));
+    expect(s.isLoading, isFalse);
     expect(s.location, isNull);
     expect(s.current, isNull);
     expect(adapter.requests, isEmpty);
@@ -141,7 +140,6 @@ void main() {
 
     final s = await _settled(container);
 
-    expect(s.error, isNull);
     expect(s.hourly, isA<Failure<List<HourlyForecast>>>());
     expect((s.hourly as Failure).message, contains('F-D0047-061'));
     expect(s.current, isA<Success<CurrentWeather>>());
