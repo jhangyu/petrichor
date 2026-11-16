@@ -6,7 +6,7 @@ import '../../../core/theme/app_tokens.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/data_display.dart';
-import '../../../core/widgets/inputs.dart';
+import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/status.dart';
 import 'settings_parts.dart';
 

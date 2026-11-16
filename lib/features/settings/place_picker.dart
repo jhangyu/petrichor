@@ -8,7 +8,7 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/choices.dart';
 import '../../core/widgets/data_display.dart';
-import '../../core/widgets/inputs.dart';
+import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../data/models/place.dart';
 import '../../core/api/result.dart';
