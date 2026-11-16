@@ -14,7 +14,7 @@ import 'package:petrichor/data/rain_accum/accum_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../support/temporary_directory.dart';
+import '../support/temporary_directory.dart';
 
 /// now − 6 min = 10:54Z: newest grid slot 10:50.
 final _now = DateTime.utc(2026, 11, 15, 11);
@@ -55,7 +55,7 @@ class _Skipped implements Exception {}
 Future<ProcessedRadarFrame> _skip(Future<ProcessedRadarFrame> Function() work) async => throw _Skipped();
 
 Uint8List _body(String fixture) =>
-    gzip.decode(File('test/fixtures/rain_accum/$fixture.dat.gz').readAsBytesSync()) as Uint8List;
+    gzip.decode(File('test/fixtures/rain_accumulation/$fixture.dat.gz').readAsBytesSync()) as Uint8List;
 
 AccumGrid _grid(String fixture) => parseAccumGrid(String.fromCharCodes(_body(fixture)), url: fixture);
 

@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 AccumGrid load(String name) {
   final text = utf8.decode(
     gzip.decode(
-      File('test/fixtures/rain_accum/$name.dat.gz').readAsBytesSync(),
+      File('test/fixtures/rain_accumulation/$name.dat.gz').readAsBytesSync(),
     ),
   );
   return parseAccumGrid(text, url: name);
