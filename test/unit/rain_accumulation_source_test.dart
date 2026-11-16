@@ -57,9 +57,9 @@ Future<ProcessedRadarFrame> _skip(Future<ProcessedRadarFrame> Function() work) a
 Uint8List _body(String fixture) =>
     gzip.decode(File('test/fixtures/rain_accumulation/$fixture.dat.gz').readAsBytesSync()) as Uint8List;
 
-AccumGrid _grid(String fixture) => parseAccumGrid(String.fromCharCodes(_body(fixture)), url: fixture);
+AccumulationGrid _grid(String fixture) => parseAccumulationGrid(String.fromCharCodes(_body(fixture)), url: fixture);
 
-String _name(int hours, DateTime t) => Uri.parse(accumPieceUrl(hours, t)).pathSegments.last;
+String _name(int hours, DateTime t) => Uri.parse(accumulationPieceUrl(hours, t)).pathSegments.last;
 
 void main() {
   late Directory root;
@@ -69,7 +69,7 @@ void main() {
     adapter = _Adapter();
   });
 
-  RadarSource source(int w) => accumRadarSource(Dio()..httpClientAdapter = adapter,
+  RadarSource source(int w) => accumulationRadarSource(Dio()..httpClientAdapter = adapter,
       windowHours: w, cacheRoot: () async => root, clock: () => _now);
 
   Future<List<RadarFrameReference>> list(RadarSource s) => s.listFrames(now: _now, window: s.maxWindow);
@@ -79,15 +79,15 @@ void main() {
 
   /// Peak and colour of every pixel of [processed] match the raw total [sum].
   void expectFrame(ProcessedRadarFrame processed, Int32List sum) {
-    final rowMap = mercatorRowMap(sourceHeight: accumGridHeight, south: 20, north: 27);
+    final rowMap = mercatorRowMap(sourceHeight: accumulationGridHeight, south: 20, north: 27);
     final pixels = decodeRadarWebp(processed.webp);
-    expect(radarWebpSize(processed.webp), (width: accumGridWidth, height: rowMap.length));
+    expect(radarWebpSize(processed.webp), (width: accumulationGridWidth, height: rowMap.length));
     var coloured = 0;
     for (var j = 0; j < rowMap.length; j++) {
-      final source = (accumGridHeight - 1 - rowMap[j]) * accumGridWidth;
-      for (var x = 0; x < accumGridWidth; x++) {
-        final index = accumColorIndex(sum[source + x]);
-        final o = (j * accumGridWidth + x) * 4;
+      final source = (accumulationGridHeight - 1 - rowMap[j]) * accumulationGridWidth;
+      for (var x = 0; x < accumulationGridWidth; x++) {
+        final index = accumulationColorIndex(sum[source + x]);
+        final o = (j * accumulationGridWidth + x) * 4;
         final argb = (pixels[o + 3] << 24) | (pixels[o] << 16) | (pixels[o + 1] << 8) | pixels[o + 2];
         final want = index < 0 ? 0 : AppPalette.rainfallMapScale[index].toARGB32();
         if (argb != want) fail('row $j col $x: expected ${want.toRadixString(16)}, got ${argb.toRadixString(16)}');
@@ -95,8 +95,8 @@ void main() {
       }
     }
     expect(coloured, greaterThan(0));
-    expect(processed.statistics.bounds, accumBounds);
-    expect(processed.statistics.peakMillimeters, sum.reduce(max) / accumRawPerMm);
+    expect(processed.statistics.bounds, accumulationGridBounds);
+    expect(processed.statistics.peakMillimeters, sum.reduce(max) / accumulationRawUnitsPerMillimeter);
   }
 
   test('frame list per window: S = newest - W, frames S + step*k for k = 1..N, last = newest', () async {
@@ -112,12 +112,12 @@ void main() {
       final s = source(w);
       expect(s.cachePath, 'rain_accum_frames_v3/${w}h');
       final start = _newest.subtract(Duration(hours: w));
-      expect(accumWindowStart(_newest, w), start);
+      expect(accumulationWindowStart(_newest, w), start);
       final frames = await list(s);
       expect(frames.length, count, reason: '$w h');
       for (final (i, f) in frames.indexed) {
         expect(f.time, start.add(step * (i + 1)), reason: '$w h frame $i');
-        expect((f as AccumFrameRef).start, start, reason: '$w h frame $i');
+        expect((f as AccumulationFrameReference).start, start, reason: '$w h frame $i');
       }
       expect(frames.last.time, _newest, reason: '$w h');
     }
@@ -127,14 +127,14 @@ void main() {
     adapter.missing.add('GAGE_PCP_3H.20261115.1050.dat');
     final frames = await list(source(168));
     expect(frames.last.time, DateTime.utc(2026, 11, 15, 10, 40));
-    expect((frames.last as AccumFrameRef).start, DateTime.utc(2026, 11, 8, 10, 40));
+    expect((frames.last as AccumulationFrameReference).start, DateTime.utc(2026, 11, 8, 10, 40));
     expect(frames.length, 56);
   });
 
   test('frame plans: cumulative 1 h / 3 h grids, and a partial first hour for 10-min frames', () {
     final s = DateTime.utc(2026, 11, 15, 6, 50);
     String show(int w, Duration into) {
-      final p = accumFramePlan(start: s, time: s.add(into), windowHours: w);
+      final p = accumulationFramePlan(start: s, time: s.add(into), windowHours: w);
       String hm(DateTime t) => '${t.hour}:${t.minute.toString().padLeft(2, '0')}';
       return '${p.nativeHours}h ${p.partialEnd == null ? '-' : hm(p.partialEnd!)} ${p.ends.map(hm).join(',')}';
     }
@@ -172,7 +172,7 @@ void main() {
     final frame = (await list(s)).last;
     expect(frame.time, _newest);
     final processed = await render(s, frame);
-    expectFrame(processed, accumFrameSum([for (final h in ['1050', '0950', '0850', '0750']) _grid('g01_20261115_$h')]));
+    expectFrame(processed, accumulationFrameSum([for (final h in ['1050', '0950', '0850', '0750']) _grid('g01_20261115_$h')]));
     expect(processed.statistics.peakMillimeters, greaterThan(1));
   });
 
@@ -187,7 +187,7 @@ void main() {
   test('sub-hour 4 h frame: R1(S+20m) - R1(S)*40/60 clamped at 0, plus the next 1 h grid', () async {
     final s = source(4);
     final frames = await list(s);
-    final start = (frames.first as AccumFrameRef).start;
+    final start = (frames.first as AccumulationFrameReference).start;
     expect(start, DateTime.utc(2026, 11, 15, 6, 50));
     // Frame S + 1 h 20 min = 08:10: C(07:10) + R1(08:10).
     final frame = frames.firstWhere((f) => f.time == DateTime.utc(2026, 11, 15, 8, 10));
@@ -195,7 +195,7 @@ void main() {
     adapter.bodies[_name(1, DateTime.utc(2026, 11, 15, 7, 10))] = _body('g01_20261115_1050');
     adapter.bodies[_name(1, start)] = _body('g01_20261115_0950');
     adapter.bodies[_name(1, frame.time)] = _body('g01_20261115_0850');
-    final want = Int32List(accumGridWidth * accumGridHeight);
+    final want = Int32List(accumulationGridWidth * accumulationGridHeight);
     var clamped = 0;
     for (var i = 0; i < want.length; i++) {
       final estimate = end.raw[i] - (base.raw[i] * 40 / 60).round();
@@ -217,7 +217,7 @@ void main() {
 
     Future<RadarFrame> load({DateTime? now}) async {
       final repository = RadarFrameRepository(Dio(), cacheRoot: () async => root, clock: () => now ?? _now);
-      final loop = await repository.watch(source(4), window: accumGridInterval).last;
+      final loop = await repository.watch(source(4), window: accumulationGridInterval).last;
       expect(loop.slots.single.state, RadarSlotState.ready, reason: '${loop.slots.single}');
       return loop.slots.single.frame!;
     }
@@ -225,7 +225,7 @@ void main() {
     test('304: the cached frame is kept', () async {
       final first = await load();
       // A re-render would now fail: the 07:50 grid is gone from disk and server.
-      File('${root.path}/$accumPieceCacheDirName/01h/202611150750.dat.gz').deleteSync();
+      File('${root.path}/$accumulationPieceCacheDirectoryName/01h/202611150750.dat.gz').deleteSync();
       adapter.missing.add('GAGE_PCP_1H.20261115.0750.dat');
       final second = await load();
       expect(second.peakMillimeters, first.peakMillimeters);
@@ -261,7 +261,7 @@ void main() {
     final s = source(24);
     const window = Duration(hours: 2);
     await watch(s, _now, window);
-    await watch(s, _now.add(accumGridInterval), window);
+    await watch(s, _now.add(accumulationGridInterval), window);
     final cached = [for (final f in Directory('${root.path}/${s.cachePath}').listSync()) f.uri.pathSegments.last]..sort();
     expect(cached, ['20261115100000.stats', '20261115100000.webp', '20261115110000.stats', '20261115110000.webp']);
   });

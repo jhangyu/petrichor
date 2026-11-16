@@ -1,18 +1,18 @@
 import '../../core/time/taiwan_time.dart';
 
 /// QPEplus native gauge rolling windows (hours), largest first.
-const _accumNativeHours = [24, 12, 6, 3, 1];
+const _accumulationNativeHours = [24, 12, 6, 3, 1];
 
 /// Windows the rainfall page offers, shortest first (the retention of downloaded grids is sized by the last one).
-const accumWindowHours = [4, 6, 12, 24, 48, 168];
+const accumulationWindowHours = [4, 6, 12, 24, 48, 168];
 
 /// URL of the native [nativeHours] grid ending at [endUtc] (UTC, minute a multiple of 10).
-String accumPieceUrl(int nativeHours, DateTime endUtc) {
-  if (!_accumNativeHours.contains(nativeHours)) {
+String accumulationPieceUrl(int nativeHours, DateTime endUtc) {
+  if (!_accumulationNativeHours.contains(nativeHours)) {
     throw ArgumentError.value(
       nativeHours,
       'nativeHours',
-      'expected one of $_accumNativeHours',
+      'expected one of $_accumulationNativeHours',
     );
   }
   if (!endUtc.isUtc || endUtc.minute % 10 != 0) {

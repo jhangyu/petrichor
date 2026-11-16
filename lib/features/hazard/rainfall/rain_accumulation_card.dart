@@ -33,7 +33,7 @@ const _noRainBelowMillimeters = 1;
 typedef _Body = ({Widget? banner, RainMapView map, Widget? playback});
 
 /// Legend numbers under the 17-colour bar: the first colour index of each band
-/// and its label (the band lower edge of `accumScaleEdgesMm`).
+/// and its label (the band lower edge of `accumulationScaleEdgesMillimeters`).
 const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), (16, '≥300')];
 
 /// 累積雨量 card (design 3): window chips, accumulation map, the radar's
@@ -154,7 +154,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
               child: Wrap(
                 spacing: AppSpace.s8,
                 runSpacing: AppSpace.s8,
-                children: [for (final h in accumWindowHours) AppChip(label: '$h', selected: h == hours, onTap: () => _setWindow(h))],
+                children: [for (final h in accumulationWindowHours) AppChip(label: '$h', selected: h == hours, onTap: () => _setWindow(h))],
               ),
             ),
           ],

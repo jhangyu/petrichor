@@ -7,16 +7,16 @@ import '../../../data/rain_accumulation/rain_accumulation_pieces.dart';
 import '../../../data/rain_accumulation/rain_accumulation_source.dart';
 import '../../radar/radar_provider.dart';
 
-/// Accumulation window of the 累積雨量 card in hours, one of [accumWindowHours].
+/// Accumulation window of the 累積雨量 card in hours, one of [accumulationWindowHours].
 class RainAccumulationWindowSetting extends IntSetting<int> {
   @override
   String get storageKey => 'rainfall.accumWindowHours';
   @override
   int get defaultValue => accumulationDefaultWindowHours;
   @override
-  String get expectedDescription => 'one of $accumWindowHours';
+  String get expectedDescription => 'one of $accumulationWindowHours';
   @override
-  int? fromStored(int stored) => accumWindowHours.contains(stored) ? stored : null;
+  int? fromStored(int stored) => accumulationWindowHours.contains(stored) ? stored : null;
   @override
   int toStored(int value) => value;
 }
@@ -31,6 +31,6 @@ final rainAccumulationWindowProvider = AsyncNotifierProvider<RainAccumulationWin
 /// first watched or when the window changes; a user refresh is
 /// `ref.invalidate(accumulationLoopProvider(hours))`.
 final accumulationLoopProvider = StreamProvider.autoDispose.family<RadarLoop, int>((ref, windowHours) {
-  final source = accumRadarSource(ref.watch(cwaWebsiteDioProvider), windowHours: windowHours);
+  final source = accumulationRadarSource(ref.watch(cwaWebsiteDioProvider), windowHours: windowHours);
   return ref.watch(radarFrameRepositoryProvider).watch(source, window: Duration(hours: windowHours));
 });
