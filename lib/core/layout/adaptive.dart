@@ -17,16 +17,16 @@ enum WindowHeightClass { compact, medium, expanded }
 /// against numbers.
 @immutable
 class WindowSizeClass {
-  const WindowSizeClass({required this.width, required this.height});
+  const WindowSizeClass({required this.widthClass, required this.heightClass});
 
   factory WindowSizeClass.fromSize(Size size) => WindowSizeClass(
-        width: switch (size.width) {
+        widthClass: switch (size.width) {
           < AppBreakpoint.medium => WindowWidthClass.compact,
           < AppBreakpoint.expanded => WindowWidthClass.medium,
           < AppBreakpoint.large => WindowWidthClass.expanded,
           _ => WindowWidthClass.large,
         },
-        height: switch (size.height) {
+        heightClass: switch (size.height) {
           < AppBreakpoint.heightMedium => WindowHeightClass.compact,
           < AppBreakpoint.heightExpanded => WindowHeightClass.medium,
           _ => WindowHeightClass.expanded,
@@ -36,21 +36,21 @@ class WindowSizeClass {
   /// Classes of the whole window (`MediaQuery.sizeOf`), not of the parent box.
   static WindowSizeClass of(BuildContext context) => WindowSizeClass.fromSize(MediaQuery.sizeOf(context));
 
-  final WindowWidthClass width;
-  final WindowHeightClass height;
+  final WindowWidthClass widthClass;
+  final WindowHeightClass heightClass;
 
   /// Short window (height class compact): no viewport-bounded panes, let
   /// the page scroll.
-  bool get isShortHeight => height == WindowHeightClass.compact;
+  bool get isShortHeight => heightClass == WindowHeightClass.compact;
 
   /// Phone-width window (width class compact).
-  bool get isCompactWidth => width == WindowWidthClass.compact;
+  bool get isCompactWidth => widthClass == WindowWidthClass.compact;
 
   /// Side navigation (rail) instead of the bottom bar.
-  bool get usesNavigationRail => width != WindowWidthClass.compact;
+  bool get usesNavigationRail => widthClass != WindowWidthClass.compact;
 
   /// Left/right page margin around the card grid.
-  double get pageMargin => switch (width) {
+  double get pageMargin => switch (widthClass) {
         WindowWidthClass.compact => AppLayout.pageMarginCompact,
         WindowWidthClass.medium => AppLayout.pageMarginMedium,
         WindowWidthClass.expanded || WindowWidthClass.large => AppLayout.pageMarginExpanded,
