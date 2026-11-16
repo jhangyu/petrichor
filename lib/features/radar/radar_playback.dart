@@ -151,7 +151,7 @@ List<RadarSlot> radarFailedSlots(List<RadarSlot> slots) => [
 int radarReadyCount(List<RadarSlot> slots) => slots.where((s) => s.state == RadarSlotState.ready).length;
 
 /// Nearest ready slot before [index]; null when none.
-int? radarPreviousReady(List<RadarSlot> slots, int index) {
+int? radarPreviousReadyIndex(List<RadarSlot> slots, int index) {
   for (var i = index - 1; i >= 0; i--) {
     if (slots[i].state == RadarSlotState.ready) return i;
   }
@@ -159,7 +159,7 @@ int? radarPreviousReady(List<RadarSlot> slots, int index) {
 }
 
 /// Nearest ready slot after [index]; null when none.
-int? radarNextReady(List<RadarSlot> slots, int index) {
+int? radarNextReadyIndex(List<RadarSlot> slots, int index) {
   for (var i = index + 1; i < slots.length; i++) {
     if (slots[i].state == RadarSlotState.ready) return i;
   }

@@ -148,7 +148,7 @@ class _TimeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = f.slots.length;
-    final isLatest = radarNextReady(f.slots, f.index) == null;
+    final isLatest = radarNextReadyIndex(f.slots, f.index) == null;
     final hours = f.window.inHours;
     // Wraps the caption under the time when both do not fit on one line.
     return Wrap(
@@ -186,8 +186,8 @@ class _Controls extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = playback;
     final last = f == null ? 0 : f.slots.length - 1;
-    final previous = f == null ? null : radarPreviousReady(f.slots, f.index);
-    final next = f == null ? null : radarNextReady(f.slots, f.index);
+    final previous = f == null ? null : radarPreviousReadyIndex(f.slots, f.index);
+    final next = f == null ? null : radarNextReadyIndex(f.slots, f.index);
     return Row(
       spacing: AppSpace.s8,
       children: [
