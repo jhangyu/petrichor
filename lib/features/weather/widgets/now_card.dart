@@ -153,7 +153,7 @@ class NowCard extends StatelessWidget {
   }
 
   List<MetricTile> _comfortTiles(CurrentWeather c, HourlyForecast? slot) {
-    final pop = slot?.rainProbabilityPercent;
+    final rainProbabilityPercent = slot?.rainProbabilityPercent;
     return [
       MetricTile(label: '體感', value: temperatureText(slot?.apparentTemperature), dense: true),
       MetricTile(label: '濕度', value: percentText(c.humidity), dense: true),
@@ -167,9 +167,9 @@ class NowCard extends StatelessWidget {
       ),
       MetricTile(
         label: '降雨機率',
-        value: percentText(pop),
+        value: percentText(rainProbabilityPercent),
         dense: true,
-        tone: pop != null && pop < lowRainProbabilityThresholdPercent ? MetricTone.past : MetricTone.rain,
+        tone: rainProbabilityPercent != null && rainProbabilityPercent < lowRainProbabilityThresholdPercent ? MetricTone.past : MetricTone.rain,
       ),
     ];
   }

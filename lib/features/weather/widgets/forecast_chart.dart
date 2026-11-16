@@ -261,9 +261,9 @@ class ForecastChartPainter extends CustomPainter {
         RRect.fromRectAndRadius(track, const Radius.circular(_rainProbabilityRadius)),
         Paint()..color = AppPalette.rainBarTrack,
       );
-      final pop = s.rainProbabilityPercent;
-      if (pop != null && pop > 0) {
-        final h = ForecastChartGeometry.rainProbabilityHeight * pop / 100;
+      final rainProbabilityPercent = s.rainProbabilityPercent;
+      if (rainProbabilityPercent != null && rainProbabilityPercent > 0) {
+        final h = ForecastChartGeometry.rainProbabilityHeight * rainProbabilityPercent / 100;
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(track.left, track.bottom - h, track.width, h),
@@ -274,9 +274,9 @@ class ForecastChartPainter extends CustomPainter {
       }
       paintLabel(
         canvas,
-        percentText(pop),
+        percentText(rainProbabilityPercent),
         Offset(center, ForecastChartGeometry.rainProbabilityLabelY),
-        rainProbabilityTextStyle(small, pop),
+        rainProbabilityTextStyle(small, rainProbabilityPercent),
       );
       paintLabel(canvas, windDirectionLabel(s.windDirection), Offset(center, ForecastChartGeometry.windDirY), small);
       paintLabel(canvas, speedText(s.windSpeed), Offset(center, ForecastChartGeometry.windSpeedY), small);

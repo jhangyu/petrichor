@@ -11,11 +11,11 @@ import 'sun_now.dart';
 const lowRainProbabilityThresholdPercent = 30;
 
 /// Whether a 降雨機率 is shown muted; unknown (null) counts as low.
-bool isLowRainProbability(int? pop) => pop == null || pop < lowRainProbabilityThresholdPercent;
+bool isLowRainProbability(int? rainProbabilityPercent) => rainProbabilityPercent == null || rainProbabilityPercent < lowRainProbabilityThresholdPercent;
 
 /// [base] with the 降雨機率 emphasis: muted regular when [isLowRainProbability], rain-coloured semibold otherwise.
-TextStyle rainProbabilityTextStyle(TextStyle base, int? pop) {
-  final low = isLowRainProbability(pop);
+TextStyle rainProbabilityTextStyle(TextStyle base, int? rainProbabilityPercent) {
+  final low = isLowRainProbability(rainProbabilityPercent);
   return base.copyWith(
     color: low ? AppPalette.foreground3 : AppPalette.rainForeground,
     fontWeight: low ? FontWeight.w400 : FontWeight.w600,
