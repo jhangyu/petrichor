@@ -51,9 +51,9 @@ class RadarScreen extends ConsumerStatefulWidget {
 }
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
-  String _source = AppConstants.radarTaiwan;
+  String _selectedDatasetId = AppConstants.radarTaiwan;
   late final RadarPlayer _player = RadarPlayer(
-    slots: () => ref.read(radarLoopProvider(_source)).value?.slots,
+    slots: () => ref.read(radarLoopProvider(_selectedDatasetId)).value?.slots,
     fps: () => ref.read(radarFpsProvider(_group)).requireValue,
     repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
     onChanged: () => setState(() {}),
@@ -77,7 +77,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     super.dispose();
   }
 
-  RadarGroup get _group => radarGroupOf(_source);
+  RadarGroup get _group => radarGroupOf(_selectedDatasetId);
 
   void _setFps(int fps) {
     unawaited(ref.read(radarFpsProvider(_group).notifier).set(fps));
@@ -90,7 +90,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   void _selectSource(String id) {
-    _source = id;
+    _selectedDatasetId = id;
     _player.reset();
   }
 
@@ -99,20 +99,20 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   void _refresh() {
     _player.reset();
     retryRadarBasemap();
-    ref.invalidate(radarLoopProvider(_source));
+    ref.invalidate(radarLoopProvider(_selectedDatasetId));
   }
 
   @override
   Widget build(BuildContext context) {
-    final source = ref.watch(radarSourceProvider(_source));
+    final source = ref.watch(radarSourceProvider(_selectedDatasetId));
     final selectedWindow = ref.watch(radarWindowProvider(_group));
     final fps = ref.watch(radarFpsProvider(_group));
     final repeat = ref.watch(radarRepeatProvider(_group));
     // Each loop update may make the slot playback waits on ready (or failed).
-    ref.listen(radarLoopProvider(_source), (_, _) {
+    ref.listen(radarLoopProvider(_selectedDatasetId), (_, _) {
       _player.onLoopUpdate();
     });
-    final loop = ref.watch(radarLoopProvider(_source));
+    final loop = ref.watch(radarLoopProvider(_selectedDatasetId));
     final view = switch ((selectedWindow, fps, repeat)) {
       (AsyncValue(hasValue: true), AsyncValue(hasValue: true), AsyncValue(hasValue: true)) => _sourceView(
         loop,
@@ -218,7 +218,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     }
     final frame = slots[index].frame!;
     final newest = slots[radarShownIndex(slots, null)!].frame!;
-    final name = _stationName(_source);
+    final name = _stationName(_selectedDatasetId);
     return _RadarView(
       subtitle: _loopSubtitle(name, newest),
       showSourceLine: true,
@@ -390,7 +390,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               runSpacing: AppSpace.s8,
               children: [
                 for (final (id, label) in _radarSources)
-                  AppChip(label: label, selected: _source == id, onTap: () => _selectSource(id)),
+                  AppChip(label: label, selected: _selectedDatasetId == id, onTap: () => _selectSource(id)),
               ],
             ),
           ),

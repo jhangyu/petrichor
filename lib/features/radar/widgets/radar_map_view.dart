@@ -50,21 +50,21 @@ const _rasterCacheScreens = 1;
 /// level spans `ceil(extent / 256) + 1` tiles per axis plus one each side
 /// (flutter_map_vector_tiles 2.11.0 vector_tile_layer.dart:286-303,
 /// GridLayout.forCamera(buffer: 1)).
-const _displayTilePx = 256.0;
+const _displayTilePixels = 256.0;
 const _gridExtraTiles = 3;
 const _rgbaBytes = 4;
 
 /// GPU bytes for [_rasterCacheScreens] of finished tiles over a [card] at
-/// [dpr], as the scaled layer sees them: a surface of card / scale at
+/// [devicePixelRatio], as the scaled layer sees them: a surface of card / scale at
 /// [ContentScaledLayer.rasterPixelRatio]. A 340×408 card at scale 0.5 is a
 /// 680×816 surface, 6×7 tiles of 768 px at dpr 3: 94.5 MiB (unscaled it was
 /// 5×5 tiles of 768 px, 56.25 MiB); 6×7 tiles of 512 px, 42 MiB, at dpr 2.
-int _rasterCacheBytes(Size card, double dpr) {
+int _rasterCacheBytes(Size card, double devicePixelRatio) {
   final surface = card / _basemapContentScale;
-  final tilesX = (surface.width / _displayTilePx).ceil() + _gridExtraTiles;
-  final tilesY = (surface.height / _displayTilePx).ceil() + _gridExtraTiles;
-  final rasterDpr = ContentScaledLayer.rasterPixelRatio(dpr, _basemapContentScale);
-  final tileEdge = (_displayTilePx * rasterDpr).ceilToDouble();
+  final tilesX = (surface.width / _displayTilePixels).ceil() + _gridExtraTiles;
+  final tilesY = (surface.height / _displayTilePixels).ceil() + _gridExtraTiles;
+  final rasterDevicePixelRatio = ContentScaledLayer.rasterPixelRatio(devicePixelRatio, _basemapContentScale);
+  final tileEdge = (_displayTilePixels * rasterDevicePixelRatio).ceilToDouble();
   return (tilesX * tilesY * tileEdge * tileEdge * _rgbaBytes * _rasterCacheScreens).round();
 }
 
@@ -196,15 +196,15 @@ class _RadarMapViewState extends State<RadarMapView> {
     });
   }
 
-  int _cacheBytesFor(Size card, double dpr) {
-    final bytes = _rasterCacheBytes(card, dpr);
+  int _cacheBytesFor(Size card, double devicePixelRatio) {
+    final bytes = _rasterCacheBytes(card, devicePixelRatio);
     if (bytes != _loggedCacheBytes) {
       _loggedCacheBytes = bytes;
       appLog(
         _logTag,
         'raster cache ${(bytes / (1 << 20)).toStringAsFixed(1)} MiB for card '
-        '${card.width.round()}x${card.height.round()} dpr $dpr content scale $_basemapContentScale '
-        'raster dpr ${ContentScaledLayer.rasterPixelRatio(dpr, _basemapContentScale)}',
+        '${card.width.round()}x${card.height.round()} dpr $devicePixelRatio content scale $_basemapContentScale '
+        'raster dpr ${ContentScaledLayer.rasterPixelRatio(devicePixelRatio, _basemapContentScale)}',
       );
     }
     return bytes;
