@@ -122,7 +122,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final (meta, (:banner, :map, :playback)) = switch (loop) {
       AsyncError(:final error) => ('無法取得', _failureBody(hours, '$error')),
       AsyncValue(:final value?) => _loopBody(hours, value, fps.requireValue, repeat.requireValue),
-      _ => ('載入中', _loadingBody(hours)),
+      _ => ('載入中', _loadingBody()),
     };
     return RainMapCard(
       wide: widget.wide,
@@ -186,7 +186,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     );
   }
 
-  _Body _loadingBody(int hours) =>
+  _Body _loadingBody() =>
       (banner: null, map: _map(loading: true, muted: true), playback: const PlaybackBody(playback: null, loading: true));
 
   _Body _failureBody(int hours, String error) => (
@@ -205,7 +205,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final failed = radarFailedSlots(slots);
     final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
-      if (loop.loading) return ('載入中', _loadingBody(hours));
+      if (loop.loading) return ('載入中', _loadingBody());
       return ('無法取得', _failureBody(hours, '${radarNoFrameError(loop, failed)}'));
     }
     final frame = slots[index].frame!;
