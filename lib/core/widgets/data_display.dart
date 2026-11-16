@@ -15,7 +15,7 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, stroke) = switch (tone) {
+    final (background, foreground, stroke) = switch (tone) {
       BadgeTone.neutral => (AppPalette.background4, AppPalette.foreground2, AppPalette.transparent),
       BadgeTone.rain => (AppPalette.rainBackground, AppPalette.rainForeground, AppPalette.transparent),
       BadgeTone.brand => (AppPalette.brandBackground, AppPalette.foregroundOnBrand, AppPalette.transparent),
@@ -32,7 +32,7 @@ class AppBadge extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: AppSize.icon24),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s8),
       decoration: BoxDecoration(
-        color: bg,
+        color: background,
         borderRadius: BorderRadius.circular(AppRadius.full),
         border: Border.all(color: stroke, width: AppStroke.thin),
       ),
@@ -40,12 +40,12 @@ class AppBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: AppSpace.s4,
         children: [
-          if (glyph != null) Icon(glyph, size: AppSize.icon16, color: fg),
+          if (glyph != null) Icon(glyph, size: AppSize.icon16, color: foreground),
           Text(
             label,
             maxLines: 1,
             style: AppType.caption1.copyWith(
-              color: fg,
+              color: foreground,
               fontWeight: FontWeight.w600,
               fontFeatures: AppType.tabular,
             ),

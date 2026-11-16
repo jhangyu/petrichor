@@ -22,7 +22,7 @@ class AppChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppPalette.brandForegroundStrong : AppPalette.foreground1;
+    final foregroundColor = selected ? AppPalette.brandForegroundStrong : AppPalette.foreground1;
     final glyph = icon;
     return Material(
       color: selected ? AppPalette.brandBackgroundSubtle : AppPalette.background1,
@@ -45,11 +45,11 @@ class AppChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpace.s4,
               children: [
-                if (glyph != null) Icon(glyph, size: AppSize.icon16, color: fg),
+                if (glyph != null) Icon(glyph, size: AppSize.icon16, color: foregroundColor),
                 Text(
                   label,
                   style: AppType.body1.copyWith(
-                    color: fg,
+                    color: foregroundColor,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),

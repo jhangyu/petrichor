@@ -28,7 +28,7 @@ class StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, stroke, iconColor, defaultIcon) = switch (tone) {
+    final (background, stroke, iconColor, defaultIcon) = switch (tone) {
       StatusTone.loading => (AppPalette.infoBackground, AppPalette.infoStroke, AppPalette.infoForeground, Icons.sync),
       StatusTone.error => (AppPalette.dangerBackground, AppPalette.dangerStroke, AppPalette.dangerForeground, Icons.error_outline),
       StatusTone.empty => (AppPalette.background2, AppPalette.stroke2, AppPalette.foreground3, Icons.cloud_off_outlined),
@@ -41,7 +41,7 @@ class StatusBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
       decoration: BoxDecoration(
-        color: bg,
+        color: background,
         borderRadius: BorderRadius.circular(AppRadius.medium),
         border: Border.all(color: stroke, width: AppStroke.thin),
       ),
@@ -87,12 +87,12 @@ class AppNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, iconColor) = switch (tone) {
+    final (background, foreground, iconColor) = switch (tone) {
       NoteTone.rain => (AppPalette.rainBackground, AppPalette.rainForeground, AppPalette.rainForeground),
       NoteTone.neutral => (AppPalette.background1, AppPalette.foreground1, AppPalette.brandForeground),
     };
     return ColoredBox(
-      color: bg,
+      color: background,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
         child: Row(
@@ -101,7 +101,7 @@ class AppNote extends StatelessWidget {
           children: [
             Icon(icon, size: AppSize.icon20, color: iconColor),
             Expanded(
-              child: Text(text, style: AppType.body1.copyWith(color: fg, fontFeatures: AppType.tabular)),
+              child: Text(text, style: AppType.body1.copyWith(color: foreground, fontFeatures: AppType.tabular)),
             ),
           ],
         ),

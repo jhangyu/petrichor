@@ -27,7 +27,7 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, bgHover, bgPressed, fg, stroke) = switch (variant) {
+    final (background, backgroundHover, backgroundPressed, foreground, stroke) = switch (variant) {
       AppButtonVariant.primary => (
           AppPalette.brandBackground,
           AppPalette.brandBackgroundHover,
@@ -51,7 +51,7 @@ class AppButton extends StatelessWidget {
         ),
     };
     final disabledBg =
-        variant == AppButtonVariant.subtle ? bg : AppPalette.backgroundDisabled;
+        variant == AppButtonVariant.subtle ? background : AppPalette.backgroundDisabled;
     final disabledStroke =
         variant == AppButtonVariant.subtle ? stroke : AppPalette.strokeDisabled;
     final textStyle = (small ? AppType.caption1 : AppType.body1).copyWith(fontWeight: FontWeight.w600);
@@ -75,13 +75,13 @@ class AppButton extends StatelessWidget {
       elevation: const WidgetStatePropertyAll(0),
       overlayColor: WidgetStatePropertyAll(AppPalette.transparent),
       foregroundColor: WidgetStateProperty.resolveWith(
-        (s) => s.contains(WidgetState.disabled) ? AppPalette.foregroundDisabled : fg,
+        (s) => s.contains(WidgetState.disabled) ? AppPalette.foregroundDisabled : foreground,
       ),
       backgroundColor: WidgetStateProperty.resolveWith((s) {
         if (s.contains(WidgetState.disabled)) return disabledBg;
-        if (s.contains(WidgetState.pressed)) return bgPressed;
-        if (s.contains(WidgetState.hovered)) return bgHover;
-        return bg;
+        if (s.contains(WidgetState.pressed)) return backgroundPressed;
+        if (s.contains(WidgetState.hovered)) return backgroundHover;
+        return background;
       }),
       side: WidgetStateProperty.resolveWith(
         (s) => BorderSide(
