@@ -110,5 +110,5 @@ class AppConstants {
   // -------------------------------------------------------------------------
 
   /// 地球平均半徑（公里，IUGG）
-  static const double earthRadiusKm = 6371.0088;
+  static const double earthRadiusKilometers = 6371.0088;
 }

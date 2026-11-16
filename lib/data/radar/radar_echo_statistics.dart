@@ -35,7 +35,7 @@ const radarSignificantEchoDbz = 20;
 /// show up.
 const radarEchoMinAreaKm2 = 12.0;
 
-const _earthKmPerDegree = AppConstants.earthRadiusKm * pi / 180;
+const _earthKmPerDegree = AppConstants.earthRadiusKilometers * pi / 180;
 
 /// Header words (uint32): image width, image height.
 const _headerWords = 2;

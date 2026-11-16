@@ -80,7 +80,7 @@ const radarStationRangeKm = 150.0;
 /// so a reprojection could not be shown to be more correct. Revisit if CWA
 /// publishes the projection.
 LatLngBounds stationRadarBounds(LatLng centre, {required double radiusKm}) {
-  final dLat = radiusKm / AppConstants.earthRadiusKm * 180 / pi;
+  final dLat = radiusKm / AppConstants.earthRadiusKilometers * 180 / pi;
   final dLon = dLat / cos(centre.latitude * pi / 180);
   return LatLngBounds(
     LatLng(centre.latitude - dLat, centre.longitude - dLon),
