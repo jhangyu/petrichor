@@ -76,12 +76,12 @@ abstract final class AppPalette {
   static const infoSolid = brand80;
 
   // Weather semantics: temperature
-  static const tempCold = Color(0xFF0F548C);
-  static const tempHot = Color(0xFFC50F1F);
-  static const tempBarCold = Color(0xFF62ABF5); // <= 15°C
-  static const tempBarMild = Color(0xFF5EC75A); // 16–22°C
-  static const tempBarWarm = Color(0xFFF7A33C); // 23–28°C
-  static const tempBarHot = Color(0xFFE8474F); // >= 29°C
+  static const temperatureCold = Color(0xFF0F548C);
+  static const temperatureHot = Color(0xFFC50F1F);
+  static const temperatureBarCold = Color(0xFF62ABF5); // <= 15°C
+  static const temperatureBarMild = Color(0xFF5EC75A); // 16–22°C
+  static const temperatureBarWarm = Color(0xFFF7A33C); // 23–28°C
+  static const temperatureBarHot = Color(0xFFE8474F); // >= 29°C
 
   // Rain probability / rainfall amounts
   static const rainForeground = Color(0xFF115EA3);

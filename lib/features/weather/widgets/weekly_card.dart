@@ -203,10 +203,10 @@ class _TempRange extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       gradient: const LinearGradient(
                         colors: [
-                          AppPalette.tempBarCold,
-                          AppPalette.tempBarMild,
-                          AppPalette.tempBarWarm,
-                          AppPalette.tempBarHot,
+                          AppPalette.temperatureBarCold,
+                          AppPalette.temperatureBarMild,
+                          AppPalette.temperatureBarWarm,
+                          AppPalette.temperatureBarHot,
                         ],
                       ),
                     ),

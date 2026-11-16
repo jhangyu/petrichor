@@ -42,8 +42,8 @@ class TemperatureBlock extends StatelessWidget {
           spacing: AppSpace.s8,
           children: [
             Text(c.weather ?? '—', style: AppType.body1.copyWith(color: AppPalette.foreground2)),
-            hilo('高', c.dailyHigh, AppPalette.tempHot),
-            hilo('低', c.dailyLow, AppPalette.tempCold),
+            hilo('高', c.dailyHigh, AppPalette.temperatureHot),
+            hilo('低', c.dailyLow, AppPalette.temperatureCold),
           ],
         ),
       ],

@@ -77,8 +77,8 @@ class Forecast72hCard extends StatelessWidget {
     return Row(
       spacing: AppSpace.s8,
       children: [
-        _stat('最高溫', tempText(hot?.temperature), AppPalette.tempHot, hot == null ? '—' : _when(hot)),
-        _stat('最低溫', tempText(cold?.temperature), AppPalette.tempCold, cold == null ? '—' : _when(cold)),
+        _stat('最高溫', tempText(hot?.temperature), AppPalette.temperatureHot, hot == null ? '—' : _when(hot)),
+        _stat('最低溫', tempText(cold?.temperature), AppPalette.temperatureCold, cold == null ? '—' : _when(cold)),
         _stat('降雨機率', percentText(wet?.pop), AppPalette.rainForeground, wet == null ? '—' : _when(wet)),
       ],
     );
