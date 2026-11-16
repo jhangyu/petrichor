@@ -34,10 +34,10 @@ class HazardRepository {
             _dio.get<Object?>(AppConstants.warningsByCountyDataset),
             _dio.get<Object?>(AppConstants.warningBulletinsDataset),
           ]);
-          final w1 = _datastoreRecords(responses[0].data, AppConstants.warningsByCountyDataset);
-          final w2 = _datastoreRecords(responses[1].data, AppConstants.warningBulletinsDataset);
-          final bulletins = _bulletins(w2);
-          final warnings = ActiveWarnings.fromJson(w1, bulletins, clock());
+          final warningsByCounty = _datastoreRecords(responses[0].data, AppConstants.warningsByCountyDataset);
+          final warningBulletins = _datastoreRecords(responses[1].data, AppConstants.warningBulletinsDataset);
+          final bulletins = _bulletins(warningBulletins);
+          final warnings = ActiveWarnings.fromJson(warningsByCounty, bulletins, clock());
           if (warnings.counties.isNotEmpty && bulletins.isEmpty) {
             return const Failure(
               '[${AppConstants.warningBulletinsDataset}] expected bulletins because ${AppConstants.warningsByCountyDataset} lists active warnings, got none',

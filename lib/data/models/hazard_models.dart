@@ -149,11 +149,11 @@ class ActiveWarnings {
     return bulletins.map((b) => b.updatedAt).reduce((a, b) => a.isAfter(b) ? a : b);
   }
 
-  /// 解析 W-C0033-001（[w1Records] = `records`）；缺 `location` 陣列視為格式錯誤，
+  /// 解析 W-C0033-001（[warningsByCountyRecords] = `records`）；缺 `location` 陣列視為格式錯誤，
   /// 因為此資料集無特報時仍列出全部縣市（hazards 為空陣列）。
   /// [bulletins] 為已解析的 W-C0033-002 公告。
-  factory ActiveWarnings.fromJson(Object? w1Records, List<WarningBulletin> bulletins, DateTime fetchedAt) {
-    final locations = _list(_map(w1Records, 'records')['location'], 'records.location');
+  factory ActiveWarnings.fromJson(Object? warningsByCountyRecords, List<WarningBulletin> bulletins, DateTime fetchedAt) {
+    final locations = _list(_map(warningsByCountyRecords, 'records')['location'], 'records.location');
     final counties = <CountyWarnings>[];
     for (var i = 0; i < locations.length; i++) {
       final p = 'records.location[$i]';
