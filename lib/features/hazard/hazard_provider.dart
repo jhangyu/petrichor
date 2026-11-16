@@ -3,7 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/hazard_models.dart';
 import '../../data/repositories/hazard_repository.dart';
 import '../../core/api/result.dart' show Result;
-import '../../data/models/place.dart' show HazardLocation;
+import '../../data/models/place.dart' show Place;
+
+/// 使用者位置：縣市名（CWA 寫法，用「臺」）與經緯度
+typedef HazardLocation = ({String county, double latitude, double longitude});
+
+extension PlaceHazardLocation on Place {
+  /// 雨量／警特報頁用的位置
+  HazardLocation get hazardLocation =>
+      (county: county, latitude: latitude, longitude: longitude);
+}
 
 /// 目前生效的縣市特報（含公告）；無特報為 Success 且 counties 為空
 final activeWarningsProvider = FutureProvider<Result<ActiveWarnings>>((ref) {
