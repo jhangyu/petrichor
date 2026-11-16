@@ -72,44 +72,44 @@ AccumGrid parseAccumGrid(String text, {required String url}) {
     );
   }
   // lines[2] is the per-file colour scale, unused.
-  final ndv = _ints(url, lines[3].trim(), 'ndv:').single;
-  final colIdx = _ints(url, lines[4].trim(), 'colIdx:');
-  final rowPtr = _ints(url, lines[5].trim(), 'rowPtr:');
-  final vals = _ints(url, lines[6].trim(), 'vals:');
-  if (colIdx.length != ndv) {
-    throw AccumFormatException(url, 'colIdx length', ndv, colIdx.length);
+  final nonZeroCount = _ints(url, lines[3].trim(), 'ndv:').single;
+  final columnIndices = _ints(url, lines[4].trim(), 'colIdx:');
+  final rowPointers = _ints(url, lines[5].trim(), 'rowPtr:');
+  final values = _ints(url, lines[6].trim(), 'vals:');
+  if (columnIndices.length != nonZeroCount) {
+    throw AccumFormatException(url, 'colIdx length', nonZeroCount, columnIndices.length);
   }
-  if (vals.length != ndv) {
-    throw AccumFormatException(url, 'vals length', ndv, vals.length);
+  if (values.length != nonZeroCount) {
+    throw AccumFormatException(url, 'vals length', nonZeroCount, values.length);
   }
-  if (rowPtr.length != accumGridHeight + 1) {
+  if (rowPointers.length != accumGridHeight + 1) {
     throw AccumFormatException(
       url,
       'rowPtr length',
       accumGridHeight + 1,
-      rowPtr.length,
+      rowPointers.length,
     );
   }
-  if (rowPtr.first != 0 || rowPtr.last != ndv) {
+  if (rowPointers.first != 0 || rowPointers.last != nonZeroCount) {
     throw AccumFormatException(
       url,
       'rowPtr first/last',
-      '0/$ndv',
-      '${rowPtr.first}/${rowPtr.last}',
+      '0/$nonZeroCount',
+      '${rowPointers.first}/${rowPointers.last}',
     );
   }
   final raw = Int16List(accumGridWidth * accumGridHeight);
   for (var row = 0; row < accumGridHeight; row++) {
-    if (rowPtr[row + 1] < rowPtr[row]) {
+    if (rowPointers[row + 1] < rowPointers[row]) {
       throw AccumFormatException(
         url,
         'rowPtr[${row + 1}]',
-        '>= ${rowPtr[row]}',
-        rowPtr[row + 1],
+        '>= ${rowPointers[row]}',
+        rowPointers[row + 1],
       );
     }
-    for (var i = rowPtr[row]; i < rowPtr[row + 1]; i++) {
-      final col = colIdx[i];
+    for (var i = rowPointers[row]; i < rowPointers[row + 1]; i++) {
+      final col = columnIndices[i];
       if (col < 0 || col >= accumGridWidth) {
         throw AccumFormatException(
           url,
@@ -118,7 +118,7 @@ AccumGrid parseAccumGrid(String text, {required String url}) {
           col,
         );
       }
-      raw[row * accumGridWidth + col] = vals[i];
+      raw[row * accumGridWidth + col] = values[i];
     }
   }
   return AccumGrid(raw);
