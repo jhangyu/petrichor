@@ -55,7 +55,7 @@ void main() {
       expect(heavyRain.end, _taiwanTime('2026-11-15T01:00:00'));
       // -001 標「豪雨」、-002 對屏東標「大雨」：靠縣市＋有效期間配對
       expect(heavyRain.bulletin!.title, '豪雨特報');
-      expect(heavyRain.bulletin!.issueTime, _taiwanTime('2026-11-14T18:55:00'));
+      expect(heavyRain.bulletin!.issuedAt, _taiwanTime('2026-11-14T18:55:00'));
       expect(heavyRain.bulletin!.description.startsWith('鋒面通過'), isTrue);
       expect(heavyRain.bulletin!.description, equals(heavyRain.bulletin!.description.trim()));
       expect(heavyRain.bulletin!.affectedAreas, containsAll(['高雄市', '屏東縣']));

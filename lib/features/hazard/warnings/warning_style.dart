@@ -6,13 +6,13 @@ import 'warning_groups.dart';
 
 /// Colours of one warning level (`.warn--N`); level null = informational (`.warn--info`).
 class WarningLevelStyle {
-  final Color bg;
-  final Color fg;
+  final Color background;
+  final Color foreground;
   final Color stroke;
   final Color solid;
   final BadgeTone tone;
 
-  const WarningLevelStyle._(this.bg, this.fg, this.stroke, this.solid, this.tone);
+  const WarningLevelStyle._(this.background, this.foreground, this.stroke, this.solid, this.tone);
 
   static const _info = WarningLevelStyle._(
       AppPalette.infoBackground, AppPalette.infoForeground, AppPalette.infoStroke, AppPalette.infoSolid, BadgeTone.rain);

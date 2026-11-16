@@ -3,7 +3,7 @@ import '../rainfall/rainfall_logic.dart' show rainLevelNames;
 
 /// Rain-warning names, highest first: the level (1–4) is the first entry contained in the name.
 /// CWA names no other warning by level, so every other warning has level null.
-final _rainLevelNames = [for (var level = rainLevelNames.length - 1; level >= 1; level--) (rainLevelNames[level], level)];
+final _rainLevelsByName = [for (var level = rainLevelNames.length - 1; level >= 1; level--) (rainLevelNames[level], level)];
 
 /// One warning (same kind, same validity) with every county it applies to.
 class WarningGroup {
@@ -31,7 +31,7 @@ class WarningGroup {
 
   /// Rain-warning level 1–4; null for any other warning.
   int? get level {
-    for (final (rainName, level) in _rainLevelNames) {
+    for (final (rainName, level) in _rainLevelsByName) {
       if (name.contains(rainName)) return level;
     }
     return null;

@@ -12,7 +12,7 @@ CountyWarning _w(String phenomena, DateTime start, {WarningBulletin? bulletin}) 
 
 WarningBulletin _bulletin(String title) => WarningBulletin(
       title: title,
-      issueTime: DateTime.utc(2026, 11, 14),
+      issuedAt: DateTime.utc(2026, 11, 14),
       updatedAt: DateTime.utc(2026, 11, 14),
       start: DateTime.utc(2026, 11, 14),
       end: DateTime.utc(2026, 11, 15),

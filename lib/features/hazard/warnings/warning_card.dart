@@ -97,10 +97,10 @@ class _WarningCardState extends State<WarningCard> {
                 height: AppSize.touch,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: style.bg,
+                  color: style.background,
                   border: Border.all(color: style.stroke, width: AppStroke.thin),
                 ),
-                child: Icon(warningIcon(group), color: style.fg),
+                child: Icon(warningIcon(group), color: style.foreground),
               ),
               Expanded(
                 child: Column(
@@ -182,7 +182,7 @@ class _WarningCardState extends State<WarningCard> {
         if (bulletin != null)
           row(
             '發布時間',
-            Text(formatTaiwanMonthDayClock(bulletin.issueTime),
+            Text(formatTaiwanMonthDayClock(bulletin.issuedAt),
                 style: AppType.body1.copyWith(color: AppPalette.foreground1, fontFeatures: AppType.tabular)),
           ),
       ],

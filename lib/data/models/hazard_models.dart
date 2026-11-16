@@ -9,30 +9,30 @@ import '../../core/time/taiwan_time.dart';
 /// CWA 缺值標記（字串）
 const String _missingMarker = '-99';
 
-Map<String, dynamic> _map(Object? v, String path) {
+Map<String, dynamic> _asObject(Object? v, String path) {
   if (v is Map<String, dynamic>) return v;
   throw FormatException('expected object at $path, got ${v.runtimeType}');
 }
 
-List<dynamic> _list(Object? v, String path) {
+List<dynamic> _asList(Object? v, String path) {
   if (v is List<dynamic>) return v;
   throw FormatException('expected array at $path, got ${v.runtimeType}');
 }
 
-String _str(Object? v, String path) {
+String _asString(Object? v, String path) {
   if (v is String) return v;
   throw FormatException('expected string at $path, got ${v.runtimeType}');
 }
 
 /// 雨量字串；"-99" 與非數字（如微量 "T"）→ null（使用者裁決：只留數字值），非字串 → FormatException
-double? _mm(Object? v, String path) {
-  final s = _str(v, path);
+double? _rainMillimeters(Object? v, String path) {
+  final s = _asString(v, path);
   if (s == _missingMarker) return null;
   return double.tryParse(s);
 }
 
-double _num(Object? v, String path) {
-  final s = _str(v, path);
+double _asNumber(Object? v, String path) {
+  final s = _asString(v, path);
   final n = double.tryParse(s);
   if (n == null) throw FormatException('expected number at $path, got "$s"');
   return n;
@@ -41,8 +41,8 @@ double _num(Object? v, String path) {
 final _zonePattern = RegExp(r'[+-]\d\d:\d\d$');
 
 /// "yyyy-MM-dd HH:mm:ss"（+08 本地）或 ISO 8601 → DateTime
-DateTime _time(Object? v, String path) {
-  final s = _str(v, path);
+DateTime _asInstant(Object? v, String path) {
+  final s = _asString(v, path);
   final hasZone = s.endsWith('Z') || _zonePattern.hasMatch(s);
   final parsed = DateTime.tryParse(hasZone ? s : '${s.replaceFirst(' ', 'T')}$taiwanUtcOffsetText');
   if (parsed == null) throw FormatException('expected timestamp at $path, got "$s"');
@@ -83,7 +83,7 @@ class CountyWarnings {
 class WarningBulletin {
   /// 公告名稱，如「豪雨特報」
   final String title;
-  final DateTime issueTime;
+  final DateTime issuedAt;
 
   /// CWA 最後更新此公告的時間（`datasetInfo.update`）
   final DateTime updatedAt;
@@ -96,7 +96,7 @@ class WarningBulletin {
 
   const WarningBulletin({
     required this.title,
-    required this.issueTime,
+    required this.issuedAt,
     required this.updatedAt,
     required this.start,
     required this.end,
@@ -105,30 +105,30 @@ class WarningBulletin {
   });
 
   factory WarningBulletin.fromJson(Object? json, String path) {
-    final m = _map(json, path);
-    final info = _map(m['datasetInfo'], '$path.datasetInfo');
-    final valid = _map(info['validTime'], '$path.datasetInfo.validTime');
-    final hazards = _list(
-      _map(_map(m['hazardConditions'], '$path.hazardConditions')['hazards'], '$path.hazardConditions.hazards')['hazard'],
+    final m = _asObject(json, path);
+    final info = _asObject(m['datasetInfo'], '$path.datasetInfo');
+    final valid = _asObject(info['validTime'], '$path.datasetInfo.validTime');
+    final hazards = _asList(
+      _asObject(_asObject(m['hazardConditions'], '$path.hazardConditions')['hazards'], '$path.hazardConditions.hazards')['hazard'],
       '$path.hazardConditions.hazards.hazard',
     );
     final areas = <String>[
       for (var i = 0; i < hazards.length; i++)
-        for (final loc in _list(
-          _map(_map(_map(hazards[i], '$path.hazard[$i]')['info'], '$path.hazard[$i].info')['affectedAreas'],
+        for (final locationJson in _asList(
+          _asObject(_asObject(_asObject(hazards[i], '$path.hazard[$i]')['info'], '$path.hazard[$i].info')['affectedAreas'],
               '$path.hazard[$i].info.affectedAreas')['location'],
           '$path.hazard[$i].info.affectedAreas.location',
         ))
-          _str(_map(loc, '$path.hazard[$i].location')['locationName'], '$path.hazard[$i].location.locationName'),
+          _asString(_asObject(locationJson, '$path.hazard[$i].location')['locationName'], '$path.hazard[$i].location.locationName'),
     ];
-    final content = _map(_map(m['contents'], '$path.contents')['content'], '$path.contents.content');
+    final content = _asObject(_asObject(m['contents'], '$path.contents')['content'], '$path.contents.content');
     return WarningBulletin(
-      title: _str(info['datasetDescription'], '$path.datasetInfo.datasetDescription'),
-      issueTime: _time(info['issueTime'], '$path.datasetInfo.issueTime'),
-      updatedAt: _time(info['update'], '$path.datasetInfo.update'),
-      start: _time(valid['startTime'], '$path.datasetInfo.validTime.startTime'),
-      end: _time(valid['endTime'], '$path.datasetInfo.validTime.endTime'),
-      description: _str(content['contentText'], '$path.contents.content.contentText').trim(),
+      title: _asString(info['datasetDescription'], '$path.datasetInfo.datasetDescription'),
+      issuedAt: _asInstant(info['issueTime'], '$path.datasetInfo.issueTime'),
+      updatedAt: _asInstant(info['update'], '$path.datasetInfo.update'),
+      start: _asInstant(valid['startTime'], '$path.datasetInfo.validTime.startTime'),
+      end: _asInstant(valid['endTime'], '$path.datasetInfo.validTime.endTime'),
+      description: _asString(content['contentText'], '$path.contents.content.contentText').trim(),
       affectedAreas: areas,
     );
   }
@@ -153,25 +153,25 @@ class ActiveWarnings {
   /// 因為此資料集無特報時仍列出全部縣市（hazards 為空陣列）。
   /// [bulletins] 為已解析的 W-C0033-002 公告。
   factory ActiveWarnings.fromJson(Object? warningsByCountyRecords, List<WarningBulletin> bulletins, DateTime fetchedAt) {
-    final locations = _list(_map(warningsByCountyRecords, 'records')['location'], 'records.location');
+    final locations = _asList(_asObject(warningsByCountyRecords, 'records')['location'], 'records.location');
     final counties = <CountyWarnings>[];
     for (var i = 0; i < locations.length; i++) {
       final p = 'records.location[$i]';
-      final loc = _map(locations[i], p);
-      final name = _str(loc['locationName'], '$p.locationName');
-      final hazards = _list(_map(loc['hazardConditions'], '$p.hazardConditions')['hazards'], '$p.hazardConditions.hazards');
+      final locationJson = _asObject(locations[i], p);
+      final name = _asString(locationJson['locationName'], '$p.locationName');
+      final hazards = _asList(_asObject(locationJson['hazardConditions'], '$p.hazardConditions')['hazards'], '$p.hazardConditions.hazards');
       if (hazards.isEmpty) continue;
       final warnings = <CountyWarning>[];
       for (var j = 0; j < hazards.length; j++) {
         final hp = '$p.hazards[$j]';
-        final h = _map(hazards[j], hp);
-        final info = _map(h['info'], '$hp.info');
-        final valid = _map(h['validTime'], '$hp.validTime');
-        final start = _time(valid['startTime'], '$hp.validTime.startTime');
-        final end = _time(valid['endTime'], '$hp.validTime.endTime');
+        final h = _asObject(hazards[j], hp);
+        final info = _asObject(h['info'], '$hp.info');
+        final valid = _asObject(h['validTime'], '$hp.validTime');
+        final start = _asInstant(valid['startTime'], '$hp.validTime.startTime');
+        final end = _asInstant(valid['endTime'], '$hp.validTime.endTime');
         warnings.add(CountyWarning(
-          phenomena: _str(info['phenomena'], '$hp.info.phenomena'),
-          significance: _str(info['significance'], '$hp.info.significance'),
+          phenomena: _asString(info['phenomena'], '$hp.info.phenomena'),
+          significance: _asString(info['significance'], '$hp.info.significance'),
           start: start,
           end: end,
           bulletin: _matchBulletin(bulletins, name, start, end),
@@ -227,38 +227,38 @@ class RainStation {
   });
 
   factory RainStation.fromJson(Object? json, String path) {
-    final m = _map(json, path);
-    final geo = _map(m['GeoInfo'], '$path.GeoInfo');
-    final coords = _list(geo['Coordinates'], '$path.GeoInfo.Coordinates');
-    final wgs84 = coords.map((c) => _map(c, '$path.GeoInfo.Coordinates[]')).where((c) => c['CoordinateName'] == 'WGS84');
+    final m = _asObject(json, path);
+    final geo = _asObject(m['GeoInfo'], '$path.GeoInfo');
+    final coords = _asList(geo['Coordinates'], '$path.GeoInfo.Coordinates');
+    final wgs84 = coords.map((c) => _asObject(c, '$path.GeoInfo.Coordinates[]')).where((c) => c['CoordinateName'] == 'WGS84');
     if (wgs84.isEmpty) throw FormatException('no WGS84 coordinate at $path.GeoInfo.Coordinates');
     final c = wgs84.first;
-    final element = _map(m['RainfallElement'], '$path.RainfallElement');
+    final element = _asObject(m['RainfallElement'], '$path.RainfallElement');
     double? precipitation(String key) {
       final p = '$path.RainfallElement.$key';
-      return _mm(_map(element[key], p)['Precipitation'], '$p.Precipitation');
+      return _rainMillimeters(_asObject(element[key], p)['Precipitation'], '$p.Precipitation');
     }
 
     return RainStation(
-      id: _str(m['StationId'], '$path.StationId'),
-      name: _str(m['StationName'], '$path.StationName'),
-      county: _str(geo['CountyName'], '$path.GeoInfo.CountyName'),
-      town: _str(geo['TownName'], '$path.GeoInfo.TownName'),
-      latitude: _num(c['StationLatitude'], '$path.WGS84.StationLatitude'),
-      longitude: _num(c['StationLongitude'], '$path.WGS84.StationLongitude'),
+      id: _asString(m['StationId'], '$path.StationId'),
+      name: _asString(m['StationName'], '$path.StationName'),
+      county: _asString(geo['CountyName'], '$path.GeoInfo.CountyName'),
+      town: _asString(geo['TownName'], '$path.GeoInfo.TownName'),
+      latitude: _asNumber(c['StationLatitude'], '$path.WGS84.StationLatitude'),
+      longitude: _asNumber(c['StationLongitude'], '$path.WGS84.StationLongitude'),
       todayMillimeters: precipitation('Now'),
       past1HourMillimeters: precipitation('Past1hr'),
       past3HoursMillimeters: precipitation('Past3hr'),
       past10MinutesMillimeters: precipitation('Past10Min'),
-      observedAt: _time(_map(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
+      observedAt: _asInstant(_asObject(m['ObsTime'], '$path.ObsTime')['DateTime'], '$path.ObsTime.DateTime'),
     );
   }
 
   /// 與 (latitude, longitude) 的等距矩形近似距離平方（度²，經度已乘 cos 緯度）
   double squaredDistanceTo(double latitude, double longitude) {
-    final dLat = this.latitude - latitude;
-    final dLon = (this.longitude - longitude) * math.cos(latitude * math.pi / 180);
-    return dLat * dLat + dLon * dLon;
+    final latitudeDelta = this.latitude - latitude;
+    final longitudeDelta = (this.longitude - longitude) * math.cos(latitude * math.pi / 180);
+    return latitudeDelta * latitudeDelta + longitudeDelta * longitudeDelta;
   }
 }
 
@@ -278,7 +278,7 @@ class CountyRainfall {
 
 /// 解析 O-A0002-001 的 `records.Station[]` 全部測站
 List<RainStation> parseRainStations(Object? records) {
-  final stations = _list(_map(records, 'records')['Station'], 'records.Station');
+  final stations = _asList(_asObject(records, 'records')['Station'], 'records.Station');
   return [for (var i = 0; i < stations.length; i++) RainStation.fromJson(stations[i], 'records.Station[$i]')];
 }
 
@@ -322,19 +322,19 @@ class RainForecastGrid {
   /// [root] = fileapi 回應的 `cwaopendata`
   factory RainForecastGrid.fromJson(Object? root) {
     const base = 'cwaopendata.dataset';
-    final ds = _map(_map(root, 'cwaopendata')['dataset'], base);
-    final ps = _map(_map(ds['datasetInfo'], '$base.datasetInfo')['parameterSet'], '$base.datasetInfo.parameterSet');
-    const pp = '$base.datasetInfo.parameterSet';
-    final raw = _str(_map(ds['contents'], '$base.contents')['content'], '$base.contents.content');
+    final dataset = _asObject(_asObject(root, 'cwaopendata')['dataset'], base);
+    final parameterSet = _asObject(_asObject(dataset['datasetInfo'], '$base.datasetInfo')['parameterSet'], '$base.datasetInfo.parameterSet');
+    const parameterSetPath = '$base.datasetInfo.parameterSet';
+    final raw = _asString(_asObject(dataset['contents'], '$base.contents')['content'], '$base.contents.content');
     final values = [for (final s in raw.split(',')) _gridValue(s.trim())];
     return RainForecastGrid(
-      baseTime: _time(ps['DateTime'], '$pp.DateTime'),
-      issuedAt: _time(_map(root, 'cwaopendata')['sent'], 'cwaopendata.sent'),
-      startLongitude: _num(ps['StartPointLongitude'], '$pp.StartPointLongitude'),
-      startLatitude: _num(ps['StartPointLatitude'], '$pp.StartPointLatitude'),
-      resolution: _num(ps['GridResolution'], '$pp.GridResolution'),
-      columns: _num(ps['GridDimensionX'], '$pp.GridDimensionX').toInt(),
-      rows: _num(ps['GridDimensionY'], '$pp.GridDimensionY').toInt(),
+      baseTime: _asInstant(parameterSet['DateTime'], '$parameterSetPath.DateTime'),
+      issuedAt: _asInstant(_asObject(root, 'cwaopendata')['sent'], 'cwaopendata.sent'),
+      startLongitude: _asNumber(parameterSet['StartPointLongitude'], '$parameterSetPath.StartPointLongitude'),
+      startLatitude: _asNumber(parameterSet['StartPointLatitude'], '$parameterSetPath.StartPointLatitude'),
+      resolution: _asNumber(parameterSet['GridResolution'], '$parameterSetPath.GridResolution'),
+      columns: _asNumber(parameterSet['GridDimensionX'], '$parameterSetPath.GridDimensionX').toInt(),
+      rows: _asNumber(parameterSet['GridDimensionY'], '$parameterSetPath.GridDimensionY').toInt(),
       values: values,
     );
   }
