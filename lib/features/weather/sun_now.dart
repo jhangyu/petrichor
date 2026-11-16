@@ -96,7 +96,7 @@ Result<SunNow> sunNow(List<SunDay> days, Place place, DateTime now) {
     final d = byDate[key];
     if (d != null) return Success(d);
     final actual = days.isEmpty ? '無資料' : '${days.first.date}–${days.last.date}';
-    return Failure('日出日落資料不含所需日期：期望 $key，實際 $actual，請重新整理', dataset: AppConstants.sunTimesDataset);
+    return Failure('日出日落資料不含所需日期：期望 $key，實際 $actual，請重新整理', dataset: AppConstants.sunTimesDatasetId);
   }
 
   final Result<SunDay> todayResult = lookup(todayWall);

@@ -95,7 +95,7 @@ final class ApiKeyUnchecked extends ApiKeyStatus {
 }
 
 /// Dataset used to probe the key (one station is enough).
-const String _verifyDataset = AppConstants.observationDataset;
+const String _verifyDatasetId = AppConstants.observationDatasetId;
 
 class ApiKeyStatusNotifier extends Notifier<ApiKeyStatus> {
   /// Bumped on every rebuild and verify; a verify result of an older one is dropped.
@@ -124,7 +124,7 @@ class ApiKeyStatusNotifier extends Notifier<ApiKeyStatus> {
 
   Future<ApiKeyStatus> _probe() async {
     try {
-      final response = await ref.read(dioProvider).get<Object?>(_verifyDataset, queryParameters: {'limit': 1});
+      final response = await ref.read(dioProvider).get<Object?>(_verifyDatasetId, queryParameters: {'limit': 1});
       final data = response.data;
       if (response.statusCode == 200 && data is Map<String, dynamic> && data['success'] == 'true') {
         return ApiKeyValid(DateTime.now());

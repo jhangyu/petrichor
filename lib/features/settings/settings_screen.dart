@@ -68,7 +68,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     };
     return AppPageScaffold(
       header: AppPageHeader(title: '設定', subtitle: _subtitle(problem, current)),
-      source: _hasObservation() ? const SourceLine(datasetIds: [AppConstants.observationDataset]) : null,
+      source: _hasObservation() ? const SourceLine(datasetIds: [AppConstants.observationDatasetId]) : null,
       onRefresh: _refreshWeather,
       children: [
         if (problem != null) AppGridItem.full(child: _tokenBanner(problem)),

@@ -62,7 +62,7 @@ class WeatherRepository {
   /// 取得離 [place] 最近、且有氣溫讀數的觀測站即時觀測（O-A0003-001）。
   Future<Result<CurrentWeather>> getCurrentWeather(Place place) {
     return _query(
-      dataset: AppConstants.observationDataset,
+      dataset: AppConstants.observationDatasetId,
       location: place.name,
       query: {'limit': AppConstants.observationStationLimit},
       parse: (body) => _parseObservation(body, place.latitude, place.longitude),
@@ -105,7 +105,7 @@ class WeatherRepository {
       for (var i = -_sunDaysBefore; i < _sunDaysAfter + 1; i++) isoDate(today.add(Duration(days: i))),
     ];
     return _query(
-      dataset: AppConstants.sunTimesDataset,
+      dataset: AppConstants.sunTimesDatasetId,
       location: countyName,
       // timeTo 為不含端點，故取 days.last 的次日
       query: {
@@ -136,13 +136,13 @@ class WeatherRepository {
   }
 
   /// 取得離 ([latitude], [longitude]) 最近的鄉鎮。
-  /// 先以最近的自動氣象站（[AppConstants.countyLookupDataset]）判定縣市，只抓該縣市鄉鎮清單；
+  /// 先以最近的自動氣象站（[AppConstants.countyLookupDatasetId]）判定縣市，只抓該縣市鄉鎮清單；
   /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[_countyBorderSlackKilometers]」遠（疑似縣市交界），
   /// 再抓該縣市清單一併比較。最多 3 次請求（測站＋2 縣市）。任一請求失敗即失敗。
   Future<Result<Place>> nearestTown(double latitude, double longitude) async {
     final where = '($latitude, $longitude)';
     final stations = await _query(
-      dataset: AppConstants.countyLookupDataset,
+      dataset: AppConstants.countyLookupDatasetId,
       location: where,
       // 只取一個要素與縣市／座標，縮小回應
       query: {'WeatherElement': _countyLookupElement, 'GeoInfo': 'Coordinates,CountyName'},

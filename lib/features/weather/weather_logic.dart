@@ -35,11 +35,11 @@ List<String> creditedDatasets(WeatherState weather, String county, Result<Object
   if (weather.isLoading) return const <String>[];
   final datasets = AppConstants.townshipForecastDatasets[county];
   return [
-    if (weather.current is Success) AppConstants.observationDataset,
+    if (weather.current is Success) AppConstants.observationDatasetId,
     if (weather.weekly is Success && datasets != null) datasets.oneWeek,
     if (weather.hourly is Success && datasets != null) datasets.threeDay,
-    if (weather.sun is Success) AppConstants.sunTimesDataset,
-    if (warnings is Success) ...[AppConstants.warningsByCountyDataset, AppConstants.warningBulletinsDataset],
+    if (weather.sun is Success) AppConstants.sunTimesDatasetId,
+    if (warnings is Success) ...[AppConstants.warningsByCountyDatasetId, AppConstants.warningBulletinsDatasetId],
   ];
 }
 
@@ -95,7 +95,7 @@ NowCardState nowCard(WeatherState state, DateTime now) {
     final Failure<List<SunDay>> failure => failure.retype<SunNow>(),
     Success(:final data) when place != null => sunNow(data, place, now),
     // Invariant: WeatherState carries data only for a loaded place; surface the break instead of hiding the arc.
-    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: AppConstants.sunTimesDataset),
+    Success() => const Failure('沒有地點，無法計算太陽仰角', dataset: AppConstants.sunTimesDatasetId),
   };
   final slot = switch (state.hourly) {
     Success(:final data) => currentSlot(data, now),
