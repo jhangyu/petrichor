@@ -33,9 +33,9 @@ const radarSignificantEchoDbz = 20;
 /// count; the same frame's real ≥ 50 dBZ echo covers ≈ 170 km². ponytail: an
 /// area rule, not a connected-blob one; upgrade if artifacts larger than this
 /// show up.
-const radarEchoMinAreaKm2 = 12.0;
+const radarEchoMinimumAreaSquareKilometers = 12.0;
 
-const _earthKmPerDegree = earthRadiusKilometers * pi / 180;
+const _earthKilometersPerDegree = earthRadiusKilometers * pi / 180;
 
 /// Header words (uint32): image width, image height.
 const _headerWords = 2;
@@ -70,15 +70,15 @@ class RadarEchoStatistics {
     }
   }
 
-  /// Pixels needed for [radarEchoMinAreaKm2] at this image's scale.
+  /// Pixels needed for [radarEchoMinimumAreaSquareKilometers] at this image's scale.
   int get minPixels {
     final midLat = (bounds.north + bounds.south) / 2;
-    final pxKm2 = (bounds.north - bounds.south) / imageHeight * _earthKmPerDegree *
-        (bounds.east - bounds.west) / imageWidth * _earthKmPerDegree * cos(midLat * pi / 180);
-    return (radarEchoMinAreaKm2 / pxKm2).ceil();
+    final pxKm2 = (bounds.north - bounds.south) / imageHeight * _earthKilometersPerDegree *
+        (bounds.east - bounds.west) / imageWidth * _earthKilometersPerDegree * cos(midLat * pi / 180);
+    return (radarEchoMinimumAreaSquareKilometers / pxKm2).ceil();
   }
 
-  /// Highest dBZ reached over [radarEchoMinAreaKm2]; null when no level is.
+  /// Highest dBZ reached over [radarEchoMinimumAreaSquareKilometers]; null when no level is.
   int? get strongestDbz {
     final need = minPixels;
     var atOrAbove = 0;

@@ -72,16 +72,16 @@ RadarStation? radarStationById(String id) => radarStations.where((s) => s.datase
 
 /// Website station images reach this far from the radar (their 「距雷達150公里」
 /// ring); legend bar at x 3462-3525, y 2541-3572 (checked 2026-11-15).
-const radarStationRangeKm = 150.0;
+const radarStationRangeKilometers = 150.0;
 
-/// Square around a station radar whose half-side is [radiusKm] (the image's
+/// Square around a station radar whose half-side is [radiusKilometers] (the image's
 /// range ring touches the image edges). ponytail: equirectangular offsets and
 /// no row reprojection: CWA does not state the station image projection, and
 /// the Mercator-vs-linear difference over ±150 km is ≤ 0.83 km (10 px of 3600),
 /// so a reprojection could not be shown to be more correct. Revisit if CWA
 /// publishes the projection.
-LatLngBounds stationRadarBounds(LatLng centre, {required double radiusKm}) {
-  final dLat = radiusKm / earthRadiusKilometers * 180 / pi;
+LatLngBounds stationRadarBounds(LatLng centre, {required double radiusKilometers}) {
+  final dLat = radiusKilometers / earthRadiusKilometers * 180 / pi;
   final dLon = dLat / cos(centre.latitude * pi / 180);
   return LatLngBounds(
     LatLng(centre.latitude - dLat, centre.longitude - dLon),

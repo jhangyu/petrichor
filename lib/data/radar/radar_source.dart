@@ -140,7 +140,7 @@ class RadarSource {
       listUrl: radarStationListUrl,
       maxWindow: radarStationMaxWindow,
       parse: (scriptText) => parseRadarStationList(scriptText, code: station.imageCode),
-      geometry: stationRadarGeometry(stationRadarBounds(station.site, radiusKm: radarStationRangeKm)));
+      geometry: stationRadarGeometry(stationRadarBounds(station.site, radiusKilometers: radarStationRangeKilometers)));
 }
 
 /// [RadarFrameLister] of a website loop: the JS list at [listUrl], parsed by [parse].

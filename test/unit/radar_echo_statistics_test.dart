@@ -8,7 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
 
-/// Pixels for [radarEchoMinAreaKm2] on a full website frame (computed
+/// Pixels for [radarEchoMinimumAreaSquareKilometers] on a full website frame (computed
 /// independently: 12 km² / (11.5°/3600 · 111.195 km)² / cos 23.5°).
 const _frameMinPixels = 104;
 
@@ -56,7 +56,7 @@ void main() {
     expect(s.pixelsPerDbz.reduce((a, b) => a + b), 711);
   });
 
-  test('strongest level needs radarEchoMinAreaKm2 at or above it', () {
+  test('strongest level needs radarEchoMinimumAreaSquareKilometers at or above it', () {
     expect(_stats().minPixels, _frameMinPixels);
     expect(_stats(counts: {60: _frameMinPixels - 1}).strongestDbz, isNull);
     expect(_stats(counts: {60: _frameMinPixels - 1, 45: 1}).strongestDbz, 45);
