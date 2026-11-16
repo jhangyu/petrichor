@@ -1,6 +1,3 @@
-import '../../core/constants/cwa_names.dart';
-import '../../core/location/location_service.dart';
-
 /// 使用者位置：縣市名（CWA 寫法，用「臺」）與經緯度
 typedef HazardLocation = ({String county, double latitude, double longitude});
 
@@ -17,14 +14,6 @@ class Place {
     required this.latitude,
     required this.longitude,
   });
-
-  /// 由 GPS 定位結果建立（縣市／鄉鎮名正規化成「臺」）。
-  factory Place.fromLocation(LocationData location) => Place(
-        county: normalizeCwaName(location.city),
-        town: normalizeCwaName(location.district),
-        latitude: location.latitude,
-        longitude: location.longitude,
-      );
 
   /// 本機儲存格式 → Place；欄位缺漏或型別不符丟 [FormatException]（[path] 標出位置）。
   factory Place.fromJson(Object? json, String path) {
@@ -60,10 +49,6 @@ class Place {
   /// 雨量／警特報頁用的位置
   HazardLocation get hazardLocation =>
       (county: county, latitude: latitude, longitude: longitude);
-
-  /// WeatherRepository 查詢用
-  LocationData toLocationData() =>
-      LocationData(latitude: latitude, longitude: longitude, city: county, district: town);
 
   @override
   bool operator ==(Object other) =>

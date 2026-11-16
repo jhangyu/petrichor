@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:petrichor/data/models/weather_models.dart';
-import 'package:petrichor/core/location/location_service.dart';
+import 'package:petrichor/data/models/place.dart';
 import 'package:petrichor/core/api/result.dart';
 import 'package:petrichor/data/repositories/weather_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/fake_cwa_adapter.dart';
 
-LocationData _at(double lat, double lon, String city, String district) =>
-    LocationData(latitude: lat, longitude: lon, city: city, district: district);
+Place _at(double lat, double lon, String city, String district) =>
+    Place(county: city, town: district, latitude: lat, longitude: lon);
 
 Map<String, dynamic> _station(Map<String, dynamic> json, String name) =>
     ((json['records'] as Map)['Station'] as List).cast<Map<String, dynamic>>().firstWhere((s) => s['StationName'] == name);

@@ -1,13 +1,9 @@
 import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/place.dart';
 import '../api/result.dart';
-import '../../data/repositories/weather_repository.dart';
-
-final locationServiceProvider =
-    Provider((ref) => LocationService(ref.watch(weatherRepositoryProvider).nearestTown));
+import '../constants/cwa_names.dart';
 
 class LocationData {
   final double latitude;
@@ -25,6 +21,14 @@ class LocationData {
     required this.district,
     this.fixedAt,
   });
+
+  /// Place of this GPS fix (county/town names normalized to 「臺」).
+  Place toPlace() => Place(
+        county: normalizeCwaName(city),
+        town: normalizeCwaName(district),
+        latitude: latitude,
+        longitude: longitude,
+      );
 }
 
 enum LocationFailure {

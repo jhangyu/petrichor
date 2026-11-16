@@ -86,7 +86,7 @@ void main() {
     final s = await _settled(container);
 
     expect(s.error, isNull);
-    expect(s.location, Place.fromLocation(_taipei));
+    expect(s.location, _taipei.toPlace());
     expect(s.current!.data.temperature, isNotNull);
     expect(s.hourly!.data, hasLength(4));
     expect(s.weekly!.data.first.minTemperature, 21);

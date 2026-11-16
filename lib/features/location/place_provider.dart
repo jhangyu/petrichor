@@ -10,6 +10,9 @@ import '../../data/models/weather_models.dart';
 import '../../core/api/result.dart';
 import '../../data/repositories/weather_repository.dart';
 
+final locationServiceProvider =
+    Provider((ref) => LocationService(ref.watch(weatherRepositoryProvider).nearestTown));
+
 // ============================================================================
 // 目前地點狀態
 // ============================================================================
@@ -212,7 +215,7 @@ class CurrentPlaceNotifier extends AsyncNotifier<CurrentPlace> {
       if (epoch != _epoch) return null;
       final fixedAt = location.fixedAt ??
           (throw StateError('GPS location for ${location.city}${location.district}: expected a fix time, got null'));
-      return PlaceSelected(Place.fromLocation(location), PlaceSource.gps, fixedAt: fixedAt);
+      return PlaceSelected(location.toPlace(), PlaceSource.gps, fixedAt: fixedAt);
     } on LocationException catch (e) {
       return epoch == _epoch ? NoPlace(e) : null;
     }
@@ -256,5 +259,5 @@ final townsProvider = FutureProvider.family<Result<List<Place>>, String>((ref, c
 /// 單一地點的即時觀測（已儲存地點列表的現況溫度）。
 // ponytail: 每個地點各抓一次全臺觀測（O-A0003-001），地點多時改為共用一次觀測再依座標挑站。
 final placeObservationProvider = FutureProvider.family<Result<CurrentWeather>, Place>((ref, place) {
-  return ref.watch(weatherRepositoryProvider).getCurrentWeather(place.toLocationData());
+  return ref.watch(weatherRepositoryProvider).getCurrentWeather(place);
 });

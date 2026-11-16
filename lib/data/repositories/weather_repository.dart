@@ -5,7 +5,6 @@ import '../../core/api/dio_client.dart';
 import '../../core/api/result.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/cwa_names.dart';
-import '../../core/location/location_service.dart';
 import '../../core/time/taiwan_time.dart';
 import '../models/place.dart';
 import '../models/weather_models.dart';
@@ -61,13 +60,13 @@ class WeatherRepository {
   // 即時觀測
   // ==========================================================================
 
-  /// 取得離 [location] 最近、且有氣溫讀數的觀測站即時觀測（O-A0003-001）。
-  Future<Result<CurrentWeather>> getCurrentWeather(LocationData location) {
+  /// 取得離 [place] 最近、且有氣溫讀數的觀測站即時觀測（O-A0003-001）。
+  Future<Result<CurrentWeather>> getCurrentWeather(Place place) {
     return _query(
       dataset: AppConstants.observationDataset,
-      location: '${location.city}${location.district}',
+      location: place.name,
       query: {'limit': AppConstants.observationStationLimit},
-      parse: (body) => _parseObservation(body, location.latitude, location.longitude),
+      parse: (body) => _parseObservation(body, place.latitude, place.longitude),
     );
   }
 

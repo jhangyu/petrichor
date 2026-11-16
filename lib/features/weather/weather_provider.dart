@@ -100,7 +100,7 @@ class WeatherNotifier extends Notifier<WeatherState> {
   Future<void> _load(Place place, Ref buildRef) async {
     final repo = ref.read(weatherRepositoryProvider);
     final (current, hourly, weekly, sun, hourlyIssuedAt) = await (
-      repo.getCurrentWeather(place.toLocationData()),
+      repo.getCurrentWeather(place),
       repo.getHourlyForecast(place.county, place.town),
       repo.getWeeklyForecast(place.county, place.town),
       repo.getSunTimes(place.county, ref.read(weatherClockProvider)()),
