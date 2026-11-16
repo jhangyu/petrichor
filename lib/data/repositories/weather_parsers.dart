@@ -76,7 +76,7 @@ DateTime _time(Object? raw, String path) {
   return DateTime.parse(raw);
 }
 
-double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
+double _distanceKilometers(double lat1, double lon1, double lat2, double lon2) {
   double rad(double deg) => deg * math.pi / 180;
   final dLat = rad(lat2 - lat1);
   final dLon = rad(lon2 - lon1);
@@ -96,7 +96,7 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
     final temp = _num(_dig(station, ['WeatherElement', 'AirTemperature']), '$path.AirTemperature');
     if (temp == null) continue;
     final (sLat, sLon) = _wgs84Of(station, path);
-    final km = _distanceKm(lat, lon, sLat, sLon);
+    final km = _distanceKilometers(lat, lon, sLat, sLon);
     if (km < bestKm) {
       bestKm = km;
       best = station;
@@ -146,7 +146,7 @@ _StationCounty _stationCounty(Map<String, dynamic> station, double lat, double l
   final county = _text(_dig(station, ['GeoInfo', 'CountyName'])) ??
       (throw FormatException('$path.GeoInfo.CountyName：期望縣市名，實際缺值'));
   final (sLat, sLon) = _wgs84Of(station, path);
-  return _StationCounty(normalizeCwaPlaceName(county), _distanceKm(lat, lon, sLat, sLon));
+  return _StationCounty(normalizeCwaPlaceName(county), _distanceKilometers(lat, lon, sLat, sLon));
 }
 
 (double, double) _wgs84Of(Map<String, dynamic> station, String path) {
@@ -165,7 +165,7 @@ _StationCounty _stationCounty(Map<String, dynamic> station, double lat, double l
 }
 
 Place _nearestPlace(List<Place> places, double lat, double lon) => places.reduce((a, b) =>
-    _distanceKm(lat, lon, a.latitude, a.longitude) <= _distanceKm(lat, lon, b.latitude, b.longitude) ? a : b);
+    _distanceKilometers(lat, lon, a.latitude, a.longitude) <= _distanceKilometers(lat, lon, b.latitude, b.longitude) ? a : b);
 
 final _issueTimePattern = RegExp(r'"IssueTime"\s*:\s*"([^"]+)"');
 final _sunClockPattern = RegExp(r'^\d{2}:\d{2}$');

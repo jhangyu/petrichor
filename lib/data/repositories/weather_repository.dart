@@ -25,7 +25,7 @@ final weatherRepositoryProvider = Provider<WeatherRepository>((ref) {
 
 /// 縣市交界判定的寬容距離（公里）：另一縣市測站距離 ≤ 本縣市最近鄉鎮距離＋此值，即同時比較該縣市。
 // ponytail: 鄉鎮以中心點代表，交界處仍可能挑到鄰鄉鎮；要精確改用鄉鎮界多邊形。
-const double _countyBorderSlackKm = 1.0;
+const double _countyBorderSlackKilometers = 1.0;
 
 /// [actual] = the county name as the caller passed it.
 Failure<T> _unsupportedCounty<T>(String actual, {required String location}) => Failure(
@@ -137,7 +137,7 @@ class WeatherRepository {
 
   /// 取得離 ([latitude], [longitude]) 最近的鄉鎮。
   /// 先以最近的自動氣象站（[AppConstants.countyLookupDataset]）判定縣市，只抓該縣市鄉鎮清單；
-  /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[_countyBorderSlackKm]」遠（疑似縣市交界），
+  /// 若另一縣市最近的測站不比「本縣市最近鄉鎮距離＋[_countyBorderSlackKilometers]」遠（疑似縣市交界），
   /// 再抓該縣市清單一併比較。最多 3 次請求（測站＋2 縣市）。任一請求失敗即失敗。
   Future<Result<Place>> nearestTown(double latitude, double longitude) async {
     final where = '($latitude, $longitude)';
@@ -156,7 +156,7 @@ class WeatherRepository {
     if (home is Failure<List<Place>>) return home.retype<Place>();
     var best = _nearestPlace(home.data, latitude, longitude);
     if (other != null &&
-        other.km <= _distanceKm(latitude, longitude, best.latitude, best.longitude) + _countyBorderSlackKm) {
+        other.km <= _distanceKilometers(latitude, longitude, best.latitude, best.longitude) + _countyBorderSlackKilometers) {
       final neighbour = await getTowns(other.county);
       if (neighbour is Failure<List<Place>>) return neighbour.retype<Place>();
       best = _nearestPlace([best, ...neighbour.data], latitude, longitude);
