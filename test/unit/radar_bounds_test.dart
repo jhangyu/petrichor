@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('station bounds are site ± 150 km', () {
-    final shulin = radarStations.firstWhere((s) => s.code == 'RCSL'); // 樹林 121.40E 25.00N
+    final shulin = radarStations.firstWhere((s) => s.imageCode == 'RCSL'); // 樹林 121.40E 25.00N
     final b = stationRadarBounds(shulin.site, radiusKm: radarStationRangeKm);
     const dLat = 150 / earthRadiusKilometers * 57.29577951308232;
     expect(b.south, closeTo(25.0 - dLat, 1e-9));

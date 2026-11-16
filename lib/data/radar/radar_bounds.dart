@@ -59,12 +59,12 @@ RadarImageGeometry stationRadarGeometry(LatLngBounds bounds) => RadarImageGeomet
 /// A station radar: image-name code in the website station list, dataset id
 /// (the app's source id), display name and site. Sites from CWA's station radar metadata
 /// (StationLongitude/StationLatitude, 2026-11-15).
-typedef RadarStation = ({String code, String datasetId, String name, LatLng site});
+typedef RadarStation = ({String imageCode, String datasetId, String name, LatLng site});
 
 const radarStations = <RadarStation>[
-  (code: 'RCSL', datasetId: CwaDatasets.radarShulinDatasetId, name: '樹林', site: LatLng(25.00, 121.40)),
-  (code: 'RCNT', datasetId: CwaDatasets.radarNantunDatasetId, name: '南屯', site: LatLng(24.14, 120.58)),
-  (code: 'RCLY', datasetId: CwaDatasets.radarLinyuanDatasetId, name: '林園', site: LatLng(22.53, 120.38)),
+  (imageCode: 'RCSL', datasetId: CwaDatasets.radarShulinDatasetId, name: '樹林', site: LatLng(25.00, 121.40)),
+  (imageCode: 'RCNT', datasetId: CwaDatasets.radarNantunDatasetId, name: '南屯', site: LatLng(24.14, 120.58)),
+  (imageCode: 'RCLY', datasetId: CwaDatasets.radarLinyuanDatasetId, name: '林園', site: LatLng(22.53, 120.38)),
 ];
 
 /// The station radar with dataset id [id]; null for any other id (e.g. the composite).

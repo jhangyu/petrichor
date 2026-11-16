@@ -139,7 +139,7 @@ class RadarSource {
       id: station.datasetId,
       listUrl: radarStationListUrl,
       maxWindow: radarStationMaxWindow,
-      parse: (scriptText) => parseRadarStationList(scriptText, code: station.code),
+      parse: (scriptText) => parseRadarStationList(scriptText, code: station.imageCode),
       geometry: stationRadarGeometry(stationRadarBounds(station.site, radiusKm: radarStationRangeKm)));
 }
 
