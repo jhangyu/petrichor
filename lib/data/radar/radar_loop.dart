@@ -77,7 +77,7 @@ class RadarLoop {
   final RadarDataException? listError;
 
   /// Slots are still being fetched or processed.
-  final bool loading;
+  final bool isLoading;
 
-  const RadarLoop({required this.slots, required this.loading, this.listError});
+  const RadarLoop({required this.slots, required this.isLoading, this.listError});
 }

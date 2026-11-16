@@ -209,7 +209,7 @@ void main() {
     expect(events.first.slots, isEmpty, reason: 'cache emit before the list');
     expect([for (final e in events) states(e)], ['', 'pppp', 'pppr', 'rppr', 'rrpr', 'rrrr', 'rrrr']);
     expect([for (final s in events[1].slots) s.time], all, reason: 'slot times are the listed times, oldest first');
-    expect([for (final e in events) e.loading], [true, true, true, true, true, true, false]);
+    expect([for (final e in events) e.isLoading], [true, true, true, true, true, true, false]);
     expect(stamps(events.last), all);
     expect(frames(events.last).first.bounds, _geometry.bounds);
     expect(frames(events.last).first.significantDbz, 30, reason: '1 px of an 8 px, 1° image is over the area rule');
@@ -223,11 +223,11 @@ void main() {
     final events = await load(window, failing: {_listUrl}).toList();
     final all = [for (final f in window) f.time];
     expect(stamps(events.first), all, reason: 'cache shown before the list answers');
-    expect(events.first.loading, isTrue);
+    expect(events.first.isLoading, isTrue);
     final last = events.last;
     expect(stamps(last), all);
     expect(states(last), 'rrrr');
-    expect(last.loading, isFalse);
+    expect(last.isLoading, isFalse);
     expect(last.listError, isA<RadarDataException>());
     expect('${last.listError}', allOf(contains(_listUrl), contains('HTTP 500')));
     expect(last.listError, isNot(isA<RadarStaleListException>()), reason: 'a failed request is not a stale list');
@@ -244,7 +244,7 @@ void main() {
     final bad = window[1];
     final last = await load(window, failing: {bad.url}).last;
     expect(states(last), 'rfrr');
-    expect((last.loading, last.listError), (false, null));
+    expect((last.isLoading, last.listError), (false, null));
     final failed = last.slots[1];
     expect((failed.time, failed.frame), (bad.time, null));
     expect('${failed.error}', allOf(contains(bad.url), contains('HTTP 500')));
@@ -288,7 +288,7 @@ void main() {
     final shown = [for (final f in window.skip(1)) f.time];
     expect(stamps(events.first), shown, reason: 'cached frames first');
     expect(stamps(events.last), shown);
-    expect((events.last.loading, states(events.last)), (false, 'rrr'));
+    expect((events.last.isLoading, states(events.last)), (false, 'rrr'));
     expect(gated.requested, [uncached.url]);
     expect(gated.cancelled, [uncached.url], reason: 'the in-flight download was cancelled, not awaited');
     expect(gated.release.isCompleted, isFalse);
@@ -312,11 +312,11 @@ void main() {
 
     expect([for (final (name, _) in log) name], [...List.filled(a.length, 'first'), ...List.filled(b.length, 'second')]);
     expect([for (final e in a) states(e)], ['', 'pppp', 'pppr', 'rppr', 'rrpr', 'rrrr', 'rrrr']);
-    expect([for (final e in a) e.loading], [...List.filled(a.length - 1, true), false]);
+    expect([for (final e in a) e.isLoading], [...List.filled(a.length - 1, true), false]);
     expect(stamps(a.last), [for (final f in window) f.time]);
     final recent = [for (final f in window) if (f.time.isAfter(_now.subtract(short))) f.time];
     expect([stamps(b.first), stamps(b.last)], [recent, recent]);
-    expect(b.last.loading, isFalse);
+    expect(b.last.isLoading, isFalse);
     expect(gated.requested, unorderedEquals([for (final f in window) f.url]), reason: 'the second load reads the cache');
     expect(cacheFiles(), [for (final f in window) ...['${_key(f)}.stats', '${_key(f)}.webp']]);
   });
@@ -334,7 +334,7 @@ void main() {
         listFrames: ({required now, required window, cancelToken}) async => const [],
         step: RadarPngStep(_geometry));
     final first = await frameRepository.watch(other, window: span).first;
-    expect(first.loading, isTrue, reason: 'first event arrived while the radar load is still blocked');
+    expect(first.isLoading, isTrue, reason: 'first event arrived while the radar load is still blocked');
     expect(gated.release.isCompleted, isFalse);
     await radar.cancel();
   }, timeout: const Timeout(Duration(seconds: 2)));

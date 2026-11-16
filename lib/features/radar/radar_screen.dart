@@ -215,7 +215,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final failed = radarFailedSlots(slots);
     final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
-      return loop.loading
+      return loop.isLoading
           ? _loadingView(listed: slots.length)
           : _errorView(radarNoFrameError(loop, failed));
     }
@@ -225,7 +225,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     return _RadarView(
       subtitle: _loopSubtitle(name, newest),
       showSourceLine: true,
-      loading: loop.loading,
+      loading: loop.isLoading,
       hero: _heroCard(
         banner: switch ((_loopBanner(loop, failed, newest), opacityBanner)) {
           (final a?, final b?) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s16, children: [a, b]),
@@ -285,13 +285,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     Widget? opacityControl,
   ) {
     final slots = loop.slots;
-    if (slots.length == 1 && !loop.loading) return PlaybackCard(meta: '僅有最新影格', opacity: opacityControl);
+    if (slots.length == 1 && !loop.isLoading) return PlaybackCard(meta: '僅有最新影格', opacity: opacityControl);
     final readyCount = radarReadyCount(slots);
     return PlaybackCard(
       meta: radarPlaybackMeta(
         buffering: _player.waitingOn != null,
         playing: _player.playing,
-        loading: loop.loading,
+        loading: loop.isLoading,
         ready: readyCount,
         total: slots.length,
         framesPerSecond: framesPerSecond,

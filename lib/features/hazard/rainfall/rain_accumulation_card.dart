@@ -207,7 +207,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final failed = radarFailedSlots(slots);
     final index = radarShownIndex(slots, _player.playhead);
     if (index == null) {
-      if (loop.loading) return ('載入中', _loadingBody());
+      if (loop.isLoading) return ('載入中', _loadingBody());
       return ('無法取得', _failureBody(hours, '${radarNoFrameError(loop, failed)}'));
     }
     final frame = slots[index].frame!;
@@ -222,7 +222,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final meta = radarPlaybackMeta(
       buffering: waiting,
       playing: _player.playing,
-      loading: loop.loading,
+      loading: loop.isLoading,
       ready: readyCount,
       total: slots.length,
       framesPerSecond: framesPerSecond,

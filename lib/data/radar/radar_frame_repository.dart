@@ -63,7 +63,7 @@ class RadarFrameRepository {
       {required this.cacheRoot, required this.clock, this.process = radarProcessOffUiIsolate});
 
   /// Slots of [source] for the last [window] (at most [RadarSource.maxWindow]).
-  /// Every event is a complete [RadarLoop]; the last one has `loading == false`.
+  /// Every event is a complete [RadarLoop]; the last one has `isLoading == false`.
   Stream<RadarLoop> watch(RadarSource source, {required Duration window}) {
     if (window <= Duration.zero || window > source.maxWindow) {
       throw RangeError('radar window: expected 0 < window <= ${source.maxWindow} for ${source.id}, got $window');
@@ -112,7 +112,7 @@ class RadarFrameRepository {
 
     // Each event carries the slots as they were when it was sent.
     void send(List<RadarSlot> slots, {required bool loading, RadarDataException? listError}) =>
-        emit(RadarLoop(slots: List<RadarSlot>.unmodifiable(slots), loading: loading, listError: listError));
+        emit(RadarLoop(slots: List<RadarSlot>.unmodifiable(slots), isLoading: loading, listError: listError));
 
     // Cache first: the window span ending at the newest cached frame.
     final cachedSlots = <RadarSlot>[];
