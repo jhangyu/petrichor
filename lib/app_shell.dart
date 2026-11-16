@@ -11,7 +11,7 @@ import 'features/weather/weather_screen.dart';
 
 /// Full-window shell with the 4 tabs (天氣｜雷達｜雨量｜設定): bottom
 /// [NavigationBar] on compact-width windows, [NavigationRail] on the left
-/// otherwise ([WindowSizeClass.usesRail]). A tab is built on first visit and
+/// otherwise ([WindowSizeClass.usesNavigationRail]). A tab is built on first visit and
 /// then kept alive in an [IndexedStack], so radar frames are not fetched until
 /// the user opens 雷達 and every tab keeps its state when switching.
 class AppShell extends ConsumerStatefulWidget {
@@ -49,11 +49,11 @@ class _AppShellState extends ConsumerState<AppShell> {
         for (final t in AppTab.values) _visited.contains(t) ? _tabs[t]!.page : const SizedBox.shrink(),
       ],
     );
-    final usesRail = WindowSizeClass.of(context).usesRail;
+    final usesNavigationRail = WindowSizeClass.of(context).usesNavigationRail;
     return Scaffold(
       backgroundColor: AppPalette.background3,
-      body: usesRail ? Row(children: [_rail(tab), Expanded(child: pages)]) : pages,
-      bottomNavigationBar: usesRail ? null : _bar(tab),
+      body: usesNavigationRail ? Row(children: [_rail(tab), Expanded(child: pages)]) : pages,
+      bottomNavigationBar: usesNavigationRail ? null : _bar(tab),
     );
   }
 

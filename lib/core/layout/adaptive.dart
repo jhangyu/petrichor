@@ -47,7 +47,7 @@ class WindowSizeClass {
   bool get isCompactWidth => width == WindowWidthClass.compact;
 
   /// Side navigation (rail) instead of the bottom bar.
-  bool get usesRail => width != WindowWidthClass.compact;
+  bool get usesNavigationRail => width != WindowWidthClass.compact;
 
   /// Left/right page margin around the card grid.
   double get pageMargin => switch (width) {
@@ -179,7 +179,7 @@ class AppTwoPane extends StatelessWidget {
   /// and [width] (the content width, page margin removed) [fits] two panes.
   static bool fitsWindow(BuildContext context, double width) {
     final size = WindowSizeClass.of(context);
-    return size.usesRail && !size.isShortHeight && fits(width);
+    return size.usesNavigationRail && !size.isShortHeight && fits(width);
   }
 
   @override
