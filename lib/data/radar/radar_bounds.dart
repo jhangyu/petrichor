@@ -66,6 +66,9 @@ const radarStations = <RadarStation>[
   (code: 'RCLY', datasetId: AppConstants.radarLinyuan, name: '林園', site: LatLng(22.53, 120.38)),
 ];
 
+/// The station radar with dataset id [id]; null for any other id (e.g. the composite).
+RadarStation? radarStationById(String id) => radarStations.where((s) => s.datasetId == id).firstOrNull;
+
 /// Website station images reach this far from the radar (their 「距雷達150公里」
 /// ring); legend bar at x 3462-3525, y 2541-3572 (checked 2026-11-15).
 const radarStationRangeKm = 150.0;

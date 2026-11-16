@@ -124,7 +124,7 @@ Duration radarEffectiveWindow(Duration selected, RadarSource source) =>
 final radarSourceProvider = Provider.family<RadarSource, String>((ref, id) {
   final dio = ref.watch(webDioProvider);
   if (id == AppConstants.radarTaiwan) return RadarSource.composite(dio);
-  final station = radarStations.where((s) => s.datasetId == id).firstOrNull ??
+  final station = radarStationById(id) ??
       (throw ArgumentError.value(id, 'id', 'expected ${AppConstants.radarTaiwan} or a radarStations dataset id'));
   return RadarSource.station(dio, station);
 });

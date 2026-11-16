@@ -17,7 +17,7 @@ import '../../core/widgets/choices.dart';
 import '../../core/widgets/page_scaffold.dart';
 import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
-import '../../data/radar/radar_bounds.dart' show radarStations;
+import '../../data/radar/radar_bounds.dart' show radarStationById, radarStations;
 import '../../data/radar/radar_frame_list.dart';
 import '../../data/radar/radar_loop.dart';
 import '../../data/radar/radar_source.dart' show RadarStaleListException;
@@ -31,7 +31,7 @@ import 'widgets/radar_map_view.dart';
 import 'widgets/radar_opacity.dart';
 import 'widgets/station_layers.dart';
 
-String? _stationName(String id) => radarStations.where((s) => s.datasetId == id).firstOrNull?.name;
+String? _stationName(String id) => radarStationById(id)?.name;
 
 final _radarSources = [(AppConstants.radarTaiwan, '全台合成'), for (final s in radarStations) (s.datasetId, s.name)];
 
