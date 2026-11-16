@@ -27,7 +27,7 @@ void main() {
   test('next warning is the next level up, none at the top', () {
     final next = nextWarning(86.5)!;
     expect(next.name, '豪雨');
-    expect(next.remainingMm, closeTo(113.5, 1e-9));
+    expect(next.remainingMillimeters, closeTo(113.5, 1e-9));
     expect(nextWarning(500), isNull);
   });
 

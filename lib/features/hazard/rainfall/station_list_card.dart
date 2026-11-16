@@ -13,7 +13,7 @@ import 'rainfall_logic.dart';
 const _collapsedRowCount = 6;
 
 /// Bar full width = the top warning threshold.
-final _barFullMm = rainWarningThresholds.last;
+final _barFullMillimeters = rainWarningThresholds.last;
 
 /// `測站今日累積雨量` flush card: sort button, county chips + station rows.
 /// Starts on [county] (the current place's county; null without a place = all counties); the chips switch to any county or all.
@@ -195,7 +195,7 @@ class _StationRow extends StatelessWidget {
                   style: AppType.body1Strong.copyWith(color: isNearest ? AppPalette.brandForegroundStrong : AppPalette.foreground1),
                 ),
                 Text(place, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
-                if (mm != null && level != null) _LevelBar(fraction: (mm / _barFullMm).clamp(0, 1), level: level),
+                if (mm != null && level != null) _LevelBar(fraction: (mm / _barFullMillimeters).clamp(0, 1), level: level),
               ],
             ),
           ),
@@ -207,7 +207,7 @@ class _StationRow extends StatelessWidget {
               children: [
                 Text.rich(
                   TextSpan(
-                    text: '${formatMm(mm)} ',
+                    text: '${millimetersText(mm)} ',
                     style: AppType.body2.copyWith(
                       color: AppPalette.foreground1,
                       fontWeight: FontWeight.w600,

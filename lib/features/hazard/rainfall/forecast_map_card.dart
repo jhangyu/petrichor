@@ -18,7 +18,7 @@ import 'rainfall_logic.dart';
 const _forecastWindow = Duration(hours: 1);
 
 /// Bring-an-umbrella hint threshold: visible rain on the map.
-const _umbrellaMinMm = forecastVisibleMinMm;
+const _umbrellaMinimumMillimeters = forecastVisibleMinimumMillimeters;
 
 /// Bucket 1–4 colours (light → dark = more rain) and legend labels.
 const _bucketTints = [AppPalette.brand150, AppPalette.brand120, AppPalette.brand90, AppPalette.brand60];
@@ -40,7 +40,7 @@ class _HereRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = mm;
-    final umbrella = value != null && value >= _umbrellaMinMm;
+    final umbrella = value != null && value >= _umbrellaMinimumMillimeters;
     return Row(
       children: [
         const Icon(Icons.umbrella_outlined, size: AppSize.icon24, color: AppPalette.rainBar),
@@ -52,7 +52,7 @@ class _HereRow extends StatelessWidget {
           ),
         ),
         Text(
-          formatMm(value),
+          millimetersText(value),
           style: AppType.subtitle1.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600, fontFeatures: AppType.tabular),
         ),
         const SizedBox(width: AppSpace.s4),

@@ -27,7 +27,7 @@ const _skeletonHeight = 360.0;
 const _group = RadarGroup.rainfall;
 
 /// Peak under this many mm draws nothing (contract decision 11): the frame has no rain.
-const _noRainBelowMm = 1;
+const _noRainBelowMillimeters = 1;
 
 /// What a loop state puts in the card: optional banner, the map, optional playback.
 typedef _Body = ({Widget? banner, RainMapView map, Widget? playback});
@@ -213,7 +213,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     final start = slots.last.time.subtract(Duration(hours: hours));
     String span(DateTime t) => '${formatTaiwanMonthDayClock(start)} 起累積至 ${formatTaiwanMonthDayClock(t)}';
     final isLast = index == slots.length - 1;
-    final noRain = (frame.peakMm ?? double.infinity) < _noRainBelowMm;
+    final noRain = (frame.peakMm ?? double.infinity) < _noRainBelowMillimeters;
     final accumulated = isLast ? '過去 $hours 小時' : span(frame.time);
     final readyCount = radarReadyCount(slots);
     final waiting = _player.waitingOn != null;

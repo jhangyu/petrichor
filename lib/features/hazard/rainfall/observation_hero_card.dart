@@ -8,7 +8,7 @@ import '../../../core/time/taiwan_time.dart';
 import 'rain_level_badge.dart';
 import 'rainfall_logic.dart';
 
-String _mmText(double? mm) => mm == null ? '—' : '${formatMm(mm)} mm';
+String _millimetersWithUnitText(double? mm) => mm == null ? '—' : '${millimetersText(mm)} mm';
 
 /// Hero: nearest station's accumulated rain, level badge, threshold bar.
 class ObservationHeroCard extends StatelessWidget {
@@ -45,7 +45,7 @@ class ObservationHeroCard extends StatelessWidget {
                       spacing: AppSpace.s8,
                       children: [
                         Text(
-                          formatMm(mm),
+                          millimetersText(mm),
                           style: AppType.display.copyWith(color: AppPalette.foreground1, fontFeatures: AppType.tabular),
                         ),
                         Text('mm', style: AppType.subtitle1.copyWith(color: AppPalette.foreground2, fontWeight: FontWeight.w600)),
@@ -63,13 +63,13 @@ class ObservationHeroCard extends StatelessWidget {
           ),
           _ThresholdBar(mm: mm),
           MetricGrid(children: [
-            MetricTile(icon: Icons.schedule, label: '近 1 小時', value: _mmText(station.past1hrMm), onHero: true),
-            MetricTile(icon: Icons.schedule, label: '近 3 小時', value: _mmText(station.past3hrMm), onHero: true),
+            MetricTile(icon: Icons.schedule, label: '近 1 小時', value: _millimetersWithUnitText(station.past1hrMm), onHero: true),
+            MetricTile(icon: Icons.schedule, label: '近 3 小時', value: _millimetersWithUnitText(station.past3hrMm), onHero: true),
             if (next != null)
               MetricTile(
                 icon: Icons.warning_amber_outlined,
                 label: '距${next.name}門檻',
-                value: _mmText(next.remainingMm),
+                value: _millimetersWithUnitText(next.remainingMillimeters),
                 onHero: true,
               ),
             MetricTile(
@@ -102,7 +102,7 @@ class _ThresholdBar extends StatelessWidget {
     return Semantics(
       label: semantics == null
           ? '已達超大豪雨門檻'
-          : '警戒門檻：目前 ${formatMm(mm)} 毫米，距${semantics.name} ${formatMm(semantics.remainingMm)} 毫米',
+          : '警戒門檻：目前 ${millimetersText(mm)} 毫米，距${semantics.name} ${millimetersText(semantics.remainingMillimeters)} 毫米',
       child: ExcludeSemantics(
         child: Column(
           spacing: AppSpace.s4,

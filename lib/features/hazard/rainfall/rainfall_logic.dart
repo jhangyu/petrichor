@@ -14,10 +14,10 @@ String rainThresholdLabel(int i) => '${rainLevelNames[i + 1]} ${rainWarningThres
 const thresholdSegmentPercents = [16.0, 24.0, 30.0, 30.0];
 
 /// Forecast cells below this are blank on the map (mockup hint).
-const forecastVisibleMinMm = 1.0;
+const forecastVisibleMinimumMillimeters = 1.0;
 
 /// Upper bounds of forecast buckets 1–3; bucket 4 is everything above.
-const forecastBucketUpperMm = [5.0, 10.0, 20.0];
+const forecastBucketUpperMillimeters = [5.0, 10.0, 20.0];
 
 /// 0 = below 大雨 … 4 = 超大豪雨.
 int rainLevel(double mm) => rainWarningThresholds.where((t) => mm >= t).length;
@@ -37,14 +37,14 @@ double thresholdMarkerFraction(double mm) {
 }
 
 /// Remaining mm to the next warning level and its name; null at the top level.
-({String name, double remainingMm})? nextWarning(double mm) {
+({String name, double remainingMillimeters})? nextWarning(double mm) {
   final level = rainLevel(mm);
   if (level >= rainWarningThresholds.length) return null;
-  return (name: rainLevelNames[level + 1], remainingMm: rainWarningThresholds[level] - mm);
+  return (name: rainLevelNames[level + 1], remainingMillimeters: rainWarningThresholds[level] - mm);
 }
 
 /// 1 decimal, e.g. `86.5`; null (station reported no value) → `—`.
-String formatMm(double? mm) => mm == null ? '—' : mm.toStringAsFixed(1);
+String millimetersText(double? mm) => mm == null ? '—' : mm.toStringAsFixed(1);
 
 /// County chip order: [current] first (none without a place), then the other counties of [stations] by first appearance.
 List<String> countyChipOrder(List<RainStation> stations, String? current) {
@@ -53,12 +53,12 @@ List<String> countyChipOrder(List<RainStation> stations, String? current) {
 }
 
 /// Past-10-minute rain above this counts as currently raining.
-const rainingMinPast10MinMm = 0.0;
+const rainingMinimumPast10MinutesMillimeters = 0.0;
 
 /// Hero 「目前」 tile text; null (no value) → `—`.
 String currentRainText(double? past10MinMm) {
   if (past10MinMm == null) return '—';
-  return past10MinMm > rainingMinPast10MinMm ? '持續降雨' : '無降雨';
+  return past10MinMm > rainingMinimumPast10MinutesMillimeters ? '持續降雨' : '無降雨';
 }
 
 /// Stations sorted high → low (missing values last) or by name.
@@ -89,9 +89,9 @@ List<RainStation> stationsInScope(List<RainStation> stations, String? county) =>
 List<int> forecastBuckets(RainForecastGrid grid) {
   return [
     for (final mm in grid.values)
-      if (mm == null || mm < forecastVisibleMinMm)
+      if (mm == null || mm < forecastVisibleMinimumMillimeters)
         0
       else
-        1 + forecastBucketUpperMm.where((upper) => mm >= upper).length,
+        1 + forecastBucketUpperMillimeters.where((upper) => mm >= upper).length,
   ];
 }
