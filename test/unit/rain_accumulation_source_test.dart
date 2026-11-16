@@ -8,9 +8,9 @@ import 'package:petrichor/data/radar/radar_frame_processor.dart';
 import 'package:petrichor/data/radar/radar_frame_repository.dart';
 import 'package:petrichor/data/radar/radar_source.dart';
 import 'package:petrichor/data/radar/radar_webp.dart';
-import 'package:petrichor/data/rain_accum/accum_grid.dart';
-import 'package:petrichor/data/rain_accum/accum_pieces.dart';
-import 'package:petrichor/data/rain_accum/accum_source.dart';
+import 'package:petrichor/data/rain_accumulation/rain_accumulation_grid.dart';
+import 'package:petrichor/data/rain_accumulation/rain_accumulation_pieces.dart';
+import 'package:petrichor/data/rain_accumulation/rain_accumulation_source.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

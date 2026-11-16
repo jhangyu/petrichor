@@ -4,8 +4,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:petrichor/core/theme/app_tokens.dart';
-import 'package:petrichor/data/rain_accum/accum_grid.dart';
-import 'package:petrichor/data/rain_accum/accum_pieces.dart';
+import 'package:petrichor/data/rain_accumulation/rain_accumulation_grid.dart';
+import 'package:petrichor/data/rain_accumulation/rain_accumulation_pieces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 AccumGrid load(String name) {

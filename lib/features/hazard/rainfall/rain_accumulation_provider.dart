@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/dio_client.dart';
 import '../../../core/storage/stored_setting.dart';
 import '../../../data/radar/radar_loop.dart';
-import '../../../data/rain_accum/accum_pieces.dart';
-import '../../../data/rain_accum/accum_source.dart';
+import '../../../data/rain_accumulation/rain_accumulation_pieces.dart';
+import '../../../data/rain_accumulation/rain_accumulation_source.dart';
 import '../../radar/radar_provider.dart';
 
 /// Accumulation window of the 累積雨量 card in hours, one of [accumWindowHours].

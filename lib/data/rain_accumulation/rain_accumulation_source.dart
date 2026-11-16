@@ -15,8 +15,8 @@ import '../radar/radar_frame_list.dart';
 import '../radar/radar_frame_processor.dart';
 import '../radar/radar_source.dart';
 import '../radar/radar_webp.dart';
-import 'accum_grid.dart';
-import 'accum_pieces.dart';
+import 'rain_accumulation_grid.dart';
+import 'rain_accumulation_pieces.dart';
 
 // 累積雨量 frames as a [RadarSource]: frame k of a W-hour window shows the
 // rain from the window start S to S + k·step, summed from QPEplus gauge grids
