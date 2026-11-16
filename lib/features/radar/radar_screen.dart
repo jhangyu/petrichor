@@ -19,7 +19,6 @@ import '../../core/widgets/status.dart';
 import '../../data/models/place.dart';
 import '../../data/radar/radar_bounds.dart' show radarStations;
 import '../../data/radar/radar_frame_list.dart';
-import '../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../data/radar/radar_loop.dart';
 import '../../data/radar/radar_source.dart' show RadarStaleListException;
 import '../location/place_provider.dart';

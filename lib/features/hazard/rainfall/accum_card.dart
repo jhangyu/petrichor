@@ -12,7 +12,6 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/buttons.dart';
 import '../../../core/widgets/choices.dart';
 import '../../../core/widgets/status.dart';
-import '../../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../../data/radar/radar_loop.dart';
 import '../../../data/rain_accum/accum_pieces.dart';
 import '../../radar/radar_playback.dart';

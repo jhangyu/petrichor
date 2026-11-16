@@ -1,5 +1,47 @@
-import 'radar_frame_repository.dart' show RadarFrame;
+import 'dart:io';
+
+import 'package:flutter/painting.dart';
+import 'package:flutter_map/flutter_map.dart';
+
 import 'radar_source.dart';
+import 'radar_webp_image.dart';
+
+/// One processed, cached frame: transparent lossless WebP with rows linear in
+/// Web Mercator, shown as one `OverlayImage` over [bounds]. Of the echo
+/// statistics only the strongest echo is kept.
+class RadarFrame {
+  final DateTime time;
+  final File file;
+  final LatLngBounds bounds;
+
+  /// [RadarEchoStats.strongestDbz] when the frame has significant echo, else null.
+  final int? significantDbz;
+
+  /// [RadarEchoStats.peakMm]: highest accumulated rain (mm) of an
+  /// accumulated-rainfall frame; null for radar frames.
+  final double? peakMm;
+
+  /// Pixel size of [file] (website frames: 2048 x 2132 Mercator rows).
+  final int width;
+  final int height;
+
+  const RadarFrame({
+    required this.time,
+    required this.file,
+    required this.bounds,
+    required this.significantDbz,
+    this.peakMm,
+    required this.width,
+    required this.height,
+  });
+
+  /// Height / width of the decoded image.
+  double get aspect => height / width;
+
+  /// Decoded at the stored size (~17 MB for a website frame); the map and its
+  /// pre-decode share this provider's cache entry.
+  ImageProvider get imageProvider => RadarWebpImage(file);
+}
 
 enum RadarSlotState { pending, ready, failed }
 

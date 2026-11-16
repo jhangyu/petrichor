@@ -1,4 +1,3 @@
-import '../../data/radar/radar_frame_repository.dart' show RadarFrame;
 import '../../data/radar/radar_loop.dart';
 
 /// Playback speeds offered in 播放設定 and the default.
