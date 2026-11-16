@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:flutter_map/flutter_map.dart';
 
-import '../../core/theme/app_tokens.dart';
 import 'radar_echo_stats.dart';
 import 'radar_png_rows.dart';
 import 'radar_webp.dart';
@@ -24,12 +23,6 @@ import 'radar_webp.dart';
 /// detail (radar-perf-contract.md item 1); never lowered to fit memory (user
 /// decision). The map view never decodes wider than this.
 const radarStoredWidth = 2048;
-
-/// dBZ legend colours (0xRRGGBB, index = dBZ), from the CWA scale in
-/// [AppPalette.dbzScale] (sampled from the frames' legend bar).
-final radarEchoPalette = [for (final c in AppPalette.dbzScale) c.toARGB32() & _rgbMask];
-
-const _rgbMask = 0xFFFFFF;
 
 /// Pixel rectangle, [left, right) x [top, bottom).
 typedef PixelRect = ({int left, int top, int right, int bottom});

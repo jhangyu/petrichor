@@ -4,7 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:petrichor/data/radar/radar_bounds.dart';
-import 'package:petrichor/data/radar/radar_frame_list.dart';
+import 'package:petrichor/data/radar/radar_echo_stats.dart';import 'package:petrichor/data/radar/radar_frame_list.dart';
 import 'package:petrichor/data/radar/radar_frame_processor.dart';
 import 'package:petrichor/data/radar/radar_frame_repository.dart';
 import 'package:petrichor/data/radar/radar_source.dart';

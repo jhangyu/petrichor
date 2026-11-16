@@ -5,7 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../core/constants/app_constants.dart';
-import 'radar_frame_processor.dart';
+import '../../core/theme/app_tokens.dart';
 
 // Echo statistics of one radar image (website frame or station image),
 // computed from the source pixels by `processRadarFrame`.
@@ -15,6 +15,12 @@ import 'radar_frame_processor.dart';
 // equal 16-row steps whose colours are palette indices 65 (top) down to 0
 // (bottom), i.e. one colour per 1 dBZ over the legend's 0–65 dBZ scale. The
 // website station images carry the same 66-colour bar.
+
+/// dBZ legend colours (0xRRGGBB, index = dBZ), from the CWA scale in
+/// [AppPalette.dbzScale] (sampled from the frames' legend bar).
+final radarEchoPalette = [for (final c in AppPalette.dbzScale) c.toARGB32() & _rgbMask];
+
+const _rgbMask = 0xFFFFFF;
 
 /// Echo weaker than this is not "明顯回波". Marshall–Palmer (Z = 200 R^1.6):
 /// 20 dBZ ≈ 0.65 mm/h, just above the 0.5 mm resolution of CWA rain gauges;
