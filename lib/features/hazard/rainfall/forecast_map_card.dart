@@ -31,15 +31,15 @@ String forecastRange(RainForecastGrid grid) =>
     '${clockText(grid.baseTime)} – ${clockText(grid.baseTime.add(_forecastWindow))}';
 
 /// 「此處」 row under the map: forecast mm at the user's cell (「—」 when that cell has no value).
-class _HereRow extends StatelessWidget {
-  const _HereRow({required this.mm, required this.placeName});
+class _CurrentPlaceForecastRow extends StatelessWidget {
+  const _CurrentPlaceForecastRow({required this.millimeters, required this.placeName});
 
-  final double? mm;
+  final double? millimeters;
   final String placeName;
 
   @override
   Widget build(BuildContext context) {
-    final value = mm;
+    final value = millimeters;
     final umbrella = value != null && value >= _umbrellaMinimumMillimeters;
     return Row(
       children: [
@@ -91,12 +91,12 @@ Future<ImageProvider> _gridImage(RainForecastGrid grid) async {
 
 /// `未來 1hr 預測` grid map with the value at the user's place and the legend.
 class ForecastMapCard extends StatefulWidget {
-  const ForecastMapCard({super.key, required this.grid, required this.here, this.cameraLink, required this.wide});
+  const ForecastMapCard({super.key, required this.grid, required this.currentPlaceForecast, this.cameraLink, required this.wide});
 
   final RainForecastGrid grid;
 
   /// The current place and the forecast at it; null = no place (no pin, no 「此處」 row).
-  final ({String name, LatLng point, double? mm})? here;
+  final ({String name, LatLng point, double? millimeters})? currentPlaceForecast;
 
   /// Camera shared with the 累積雨量 map; only links the cameras.
   final RadarCameraLink? cameraLink;
@@ -129,7 +129,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
   @override
   Widget build(BuildContext context) {
     final range = forecastRange(widget.grid);
-    final here = widget.here;
+    final currentPlaceForecast = widget.currentPlaceForecast;
     return FutureBuilder<ImageProvider>(
       future: _image,
       builder: (context, snapshot) {
@@ -145,7 +145,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
           note: '空白格表示預估雨量小於 1 mm 或無資料。',
           wide: widget.wide,
           controlsTitle: '此處預估',
-          controls: [if (here != null) _HereRow(mm: here.mm, placeName: here.name)],
+          controls: [if (currentPlaceForecast != null) _CurrentPlaceForecastRow(millimeters: currentPlaceForecast.millimeters, placeName: currentPlaceForecast.name)],
           map: RainMapView(
             wide: widget.wide,
             cameraLink: widget.cameraLink,
@@ -157,7 +157,7 @@ class _ForecastMapCardState extends State<ForecastMapCard> {
             overlayImages: image == null
                 ? const []
                 : [OverlayImage(bounds: _bounds, imageProvider: image, opacity: rainMapOverlayOpacity, filterQuality: FilterQuality.none)],
-            me: here?.point,
+            me: currentPlaceForecast?.point,
           ),
         );
       },

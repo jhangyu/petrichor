@@ -133,7 +133,7 @@ class RainfallScreen extends ConsumerWidget {
       errorTitle: '無法取得降雨預測',
       skeleton: const AppCard.loading(title: '未來 1hr 預測', skeletonHeight: _mapSkeletonHeight),
       onRetry: retryGrid,
-      builder: (g) => ForecastMapCard(grid: g, here: null, cameraLink: link, wide: wide),
+      builder: (g) => ForecastMapCard(grid: g, currentPlaceForecast: null, cameraLink: link, wide: wide),
     );
     final list = _resultCard(
       stations,
@@ -180,7 +180,7 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryForecast,
       builder: (f) => ForecastMapCard(
         grid: f.grid,
-        here: (name: place.name, point: me, mm: f.mmAtLocation),
+        currentPlaceForecast: (name: place.name, point: me, millimeters: f.mmAtLocation),
         cameraLink: link,
         wide: wide,
       ),
