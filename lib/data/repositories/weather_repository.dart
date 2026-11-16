@@ -158,7 +158,7 @@ class WeatherRepository {
     if (home is Failure<List<Place>>) return home.retype<Place>();
     var best = _nearestPlace(home.data, latitude, longitude);
     if (other != null &&
-        other.km <= _distanceKilometers(latitude, longitude, best.latitude, best.longitude) + _countyBorderSlackKilometers) {
+        other.distanceKilometers <= _distanceKilometers(latitude, longitude, best.latitude, best.longitude) + _countyBorderSlackKilometers) {
       final neighbour = await getTowns(other.county);
       if (neighbour is Failure<List<Place>>) return neighbour.retype<Place>();
       best = _nearestPlace([best, ...neighbour.data], latitude, longitude);

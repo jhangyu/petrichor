@@ -76,12 +76,12 @@ DateTime _asInstant(Object? raw, String path) {
   return DateTime.parse(raw);
 }
 
-double _distanceKilometers(double lat1, double lon1, double lat2, double lon2) {
+double _distanceKilometers(double firstLatitude, double firstLongitude, double secondLatitude, double secondLongitude) {
   double radians(double degrees) => degrees * math.pi / 180;
-  final latitudeDelta = radians(lat2 - lat1);
-  final longitudeDelta = radians(lon2 - lon1);
+  final latitudeDelta = radians(secondLatitude - firstLatitude);
+  final longitudeDelta = radians(secondLongitude - firstLongitude);
   final a = math.pow(math.sin(latitudeDelta / 2), 2) +
-      math.cos(radians(lat1)) * math.cos(radians(lat2)) * math.pow(math.sin(longitudeDelta / 2), 2);
+      math.cos(radians(firstLatitude)) * math.cos(radians(secondLatitude)) * math.pow(math.sin(longitudeDelta / 2), 2);
   return 2 * earthRadiusKilometers * math.asin(math.sqrt(a));
 }
 
@@ -89,16 +89,16 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double latitude, dou
   final stations = _stationList(body);
 
   Map<String, dynamic>? best;
-  double bestKm = double.infinity;
+  double bestKilometers = double.infinity;
   for (var i = 0; i < stations.length; i++) {
     final path = 'records.Station[$i]';
     final station = _asObject(stations[i], path);
-    final temp = _asNumber(_digPath(station, ['WeatherElement', 'AirTemperature']), '$path.AirTemperature');
-    if (temp == null) continue;
+    final airTemperature = _asNumber(_digPath(station, ['WeatherElement', 'AirTemperature']), '$path.AirTemperature');
+    if (airTemperature == null) continue;
     final (stationLatitude, stationLongitude) = _wgs84Of(station, path);
-    final km = _distanceKilometers(latitude, longitude, stationLatitude, stationLongitude);
-    if (km < bestKm) {
-      bestKm = km;
+    final kilometers = _distanceKilometers(latitude, longitude, stationLatitude, stationLongitude);
+    if (kilometers < bestKilometers) {
+      bestKilometers = kilometers;
       best = station;
     }
   }
@@ -129,8 +129,8 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double latitude, dou
 /// 測站所屬縣市與到使用者的距離
 class _StationCounty {
   final String county;
-  final double km;
-  const _StationCounty(this.county, this.km);
+  final double distanceKilometers;
+  const _StationCounty(this.county, this.distanceKilometers);
 }
 
 /// 全部測站依距離由近到遠排序；縣市名正規化成「臺」。
@@ -139,7 +139,7 @@ List<_StationCounty> _parseStationCounties(Map<String, dynamic> body, double lat
   return [
     for (var i = 0; i < stations.length; i++)
       _stationCounty(_asObject(stations[i], 'records.Station[$i]'), latitude, longitude, 'records.Station[$i]'),
-  ]..sort((a, b) => a.km.compareTo(b.km));
+  ]..sort((a, b) => a.distanceKilometers.compareTo(b.distanceKilometers));
 }
 
 _StationCounty _stationCounty(Map<String, dynamic> station, double latitude, double longitude, String path) {
