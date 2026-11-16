@@ -56,7 +56,7 @@ abstract final class AppTheme {
         border: UnderlineInputBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraSmall))),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: AppSize.bottomNav,
+        height: AppSize.bottomNavigationBar,
         backgroundColor: AppPalette.background1,
         surfaceTintColor: AppPalette.background1,
         elevation: 0,

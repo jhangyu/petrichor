@@ -38,7 +38,7 @@ class AppChip extends StatelessWidget {
         onTap: onTap,
         hoverColor: AppPalette.backgroundHover,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+          constraints: const BoxConstraints(minHeight: AppSize.controlSmall),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s4),
             child: Row(
@@ -114,7 +114,7 @@ class _Segment extends StatelessWidget {
         child: AnimatedContainer(
           duration: AppMotion.fast,
           curve: AppMotion.easyEase,
-          constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+          constraints: const BoxConstraints(minHeight: AppSize.controlSmall),
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12),
           decoration: BoxDecoration(

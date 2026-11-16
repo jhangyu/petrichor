@@ -75,8 +75,8 @@ class SettingsTint extends StatelessWidget {
   Widget build(BuildContext context) {
     final glyph = icon;
     return Container(
-      width: AppSize.controlSm,
-      height: AppSize.controlSm,
+      width: AppSize.controlSmall,
+      height: AppSize.controlSmall,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: brand ? AppPalette.brandBackgroundSubtle : AppPalette.background3, shape: BoxShape.circle),
       child: glyph == null ? child : Icon(glyph, size: AppSize.icon20, color: brand ? AppPalette.brandForeground : AppPalette.foreground2),

@@ -25,7 +25,7 @@ class _MapChip extends StatelessWidget {
     );
     final glyph = icon;
     return Container(
-      constraints: BoxConstraints(minHeight: large ? AppSize.touch : AppSize.controlSm),
+      constraints: BoxConstraints(minHeight: large ? AppSize.touch : AppSize.controlSmall),
       padding: EdgeInsets.symmetric(
         horizontal: large ? AppSpace.s16 : AppSpace.s12,
         vertical: large ? AppSpace.s8 : AppSpace.s4,

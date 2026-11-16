@@ -98,7 +98,7 @@ class QuietHoursBar extends StatelessWidget {
   final int end;
   final String label;
 
-  static const _textColumn = AppSpace.s16 + AppSize.controlSm + AppSpace.s12;
+  static const _textColumn = AppSpace.s16 + AppSize.controlSmall + AppSpace.s12;
   static const _ticks = [0, 6, 12, 18, 24];
 
   @override

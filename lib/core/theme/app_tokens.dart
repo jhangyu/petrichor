@@ -194,11 +194,11 @@ abstract final class AppStroke {
 abstract final class AppSize {
   static const double touch = 44;
   static const double control = 44;
-  static const double controlSm = 32;
+  static const double controlSmall = 32;
   static const double listRowOneLine = 56;
   static const double listRowTwoLine = 64;
   static const double appBar = 56;
-  static const double bottomNav = 64;
+  static const double bottomNavigationBar = 64;
   static const double icon16 = 16;
   static const double icon20 = 20;
   static const double icon24 = 24;
@@ -276,7 +276,7 @@ abstract final class AppShadows {
 abstract final class AppMotion {
   static const fast = Duration(milliseconds: 150);
   static const normal = Duration(milliseconds: 200);
-  static const decelerateMid = Cubic(0, 0, 0, 1);
+  static const decelerateMiddle = Cubic(0, 0, 0, 1);
   static const easyEase = Cubic(0.33, 0, 0.67, 1);
 }
 

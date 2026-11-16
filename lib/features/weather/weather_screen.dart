@@ -243,7 +243,7 @@ class _PullHint extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = AppType.caption1.copyWith(color: loading ? AppPalette.brandForegroundStrong : AppPalette.foreground3);
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+      constraints: const BoxConstraints(minHeight: AppSize.controlSmall),
       child: Center(
         child: loading
             ? Container(

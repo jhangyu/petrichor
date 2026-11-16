@@ -59,7 +59,7 @@ class NowCard extends StatelessWidget {
   Widget _eyebrow(CurrentWeather c) {
     final top = warning;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+      constraints: const BoxConstraints(minHeight: AppSize.controlSmall),
       child: Row(
         spacing: AppSpace.s8,
         children: [

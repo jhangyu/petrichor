@@ -126,7 +126,7 @@ class _WarningCardState extends State<WarningCard> {
               AnimatedRotation(
                 turns: _open ? 0.25 : 0,
                 duration: AppMotion.normal,
-                curve: AppMotion.decelerateMid,
+                curve: AppMotion.decelerateMiddle,
                 child: const Icon(Icons.chevron_right, color: AppPalette.foreground3),
               ),
             ],

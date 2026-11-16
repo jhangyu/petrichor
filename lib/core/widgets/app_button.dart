@@ -55,7 +55,7 @@ class AppButton extends StatelessWidget {
     final disabledStroke =
         variant == AppButtonVariant.subtle ? stroke : AppPalette.strokeDisabled;
     final textStyle = (small ? AppType.caption1 : AppType.body1).copyWith(fontWeight: FontWeight.w600);
-    final height = small ? AppSize.controlSm : AppSize.control;
+    final height = small ? AppSize.controlSmall : AppSize.control;
     final glyph = icon;
     final textSidePad = small ? AppSpace.s16 : AppSpace.s24;
     final iconSidePad = small ? AppSpace.s12 : AppSpace.s16;

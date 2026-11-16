@@ -183,7 +183,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final end = trailing;
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: AppSize.controlSm),
+      constraints: const BoxConstraints(minHeight: AppSize.controlSmall),
       child: Row(
         children: [
           Expanded(child: Text(title, style: AppType.subtitle1.copyWith(color: AppPalette.foreground1))),
