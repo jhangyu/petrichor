@@ -5,7 +5,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/data_display.dart';
 import '../../../data/models/hazard_models.dart';
 import '../../../core/time/taiwan_time.dart';
-import 'level_style.dart';
+import 'rain_level_badge.dart';
 import 'rainfall_logic.dart';
 
 String _mmText(double? mm) => mm == null ? '—' : '${formatMm(mm)} mm';

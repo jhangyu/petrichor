@@ -19,7 +19,7 @@ import '../../radar/radar_player.dart';
 import '../../radar/radar_provider.dart';
 import '../../radar/widgets/playback_card.dart';
 import '../../radar/widgets/radar_map_view.dart';
-import 'accum_provider.dart';
+import 'rain_accumulation_provider.dart';
 import 'rain_map_card.dart';
 
 const _cardTitle = '累積雨量';

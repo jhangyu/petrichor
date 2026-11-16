@@ -19,12 +19,12 @@ import '../location/place_provider.dart';
 import '../../core/time/taiwan_time.dart';
 import '../radar/widgets/radar_map_view.dart' show RadarCameraLink;
 import 'hazard_provider.dart';
-import 'rainfall/accum_card.dart';
-import 'rainfall/accum_provider.dart';
-import 'rainfall/forecast_view.dart';
-import 'rainfall/observation_view.dart';
+import 'rainfall/rain_accumulation_card.dart';
+import 'rainfall/rain_accumulation_provider.dart';
+import 'rainfall/forecast_map_card.dart';
+import 'rainfall/observation_hero_card.dart';
 import 'rainfall/rainfall_logic.dart';
-import 'rainfall/station_list.dart';
+import 'rainfall/station_list_card.dart';
 
 const _loadingSubtitle = '正在取得測站資料…';
 const _heroSkeletonHeight = 160.0;
