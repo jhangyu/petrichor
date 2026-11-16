@@ -17,7 +17,7 @@
 | `savedPlacesProvider` | `AsyncValue<List<Place>>` | 已儲存地點，依加入順序 |
 | `townsProvider(county)` | `AsyncValue<Result<List<Place>>>` | 某縣市的鄉鎮清單與經緯度（資料來源是該縣市的 3 天鄉鎮預報資料集） |
 | `placeObservationProvider(place)` | `AsyncValue<Result<CurrentWeather>>` | 某地點的即時觀測（已儲存地點列表顯示現況溫度） |
-| `weatherNotifierProvider` | `WeatherState` | 首頁資料；`place` 是 `Place?`，地點一變就重新載入；沒有地點時 `error` 為引導訊息 |
+| `weatherNotifierProvider` | `WeatherState` | 首頁資料；`place` 是 `Place?`，地點一變就重新載入；沒有地點時 `place` 為 null、各資料欄位為 null |
 
 縣市清單（橫向捲動）：`CwaDatasets.townshipForecastDatasets.keys`，共 22 縣市。搜尋只篩選所選縣市的鄉鎮清單。
 
