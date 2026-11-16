@@ -91,8 +91,6 @@ void main() {
   test('now card keeps the observation when sun data fails', () {
     final obs = CurrentWeather(
       stationName: '臺北',
-      countyName: '臺北市',
-      townName: '中正區',
       observedAt: tw(14, 14),
       temperature: 22,
       humidity: null,
@@ -120,8 +118,6 @@ void main() {
   test('now card keeps the sun failure location when re-wrapping it', () {
     final obs = CurrentWeather(
       stationName: '臺北',
-      countyName: '臺北市',
-      townName: '中正區',
       observedAt: tw(14, 14),
       temperature: 22,
       humidity: null,

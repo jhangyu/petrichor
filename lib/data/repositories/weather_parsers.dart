@@ -109,8 +109,6 @@ CurrentWeather _parseObservation(Map<String, dynamic> body, double lat, double l
   final we = _obj(best['WeatherElement'], 'WeatherElement');
   return CurrentWeather(
     stationName: _text(best['StationName']) ?? '',
-    countyName: _text(_dig(best, ['GeoInfo', 'CountyName'])) ?? '',
-    townName: _text(_dig(best, ['GeoInfo', 'TownName'])) ?? '',
     observedAt: _time(_dig(best, ['ObsTime', 'DateTime']), 'ObsTime.DateTime'),
     temperature: _num(we['AirTemperature'], 'AirTemperature')!,
     humidity: _int(we['RelativeHumidity'], 'RelativeHumidity'),

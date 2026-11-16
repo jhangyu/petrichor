@@ -7,10 +7,6 @@ class CurrentWeather {
   /// 觀測站名稱（如「淡水」）
   final String stationName;
 
-  /// 觀測站所在縣市／鄉鎮區
-  final String countyName;
-  final String townName;
-
   /// 觀測時間（絕對時刻）
   final DateTime observedAt;
 
@@ -35,8 +31,6 @@ class CurrentWeather {
 
   const CurrentWeather({
     required this.stationName,
-    required this.countyName,
-    required this.townName,
     required this.observedAt,
     required this.temperature,
     required this.humidity,
