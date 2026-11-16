@@ -30,8 +30,8 @@ DateTime _taiwanTime(String s) => DateTime.parse('$s+08:00');
 /// 完整尺寸（441×561）的 1 小時預報 fixture：全部 -99，[cells] 指定的 index 設為指定值
 String _fullGrid(Map<int, String> cells) {
   final root = _fixtureJson('F-B0046-001');
-  final ps = root['cwaopendata']['dataset']['datasetInfo']['parameterSet'] as Map<String, dynamic>;
-  final n = int.parse(ps['GridDimensionX'] as String) * int.parse(ps['GridDimensionY'] as String);
+  final parameterSet = root['cwaopendata']['dataset']['datasetInfo']['parameterSet'] as Map<String, dynamic>;
+  final n = int.parse(parameterSet['GridDimensionX'] as String) * int.parse(parameterSet['GridDimensionY'] as String);
   root['cwaopendata']['dataset']['contents']['content'] = List.generate(n, (i) => cells[i] ?? '-9.900E+01').join(',');
   return jsonEncode(root);
 }
