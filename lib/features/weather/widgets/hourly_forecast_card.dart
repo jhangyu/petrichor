@@ -8,8 +8,8 @@ import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import 'forecast_chart.dart';
 import '../weather_logic.dart';
-import '../weather_format.dart';
-import 'weather_glyph_icon.dart';
+import '../../../core/format/weather_format.dart';
+import '../../../core/widgets/weather_glyph_icon.dart';
 
 /// Height of the 72-hour data block (summary + chart + legend).
 const _forecastSkeletonHeight = 456.0;

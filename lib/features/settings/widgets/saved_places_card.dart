@@ -11,8 +11,8 @@ import '../../../data/models/place.dart';
 import '../../../data/models/weather_models.dart';
 import '../../../core/api/result.dart';
 import '../../place/place_provider.dart';
-import '../../weather/weather_format.dart';
-import '../../weather/widgets/weather_glyph_icon.dart';
+import '../../../core/format/weather_format.dart';
+import '../../../core/widgets/weather_glyph_icon.dart';
 import 'settings_parts.dart';
 
 /// Skeleton height while the saved-place list loads (three rows).

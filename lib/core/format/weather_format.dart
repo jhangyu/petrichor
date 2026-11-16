@@ -1,5 +1,4 @@
-import '../../core/time/taiwan_time.dart';
-import '../../data/models/weather_models.dart';
+import '../time/taiwan_time.dart';
 
 const _weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -54,16 +53,6 @@ String windDirectionLabel(String? direction) {
   if (direction == null) return '—';
   return direction.endsWith('風') ? direction.substring(0, direction.length - 1) : direction;
 }
-
-const _compass8 = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
-const _compassSectorDegrees = 360 / 8;
-
-/// Observed wind → `東北` (8-point, from-direction) / `靜風` / `風向不定`.
-String observedWindLabel(ObservedWind wind) => switch (wind) {
-  CalmWind() => '靜風',
-  VariableWind() => '風向不定',
-  WindFrom(:final degrees) => _compass8[(degrees / _compassSectorDegrees).round() % _compass8.length],
-};
 
 /// `發布 11/14 17:00` (Taiwan time).
 String issuedText(DateTime t) => '發布 ${monthDay(taiwanWall(t))} ${clockText(t)}';

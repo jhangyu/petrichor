@@ -5,7 +5,7 @@ import '../../../core/time/taiwan_time.dart';
 import '../../../data/models/weather_models.dart';
 import 'chart_paint.dart';
 import '../weather_logic.dart';
-import '../weather_format.dart';
+import '../../../core/format/weather_format.dart';
 
 const forecastAxisWidth = 40.0;
 

@@ -13,8 +13,8 @@ import '../../hazard/warnings/warning_style.dart';
 import '../weather_logic.dart';
 import 'sky_arc.dart';
 import '../sun_now.dart';
-import '../weather_format.dart';
-import 'weather_glyph_icon.dart';
+import '../../../core/format/weather_format.dart';
+import '../../../core/widgets/weather_glyph_icon.dart';
 
 /// Height of the now card's data block at phone width (arc, two tile groups,
 /// notes), so the loading skeleton does not jump.

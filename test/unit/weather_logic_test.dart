@@ -6,8 +6,8 @@ import 'package:petrichor/core/time/taiwan_time.dart';
 import 'package:petrichor/features/weather/weather_provider.dart';
 import 'package:petrichor/features/weather/weather_logic.dart';
 import 'package:petrichor/features/weather/sun_now.dart';
-import 'package:petrichor/features/weather/weather_format.dart';
-import 'package:petrichor/features/weather/widgets/weather_glyph_icon.dart';
+import 'package:petrichor/core/format/weather_format.dart';
+import 'package:petrichor/core/widgets/weather_glyph_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const taipei = Place(county: '臺北市', town: '中正區', latitude: 25.0375, longitude: 121.5637);

@@ -167,3 +167,13 @@ TemperatureScale? weeklyScale(List<DailyForecast> days, double? current) {
     values.reduce((a, b) => a > b ? a : b).ceilToDouble(),
   );
 }
+
+const _compass8 = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
+const _compassSectorDegrees = 360 / 8;
+
+/// Observed wind → `東北` (8-point, from-direction) / `靜風` / `風向不定`.
+String observedWindLabel(ObservedWind wind) => switch (wind) {
+  CalmWind() => '靜風',
+  VariableWind() => '風向不定',
+  WindFrom(:final degrees) => _compass8[(degrees / _compassSectorDegrees).round() % _compass8.length],
+};

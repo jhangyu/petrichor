@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
+import '../theme/app_tokens.dart';
 
 enum WeatherGlyph { sun, partly, cloud, rain, thunder, fog, snow, unknown }
 
