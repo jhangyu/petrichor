@@ -31,7 +31,7 @@ const _heroSkeletonHeight = 160.0;
 const _mapSkeletonHeight = 300.0;
 const _listSkeletonHeight = 240.0;
 final _thresholdHint =
-    '警戒等級依 24 小時累積雨量：${[for (var i = 0; i < rainWarningThresholds.length; i++) '${rainLevelNames[i + 1]} ${rainWarningThresholds[i].toInt()}'].join('、')} mm。';
+    '警戒等級依 24 小時累積雨量：${[for (var i = 0; i < rainWarningThresholds.length; i++) rainThresholdLabel(i)].join('、')} mm。';
 
 /// 雨量 tab: 最近測站, 累積雨量, 未來1hr預測, 測站今日累積雨量.
 class RainfallScreen extends ConsumerWidget {

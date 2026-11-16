@@ -6,6 +6,9 @@ const rainWarningThresholds = [80.0, 200.0, 350.0, 500.0];
 /// Level names indexed by [rainLevel]; 0 = below every threshold.
 const rainLevelNames = ['未達警戒', '大雨', '豪雨', '大豪雨', '超大豪雨'];
 
+/// Label of warning level [i] + 1 with its threshold, e.g. `大雨 80`.
+String rainThresholdLabel(int i) => '${rainLevelNames[i + 1]} ${rainWarningThresholds[i].toInt()}';
+
 /// Widths (percent of the bar) of the 0–80, 80–200, 200–350, 350–500 segments
 /// in the threshold bar (mockup `.thr__bar`).
 const thresholdSegmentPercents = [16.0, 24.0, 30.0, 30.0];
