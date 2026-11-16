@@ -72,10 +72,10 @@ class RadarEchoStatistics {
 
   /// Pixels needed for [radarEchoMinimumAreaSquareKilometers] at this image's scale.
   int get minPixels {
-    final midLat = (bounds.north + bounds.south) / 2;
-    final pxKm2 = (bounds.north - bounds.south) / imageHeight * _earthKilometersPerDegree *
-        (bounds.east - bounds.west) / imageWidth * _earthKilometersPerDegree * cos(midLat * pi / 180);
-    return (radarEchoMinimumAreaSquareKilometers / pxKm2).ceil();
+    final middleLatitude = (bounds.north + bounds.south) / 2;
+    final pixelAreaSquareKilometers = (bounds.north - bounds.south) / imageHeight * _earthKilometersPerDegree *
+        (bounds.east - bounds.west) / imageWidth * _earthKilometersPerDegree * cos(middleLatitude * pi / 180);
+    return (radarEchoMinimumAreaSquareKilometers / pixelAreaSquareKilometers).ceil();
   }
 
   /// Highest dBZ reached over [radarEchoMinimumAreaSquareKilometers]; null when no level is.

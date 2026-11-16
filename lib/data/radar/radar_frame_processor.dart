@@ -145,11 +145,11 @@ List<int> mercatorRowMap({required int sourceHeight, required double south, requ
   final yS = _mercY(south), yN = _mercY(north);
   final outHeight = (sourceHeight * (yN - yS) * cos(_rad(south)) / _rad(north - south)).ceil();
   return List<int>.generate(outHeight, (j) {
-    final lat = _latOf(yN - (j + 0.5) * (yN - yS) / outHeight);
-    return ((north - lat) / (north - south) * sourceHeight).floor().clamp(0, sourceHeight - 1);
+    final latitude = _latOf(yN - (j + 0.5) * (yN - yS) / outHeight);
+    return ((north - latitude) / (north - south) * sourceHeight).floor().clamp(0, sourceHeight - 1);
   });
 }
 
-double _rad(double deg) => deg * pi / 180;
-double _mercY(double lat) => log(tan(pi / 4 + _rad(lat) / 2));
+double _rad(double degrees) => degrees * pi / 180;
+double _mercY(double latitude) => log(tan(pi / 4 + _rad(latitude) / 2));
 double _latOf(double y) => (2 * atan(exp(y)) - pi / 2) * 180 / pi;

@@ -146,9 +146,9 @@ RadarSource accumulationRadarSource(
       final plan = accumulationFramePlan(start: start, time: frame.time, windowHours: windowHours);
       Future<AccumulationPieceInput> input(int nativeHours, DateTime end) async {
         final url = accumulationPieceUrl(nativeHours, end);
-        final gz = await cache.get(nativeHours, end, cancel) ??
+        final gzipBytes = await cache.get(nativeHours, end, cancel) ??
             (throw RadarDataException(url, expected: 'HTTP 200 with the QPEplus grid', actual: 'HTTP 404'));
-        return (url: url, gz: gz);
+        return (url: url, gzipBytes: gzipBytes);
       }
 
       final partialEnd = plan.partialEnd;
@@ -169,7 +169,7 @@ RadarSource accumulationRadarSource(
 }
 
 /// One downloaded grid: its URL (named in errors) and its gzipped text.
-typedef AccumulationPieceInput = ({String url, Uint8List gz});
+typedef AccumulationPieceInput = ({String url, Uint8List gzipBytes});
 
 /// The 1 h grids of a frame's first partial hour ([AccumulationPartialHour]).
 typedef AccumulationPartialInput = ({AccumulationPieceInput end, AccumulationPieceInput start, int minutes});
@@ -202,10 +202,10 @@ ProcessedRadarFrame renderAccumulationFrame(List<AccumulationPieceInput> whole, 
   final webp = encodeRadarWebp(accumulationGridWidth, _rowMap.length, (out) {
     for (var j = 0; j < _rowMap.length; j++) {
       // Row map counts from the north edge; grid row 0 is the south edge.
-      final src = (accumulationGridHeight - 1 - _rowMap[j]) * accumulationGridWidth;
+      final source = (accumulationGridHeight - 1 - _rowMap[j]) * accumulationGridWidth;
       final o = j * accumulationGridWidth;
       for (var x = 0; x < accumulationGridWidth; x++) {
-        final index = accumulationColorIndex(sum[src + x]);
+        final index = accumulationColorIndex(sum[source + x]);
         if (index >= 0) out[o + x] = _rgba[index];
       }
     }
@@ -225,7 +225,7 @@ ProcessedRadarFrame renderAccumulationFrame(List<AccumulationPieceInput> whole, 
 
 AccumulationGrid _parse(AccumulationPieceInput p) {
   try {
-    return parseAccumulationGrid(utf8.decode(gzip.decode(p.gz)), url: p.url);
+    return parseAccumulationGrid(utf8.decode(gzip.decode(p.gzipBytes)), url: p.url);
   } on FormatException catch (error) {
     throw RadarDataException(p.url, expected: 'a QPEplus 441x561 gauge grid', actual: error.message);
   }
@@ -329,17 +329,17 @@ class _PieceCache {
       case HttpStatus.ok:
         final body = response.data ??
             (throw RadarDataException(url, expected: 'QPEplus grid body', actual: 'HTTP 200 without body'));
-        final gz = Uint8List.fromList(gzip.encode(body));
+        final gzipBytes = Uint8List.fromList(gzip.encode(body));
         await dir.create(recursive: true);
         final seq = _temporaryFileSequence++;
-        await writeAtomic(file, gz, temporarySuffix: '.$seq.tmp');
+        await writeAtomic(file, gzipBytes, temporarySuffix: '.$seq.tmp');
         final newEtag = response.headers.value(HttpHeaders.etagHeader);
         if (newEtag == null) {
           if (await etagFile.exists()) await etagFile.delete();
         } else {
           await writeAtomic(etagFile, utf8.encode(newEtag), temporarySuffix: '.$seq.tmp');
         }
-        return gz;
+        return gzipBytes;
       default:
         throw RadarDataException(url, expected: 'HTTP 200, or 304 for a cached grid', actual: 'HTTP ${response.statusCode}');
     }
