@@ -105,7 +105,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
         title: _cardTitle,
         child: StatusBanner(
           tone: StatusTone.error,
-          title: '累積雨量設定無法讀取',
+          title: '無法讀取累積雨量設定',
           text: [
             for (final e in [window.error, fps.error, repeat.error]) ?e,
           ].join('；'),
