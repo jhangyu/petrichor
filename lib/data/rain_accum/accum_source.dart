@@ -40,23 +40,26 @@ const _accumPublishDelay = Duration(minutes: 6);
 /// QPEplus rewrites a grid once, 4–10 min after it first appears.
 const accumRevalidateAge = Duration(minutes: 20);
 
-/// Grids kept on disk: the longest window (168 h) plus one hour of slack for
-/// the newest slot.
-const accumPieceRetention = Duration(hours: 168 + 1);
+/// Grids kept on disk: the longest window plus one hour of slack for the
+/// newest slot.
+final accumPieceRetention = Duration(hours: accumWindowHours.last + 1);
 
 /// Grid extent (lon 118–123.5, lat 20–27, linear in degrees).
 final accumBounds = LatLngBounds(const LatLng(20, 118), const LatLng(27, 123.5));
+
+/// Frame step of the longest window, which also sums the 3 h native grid.
+const _accumCoarseStep = Duration(hours: 3);
 
 /// Frame step of a window: 10 min for 4/6/12 h, 1 h for 24/48 h, 3 h for 168 h.
 Duration accumFrameStep(int windowHours) => switch (windowHours) {
       4 || 6 || 12 => accumGridInterval,
       24 || 48 => const Duration(hours: 1),
-      168 => const Duration(hours: 3),
+      168 => _accumCoarseStep,
       _ => throw ArgumentError.value(windowHours, 'windowHours', 'expected one of $accumWindowHours'),
     };
 
 /// Native grid summed by a window: 3 h for 168 h, else 1 h.
-int _gridHours(int windowHours) => accumFrameStep(windowHours) == const Duration(hours: 3) ? 3 : 1;
+int _gridHours(int windowHours) => accumFrameStep(windowHours) == _accumCoarseStep ? _accumCoarseStep.inHours : 1;
 
 /// Start S of the [windowHours] window whose newest frame is [newest] (the UI
 /// labels a frame "S – frame time"; [newest] is the loop's last slot time).
