@@ -8,16 +8,12 @@ import '../theme/app_tokens.dart';
 /// Window width classes ([AppBreakpoint] widths, Material 3 window size classes).
 enum WindowWidthClass { compact, medium, expanded, large }
 
-/// Window height classes ([AppBreakpoint] heights). [compact] covers short
-/// landscape windows (e.g. 720x360 logical) and phones held sideways.
-enum WindowHeightClass { compact, medium, expanded }
-
-/// Width and height class of the current window. The only place layout code
+/// Width class of the current window. The only place layout code
 /// may turn a size into a layout decision; screens never compare raw sizes
 /// against numbers.
 @immutable
 class WindowSizeClass {
-  const WindowSizeClass({required this.widthClass, required this.heightClass});
+  const WindowSizeClass({required this.widthClass});
 
   factory WindowSizeClass.fromSize(Size size) => WindowSizeClass(
         widthClass: switch (size.width) {
@@ -26,18 +22,12 @@ class WindowSizeClass {
           < AppBreakpoint.large => WindowWidthClass.expanded,
           _ => WindowWidthClass.large,
         },
-        heightClass: switch (size.height) {
-          < AppBreakpoint.heightMedium => WindowHeightClass.compact,
-          < AppBreakpoint.heightExpanded => WindowHeightClass.medium,
-          _ => WindowHeightClass.expanded,
-        },
       );
 
-  /// Classes of the whole window (`MediaQuery.sizeOf`), not of the parent box.
+  /// Class of the whole window (`MediaQuery.sizeOf`), not of the parent box.
   static WindowSizeClass of(BuildContext context) => WindowSizeClass.fromSize(MediaQuery.sizeOf(context));
 
   final WindowWidthClass widthClass;
-  final WindowHeightClass heightClass;
 
   /// Phone-width window (width class compact).
   bool get isCompactWidth => widthClass == WindowWidthClass.compact;

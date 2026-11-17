@@ -212,16 +212,13 @@ abstract final class AppSize {
   static const double dot = 8;
 }
 
-/// Window size-class thresholds (logical px, lower bound of each class).
-/// Width: Material 3 window size classes. Height: compact < 480 catches short
-/// landscape windows (720x360 at 2x). Read through `WindowSizeClass`, never
+/// Window width-class thresholds (logical px, lower bound of each class):
+/// Material 3 window size classes. Read through `WindowSizeClass`, never
 /// compare sizes against these directly in screens.
 abstract final class AppBreakpoint {
   static const double medium = 600;
   static const double expanded = 840;
   static const double large = 1200;
-  static const double heightMedium = 480;
-  static const double heightExpanded = 900;
 }
 
 /// Fluid page grid (`AppGrid`) and reading width.
