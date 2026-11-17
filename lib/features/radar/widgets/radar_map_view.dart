@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
 import 'package:latlong2/latlong.dart';
@@ -70,6 +71,7 @@ int _rasterCacheBytes(Size card, double devicePixelRatio) {
 
 /// How long the camera has to rest before its zoom is written to the log.
 const _zoomLogDebounce = Duration(milliseconds: 400);
+
 /// Frames decoded ahead of the shown one.
 const radarPreDecodeCount = 2;
 
@@ -100,10 +102,23 @@ const radarMapDefaultAspectRatio = 5 / 6;
 /// Base map opacity of `.radar-map--muted` (loading / no data).
 const _mutedOpacity = 0.6;
 
-/// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 and 地圖朝北 buttons
-/// (top right) and the current place's pin. [overlayImages] holds the one shown
-/// frame. The image cache stays at Flutter's default; [upcoming] frames are
-/// decoded ahead.
+/// Hides (fullscreen) or restores the system status and navigation bars.
+/// Restoring sets the launch state of Flutter's Android activity (both bars
+/// shown, not edge-to-edge).
+Future<void> _setSystemBarsHidden(bool hidden) async {
+  try {
+    await SystemChrome.setEnabledSystemUIMode(hidden ? SystemUiMode.immersiveSticky : SystemUiMode.manual, overlays: hidden ? null : SystemUiOverlay.values);
+  } on MissingPluginException {
+    // Desktop embedders have no system bars to hide; user-approved no-op.
+  }
+}
+
+/// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」, 地圖朝北 and lock
+/// buttons (top right), the 全螢幕 button (bottom left) and the current place's pin.
+/// Fullscreen moves this same map (camera and layers kept) into the root
+/// overlay over the whole app, system bars hidden; 縮小 or back returns it.
+/// [overlayImages] holds the one shown frame. The image cache stays at
+/// Flutter's default; [upcoming] frames are decoded ahead.
 class RadarMapView extends StatefulWidget {
   const RadarMapView({
     super.key,
@@ -118,7 +133,7 @@ class RadarMapView extends StatefulWidget {
     this.muted = false,
     this.semanticsLabel,
     this.aspectRatio = radarMapDefaultAspectRatio,
-    this.startLocked = false,
+    this.startLocked = true,
     this.cameraLink,
   });
 
@@ -147,7 +162,8 @@ class RadarMapView extends StatefulWidget {
   /// Width / height of the map.
   final double aspectRatio;
 
-  /// Pan and zoom are off until the lock button is pressed (maps inside a scrolling page).
+  /// Initial lock state: pan and zoom off until the lock button is pressed.
+  /// True for maps inside a scrolling page.
   final bool startLocked;
 
   /// Camera shared with the other maps of the link; null = this map is alone.
@@ -160,6 +176,13 @@ class RadarMapView extends StatefulWidget {
 class _RadarMapViewState extends State<RadarMapView> {
   final _controller = MapController();
   late bool _locked = widget.startLocked;
+  final _fullscreenPortal = OverlayPortalController();
+
+  /// Own flag: the portal controller forgets its state once the portal is disposed, before [dispose] here.
+  bool _fullscreen = false;
+
+  /// Keeps the map element (FlutterMap state) while it moves between the card and the overlay.
+  final _mapKey = GlobalKey();
   Timer? _zoomLog;
   double? _loggedZoom;
   int? _loggedCacheBytes;
@@ -226,9 +249,16 @@ class _RadarMapViewState extends State<RadarMapView> {
   @override
   void dispose() {
     widget.cameraLink?.removeListener(_followLink);
+    if (_fullscreen) unawaited(_setSystemBarsHidden(false));
     _zoomLog?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _setFullscreen(bool on) {
+    setState(() => _fullscreen = on);
+    on ? _fullscreenPortal.show() : _fullscreenPortal.hide();
+    unawaited(_setSystemBarsHidden(on));
   }
 
   /// After this frame is painted, the [RadarMapView.upcoming] frames are
@@ -250,116 +280,142 @@ class _RadarMapViewState extends State<RadarMapView> {
     final currentPlacePoint = widget.currentPlacePoint;
     _preDecodeUpcoming();
     final chipText = widget.chipText;
+    final content = LayoutBuilder(
+      key: _mapKey,
+      builder: (context, card) => ValueListenableBuilder(
+        valueListenable: _basemapLoad,
+        builder: (context, load, _) => FutureBuilder(
+          future: load,
+          builder: (context, style) {
+            // Fullscreen: the map runs under the cutout and gesture areas, the controls stay inside the safe area.
+            final safe = _fullscreen ? MediaQuery.paddingOf(context) : EdgeInsets.zero;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Opacity(
+                  opacity: widget.muted ? _mutedOpacity : 1,
+                  child: FlutterMap(
+                    mapController: _controller,
+                    options: MapOptions(
+                      initialCenter: currentPlacePoint ?? _taiwanCenter,
+                      initialZoom: _initialZoom(),
+                      onPositionChanged: _onCamera,
+                      interactionOptions: InteractionOptions(flags: _locked && !_fullscreen ? InteractiveFlag.none : InteractiveFlag.all),
+                    ),
+                    children: [
+                      // Same child slot before and after the load, so the layers above keep their state.
+                      if (style.data case (:final style, :final theme, :final tiles))
+                        RepaintBoundary(
+                          child: ContentScaledLayer(
+                            scale: _basemapContentScale,
+                            child: vt.VectorTileLayer(
+                              theme: theme,
+                              tileProviders: tiles,
+                              sprites: style.sprites,
+                              glyphs: style.glyphs,
+                              tileOffset: _basemapDetail,
+                              labelFadeDuration: Duration.zero,
+                              rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
+                              logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+                            ),
+                          ),
+                        )
+                      else
+                        const SizedBox.shrink(),
+                      if (widget.overlayImages.isNotEmpty) OverlayImageLayer(overlayImages: widget.overlayImages),
+                      ...widget.extraLayers,
+                      if (currentPlacePoint != null)
+                        MarkerLayer(
+                          markers: [Marker(point: currentPlacePoint, width: _pinHalo, height: _pinHalo, child: const _CurrentPlacePin())],
+                        ),
+                      Padding(padding: safe, child: const _Attribution()),
+                    ],
+                  ),
+                ),
+                Positioned.fill(
+                  child: Padding(
+                    padding: safe,
+                    child: Stack(
+                      children: [
+                        if (style.hasError)
+                          Positioned(
+                            bottom: AppSpace.s40,
+                            left: AppSpace.s12,
+                            right: AppSpace.s12,
+                            child: Center(
+                              child: Semantics(
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: retryRadarBasemap,
+                                  child: const _MapChip(icon: Icons.refresh, text: _styleFailedText),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (chipText != null)
+                          Positioned(
+                            top: AppSpace.s12,
+                            left: AppSpace.s12,
+                            child: _MapChip(icon: widget.chipIcon, iconColor: widget.chipIconColor, text: chipText),
+                          ),
+                        if (widget.loading)
+                          const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))
+                        else
+                          Positioned(
+                            top: AppSpace.s12 - _actionHitInset,
+                            right: AppSpace.s12 - _actionHitInset,
+                            child: Column(
+                              children: [
+                                _MapActionButton(
+                                  icon: Icons.my_location,
+                                  tooltip: currentPlacePoint == null ? '回到我的位置（沒有目前地點）' : '回到我的位置',
+                                  onPressed: currentPlacePoint == null ? null : () => _controller.move(currentPlacePoint, _locatedZoom),
+                                ),
+                                _MapActionButton(icon: Icons.explore_outlined, tooltip: '地圖朝北', onPressed: () => _controller.rotate(0)),
+                                if (!_fullscreen)
+                                  _MapActionButton(
+                                    icon: _locked ? Icons.lock_outline : Icons.lock_open,
+                                    tooltip: _locked ? '解除鎖定，可拖曳縮放地圖' : '鎖定地圖，頁面可捲動',
+                                    onPressed: () => setState(() => _locked = !_locked),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        Positioned(
+                          bottom: AppSpace.s12 - _actionHitInset,
+                          left: AppSpace.s12 - _actionHitInset,
+                          child: _MapActionButton(icon: _fullscreen ? Icons.fullscreen_exit : Icons.fullscreen, tooltip: _fullscreen ? '縮小' : '全螢幕', onPressed: () => _setFullscreen(!_fullscreen)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
     final map = ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.medium),
       child: AspectRatio(
         aspectRatio: widget.aspectRatio,
-        child: LayoutBuilder(
-          builder: (context, card) => ValueListenableBuilder(
-            valueListenable: _basemapLoad,
-            builder: (context, load, _) => FutureBuilder(
-              future: load,
-              builder: (context, style) => Stack(
-                fit: StackFit.expand,
-                children: [
-                  Opacity(
-                    opacity: widget.muted ? _mutedOpacity : 1,
-                    child: FlutterMap(
-                      mapController: _controller,
-                      options: MapOptions(
-                        initialCenter: currentPlacePoint ?? _taiwanCenter,
-                        initialZoom: _initialZoom(),
-                        onPositionChanged: _onCamera,
-                        interactionOptions: InteractionOptions(
-                          flags: _locked ? InteractiveFlag.none : InteractiveFlag.all,
-                        ),
-                      ),
-                      children: [
-                        // Same child slot before and after the load, so the layers above keep their state.
-                        if (style.data case (:final style, :final theme, :final tiles))
-                          RepaintBoundary(
-                            child: ContentScaledLayer(
-                              scale: _basemapContentScale,
-                              child: vt.VectorTileLayer(
-                                theme: theme,
-                                tileProviders: tiles,
-                                sprites: style.sprites,
-                                glyphs: style.glyphs,
-                                tileOffset: _basemapDetail,
-                                labelFadeDuration: Duration.zero,
-                                rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
-                                logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
-                              ),
-                            ),
-                          )
-                        else
-                          const SizedBox.shrink(),
-                        if (widget.overlayImages.isNotEmpty) OverlayImageLayer(overlayImages: widget.overlayImages),
-                        ...widget.extraLayers,
-                        if (currentPlacePoint != null)
-                          MarkerLayer(
-                            markers: [Marker(point: currentPlacePoint, width: _pinHalo, height: _pinHalo, child: const _CurrentPlacePin())],
-                          ),
-                        const _Attribution(),
-                      ],
-                    ),
-                  ),
-                  if (style.hasError)
-                    Positioned(
-                      bottom: AppSpace.s40,
-                      left: AppSpace.s12,
-                      right: AppSpace.s12,
-                      child: Center(
-                        child: Semantics(
-                          button: true,
-                          child: GestureDetector(
-                            onTap: retryRadarBasemap,
-                            child: const _MapChip(icon: Icons.refresh, text: _styleFailedText),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (chipText != null)
-                    Positioned(
-                      top: AppSpace.s12,
-                      left: AppSpace.s12,
-                      child: _MapChip(icon: widget.chipIcon, iconColor: widget.chipIconColor, text: chipText),
-                    ),
-                  if (widget.loading)
-                    const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))
-                  else
-                    Positioned(
-                      top: AppSpace.s12 - _actionHitInset,
-                      right: AppSpace.s12 - _actionHitInset,
-                      child: Column(
-                        children: [
-                          _MapActionButton(
-                            icon: Icons.my_location,
-                            tooltip: currentPlacePoint == null ? '回到我的位置（沒有目前地點）' : '回到我的位置',
-                            onPressed: currentPlacePoint == null ? null : () => _controller.move(currentPlacePoint, _locatedZoom),
-                          ),
-                          _MapActionButton(
-                            icon: Icons.explore_outlined,
-                            tooltip: '地圖朝北',
-                            onPressed: () => _controller.rotate(0),
-                          ),
-                          if (widget.startLocked)
-                            _MapActionButton(
-                              icon: _locked ? Icons.lock_outline : Icons.lock_open,
-                              tooltip: _locked ? '解除鎖定，可拖曳縮放地圖' : '鎖定地圖，頁面可捲動',
-                              onPressed: () => setState(() => _locked = !_locked),
-                            ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
+        child: OverlayPortal(
+          controller: _fullscreenPortal,
+          overlayLocation: OverlayChildLocation.rootOverlay,
+          // The card's ancestors may have removed the padding; fullscreen reads the whole view's.
+          overlayChildBuilder: (context) => MediaQuery.fromView(
+            view: View.of(context),
+            child: PopScope(canPop: false, onPopInvokedWithResult: (didPop, _) => _setFullscreen(false), child: content),
           ),
+          // Same-size placeholder while the map is in the overlay.
+          child: _fullscreen ? const SizedBox.expand() : content,
         ),
       ),
     );
+    // Always wrapped, label or not: a wrapper that comes and goes remounts the
+    // OverlayPortal, and the replaced portal's dispose detaches the controller.
     final label = widget.semanticsLabel;
-    return label == null ? map : Semantics(label: label, image: true, child: map);
+    return Semantics(label: label, image: label != null, child: map);
   }
 }
