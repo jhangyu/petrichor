@@ -4,6 +4,11 @@ import '../layout/adaptive.dart';
 import '../theme/app_tokens.dart';
 import 'app_button.dart';
 
+/// Gap between the header and the page content; with [AppPageScaffold.fill]
+/// it lies outside [AppPageScaffold.body], so a pane scrolling itself may clip
+/// up to it (the header edge, where the page scroll of other tabs stops too).
+const appPageTopGap = AppSpace.s8;
+
 /// `.app-bar` + `.page` + bottom `資料來源` line. One per tab screen.
 ///
 /// [children] are laid out in an [AppGrid] that fills the window width (gap
@@ -53,7 +58,7 @@ class AppPageScaffold extends StatelessWidget {
             header,
             Expanded(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(margin, AppSpace.s8, margin, AppSpace.s0),
+                padding: EdgeInsets.fromLTRB(margin, appPageTopGap, margin, AppSpace.s0),
                 child: fillBody,
               ),
             ),
@@ -67,7 +72,7 @@ class AppPageScaffold extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: EdgeInsets.fromLTRB(margin, AppSpace.s8, margin, AppSpace.s0),
+          padding: EdgeInsets.fromLTRB(margin, appPageTopGap, margin, AppSpace.s0),
           sliver: SliverToBoxAdapter(child: AppGrid(children: children!)),
         ),
         SliverFillRemaining(

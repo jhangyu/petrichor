@@ -441,8 +441,9 @@ class _RadarView {
 const _paneShadowBleed = AppSpace.s16;
 
 /// Vertical scroll of one side-by-side pane. The cards fill the pane width, so
-/// a scroll view clipping at its own edges cuts their side shadows; this one
-/// clips only at the top and bottom (where scrolled content must stop).
+/// a scroll view clipping at its own edges cuts their side shadows, and the
+/// top card's upper shadow. This one clips sideways past the shadows, at the
+/// header edge above ([appPageTopGap]) and at its own bottom.
 class _PaneScroll extends StatelessWidget {
   const _PaneScroll({required this.child});
 
@@ -459,7 +460,7 @@ class _VerticalClipper extends CustomClipper<Rect> {
   const _VerticalClipper();
 
   @override
-  Rect getClip(Size size) => Rect.fromLTRB(-_paneShadowBleed, 0, size.width + _paneShadowBleed, size.height);
+  Rect getClip(Size size) => Rect.fromLTRB(-_paneShadowBleed, -appPageTopGap, size.width + _paneShadowBleed, size.height);
 
   @override
   bool shouldReclip(_VerticalClipper oldClipper) => false;
