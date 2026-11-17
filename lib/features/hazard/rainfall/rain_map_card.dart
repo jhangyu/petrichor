@@ -56,7 +56,7 @@ class RainMapCard extends StatelessWidget {
   final bool wide;
   final String title;
   final String meta;
-  final RainMapView map;
+  final Widget map;
   final Widget legend;
   final String? note;
 

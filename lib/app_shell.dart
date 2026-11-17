@@ -46,7 +46,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     final pages = IndexedStack(
       index: tab.index,
       children: [
-        for (final t in AppTab.values) _visited.contains(t) ? _tabs[t]!.page : const SizedBox.shrink(),
+        // Hidden tabs stay mounted but their tickers (map pump, spinners) stop.
+        for (final t in AppTab.values)
+          TickerMode(enabled: t == tab, child: _visited.contains(t) ? _tabs[t]!.page : const SizedBox.shrink()),
       ],
     );
     final usesNavigationRail = WindowSizeClass.of(context).usesNavigationRail;

@@ -145,14 +145,16 @@ class AppCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.medium),
       boxShadow: hero ? AppShadows.s8 : AppShadows.s4,
     );
-    return Container(
-      decoration: decoration,
-      clipBehavior: flush ? Clip.antiAlias : Clip.none,
-      padding: flush ? EdgeInsets.zero : (dense ? _densePadding : _padding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: flush ? AppSpace.s0 : (dense ? AppSpace.s8 : AppSpace.s16),
-        children: children,
+    return RepaintBoundary(
+      child: Container(
+        decoration: decoration,
+        clipBehavior: flush ? Clip.antiAlias : Clip.none,
+        padding: flush ? EdgeInsets.zero : (dense ? _densePadding : _padding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: flush ? AppSpace.s0 : (dense ? AppSpace.s8 : AppSpace.s16),
+          children: children,
+        ),
       ),
     );
   }

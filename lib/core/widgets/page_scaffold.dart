@@ -73,13 +73,15 @@ class AppPageScaffold extends StatelessWidget {
       slivers: [
         SliverPadding(
           padding: EdgeInsets.fromLTRB(margin, appPageTopGap, margin, AppSpace.s0),
-          sliver: SliverToBoxAdapter(child: AppGrid(children: children!)),
+          sliver: SliverToBoxAdapter(child: RepaintBoundary(child: AppGrid(children: children!))),
         ),
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Padding(
-            padding: foot,
-            child: Align(alignment: Alignment.bottomCenter, child: source),
+          child: RepaintBoundary(
+            child: Padding(
+              padding: foot,
+              child: Align(alignment: Alignment.bottomCenter, child: source),
+            ),
           ),
         ),
       ],

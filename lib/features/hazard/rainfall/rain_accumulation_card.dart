@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/layout/adaptive.dart' show AppTwoPane;
+import '../../../core/navigation/app_tab.dart' show AppTab, appTabProvider;
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_card.dart';
@@ -33,7 +34,7 @@ const _group = RadarSettingsGroup.rainfall;
 const _noRainBelowMillimeters = 1;
 
 /// What a loop state puts in the card: optional banner, the map, optional playback.
-typedef _Body = ({Widget? banner, RainMapView map, Widget? playback});
+typedef _Body = ({Widget? banner, Widget map, Widget? playback});
 
 /// Legend numbers under the 17-colour bar: the first colour index of each band
 /// and its label (the band lower edge of `accumulationScaleEdgesMillimeters`).
@@ -64,8 +65,22 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     slots: () => ref.read(accumulationLoopProvider(ref.read(rainAccumulationWindowProvider).requireValue)).value?.slots,
     framesPerSecond: () => ref.read(radarFramesPerSecondProvider(_group)).requireValue,
     repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
-    onChanged: () => setState(() {}),
-  );
+  )..addListener(_onPlayerChanged);
+
+  /// Playing / buffering as the card header last showed it ([radarPlaybackMeta]).
+  /// Only a change of these rebuilds the whole card; a playback step rebuilds the
+  /// map, the banner and the playback body only.
+  (bool, bool) _shownPlayState = (false, false);
+
+  (bool, bool) get _playState => (_player.playing, _player.waitingOn != null);
+
+  void _onPlayerChanged() {
+    if (_playState != _shownPlayState) setState(() {});
+  }
+
+  /// A playback step rebuilds only these builders. Every body puts its map (and
+  /// playback) through one, so the map keeps its State from loading to loop.
+  Widget _perStep(Widget Function() build) => ListenableBuilder(listenable: _player, builder: (context, _) => build());
 
   @override
   void dispose() {
@@ -103,6 +118,9 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
 
   @override
   Widget build(BuildContext context) {
+    _shownPlayState = _playState;
+    // Leaving the tab holds a playing loop; coming back continues it.
+    ref.listen(appTabProvider, (_, tab) => tab == AppTab.rainfall ? _player.resume() : _player.suspend());
     // The one platform difference: QPEplus sends no CORS header, so a browser cannot fetch it.
     if (kIsWeb) {
       return _withStationCard(
@@ -203,7 +221,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
   }
 
   _Body _loadingBody() =>
-      (banner: null, map: _map(loading: true, muted: true), playback: const PlaybackBody(playback: null, loading: true));
+      (banner: null, map: _perStep(() => _map(loading: true, muted: true)), playback: _perStep(() => const PlaybackBody(playback: null, loading: true)));
 
   _Body _failureBody(int hours, String error) => (
     banner: StatusBanner(
@@ -212,30 +230,26 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       text: error,
       actions: [RetryButton(onPressed: () => _retry(hours))],
     ),
-    map: _map(muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無累積雨量資料', semanticsLabel: '地圖，無累積雨量資料'),
+    map: _perStep(() => _map(muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無累積雨量資料', semanticsLabel: '地圖，無累積雨量資料')),
     playback: null,
   );
 
   (String, _Body) _loopBody(int hours, RadarLoop loop, int framesPerSecond, bool repeat) {
     final slots = loop.slots;
     final failed = radarFailedSlots(slots);
-    final index = radarShownIndex(slots, _player.playhead);
-    if (index == null) {
+    if (radarShownIndex(slots, null) == null) {
       if (loop.isLoading) return ('載入中', _loadingBody());
       return ('無法取得', _failureBody(hours, '${radarNoFrameError(loop, failed)}'));
     }
-    final frame = slots[index].frame!;
     // Contract decision 12: the window starts at S = newest slot - window and each frame accumulates from S.
     final start = slots.last.time.subtract(Duration(hours: hours));
     String span(DateTime t) => '${formatTaiwanMonthDayClock(start)} 起累積至 ${formatTaiwanMonthDayClock(t)}';
-    final isLast = index == slots.length - 1;
-    final noRain = (frame.peakMillimeters ?? double.infinity) < _noRainBelowMillimeters;
-    final accumulated = isLast ? '過去 $hours 小時' : span(frame.time);
+    int index() => radarShownIndex(slots, _player.playhead)!;
     final readyCount = radarReadyCount(slots);
-    final waiting = _player.waitingOn != null;
+    final (playing, waiting) = _shownPlayState;
     final meta = radarPlaybackMeta(
       buffering: waiting,
-      playing: _player.playing,
+      playing: playing,
       loading: loop.isLoading,
       ready: readyCount,
       total: slots.length,
@@ -248,11 +262,13 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       meta,
       (
         banner: listError != null
-            ? StatusBanner(
-                tone: StatusTone.error,
-                title: '無法更新，顯示 ${clockText(frame.time)} 的資料',
-                text: '$listError',
-                actions: [RetryButton(onPressed: () => _retry(hours))],
+            ? _perStep(
+                () => StatusBanner(
+                  tone: StatusTone.error,
+                  title: '無法更新，顯示 ${clockText(slots[index()].frame!.time)} 的資料',
+                  text: '$listError',
+                  actions: [RetryButton(onPressed: () => _retry(hours))],
+                ),
               )
             : failed.isNotEmpty
             ? StatusBanner(
@@ -262,44 +278,52 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
                 actions: [RetryButton(onPressed: () => _retry(hours))],
               )
             : null,
-        map: _map(
-          chipIcon: Icons.schedule,
-          chipText: noRain
-              ? '$accumulated全臺沒有降雨'
-              : isLast
-              ? '過去 $hours 小時累積 · ${formatTaiwanMonthDayClock(frame.time)}'
-              : accumulated,
-          semanticsLabel: noRain ? '地圖，全臺沒有降雨' : '累積雨量圖，${span(frame.time)}',
-          upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
-          overlayImages: [
-            if (!noRain)
-              OverlayImage(
-                bounds: frame.bounds,
-                opacity: rainMapOverlayOpacity,
-                imageProvider: frame.imageProvider,
-                filterQuality: FilterQuality.none,
-                gaplessPlayback: true,
-              ),
-          ],
-        ),
-        playback: PlaybackBody(
-          playback: PlaybackFrames(
-            slots: slots,
-            index: index,
-            current: radarCurrentCell(slots, shown: index, waitingOn: _player.waitingOn),
-            buffering: waiting,
-            playing: _player.playing,
-            framesPerSecond: framesPerSecond,
-            repeat: repeat,
-            window: Duration(hours: hours),
-            timeText: span,
-            onTogglePlay: () {
-              loop.loadRest();
-              _player.togglePlay();
-            },
-            onSeek: _player.seek,
-            onFramesPerSecondChanged: _setFramesPerSecond,
-            onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
+        map: _perStep(() {
+          final frame = slots[index()].frame!;
+          final isLast = index() == slots.length - 1;
+          final noRain = (frame.peakMillimeters ?? double.infinity) < _noRainBelowMillimeters;
+          final accumulated = isLast ? '過去 $hours 小時' : span(frame.time);
+          return _map(
+            chipIcon: Icons.schedule,
+            chipText: noRain
+                ? '$accumulated全臺沒有降雨'
+                : isLast
+                ? '過去 $hours 小時累積 · ${formatTaiwanMonthDayClock(frame.time)}'
+                : accumulated,
+            semanticsLabel: noRain ? '地圖，全臺沒有降雨' : '累積雨量圖，${span(frame.time)}',
+            upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
+            overlayImages: [
+              if (!noRain)
+                OverlayImage(
+                  bounds: frame.bounds,
+                  opacity: rainMapOverlayOpacity,
+                  imageProvider: frame.imageProvider,
+                  filterQuality: FilterQuality.none,
+                  gaplessPlayback: true,
+                ),
+            ],
+          );
+        }),
+        playback: _perStep(
+          () => PlaybackBody(
+            playback: PlaybackFrames(
+              slots: slots,
+              index: index(),
+              current: radarCurrentCell(slots, shown: index(), waitingOn: _player.waitingOn),
+              buffering: _player.waitingOn != null,
+              playing: _player.playing,
+              framesPerSecond: framesPerSecond,
+              repeat: repeat,
+              window: Duration(hours: hours),
+              timeText: span,
+              onTogglePlay: () {
+                loop.loadRest();
+                _player.togglePlay();
+              },
+              onSeek: _player.seek,
+              onFramesPerSecondChanged: _setFramesPerSecond,
+              onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),
+            ),
           ),
         ),
       ),

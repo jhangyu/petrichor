@@ -277,16 +277,19 @@ class _RadarMapViewState extends State<RadarMapView> {
                       children: [
                         // Same child slot before and after the load, so the layers above keep their state.
                         if (style.data case (:final style, :final theme, :final tiles))
-                          ContentScaledLayer(
-                            scale: _basemapContentScale,
-                            child: vt.VectorTileLayer(
-                              theme: theme,
-                              tileProviders: tiles,
-                              sprites: style.sprites,
-                              glyphs: style.glyphs,
-                              tileOffset: _basemapDetail,
-                              rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
-                              logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+                          RepaintBoundary(
+                            child: ContentScaledLayer(
+                              scale: _basemapContentScale,
+                              child: vt.VectorTileLayer(
+                                theme: theme,
+                                tileProviders: tiles,
+                                sprites: style.sprites,
+                                glyphs: style.glyphs,
+                                tileOffset: _basemapDetail,
+                                labelFadeDuration: Duration.zero,
+                                rasterCacheMaxBytes: _cacheBytesFor(card.biggest, MediaQuery.devicePixelRatioOf(context)),
+                                logger: const vt.Logger.custom(onLog: _pluginLog, onWarn: _pluginWarn),
+                              ),
                             ),
                           )
                         else

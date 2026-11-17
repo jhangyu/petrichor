@@ -51,3 +51,4 @@ token.txt
 
 # agent scratch
 .claude/tmp/
+/scratch/

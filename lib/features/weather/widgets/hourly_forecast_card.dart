@@ -150,7 +150,7 @@ class HourlyForecastCard extends StatelessWidget {
     plot = scrolls
         ? ScrollConfiguration(
             behavior: const MaterialScrollBehavior().copyWith(dragDevices: PointerDeviceKind.values.toSet()),
-            child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: plot),
+            child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: RepaintBoundary(child: plot)),
           )
         : Center(child: plot);
     return Row(

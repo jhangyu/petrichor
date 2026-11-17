@@ -59,8 +59,21 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     slots: () => ref.read(radarLoopProvider(_selectedDatasetId)).value?.slots,
     framesPerSecond: () => ref.read(radarFramesPerSecondProvider(_group)).requireValue,
     repeat: () => ref.read(radarRepeatProvider(_group)).requireValue,
-    onChanged: () => setState(() {}),
   );
+
+  /// A playback step rebuilds only these builders. Every view puts its map and
+  /// playback card through one, so the map keeps its State from loading to loop.
+  Widget _perStep(Widget Function() build) => ListenableBuilder(listenable: _player, builder: (context, _) => build());
+
+  /// Station ring and dot for the last frame bounds; a playback step over the
+  /// same bounds keeps them, so the ring is not projected again.
+  (LatLngBounds, List<Widget>)? _stationLayers;
+
+  List<Widget> _stationLayersFor(LatLngBounds bounds) {
+    final kept = _stationLayers;
+    if (kept != null && kept.$1 == bounds) return kept.$2;
+    return (_stationLayers = (bounds, radarStationLayers(bounds))).$2;
+  }
 
   /// Current place; null while loading, on error or without a place.
   Place? get _place => switch (ref.watch(currentPlaceProvider)) {
@@ -93,7 +106,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   }
 
   void _selectSource(String id) {
-    _selectedDatasetId = id;
+    setState(() => _selectedDatasetId = id);
     _player.reset();
   }
 
@@ -107,6 +120,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Leaving the tab holds a playing loop; coming back continues it.
+    ref.listen(appTabProvider, (_, tab) => tab == AppTab.radar ? _player.resume() : _player.suspend());
     final source = ref.watch(radarSourceProvider(_selectedDatasetId));
     final selectedWindow = ref.watch(radarWindowProvider(_group));
     final framesPerSecond = ref.watch(radarFramesPerSecondProvider(_group));
@@ -213,14 +228,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     };
     final slots = loop.slots;
     final failed = radarFailedSlots(slots);
-    final index = radarShownIndex(slots, _player.playhead);
-    if (index == null) {
+    final newestIndex = radarShownIndex(slots, null);
+    if (newestIndex == null) {
       return loop.isLoading
           ? _loadingView(listed: slots.length)
           : _errorView(radarNoFrameError(loop, failed));
     }
-    final frame = slots[index].frame!;
-    final newest = slots[radarShownIndex(slots, null)!].frame!;
+    final newest = slots[newestIndex].frame!;
     final name = _stationName(_selectedDatasetId);
     return _RadarView(
       subtitle: _loopSubtitle(name, newest),
@@ -232,26 +246,41 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           (final a?, null) => a,
           (null, final b) => b,
         },
-        map: RadarMapView(
-          currentPlacePoint: _currentPlacePoint,
-          chipIcon: Icons.schedule,
-          chipText: formatTaiwanMonthDayClock(frame.time),
-          semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
-          upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
-          overlayImages: [
-            if (opacityPercent != null)
-              OverlayImage(
-                bounds: frame.bounds,
-                opacity: opacityPercent / 100,
-                imageProvider: frame.imageProvider,
-                gaplessPlayback: true,
-              ),
-          ],
-          extraLayers: name == null ? const [] : radarStationLayers(frame.bounds),
-        ),
+        map: _perStep(() {
+          final frame = slots[radarShownIndex(slots, _player.playhead)!].frame!;
+          return RadarMapView(
+            currentPlacePoint: _currentPlacePoint,
+            chipIcon: Icons.schedule,
+            chipText: formatTaiwanMonthDayClock(frame.time),
+            semanticsLabel: name == null ? '雷達回波地圖' : '$name雷達回波地圖，虛線圈為涵蓋範圍',
+            upcoming: radarUpcomingFrames(slots, _player.playhead, count: radarPreDecodeCount),
+            overlayImages: [
+              if (opacityPercent != null)
+                OverlayImage(
+                  bounds: frame.bounds,
+                  opacity: opacityPercent / 100,
+                  imageProvider: frame.imageProvider,
+                  gaplessPlayback: true,
+                ),
+            ],
+            extraLayers: name == null ? const [] : _stationLayersFor(frame.bounds),
+          );
+        }),
         legend: const RadarLegend(),
       ),
-      afterHero: [_playbackCard(loop, index, window, maxWindow, framesPerSecond, repeat, opacityControl)],
+      afterHero: [
+        _perStep(
+          () => _playbackCard(
+            loop,
+            radarShownIndex(slots, _player.playhead)!,
+            window,
+            maxWindow,
+            framesPerSecond,
+            repeat,
+            opacityControl,
+          ),
+        ),
+      ],
     );
   }
 
@@ -324,8 +353,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   _RadarView _loadingView({int? listed}) => _RadarView(
     subtitle: _loadingSubtitle,
     loading: true,
-    hero: _heroCard(map: RadarMapView(currentPlacePoint: _currentPlacePoint, loading: true, muted: true)),
-    afterHero: [PlaybackCard(meta: listed == null || listed == 0 ? '等待影格' : '載入中 0 / $listed 張', loading: true)],
+    hero: _heroCard(map: _perStep(() => RadarMapView(currentPlacePoint: _currentPlacePoint, loading: true, muted: true))),
+    afterHero: [_perStep(() => PlaybackCard(meta: listed == null || listed == 0 ? '等待影格' : '載入中 0 / $listed 張', loading: true))],
   );
 
   /// Playback settings still loading, or unreadable (error without a value):
@@ -354,7 +383,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             ),
           ],
         ),
-        map: RadarMapView(currentPlacePoint: _currentPlacePoint, muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無雷達資料', semanticsLabel: '地圖，無雷達資料'),
+        map: _perStep(() => RadarMapView(currentPlacePoint: _currentPlacePoint, muted: true, chipIcon: Icons.cloud_off_outlined, chipText: '無雷達資料', semanticsLabel: '地圖，無雷達資料')),
       ),
     );
   }
@@ -368,12 +397,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         text: '$error。$_noEchoNotice',
         actions: [RetryButton(onPressed: _refresh)],
       ),
-      map: RadarMapView(
-        currentPlacePoint: _currentPlacePoint,
-        muted: true,
-        chipIcon: Icons.cloud_off_outlined,
-        chipText: '無雷達資料',
-        semanticsLabel: '地圖，無雷達資料',
+      map: _perStep(
+        () => RadarMapView(
+          currentPlacePoint: _currentPlacePoint,
+          muted: true,
+          chipIcon: Icons.cloud_off_outlined,
+          chipText: '無雷達資料',
+          semanticsLabel: '地圖，無雷達資料',
+        ),
       ),
     ),
   );
@@ -381,7 +412,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   // ---- cards ----
 
   /// Radar map card: source switch on top, then [banner], the map and [legend].
-  Widget Function(double? mapHeight) _heroCard({Widget? banner, required RadarMapView map, Widget? legend}) {
+  Widget Function(double? mapHeight) _heroCard({Widget? banner, required Widget map, Widget? legend}) {
     return (mapHeight) => AppCard(
       hero: true,
       child: Column(
