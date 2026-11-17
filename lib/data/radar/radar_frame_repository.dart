@@ -36,9 +36,11 @@ final _cacheFilePattern = RegExp(r'^(\d{14})\.(webp|stats)$');
 
 /// Loads a source's frames: cached frames first, then the frame list, then
 /// the missing frames: the newest alone first (it is the one shown), then the
-/// rest oldest first (playback order). Up to [_radarFetchWorkers] downloads run
-/// at once, processing (off the UI isolate) is limited to [_radarProcessWorkers],
-/// and slots are published strictly in that order, one event per slot. Keeps
+/// rest oldest first (playback order), held back until [RadarLoop.loadRest]
+/// (play pressed), so an unplayed window costs at most the newest frame. Up to
+/// [_radarFetchWorkers] downloads run at once, processing (off the UI isolate)
+/// is limited to [_radarProcessWorkers], and slots are published strictly in
+/// that order, one event per slot. Keeps
 /// [RadarSource.maxWindow] of frames on disk per source, so changing the
 /// window never deletes or reprocesses frames. How a frame is obtained is the
 /// source's [RadarSource.step].
@@ -110,9 +112,14 @@ class RadarFrameRepository {
       ready[key] = _frame(parseUtcStamp(key), webp, await readStats(key), size);
     }
 
+    final rest = Completer<void>();
+    void loadRest() {
+      if (!rest.isCompleted) rest.complete();
+    }
+
     // Each event carries the slots as they were when it was sent.
-    void send(List<RadarSlot> slots, {required bool loading, RadarDataException? listError}) =>
-        emit(RadarLoop(slots: List<RadarSlot>.unmodifiable(slots), isLoading: loading, listError: listError));
+    void send(List<RadarSlot> slots, {required bool loading, RadarDataException? listError}) => emit(RadarLoop(
+        slots: List<RadarSlot>.unmodifiable(slots), isLoading: loading, listError: listError, loadRest: loadRest));
 
     // Cache first: the window span ending at the newest cached frame.
     final cachedSlots = <RadarSlot>[];
@@ -205,7 +212,20 @@ class RadarFrameRepository {
       }
     }
 
-    if (order.isNotEmpty) await fetch(order.first);
+    // Until play only the newest listed frame is downloaded; meanwhile the loop
+    // is idle with the other missing slots pending.
+    Future<void> untilPlay() async {
+      if (rest.isCompleted) return;
+      sendSlots(loading: false);
+      await Future.any([rest.future, cancel.whenCancel]);
+      if (cancel.cancelError case final e?) throw e;
+    }
+
+    if (order.isNotEmpty) {
+      if (order.first.cacheKey != byTime.last.cacheKey) await untilPlay();
+      await fetch(order.first);
+    }
+    if (order.length > 1) await untilPlay();
     var next = 1;
     Future<void> worker() async {
       while (next < order.length && !cancel.isCancelled) {

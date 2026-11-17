@@ -241,7 +241,10 @@ void main() {
   });
 
   Future<RadarLoop> watch(RadarSource s, DateTime now, Duration window) =>
-      RadarFrameRepository(Dio(), cacheRoot: () async => root, clock: () => now).watch(s, window: window).last;
+      RadarFrameRepository(Dio(), cacheRoot: () async => root, clock: () => now)
+          .watch(s, window: window)
+          .map((l) => l..loadRest())
+          .last;
 
   test('another S: a cached frame at the same time is made again', () async {
     final s = source(24);

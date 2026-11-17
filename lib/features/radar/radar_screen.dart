@@ -308,7 +308,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         repeat: repeat,
         window: window,
         windowOptions: [for (final w in radarWindowOptions) if (w <= maxWindow) w],
-        onTogglePlay: _player.togglePlay,
+        onTogglePlay: () {
+          loop.loadRest();
+          _player.togglePlay();
+        },
         onSeek: _player.seek,
         onFramesPerSecondChanged: _setFramesPerSecond,
         onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),

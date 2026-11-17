@@ -293,7 +293,10 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
             repeat: repeat,
             window: Duration(hours: hours),
             timeText: span,
-            onTogglePlay: _player.togglePlay,
+            onTogglePlay: () {
+              loop.loadRest();
+              _player.togglePlay();
+            },
             onSeek: _player.seek,
             onFramesPerSecondChanged: _setFramesPerSecond,
             onRepeat: (v) => unawaited(ref.read(radarRepeatProvider(_group).notifier).set(v)),

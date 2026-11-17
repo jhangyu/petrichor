@@ -184,7 +184,10 @@ void main() {
   RadarFrameRepository repository(Dio dio, {DateTime? now, RadarFrameProcess process = radarProcessOffUiIsolate}) =>
       RadarFrameRepository(dio, cacheRoot: () async => root, clock: () => now ?? _now, process: process);
 
-  /// One load of a source listing [frames] over [adapter].
+  /// [loop] with play pressed before its first event: every frame is fetched.
+  Stream<RadarLoop> played(Stream<RadarLoop> loop) => loop.map((l) => l..loadRest());
+
+  /// One load of a source listing [frames] over [adapter], played.
   Stream<RadarLoop> load(List<RadarFrameReference> frames,
       {Set<String> failing = const {},
       DateTime? now,
@@ -192,7 +195,7 @@ void main() {
       Duration maxWindow = const Duration(hours: 24),
       _Adapter? adapter}) {
     final dio = Dio()..httpClientAdapter = adapter ?? _Adapter(failing: failing);
-    return repository(dio, now: now).watch(source(dio, frames, maxWindow: maxWindow), window: window);
+    return played(repository(dio, now: now).watch(source(dio, frames, maxWindow: maxWindow), window: window));
   }
 
   List<DateTime> stamps(RadarLoop l) => [for (final s in l.slots) ?s.frame?.time];
@@ -217,6 +220,43 @@ void main() {
     final webp = frames(events.last).first.file.readAsBytesSync();
     expect(decodeRadarWebp(webp)[(3 * 8 + 3) * 4 + 3], 255);
   });
+
+  test('until play only the newest frame is downloaded; play fetches the rest in the same load', () async {
+    final adapter = _Adapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final events = <RadarLoop>[];
+    final idle = Completer<void>();
+    final done = Completer<void>();
+    repository(dio).watch(source(dio, window), window: span).listen((l) {
+      events.add(l);
+      if (!l.isLoading && !idle.isCompleted) idle.complete();
+    }, onDone: done.complete);
+    await idle.future;
+    await pumpEventQueue();
+    expect(adapter.requested, [_listUrl, window.last.url]);
+    expect((states(events.last), events.last.isLoading, done.isCompleted), ('pppr', false, false));
+
+    events.last.loadRest();
+    await done.future;
+    expect(adapter.requested, [_listUrl, window.last.url, for (final f in window.take(3)) f.url]);
+    expect((states(events.last), events.last.isLoading), ('rrrr', false));
+  });
+
+  test('cancelling a load held back for play lets the next load of its family run', () async {
+    final adapter = _Adapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final frameRepository = repository(dio);
+    final held = Completer<void>();
+    final first = frameRepository.watch(source(dio, window), window: span).listen((l) {
+      if (!l.isLoading && !held.isCompleted) held.complete();
+    });
+    await held.future;
+    await first.cancel();
+    adapter.requested.clear();
+    final idle = await frameRepository.watch(source(dio, window), window: span).firstWhere((l) => !l.isLoading);
+    expect(states(idle), 'pppr', reason: 'the newest is cached, the rest held again');
+    expect(adapter.requested, [_listUrl], reason: 'no older frame downloaded before play');
+  }, timeout: const Timeout(Duration(seconds: 2)));
 
   test('list failure with a cache: cached frames plus the error, not an error state', () async {
     await load(window).drain<void>();
@@ -303,7 +343,7 @@ void main() {
     Future<List<RadarLoop>> collect(String name, Stream<RadarLoop> s) =>
         s.map((l) => (log..add((name, l))).last.$2).toList();
 
-    final first = collect('first', frameRepository.watch(source(dio, window), window: span));
+    final first = collect('first', played(frameRepository.watch(source(dio, window), window: span)));
     await gated.firstFrameRequest.future;
     const short = Duration(minutes: 10);
     final second = collect('second', frameRepository.watch(source(dio, window), window: short));
@@ -345,7 +385,8 @@ void main() {
     final adapter = _HeldAdapter();
     final proc = _HeldProcess();
     final dio = Dio()..httpClientAdapter = adapter;
-    final done = repository(dio, process: proc.call).watch(source(dio, listed), window: const Duration(hours: 2)).toList();
+    final done =
+        played(repository(dio, process: proc.call).watch(source(dio, listed), window: const Duration(hours: 2))).toList();
 
     await adapter.arrivals.reached(1);
     expect(adapter.requested, [newest.url], reason: 'the newest frame alone first');
@@ -402,7 +443,7 @@ void main() {
         return processSlot(() async => processRadarFrame(_png, _geometry));
       }),
     );
-    final events = await repository(dio).watch(composed, window: span).toList();
+    final events = await played(repository(dio).watch(composed, window: span)).toList();
 
     expect(states(events.last), 'rrrr');
     expect(obtained, [window.last.url, for (final f in window.take(3)) f.url]);

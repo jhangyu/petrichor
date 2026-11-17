@@ -79,5 +79,9 @@ class RadarLoop {
   /// Slots are still being fetched or processed.
   final bool isLoading;
 
-  const RadarLoop({required this.slots, required this.isLoading, this.listError});
+  /// Starts fetching the pending slots, held back until playback starts; no-op
+  /// once called.
+  final void Function() loadRest;
+
+  const RadarLoop({required this.slots, required this.isLoading, this.listError, required this.loadRest});
 }
