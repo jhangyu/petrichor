@@ -84,7 +84,7 @@ class ObservationHeroCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 for (final (i, reading) in readings.indexed) ...[
-                  if (i > 0) const VerticalDivider(width: AppSpace.s8, thickness: AppStroke.thin, color: AppPalette.stroke3),
+                  if (i > 0) const VerticalDivider(width: AppSpace.s4, thickness: AppStroke.thin, color: AppPalette.stroke3),
                   reading,
                 ],
               ],
