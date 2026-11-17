@@ -14,10 +14,17 @@ import 'rainfall_logic.dart';
 /// Rows shown before 「顯示全部」.
 const _collapsedRowCount = 6;
 
-/// Every station row is this tall (padding, then the taller of the left column: two text
-/// lines and the level bar, and the right column: mm line and badge), so a stretched card
-/// can tell how many rows fit.
-final _rowHeight = 2 * AppSpace.s12 + AppType.body2.fontSize! * AppType.body2.height! + AppSpace.s4 + AppSize.icon24;
+double _lineHeight(TextStyle style) => style.fontSize! * style.height!;
+
+/// Height of a station row, from its content: padding, then the taller of the left
+/// column (name, place, level bar if any) and the right column (mm line, badge or 「無資料」).
+/// A stretched card adds up these to tell how many rows fit.
+double _rowHeightOf(RainStation station) {
+  final hasLevel = station.todayMillimeters != null;
+  final left = _lineHeight(AppType.body1Strong) + AppSpace.s4 + _lineHeight(AppType.caption1) + (hasLevel ? AppSpace.s4 + AppSize.sliderTrack : 0);
+  final right = _lineHeight(AppType.body2) + AppSpace.s4 + (hasLevel ? AppSize.icon24 : _lineHeight(AppType.caption1));
+  return math.max(AppSize.touch, 2 * AppSpace.s12 + math.max(left, right));
+}
 
 /// The 「顯示全部」 footer: padding, a small button and the top border.
 const _footerHeight = AppSpace.s8 + AppSize.controlSmall + AppSpace.s12 + AppStroke.thin;
@@ -131,12 +138,14 @@ class _StationListCardState extends State<StationListCard> {
 
   /// The rows that fit [height] (all of them when they fit), the footer pinned to the bottom when some are left out.
   Widget _fittedRows(List<RainStation> sorted, double height, Widget Function(RainStation) rowOf) {
-    final fitsAll = sorted.length * _rowHeight <= height;
-    final count = fitsAll ? sorted.length : math.max(0, ((height - _footerHeight) / _rowHeight).floor());
+    final fitsAll = sorted.fold(0.0, (sum, st) => sum + _rowHeightOf(st)) <= height;
+    final budget = fitsAll ? double.infinity : height - _footerHeight;
+    var used = 0.0;
+    final shown = sorted.takeWhile((st) => (used += _rowHeightOf(st)) <= budget).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final s in sorted.take(count)) rowOf(s),
+        for (final s in shown) rowOf(s),
         const Spacer(),
         if (!fitsAll) _showAllFooter(sorted.length),
       ],
@@ -225,7 +234,7 @@ class _StationRow extends StatelessWidget {
     final place = '${station.county} ${station.town}${isNearest ? ' · 目前位置' : ''}';
     return Container(
       color: isNearest ? AppPalette.brandBackgroundSubtle : AppPalette.background1,
-      constraints: BoxConstraints(minHeight: _rowHeight),
+      constraints: const BoxConstraints(minHeight: AppSize.touch),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
       child: Row(
         spacing: AppSpace.s12,
