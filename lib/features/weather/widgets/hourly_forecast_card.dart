@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
@@ -145,7 +146,13 @@ class HourlyForecastCard extends StatelessWidget {
         ),
       ),
     );
-    plot = scrolls ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: plot) : Center(child: plot);
+    // Mouse and trackpad drag too (Flutter drags only touch/stylus by default).
+    plot = scrolls
+        ? ScrollConfiguration(
+            behavior: const MaterialScrollBehavior().copyWith(dragDevices: PointerDeviceKind.values.toSet()),
+            child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: plot),
+          )
+        : Center(child: plot);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
