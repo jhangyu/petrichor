@@ -85,7 +85,8 @@ class ObservationHeroCard extends StatelessWidget {
               children: [
                 for (final (i, reading) in readings.indexed) ...[
                   if (i > 0) const VerticalDivider(width: AppSpace.s4, thickness: AppStroke.thin, color: AppPalette.stroke3),
-                  reading,
+                  // The 距…門檻 label varies in length: it alone yields space (ellipsis), values never shrink.
+                  if (reading.tone == MetricTone.next) Flexible(child: reading) else reading,
                 ],
               ],
             ),
@@ -113,6 +114,7 @@ class _Reading extends StatelessWidget {
         Text(
           label,
           softWrap: false,
+          overflow: TextOverflow.ellipsis,
           style: next
               ? AppType.caption1.copyWith(color: AppPalette.brandForegroundStrong, fontWeight: FontWeight.w600)
               : AppType.caption1.copyWith(color: AppPalette.foreground3),
