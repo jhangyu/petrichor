@@ -100,7 +100,7 @@ const radarMapDefaultAspectRatio = 5 / 6;
 /// Base map opacity of `.radar-map--muted` (loading / no data).
 const _mutedOpacity = 0.6;
 
-/// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 button
+/// `.radar-map`: 5:6 map with the time chip (top left), 「回到我的位置」 and 地圖朝北 buttons
 /// (top right) and the current place's pin. [overlayImages] holds the one shown
 /// frame. The image cache stays at Flutter's default; [upcoming] frames are
 /// decoded ahead.
@@ -334,6 +334,11 @@ class _RadarMapViewState extends State<RadarMapView> {
                             icon: Icons.my_location,
                             tooltip: currentPlacePoint == null ? '回到我的位置（沒有目前地點）' : '回到我的位置',
                             onPressed: currentPlacePoint == null ? null : () => _controller.move(currentPlacePoint, _locatedZoom),
+                          ),
+                          _MapActionButton(
+                            icon: Icons.explore_outlined,
+                            tooltip: '地圖朝北',
+                            onPressed: () => _controller.rotate(0),
                           ),
                           if (widget.startLocked)
                             _MapActionButton(

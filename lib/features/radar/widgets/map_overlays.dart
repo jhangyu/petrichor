@@ -117,7 +117,7 @@ const _actionSize = AppSize.touch / 2;
 const _actionIconSize = AppSize.icon24 / 2;
 const _actionHitInset = (AppSize.touch - _actionSize) / 2;
 
-/// `.fab` 「回到我的位置」; disabled without a current place.
+/// `.fab` map action (「回到我的位置」, 地圖朝北, lock); disabled when [onPressed] is null.
 class _MapActionButton extends StatelessWidget {
   const _MapActionButton({required this.icon, required this.tooltip, required this.onPressed});
 
