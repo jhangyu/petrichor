@@ -112,8 +112,10 @@ class _CurrentPlacePin extends StatelessWidget {
 }
 
 /// Visual size of the map action buttons: half of [AppSize.touch], icon scaled alike.
+/// The tap area stays [AppSize.touch], so the disc sits [_actionHitInset] inside it.
 const _actionSize = AppSize.touch / 2;
 const _actionIconSize = AppSize.icon24 / 2;
+const _actionHitInset = (AppSize.touch - _actionSize) / 2;
 
 /// `.fab` 「回到我的位置」; disabled without a current place.
 class _MapActionButton extends StatelessWidget {
@@ -128,23 +130,44 @@ class _MapActionButton extends StatelessWidget {
     final enabled = onPressed != null;
     // The fill sits on the shadow's own decoration: a shadow painted over a
     // separate white Material shows through it as grey.
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppPalette.background1,
-        boxShadow: enabled ? AppShadows.s4 : AppShadows.s2,
-      ),
-      child: IconButton(
-        icon: Icon(icon, size: _actionIconSize),
-        tooltip: tooltip,
-        onPressed: onPressed,
-        color: AppPalette.foreground2,
-        disabledColor: AppPalette.foregroundDisabled,
-        hoverColor: AppPalette.backgroundHover,
-        highlightColor: AppPalette.backgroundPressed,
-        constraints: const BoxConstraints.tightFor(width: _actionSize, height: _actionSize),
-        padding: EdgeInsets.zero,
-      ),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppPalette.background1,
+            boxShadow: enabled ? AppShadows.s4 : AppShadows.s2,
+          ),
+          child: const SizedBox.square(dimension: _actionSize),
+        ),
+        // The tap area is the full touch size while the ink radius keeps hover
+        // and press feedback inside the disc.
+        Tooltip(
+          message: tooltip,
+          child: Semantics(
+            button: true,
+            enabled: enabled,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkResponse(
+                onTap: onPressed,
+                radius: _actionSize / 2,
+                hoverColor: AppPalette.backgroundHover,
+                highlightColor: AppPalette.backgroundPressed,
+                child: SizedBox.square(
+                  dimension: AppSize.touch,
+                  child: Icon(
+                    icon,
+                    size: _actionIconSize,
+                    color: enabled ? AppPalette.foreground2 : AppPalette.foregroundDisabled,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

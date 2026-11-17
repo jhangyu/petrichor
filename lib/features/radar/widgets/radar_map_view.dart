@@ -326,10 +326,9 @@ class _RadarMapViewState extends State<RadarMapView> {
                     const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))
                   else
                     Positioned(
-                      top: AppSpace.s12,
-                      right: AppSpace.s12,
+                      top: AppSpace.s12 - _actionHitInset,
+                      right: AppSpace.s12 - _actionHitInset,
                       child: Column(
-                        spacing: AppSpace.s8,
                         children: [
                           _MapActionButton(
                             icon: Icons.my_location,
