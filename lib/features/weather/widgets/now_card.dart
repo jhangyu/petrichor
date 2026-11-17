@@ -20,6 +20,18 @@ import '../../../core/widgets/weather_glyph_icon.dart';
 /// notes), so the loading skeleton does not jump.
 const _skeletonHeight = 520.0;
 
+/// Narrowest dense tile that still shows "12.3 m/s" and "風 · 東北" unclipped.
+const _tileMinWidth = 74.0;
+const _tileGridColumns = 4;
+const _narrowTileColumns = 2;
+
+/// Width of a [_tileGridColumns]-column tile grid at [_tileMinWidth] per tile.
+const _tileGridMinWidth = _tileGridColumns * _tileMinWidth + (_tileGridColumns - 1) * AppSpace.s8;
+
+/// Card body width from which the arc sits beside the tile grid: arc, gap and
+/// a grid of full-width tiles (not [AppLayout.cardWideWidth], which squeezes them).
+const _sideBySideMinWidth = skyArcMaxWidth + AppSpace.s24 + _tileGridMinWidth;
+
 /// `.now` (home v1): current observation (O-A0003-001) on the sun arc
 /// (A-B0062-001 + computed 仰角), the 體感與環境 and 太陽 tile groups and the
 /// 天氣建議 / 日照 notes. [warning] = the county's top active warning: shows the
@@ -138,7 +150,7 @@ class NowCard extends StatelessWidget {
     );
     return LayoutBuilder(
       builder: (context, box) {
-        if (box.maxWidth < AppLayout.cardWideWidth) {
+        if (box.maxWidth < _sideBySideMinWidth) {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s12, children: [top, side]);
         }
         return Row(
@@ -189,7 +201,7 @@ class NowCard extends StatelessWidget {
   }
 }
 
-/// `.group`: caption label row (+ meta) over a 4-column dense tile grid.
+/// `.group`: caption label row (+ meta) over a dense tile grid (4 columns, 2 when narrow).
 class _TileGroup extends StatelessWidget {
   const _TileGroup({required this.label, required this.tiles, this.meta});
 
@@ -217,7 +229,10 @@ class _TileGroup extends StatelessWidget {
               Text(trailing, style: AppType.caption1.copyWith(color: AppPalette.foreground3, fontFeatures: AppType.tabular)),
           ],
         ),
-        MetricGrid(columns: tiles.length, children: tiles),
+        LayoutBuilder(
+          builder: (context, box) =>
+              MetricGrid(columns: box.maxWidth >= _tileGridMinWidth ? tiles.length : _narrowTileColumns, children: tiles),
+        ),
       ],
     );
   }
