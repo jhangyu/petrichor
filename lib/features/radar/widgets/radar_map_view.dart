@@ -111,6 +111,7 @@ class RadarMapView extends StatefulWidget {
     required this.currentPlacePoint,
     this.chipText,
     this.chipIcon,
+    this.chipIconColor = AppPalette.foreground1,
     this.overlayImages = const [],
     this.upcoming = const [],
     this.extraLayers = const [],
@@ -128,6 +129,7 @@ class RadarMapView extends StatefulWidget {
   /// Top-left chip (observation time / 無雷達資料); none while loading.
   final String? chipText;
   final IconData? chipIcon;
+  final Color chipIconColor;
 
   final List<OverlayImage> overlayImages;
 
@@ -319,7 +321,7 @@ class _RadarMapViewState extends State<RadarMapView> {
                     Positioned(
                       top: AppSpace.s12,
                       left: AppSpace.s12,
-                      child: _MapChip(icon: widget.chipIcon, text: chipText),
+                      child: _MapChip(icon: widget.chipIcon, iconColor: widget.chipIconColor, text: chipText),
                     ),
                   if (widget.loading)
                     const Center(child: _MapChip(text: '載入雷達圖…', spinner: true, large: true))

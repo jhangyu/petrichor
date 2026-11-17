@@ -9,9 +9,10 @@ const _pinBorder = 2.0;
 
 /// `.map-chip`: overlay pill with an icon (or spinner) and text.
 class _MapChip extends StatelessWidget {
-  const _MapChip({this.icon, required this.text, this.spinner = false, this.large = false});
+  const _MapChip({this.icon, this.iconColor = AppPalette.foreground1, required this.text, this.spinner = false, this.large = false});
 
   final IconData? icon;
+  final Color iconColor;
   final String text;
   final bool spinner;
   final bool large;
@@ -42,7 +43,7 @@ class _MapChip extends StatelessWidget {
           if (spinner)
             const AppSpinner()
           else if (glyph != null)
-            Icon(glyph, size: AppSize.icon16, color: AppPalette.foreground1),
+            Icon(glyph, size: AppSize.icon16, color: iconColor),
           Text(text, style: style),
         ],
       ),

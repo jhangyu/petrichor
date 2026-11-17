@@ -76,15 +76,15 @@ class RainfallScreen extends ConsumerWidget {
     );
   }
 
-  /// The nearest-station card and the accumulation and forecast map cards sharing one camera row.
-  Widget _mapRow(LatLng? currentPlacePoint, Widget? stationCard, Widget? Function(RadarCameraLink? link, bool wide) forecastCard) {
+  /// The nearest-station card, the accumulation and forecast map cards sharing one camera, and the station list.
+  Widget _mapRow(LatLng? currentPlacePoint, Widget? stationCard, Widget? Function(RadarCameraLink? link, bool wide) forecastCard, Widget? listCard) {
     return AppGridItem.full(
       child: _MapCards(
         stationCard: stationCard,
-        cards: (link, wide, wideStationCard) => [
-          AccumulationCard(currentPlacePoint: currentPlacePoint, cameraLink: link, wide: wide, stationCard: wideStationCard),
-          ?forecastCard(link, wide),
-        ],
+        listCard: listCard,
+        accumulationCard: (link, wide, wideStationCard) =>
+            AccumulationCard(currentPlacePoint: currentPlacePoint, cameraLink: link, wide: wide, stationCard: wideStationCard),
+        forecastCard: forecastCard,
       ),
     );
   }
@@ -152,8 +152,7 @@ class RainfallScreen extends ConsumerWidget {
       sourceIds: [if (stations.value is Success) CwaDatasets.rainObservationDatasetId, if (grid.value is Success) CwaDatasets.rainForecastOneHourDatasetId],
       onRefresh: _refreshAll(ref, busy: stations.isLoading || grid.isLoading, retries: [retryStations, retryGrid]),
       children: [
-        _mapRow(null, _noPlaceCard(ref, reason), forecastCard),
-        if (list != null) AppGridItem.full(child: list),
+        _mapRow(null, _noPlaceCard(ref, reason), forecastCard, list),
       ],
     );
   }
@@ -184,7 +183,7 @@ class RainfallScreen extends ConsumerWidget {
       onRetry: retryForecast,
       builder: (f) => ForecastMapCard(
         grid: f.grid,
-        currentPlaceForecast: (name: place.name, point: currentPlacePoint, millimeters: f.millimetersAtLocation),
+        currentPlaceForecast: (point: currentPlacePoint, millimeters: f.millimetersAtLocation),
         cameraLink: link,
         wide: wide,
       ),
@@ -208,8 +207,7 @@ class RainfallScreen extends ConsumerWidget {
       sourceIds: sourceIds.isEmpty ? null : sourceIds,
       onRefresh: _refreshAll(ref, busy: rainfall.isLoading || forecast.isLoading, retries: [retryRainfall, retryForecast]),
       children: [
-        _mapRow(currentPlacePoint, hero, forecastCard),
-        if (list != null) AppGridItem.full(child: list),
+        _mapRow(currentPlacePoint, hero, forecastCard, list),
         if (result is Success)
           AppGridItem.full(
             child: Text(_thresholdHint, style: AppType.caption1.copyWith(color: AppPalette.foreground3)),
@@ -238,18 +236,22 @@ class RainfallScreen extends ConsumerWidget {
   }
 }
 
-/// The map cards, one per row in order. Wide (radar's map+controls split
-/// fits, [AppTwoPane.fitsWindow]): each card puts its map left and controls
-/// right, the maps share one camera, and [stationCard] goes into the first card's
-/// right pane. Otherwise [stationCard] is the first row, and each map is square and locked.
+/// The map cards and the station list. Wide (radar's map+controls split
+/// fits, [AppTwoPane.fitsWindow]): each map card puts its map left and controls
+/// right, the maps share one camera, [stationCard] goes into the accumulation card's
+/// right pane, and the forecast card (left) shares a row with [listCard] (right)
+/// on the same split. Otherwise [stationCard] is the first row, each map is square and
+/// locked, and [listCard] comes last.
 class _MapCards extends StatefulWidget {
-  const _MapCards({required this.stationCard, required this.cards});
+  const _MapCards({required this.stationCard, required this.listCard, required this.accumulationCard, required this.forecastCard});
 
   final Widget? stationCard;
+  final Widget? listCard;
 
-  /// The cards in order, given the shared camera (null when narrow), the layout and
-  /// the station card when wide (null when narrow: this widget places it).
-  final List<Widget> Function(RadarCameraLink? link, bool wide, Widget? wideStationCard) cards;
+  /// Given the shared camera (null when narrow), the layout and the station card
+  /// when wide (null when narrow: this widget places it).
+  final Widget Function(RadarCameraLink? link, bool wide, Widget? wideStationCard) accumulationCard;
+  final Widget? Function(RadarCameraLink? link, bool wide) forecastCard;
 
   @override
   State<_MapCards> createState() => _MapCardsState();
@@ -270,10 +272,19 @@ class _MapCardsState extends State<_MapCards> {
       builder: (context, box) {
         // box is the full-row grid cell: page margin already removed.
         final wide = AppTwoPane.fitsWindow(context, box.maxWidth);
+        final link = wide ? _link : null;
+        final forecast = widget.forecastCard(link, wide);
+        final list = widget.listCard;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           spacing: AppLayout.gridGap,
-          children: [if (!wide) ?widget.stationCard, ...widget.cards(wide ? _link : null, wide, wide ? widget.stationCard : null)],
+          children: [
+            if (!wide) ?widget.stationCard,
+            widget.accumulationCard(link, wide, wide ? widget.stationCard : null),
+            if (wide && forecast != null && list != null)
+              AppTwoPane(matchHeight: true, mainPane: forecast, sidePane: list)
+            else ...[?forecast, ?list],
+          ],
         );
       },
     );

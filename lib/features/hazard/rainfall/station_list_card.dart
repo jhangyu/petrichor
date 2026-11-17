@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/layout/adaptive.dart';
@@ -12,11 +14,20 @@ import 'rainfall_logic.dart';
 /// Rows shown before 「顯示全部」.
 const _collapsedRowCount = 6;
 
+/// Every station row is this tall (padding, then the taller of the left column: two text
+/// lines and the level bar, and the right column: mm line and badge), so a stretched card
+/// can tell how many rows fit.
+final _rowHeight = 2 * AppSpace.s12 + AppType.body2.fontSize! * AppType.body2.height! + AppSpace.s4 + AppSize.icon24;
+
+/// The 「顯示全部」 footer: padding, a small button and the top border.
+const _footerHeight = AppSpace.s8 + AppSize.controlSmall + AppSpace.s12 + AppStroke.thin;
+
 /// Bar full width = the top warning threshold.
 final _barFullMillimeters = rainWarningThresholds.last;
 
 /// `測站今日累積雨量` flush card: sort button, county chips + station rows.
 /// Starts on [county] (the current place's county; null without a place = all counties); the chips switch to any county or all.
+/// Under a bounded height (stretched to a row partner) and collapsed, it shows as many rows as fit instead of [_collapsedRowCount].
 class StationListCard extends StatefulWidget {
   const StationListCard({super.key, required this.county, required this.stations, required this.nearestId});
 
@@ -63,39 +74,72 @@ class _StationListCardState extends State<StationListCard> {
     final inScope = stationsInScope(widget.stations, _county);
     final sorted = sortStations(inScope, _sort);
     final sortLabel = _sort == StationSort.rainfall ? '雨量高到低' : '站名';
-    return AppCard(
-      flush: true,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final wide = box.maxWidth >= AppLayout.cardWideWidth;
-          final columns = AppGrid.columnsFor(
-            box.maxWidth,
-            spanUnits: sorted.length,
-            minColumnWidth: AppLayout.paneMinimumWidth,
-          );
-          final chips = [
-            AppChip(label: '全部縣市', selected: _county == null, onTap: () => _selectCounty(null)),
-            for (final c in counties) AppChip(label: c, selected: _county == c, onTap: () => _selectCounty(c)),
-          ];
-          final collapsed = columns * _collapsedRowCount;
-          final visible = _expanded ? sorted : sorted.take(collapsed).toList();
-          final rows = [for (final s in visible) _StationRow(station: s, isNearest: s.id == widget.nearestId)];
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _header(wide: wide, chips: chips, count: sorted.length, sortLabel: sortLabel),
-              if (columns > 1)
-                Padding(
-                  padding: const EdgeInsets.all(AppSpace.s16),
-                  child: AppGrid(minColumnWidth: AppLayout.paneMinimumWidth, children: rows),
-                )
-              else
-                ...rows,
-              if (sorted.length > collapsed) _showAllFooter(sorted.length),
-            ],
-          );
-        },
+    return LayoutBuilder(
+      builder: (context, outer) => AppCard(
+        flush: true,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final wide = box.maxWidth >= AppLayout.cardWideWidth;
+            final columns = AppGrid.columnsFor(
+              box.maxWidth,
+              spanUnits: sorted.length,
+              minColumnWidth: AppLayout.paneMinimumWidth,
+            );
+            final chips = [
+              AppChip(label: '全部縣市', selected: _county == null, onTap: () => _selectCounty(null)),
+              for (final c in counties) AppChip(label: c, selected: _county == c, onTap: () => _selectCounty(c)),
+            ];
+            final header = _header(wide: wide, chips: chips, count: sorted.length, sortLabel: sortLabel);
+            Widget rowOf(RainStation s) => _StationRow(station: s, isNearest: s.id == widget.nearestId);
+            // A bounded height only comes from a row partner, in the side pane: one column.
+            if (outer.hasBoundedHeight && !_expanded) {
+              assert(columns == 1, 'a stretched station list has $columns columns, expected 1');
+              // The card gives its content an unbounded height: hand it the card's own.
+              return SizedBox(
+                height: outer.maxHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    header,
+                    Expanded(child: LayoutBuilder(builder: (context, area) => _fittedRows(sorted, area.maxHeight, rowOf))),
+                  ],
+                ),
+              );
+            }
+            final collapsed = columns * _collapsedRowCount;
+            final visible = _expanded ? sorted : sorted.take(collapsed).toList();
+            final rows = [for (final s in visible) rowOf(s)];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                header,
+                if (columns > 1)
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpace.s16),
+                    child: AppGrid(minColumnWidth: AppLayout.paneMinimumWidth, children: rows),
+                  )
+                else
+                  ...rows,
+                if (sorted.length > collapsed) _showAllFooter(sorted.length),
+              ],
+            );
+          },
+        ),
       ),
+    );
+  }
+
+  /// The rows that fit [height] (all of them when they fit), the footer pinned to the bottom when some are left out.
+  Widget _fittedRows(List<RainStation> sorted, double height, Widget Function(RainStation) rowOf) {
+    final fitsAll = sorted.length * _rowHeight <= height;
+    final count = fitsAll ? sorted.length : math.max(0, ((height - _footerHeight) / _rowHeight).floor());
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final s in sorted.take(count)) rowOf(s),
+        const Spacer(),
+        if (!fitsAll) _showAllFooter(sorted.length),
+      ],
     );
   }
 
@@ -149,6 +193,7 @@ class _StationListCardState extends State<StationListCard> {
 
   Widget _showAllFooter(int count) {
     return Container(
+      height: _footerHeight,
       padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s16, AppSpace.s12),
       decoration: const BoxDecoration(
         border: Border(
@@ -180,7 +225,7 @@ class _StationRow extends StatelessWidget {
     final place = '${station.county} ${station.town}${isNearest ? ' · 目前位置' : ''}';
     return Container(
       color: isNearest ? AppPalette.brandBackgroundSubtle : AppPalette.background1,
-      constraints: const BoxConstraints(minHeight: AppSize.touch),
+      constraints: BoxConstraints(minHeight: _rowHeight),
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12),
       child: Row(
         spacing: AppSpace.s12,
