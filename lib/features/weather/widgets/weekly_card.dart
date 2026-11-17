@@ -22,6 +22,7 @@ class WeeklyCard extends StatelessWidget {
     required this.currentTemperature,
     required this.now,
     required this.onRetry,
+    required this.stretch,
   });
 
   /// null = still loading.
@@ -29,6 +30,10 @@ class WeeklyCard extends StatelessWidget {
   final double? currentTemperature;
   final DateTime now;
   final VoidCallback onRetry;
+
+  /// Fill the height the parent gives (side by side with 72 小時): the day rows
+  /// share the extra space evenly. Needs a bounded height, so false when stacked.
+  final bool stretch;
 
   static const _title = '7 日預報';
   static const _rowMinHeight = 56.0;
@@ -54,16 +59,20 @@ class WeeklyCard extends StatelessWidget {
     return AppCard(
       title: _title,
       meta: '${monthDayText(first)} – ${monthDayText(last)}',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var i = 0; i < days.length; i++) _row(days[i], scale, divider: i > 0),
-          const SizedBox(height: AppSpace.s8),
-          _legend(scale),
-        ],
+      child: _fill(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < days.length; i++) _fill(_row(days[i], scale, divider: i > 0)),
+            const SizedBox(height: AppSpace.s8),
+            _legend(scale),
+          ],
+        ),
       ),
     );
   }
+
+  Widget _fill(Widget child) => stretch ? Expanded(child: child) : child;
 
   Widget _row(DailyForecast d, TemperatureScale? scale, {required bool divider}) {
     final wall = taiwanDate(d.date);
@@ -163,6 +172,7 @@ class WeeklyCard extends StatelessWidget {
 }
 
 /// `.temp-range`: day low–high on the shared axis, with today's now marker.
+/// Painted (no LayoutBuilder) so the card can report intrinsic height.
 class _TemperatureRange extends StatelessWidget {
   const _TemperatureRange({required this.scale, required this.low, required this.high, required this.currentTemperature});
 
@@ -173,56 +183,71 @@ class _TemperatureRange extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mark = currentTemperature;
     final s = scale;
     final lowTemperature = low;
     final highTemperature = high;
-    final mark = currentTemperature;
-    return LayoutBuilder(
-      builder: (context, box) {
-        final w = box.maxWidth;
-        return SizedBox(
-          height: AppSize.dot,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.centerLeft,
-            children: [
-              Container(
-                height: AppSize.sliderTrack,
-                decoration: BoxDecoration(
-                  color: AppPalette.background4,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-              ),
-              if (s != null && lowTemperature != null && highTemperature != null)
-                Positioned(
-                  left: s.fraction(lowTemperature) * w,
-                  width: (s.fraction(highTemperature) - s.fraction(lowTemperature)) * w,
-                  child: Container(
-                    height: AppSize.sliderTrack,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppPalette.temperatureBarCold,
-                          AppPalette.temperatureBarMild,
-                          AppPalette.temperatureBarWarm,
-                          AppPalette.temperatureBarHot,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              if (s != null && mark != null)
-                Positioned(
-                  left: s.fraction(mark) * w - AppSize.dot / 2,
-                  child: Semantics(label: '目前 ${temperatureText(mark)}', child: const _NowDot()),
-                ),
-            ],
-          ),
-        );
-      },
+    final range = s != null && lowTemperature != null && highTemperature != null
+        ? (s.fraction(lowTemperature), s.fraction(highTemperature))
+        : null;
+    final painted = CustomPaint(
+      size: const Size.fromHeight(AppSize.dot),
+      painter: _TemperatureRangePainter(range: range, mark: s != null && mark != null ? s.fraction(mark) : null),
     );
+    return mark == null || s == null ? painted : Semantics(label: '目前 ${temperatureText(mark)}', child: painted);
   }
+}
+
+class _TemperatureRangePainter extends CustomPainter {
+  const _TemperatureRangePainter({required this.range, required this.mark});
+
+  /// Axis fractions (0–1) of the day's low and high; null = no bar.
+  final (double, double)? range;
+
+  /// Axis fraction of the observed temperature; null = no marker.
+  final double? mark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centerY = size.height / 2;
+    final radius = Radius.circular(AppSize.sliderTrack / 2);
+    RRect track(double left, double right) =>
+        RRect.fromLTRBR(left, centerY - AppSize.sliderTrack / 2, right, centerY + AppSize.sliderTrack / 2, radius);
+    canvas.drawRRect(track(0, size.width), Paint()..color = AppPalette.background4);
+    final bar = range;
+    if (bar != null) {
+      final left = bar.$1 * size.width;
+      final right = bar.$2 * size.width;
+      canvas.drawRRect(
+        track(left, right),
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [
+              AppPalette.temperatureBarCold,
+              AppPalette.temperatureBarMild,
+              AppPalette.temperatureBarWarm,
+              AppPalette.temperatureBarHot,
+            ],
+          ).createShader(Rect.fromLTRB(left, 0, right, size.height)),
+      );
+    }
+    final dotFraction = mark;
+    if (dotFraction != null) {
+      final center = Offset(dotFraction * size.width, centerY);
+      canvas.drawCircle(center, AppSize.dot / 2, Paint()..color = AppPalette.background1);
+      canvas.drawCircle(
+        center,
+        (AppSize.dot - AppStroke.thick) / 2,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = AppStroke.thick
+          ..color = AppPalette.foreground1,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TemperatureRangePainter old) => old.range != range || old.mark != mark;
 }
 
 /// `.temp-range__now`: white dot with a dark ring.

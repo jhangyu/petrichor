@@ -181,13 +181,21 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
         ),
         AppGridItem.full(
           child: _ForecastFlow(
-            weekly: WeeklyCard(
+            weekly: ({required stretch}) => WeeklyCard(
               weekly: weather.dailyForecasts,
               currentTemperature: current is Success<CurrentWeather> ? current.data.temperature : null,
               now: now,
               onRetry: refresh,
+              stretch: stretch,
             ),
-            forecast: HourlyForecastCard(hourly: hourly, issuedAt: weather.hourlyIssuedAt, now: now, onRetry: refresh),
+            forecast: ({required cardWidth, required stretch}) => HourlyForecastCard(
+              hourly: hourly,
+              issuedAt: weather.hourlyIssuedAt,
+              now: now,
+              onRetry: refresh,
+              cardWidth: cardWidth,
+              stretch: stretch,
+            ),
           ),
         ),
         AppGridItem.full(child: WarningsSection(key: _warningsKey, county: place.county)),
@@ -197,12 +205,13 @@ class _WeatherScreenState extends ConsumerState<WeatherScreen> {
 }
 
 /// 7 日 beside 未來 72 小時 (2 : 3 parts) once three grid columns fit; otherwise
-/// stacked, 7 日 first (reading order).
+/// stacked, 7 日 first (reading order). Side by side, both cards are as tall as
+/// the taller one ([IntrinsicHeight]) and spread their content over it.
 class _ForecastFlow extends StatelessWidget {
   const _ForecastFlow({required this.weekly, required this.forecast});
 
-  final Widget weekly;
-  final Widget forecast;
+  final Widget Function({required bool stretch}) weekly;
+  final Widget Function({required double cardWidth, required bool stretch}) forecast;
 
   static const _weeklyFlex = 2;
   static const _forecastFlex = 3;
@@ -218,16 +227,19 @@ class _ForecastFlow extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: AppLayout.gridGap,
-            children: [weekly, forecast],
+            children: [weekly(stretch: false), forecast(cardWidth: box.maxWidth, stretch: false)],
           );
         }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppLayout.gridGap,
-          children: [
-            Expanded(flex: _weeklyFlex, child: weekly),
-            Expanded(flex: _forecastFlex, child: forecast),
-          ],
+        final forecastWidth = (box.maxWidth - AppLayout.gridGap) * _forecastFlex / (_weeklyFlex + _forecastFlex);
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppLayout.gridGap,
+            children: [
+              Expanded(flex: _weeklyFlex, child: weekly(stretch: true)),
+              Expanded(flex: _forecastFlex, child: forecast(cardWidth: forecastWidth, stretch: true)),
+            ],
+          ),
         );
       },
     );

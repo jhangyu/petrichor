@@ -24,6 +24,8 @@ class HourlyForecastCard extends StatelessWidget {
     required this.issuedAt,
     required this.now,
     required this.onRetry,
+    required this.cardWidth,
+    required this.stretch,
   });
 
   /// null = still loading.
@@ -33,6 +35,14 @@ class HourlyForecastCard extends StatelessWidget {
   final Result<DateTime>? issuedAt;
   final DateTime now;
   final VoidCallback onRetry;
+
+  /// Outer width of the card; the chart is laid out from it (no LayoutBuilder,
+  /// so the card can report intrinsic height).
+  final double cardWidth;
+
+  /// Fill the height the parent gives (side by side with 7 日): the extra space
+  /// goes between summary, chart and legend. Needs a bounded height.
+  final bool stretch;
 
   static const _title = '未來 72 小時預報';
 
@@ -50,22 +60,24 @@ class HourlyForecastCard extends StatelessWidget {
           Failure() => '無法取得發布時間',
           null => null,
         },
-        child: LayoutBuilder(
-          builder: (context, box) {
-            final geometry = ForecastChartGeometry(data, now, box.maxWidth - forecastAxisWidth);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: AppSpace.s16,
-              children: [
-                _summary(forecastExtremes(data)),
-                _chart(data, geometry),
-                _legend(scrolls: geometry.scrolls),
-              ],
-            );
-          },
-        ),
+        child: _body(data),
       ),
     };
+  }
+
+  Widget _body(List<HourlyForecast> data) {
+    final geometry = ForecastChartGeometry(data, now, cardWidth - 2 * AppSpace.s16 - forecastAxisWidth);
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      spacing: AppSpace.s16,
+      children: [
+        _summary(forecastExtremes(data)),
+        _chart(data, geometry),
+        _legend(scrolls: geometry.scrolls),
+      ],
+    );
+    return stretch ? Expanded(child: column) : column;
   }
 
   String _when(HourlyForecast s) => '${relativeDay(taiwanWall(s.startTime), now)} ${clockText(s.startTime)}';
