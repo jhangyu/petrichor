@@ -229,17 +229,19 @@ def build_windows(version: str, sha: str) -> Path:
 
     def ps(script: str) -> None:
         # Remote shell is cmd.exe; powershell takes the ;-separated script.
-        run([*ssh, f"powershell -Command \"$ErrorActionPreference='Stop'; {script}\""])
+        run([*ssh, f"powershell -Command \"{script}\""])
 
-    ps(f"foreach ($d in '{WIN_DIR}\\src','{WIN_DIR}\\out') {{ if (Test-Path $d) "
+    ps(f"$ErrorActionPreference='Stop'; foreach ($d in '{WIN_DIR}\\src','{WIN_DIR}\\out') {{ if (Test-Path $d) "
        f"{{ Remove-Item -Recurse -Force $d }} }}; $null = New-Item -ItemType Directory -Force {WIN_DIR}\\src")
     tar = snapshot(sha, "windows")
     try:
         run([*scp, str(tar), f"{WIN_HOST}:{WIN_SCP_DIR}/src.tar"])
     finally:
         tar.unlink()
+    # No 'Stop' here: PowerShell 5.1 can turn native stderr (flutter progress) into a
+    # terminating error, so native failures propagate through $LASTEXITCODE instead.
     ps(f"tar -xf {WIN_DIR}\\src.tar -C {WIN_DIR}\\src; if ($LASTEXITCODE) {{ exit $LASTEXITCODE }}; "
-       f"Set-Location {WIN_DIR}\\src; py -3 scripts\\ci_release.py --version {version} "
+       f"Set-Location -ErrorAction Stop {WIN_DIR}\\src; py -3 scripts\\ci_release.py --version {version} "
        f"--platform windows --local --out {WIN_DIR}\\out; exit $LASTEXITCODE")
     run([*scp, f"{WIN_HOST}:{WIN_SCP_DIR}/out/{name}", str(DIST / name)])
     return DIST / name
