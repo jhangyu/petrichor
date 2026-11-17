@@ -39,10 +39,6 @@ class WindowSizeClass {
   final WindowWidthClass widthClass;
   final WindowHeightClass heightClass;
 
-  /// Short window (height class compact): no viewport-bounded panes, let
-  /// the page scroll.
-  bool get isShortHeight => heightClass == WindowHeightClass.compact;
-
   /// Phone-width window (width class compact).
   bool get isCompactWidth => widthClass == WindowWidthClass.compact;
 
@@ -175,11 +171,11 @@ class AppTwoPane extends StatelessWidget {
   /// Whether [width] holds two panes of at least [AppLayout.paneMinimumWidth].
   static bool fits(double width) => width >= 2 * AppLayout.paneMinimumWidth + AppLayout.gridGap;
 
-  /// Whether a map+controls split fits: side navigation, not a short window,
+  /// Whether a map+controls split fits: side navigation (phone landscape included)
   /// and [width] (the content width, page margin removed) [fits] two panes.
   static bool fitsWindow(BuildContext context, double width) {
     final size = WindowSizeClass.of(context);
-    return size.usesNavigationRail && !size.isShortHeight && fits(width);
+    return size.usesNavigationRail && fits(width);
   }
 
   @override

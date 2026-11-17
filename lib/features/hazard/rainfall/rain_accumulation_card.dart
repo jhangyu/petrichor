@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../core/layout/adaptive.dart' show AppTwoPane;
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/time/taiwan_time.dart';
 import '../../../core/widgets/app_card.dart';
@@ -41,7 +42,7 @@ const _legendMarks = [(0, '<1'), (4, '10'), (8, '40'), (11, '90'), (14, '150'), 
 /// 累積雨量 card (design 3): window chips, accumulation map, the radar's
 /// playback and the 17-colour legend. [currentPlacePoint] null = no current place.
 class AccumulationCard extends ConsumerStatefulWidget {
-  const AccumulationCard({super.key, required this.currentPlacePoint, this.cameraLink, required this.wide});
+  const AccumulationCard({super.key, required this.currentPlacePoint, this.cameraLink, required this.wide, this.stationCard});
 
   final LatLng? currentPlacePoint;
 
@@ -50,6 +51,9 @@ class AccumulationCard extends ConsumerStatefulWidget {
 
   /// Map left, controls right ([RainMapCard]); false = one column, square locked map.
   final bool wide;
+
+  /// Nearest-station card shown above the playback card when [wide] (the narrow page places it itself).
+  final Widget? stationCard;
 
   @override
   ConsumerState<AccumulationCard> createState() => _AccumulationCardState();
@@ -90,20 +94,29 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
     if (repeat.hasError) unawaited(ref.read(radarRepeatProvider(_group).notifier).reset());
   }
 
+  /// A card standing in for the whole [RainMapCard]: wide, the station card still goes beside it.
+  Widget _withStationCard(Widget card) {
+    final station = widget.stationCard;
+    if (!widget.wide || station == null) return card;
+    return AppTwoPane(matchHeight: true, mainPane: card, sidePane: station);
+  }
+
   @override
   Widget build(BuildContext context) {
     // The one platform difference: QPEplus sends no CORS header, so a browser cannot fetch it.
     if (kIsWeb) {
-      return const AppCard(
-        title: _cardTitle,
-        child: StatusBanner(tone: StatusTone.error, title: '網頁版無法取得此資料', text: '累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。'),
+      return _withStationCard(
+        const AppCard(
+          title: _cardTitle,
+          child: StatusBanner(tone: StatusTone.error, title: '網頁版無法取得此資料', text: '累積雨量資料來源不允許瀏覽器存取，請改用 App 查看。'),
+        ),
       );
     }
     final window = ref.watch(rainAccumulationWindowProvider);
     final framesPerSecond = ref.watch(radarFramesPerSecondProvider(_group));
     final repeat = ref.watch(radarRepeatProvider(_group));
     if (window.hasError || framesPerSecond.hasError || repeat.hasError) {
-      return AppCard(
+      return _withStationCard(AppCard(
         title: _cardTitle,
         child: StatusBanner(
           tone: StatusTone.error,
@@ -113,10 +126,10 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
           ].join('；'),
           actions: [AppButton(label: '重設設定', small: true, onPressed: () => _resetSettings(window, framesPerSecond, repeat))],
         ),
-      );
+      ));
     }
     if (!window.hasValue || !framesPerSecond.hasValue || !repeat.hasValue) {
-      return const AppCard.loading(title: _cardTitle, skeletonHeight: _skeletonHeight);
+      return _withStationCard(const AppCard.loading(title: _cardTitle, skeletonHeight: _skeletonHeight));
     }
     final hours = window.requireValue;
     ref.listen(accumulationLoopProvider(hours), (_, _) => _player.onLoopUpdate());
@@ -131,6 +144,7 @@ class _AccumulationCardState extends ConsumerState<AccumulationCard> {
       title: _cardTitle,
       meta: meta,
       controlsTitle: '動畫播放',
+      stationCard: widget.stationCard,
       banner: banner,
       map: map,
       controls: [?playback],

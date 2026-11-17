@@ -61,8 +61,7 @@ class AppBadge extends StatelessWidget {
 /// or a low reading), [rain] = `.tile--rain` (rain-coloured value).
 enum MetricTone { normal, next, past, rain }
 
-/// `.metric`: label + value tile. [onHero] = `.hero .metric` (bg-1 with
-/// stroke-3 edge instead of bg-2). [dense] = `.tile` (no icon, padding 8,
+/// `.metric`: label + value tile (bg-2). [dense] = `.tile` (no icon, padding 8,
 /// bg-1 with stroke-3 edge) for 4-column grids.
 class MetricTile extends StatelessWidget {
   const MetricTile({
@@ -70,7 +69,6 @@ class MetricTile extends StatelessWidget {
     required this.label,
     required this.value,
     this.icon,
-    this.onHero = false,
     this.dense = false,
     this.tone = MetricTone.normal,
   }) : assert(!dense || icon == null, 'a dense tile has no icon');
@@ -78,14 +76,12 @@ class MetricTile extends StatelessWidget {
   final String label;
   final String value;
   final IconData? icon;
-  final bool onHero;
   final bool dense;
   final MetricTone tone;
 
   @override
   Widget build(BuildContext context) {
     final glyph = icon;
-    final edged = onHero || dense;
     final next = tone == MetricTone.next;
     final valueStyle = switch (tone) {
       MetricTone.past => AppType.body1.copyWith(color: AppPalette.foreground3),
@@ -97,11 +93,11 @@ class MetricTile extends StatelessWidget {
           ? const EdgeInsets.all(AppSpace.s8)
           : const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
       decoration: BoxDecoration(
-        color: next ? AppPalette.brandBackgroundSubtle : (edged ? AppPalette.background1 : AppPalette.background2),
+        color: next ? AppPalette.brandBackgroundSubtle : (dense ? AppPalette.background1 : AppPalette.background2),
         borderRadius: BorderRadius.circular(AppRadius.small),
         border: next
             ? Border.all(color: AppPalette.brandStrokeSubtle, width: AppStroke.thin)
-            : (edged ? Border.all(color: AppPalette.stroke3, width: AppStroke.thin) : null),
+            : (dense ? Border.all(color: AppPalette.stroke3, width: AppStroke.thin) : null),
       ),
       child: Row(
         spacing: AppSpace.s8,

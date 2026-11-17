@@ -34,8 +34,8 @@ const _wideMapChromeHeight =
 /// Shared shell of the two 雨量 map cards. Narrow: one card, header, [leading], [banner],
 /// [map], [controls], legend, note. Wide (radar's map+controls split): map card on the
 /// left (header, [banner], [map] at window height, legend, note), and on the right a
-/// plain card titled [controlsTitle] holding [leading] and [controls] (none when both
-/// are empty). The right card does not scroll, so the wheel there scrolls the page.
+/// column of [stationCard] over a plain card titled [controlsTitle] holding [leading]
+/// and [controls] (that card is left out when both are empty). The right card does not scroll, so the wheel there scrolls the page.
 class RainMapCard extends StatelessWidget {
   const RainMapCard({
     super.key,
@@ -47,6 +47,7 @@ class RainMapCard extends StatelessWidget {
     required this.note,
     required this.controlsTitle,
     this.banner,
+    this.stationCard,
     this.leading = const [],
     this.controls = const [],
   });
@@ -59,6 +60,9 @@ class RainMapCard extends StatelessWidget {
   final String note;
   final String controlsTitle;
   final Widget? banner;
+
+  /// Nearest-station card, above the controls card in the wide side pane (narrow: not used).
+  final Widget? stationCard;
 
   /// Controls placed before the map when narrow (e.g. window chips).
   final List<Widget> leading;
@@ -98,12 +102,18 @@ class RainMapCard extends StatelessWidget {
           ],
         ),
       ),
-      sidePane: side.isEmpty
-          ? const SizedBox.shrink()
-          : AppCard(
+      sidePane: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppLayout.gridGap,
+        children: [
+          ?stationCard,
+          if (side.isNotEmpty)
+            AppCard(
               title: controlsTitle,
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: AppSpace.s16, children: side),
             ),
+        ],
+      ),
     );
   }
 }

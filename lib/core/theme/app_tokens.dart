@@ -294,6 +294,7 @@ abstract final class AppType {
   static const body2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _regular, leadingDistribution: _even);
   static const subtitle2 = TextStyle(fontSize: 16, height: 22 / 16, fontWeight: _semibold, leadingDistribution: _even);
   static const subtitle1 = TextStyle(fontSize: 20, height: 28 / 20, fontWeight: _semibold, leadingDistribution: _even);
+  static const title1 = TextStyle(fontSize: 32, height: 36 / 32, fontWeight: _semibold, letterSpacing: -0.64, leadingDistribution: _even);
 
   /// Current temperature. CSS letter-spacing -0.02em at 68px.
   static const display =

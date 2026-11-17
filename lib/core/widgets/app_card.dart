@@ -22,6 +22,7 @@ class AppCard extends StatelessWidget {
     this.hero = false,
     this.heroColor,
     this.flush = false,
+    this.dense = false,
   })  : _state = _CardState.data,
         message = null,
         onRetry = null,
@@ -38,6 +39,7 @@ class AppCard extends StatelessWidget {
         child = null,
         heroColor = null,
         flush = false,
+        dense = false,
         message = null,
         onRetry = null;
 
@@ -54,6 +56,7 @@ class AppCard extends StatelessWidget {
         hero = false,
         heroColor = null,
         flush = false,
+        dense = false,
         skeletonHeight = null;
 
   const AppCard.empty({
@@ -67,6 +70,7 @@ class AppCard extends StatelessWidget {
         hero = false,
         heroColor = null,
         flush = false,
+        dense = false,
         onRetry = null,
         skeletonHeight = null;
 
@@ -89,6 +93,9 @@ class AppCard extends StatelessWidget {
   /// `.card--flush`: no padding, content clipped (maps, edge-to-edge lists).
   final bool flush;
 
+  /// Compact padding 12 / 16 and gap 8, for a card that is a dense strip of readings.
+  final bool dense;
+
   /// Error / empty banner text ([AppCard.error]: the Failure message).
   final String? message;
   final VoidCallback? onRetry;
@@ -99,6 +106,7 @@ class AppCard extends StatelessWidget {
   final _CardState _state;
 
   static const _padding = EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, AppSpace.s20);
+  static const _densePadding = EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s12);
   static const _heroGradientStop = 0.64;
 
   @override
@@ -140,10 +148,10 @@ class AppCard extends StatelessWidget {
     return Container(
       decoration: decoration,
       clipBehavior: flush ? Clip.antiAlias : Clip.none,
-      padding: flush ? EdgeInsets.zero : _padding,
+      padding: flush ? EdgeInsets.zero : (dense ? _densePadding : _padding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: flush ? AppSpace.s0 : AppSpace.s16,
+        spacing: flush ? AppSpace.s0 : (dense ? AppSpace.s8 : AppSpace.s16),
         children: children,
       ),
     );
