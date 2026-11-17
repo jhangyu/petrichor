@@ -1,4 +1,4 @@
-# Linux release build image for scripts/ci_release.py (arm64 and x64 from this one recipe).
+# Linux release build image for scripts/ci.py (arm64 and x64 from this one recipe).
 # docker build --platform linux/<arm64|amd64> -t petrichor-linux-build:<arm64|x64> -f scripts/linux_build.Dockerfile scripts/
 FROM ubuntu:24.04
 

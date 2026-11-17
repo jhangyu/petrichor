@@ -19,7 +19,7 @@ samples, guidance on mobile development, and a full API reference.
 ## Release build
 
 ```
-python3 scripts/ci_release.py --version 0.0.1 --platform all [--publish]
+python3 scripts/ci.py --version 0.0.1 --platform all [--publish]
 ```
 
 - Outputs go to `build/ci-dist/`.

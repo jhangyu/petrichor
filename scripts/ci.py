@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Builds Petrichor release apps and publishes them to a GitHub release.
 
-    python3 scripts/ci_release.py --version X.Y.Z --platform <p> [--publish]
+    python3 scripts/ci.py --version X.Y.Z --platform <p> [--publish]
 
   --platform  macos | linux-arm64 | linux-x64 | windows | all
   --publish   upload the built assets to GitHub release vX.Y.Z (Mac only)
@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import NoReturn
 
 if sys.version_info < (3, 9):
-    sys.exit(f"ci_release.py: expected Python >= 3.9, got {sys.version_info[0]}.{sys.version_info[1]}")
+    sys.exit(f"ci.py: expected Python >= 3.9, got {sys.version_info[0]}.{sys.version_info[1]}")
 
 # ---- Test guard: CI builds only, no test may run from this script. ----
 TEST_GUARD_EXIT = 3
@@ -106,7 +106,7 @@ WIN_SCP_DIR = "C:/Users/User/petrichor-ci"
 
 
 def die(msg: str, code: int = 1) -> NoReturn:
-    print(f"ci_release.py: {msg}", file=sys.stderr)
+    print(f"ci.py: {msg}", file=sys.stderr)
     sys.exit(code)
 
 
@@ -214,7 +214,7 @@ def build_linux(version: str, plat: str, sha: str) -> Path:
         run(["docker", "run", "--rm", "-i", "--platform", f"linux/{DOCKER_ARCH[plat]}",
              "-v", f"{DIST}:/out", "-v", f"petrichor-pub-cache-{tag}:/root/.pub-cache",
              f"petrichor-linux-build:{tag}", "sh", "-ec",
-             "mkdir /src; tar -x -C /src; cd /src; python3 scripts/ci_release.py "
+             "mkdir /src; tar -x -C /src; cd /src; python3 scripts/ci.py "
              f"--version {version} --platform {plat} --local --out /out"],
             stdin=tar)
     finally:
@@ -241,7 +241,7 @@ def build_windows(version: str, sha: str) -> Path:
     # No 'Stop' here: PowerShell 5.1 can turn native stderr (flutter progress) into a
     # terminating error, so native failures propagate through $LASTEXITCODE instead.
     ps(f"tar -xf {WIN_DIR}\\src.tar -C {WIN_DIR}\\src; if ($LASTEXITCODE) {{ exit $LASTEXITCODE }}; "
-       f"Set-Location -ErrorAction Stop {WIN_DIR}\\src; py -3 scripts\\ci_release.py --version {version} "
+       f"Set-Location -ErrorAction Stop {WIN_DIR}\\src; py -3 scripts\\ci.py --version {version} "
        f"--platform windows --local --out {WIN_DIR}\\out; exit $LASTEXITCODE")
     run([*scp, f"{WIN_HOST}:{WIN_SCP_DIR}/out/{name}", str(DIST / name)])
     return DIST / name
