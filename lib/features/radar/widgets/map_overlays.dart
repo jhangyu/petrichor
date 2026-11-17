@@ -111,6 +111,10 @@ class _CurrentPlacePin extends StatelessWidget {
   }
 }
 
+/// Visual size of the map action buttons: half of [AppSize.touch], icon scaled alike.
+const _actionSize = AppSize.touch / 2;
+const _actionIconSize = AppSize.icon24 / 2;
+
 /// `.fab` 「回到我的位置」; disabled without a current place.
 class _MapActionButton extends StatelessWidget {
   const _MapActionButton({required this.icon, required this.tooltip, required this.onPressed});
@@ -122,18 +126,24 @@ class _MapActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
-    return Material(
-      color: AppPalette.background1,
-      shape: const CircleBorder(),
-      elevation: 0,
-      shadowColor: AppPalette.transparent,
-      child: DecoratedBox(
-        decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: enabled ? AppShadows.s4 : AppShadows.s2),
-        child: AppIconButton(
-          icon: icon,
-          tooltip: tooltip,
-          onPressed: onPressed,
-        ),
+    // The fill sits on the shadow's own decoration: a shadow painted over a
+    // separate white Material shows through it as grey.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppPalette.background1,
+        boxShadow: enabled ? AppShadows.s4 : AppShadows.s2,
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: _actionIconSize),
+        tooltip: tooltip,
+        onPressed: onPressed,
+        color: AppPalette.foreground2,
+        disabledColor: AppPalette.foregroundDisabled,
+        hoverColor: AppPalette.backgroundHover,
+        highlightColor: AppPalette.backgroundPressed,
+        constraints: const BoxConstraints.tightFor(width: _actionSize, height: _actionSize),
+        padding: EdgeInsets.zero,
       ),
     );
   }
