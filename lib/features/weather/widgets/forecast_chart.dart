@@ -125,16 +125,16 @@ class ForecastChartPainter extends CustomPainter {
     var day = DateTime.utc(firstWall.year, firstWall.month, firstWall.day);
     final nowX = geometry.x(now);
     final showNow = !now.isBefore(geometry.origin) && now.isBefore(geometry.end);
-    paintLabel(
-      canvas,
-      _dayTitle(day, now),
-      Offset(
-        (showNow ? nowX : ForecastChartGeometry._padStart) + ForecastChartGeometry.todayLabelInset,
-        ForecastChartGeometry.dayLabelY,
-      ),
-      caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600),
-      anchor: LabelAnchor.start,
-    );
+    // Late in the day the first label would run into the next day's label:
+    // dropped then (the 現在 marker still shows where today is).
+    final dayStyle = caption.copyWith(color: AppPalette.foreground1, fontWeight: FontWeight.w600);
+    final firstTitle = _dayTitle(day, now);
+    final firstX = (showNow ? nowX : ForecastChartGeometry._padStart) + ForecastChartGeometry.todayLabelInset;
+    final firstWidth = (TextPainter(text: TextSpan(text: firstTitle, style: dayStyle), textDirection: TextDirection.ltr)..layout()).width;
+    final nextDayX = geometry.x(fromTaiwanWall(day.add(const Duration(days: 1))));
+    if (firstX + firstWidth + ForecastChartGeometry.dayLabelInset <= nextDayX) {
+      paintLabel(canvas, firstTitle, Offset(firstX, ForecastChartGeometry.dayLabelY), dayStyle, anchor: LabelAnchor.start);
+    }
     while (true) {
       day = day.add(const Duration(days: 1));
       final at = fromTaiwanWall(day);
