@@ -53,3 +53,14 @@ token.txt
 # agent scratch
 .claude/tmp/
 /scratch/
+
+# local-only dev logs and agent notes
+/docs/logs/
+/docs/SOP/
+
+# signing material
+*.jks
+*.keystore
+*.p12
+*.pem
+*.p8

@@ -159,7 +159,7 @@ Location flows: GPS `nearestTown` failure becomes `LocationException(addressUnre
 | `docs/design/preflight/page-inventory.md:14` | rewrite: key from 設定 tab, missing → `Failure.apiKeyIssue` |
 | `docs/design/team-a/home.html:973` | demo copy "開發版未帶入 CWA_API_KEY…" → "尚未設定 token，請到「設定」輸入". Owner: the frontend implementer of the chosen design. Listed here, not owned here |
 | `test/unit/hazard_repository_test.dart:35-44` | `_repo` loses `apiKey` and the second Dio |
-| historical logs (`docs/logs/2026-06-11/*`, `docs/logs/2026-11-1[45]/*handover*/*contract*`, `artifacts/api_verification_2026-06-11.md`, `task.md:126`, `memory.md:122`) | **leave unchanged**. Dated records of what was run. New verify commands are plain `flutter build macos` |
+| historical logs (`docs/logs/2026-06-11/*`, `docs/logs/2026-11-1[45]/*handover*/*contract*`, `artifacts/api_verification_2026-06-11.md`, `docs/SOP/task.md:126`, `docs/SOP/memory.md:122`) | **leave unchanged**. Dated records of what was run. New verify commands are plain `flutter build macos` |
 
 Mechanical check after both packages: `grep -rn "CWA_API_KEY\|fromEnvironment\|cwaApiKey\|hasApiKey\|radarApiUrl\|isApiError" lib test .env.example` → no output.
 
