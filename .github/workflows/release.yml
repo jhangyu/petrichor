@@ -1,0 +1,86 @@
+# Release: pushing tag vX.Y.Z (= pubspec.yaml version) builds every target on
+# its own GitHub-hosted runner with scripts/ci.py, then publishes one release.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.44.6"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: macos, os: macos-15, python: python3 }
+          - { target: linux-x64, os: ubuntu-24.04, python: python3 }
+          - { target: linux-arm64, os: ubuntu-24.04-arm, python: python3 }
+          - { target: windows-x64, os: windows-2025, python: python }
+          - { target: windows-arm64, os: windows-11-arm, python: python }
+          - { target: android, os: ubuntu-24.04, python: python3 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - if: matrix.target == 'android'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - if: startsWith(matrix.target, 'linux-')
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
+
+      # A git clone of the release tag on every runner: Flutter publishes no
+      # Linux/Windows arm64 SDK archive, and the clone fetches the host-arch
+      # Dart SDK. runner.temp follows the runner's workspace drive.
+      - name: Install Flutter
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      # First Flutter run downloads the Dart SDK. pwsh so that on windows-11-arm
+      # it runs natively and the SDK script picks the arm64 Dart SDK.
+      - name: Flutter version
+        shell: pwsh
+        run: flutter --version
+
+      - name: Build
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: ${{ matrix.python }} scripts/ci.py --platform ${{ matrix.target }} --tag "$TAG" --dist dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: asset-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: asset-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: python3 scripts/ci.py --publish --tag "$TAG" --dist dist

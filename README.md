@@ -18,13 +18,27 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Release build
 
+Releases are built and published only by GitHub Actions
+(`.github/workflows/release.yml`): set `version:` in pubspec.yaml, commit, then
+push the matching tag.
+
 ```
-python3 scripts/ci.py
-python3 scripts/ci.py --version 0.0.1 --platform all [--publish]
+git tag v0.0.1
+git push origin v0.0.1
 ```
 
-- No arguments: builds macOS and Android (universal release APK, debug-signed) on this Mac with the pubspec.yaml version; no clean-tree check, no publish.
-- `--platform` takes `macos`, `linux-arm64`, `linux-x64`, `windows`, `android` or `all`; `--publish` requires explicit `--version` and `--platform`.
+Each target (macOS universal, Linux x64/arm64, Windows x64/arm64, Android
+universal APK) builds on its own GitHub-hosted runner with
+`scripts/ci.py --platform <target> --tag <tag>`; the publish job then runs
+`scripts/ci.py --publish --tag <tag>` and fails if any asset is missing. The tag
+must equal `v` + the pubspec.yaml version.
+
+Local builds only pre-check that flow; they never make release assets:
+
+```
+python3 scripts/ci.py                       # macOS + Android on this Mac
+python3 scripts/ci.py --platform <target>   # one target on its own host
+```
+
 - Outputs go to `build/ci-dist/`.
-- The Windows box must be powered on.
-- The apps are unsigned.
+- The apps are unsigned (the APK uses the debug signing key).
