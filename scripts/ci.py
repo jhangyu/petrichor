@@ -74,7 +74,8 @@ def _self_scan() -> None:
         sys.exit(TEST_GUARD_EXIT)
 
 
-def run(argv: list[str], *, capture: bool = False, check: bool = True):
+def run(argv: list[str], *, capture: bool = False, check: bool = True,
+        env: dict[str, str] | None = None):
     """The only process launcher. Rejects test commands, fails loudly on non-zero."""
     line = " ".join(argv)
     if is_test_command(line):
@@ -86,7 +87,8 @@ def run(argv: list[str], *, capture: bool = False, check: bool = True):
     print(f"+ {line}", flush=True)
     with open(os.devnull, "rb") as fin:
         res = subprocess.run([exe, *argv[1:]], cwd=REPO_ROOT, stdin=fin, text=True,
-                             capture_output=capture)
+                             capture_output=capture,
+                             env=None if env is None else {**os.environ, **env})
     if check and res.returncode != 0:
         detail = f"\n{res.stdout}{res.stderr}" if capture else ""
         die(f"`{line}` exited {res.returncode}, expected 0{detail}")
@@ -105,6 +107,12 @@ TARGETS = {
     "windows-x64": (("win32",), "windows", "build/windows/x64/runner/Release", "windows-x64.zip"),
     "windows-arm64": (("win32",), "windows", "build/windows/arm64/runner/Release", "windows-arm64.zip"),
     "android": (("darwin", "linux"), "apk", "build/app/outputs/flutter-apk/app-release.apk", "android.apk"),
+}
+# Flutter forwards FLUTTER_XCODE_* env vars to xcodebuild as build settings: ad-hoc sign, no team/keychain.
+AD_HOC_SIGNING_ENV = {
+    "FLUTTER_XCODE_CODE_SIGN_IDENTITY": "-",
+    "FLUTTER_XCODE_CODE_SIGN_STYLE": "Manual",
+    "FLUTTER_XCODE_DEVELOPMENT_TEAM": "",
 }
 PRECHECK_TARGETS = ("macos", "android")
 
@@ -150,7 +158,8 @@ def build(version: str, target: str, dist: Path) -> Path:
         shutil.rmtree(product)
     elif product.exists():
         product.unlink()
-    run(["flutter", "build", subcommand, "--release"])
+    run(["flutter", "build", subcommand, "--release"],
+        env=AD_HOC_SIGNING_ENV if target == "macos" else None)
     if not product.exists():
         die(f"expected {output} after `flutter build {subcommand}`, missing (wrong host arch?)")
     dist.mkdir(parents=True, exist_ok=True)
