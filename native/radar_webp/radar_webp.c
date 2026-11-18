@@ -21,7 +21,8 @@
 #define RADAR_WEBP_ARENA_CHUNK_BYTES ((size_t)64 << 20)
 // Windows' allocation granularity; a multiple of every page size we target.
 #define RADAR_WEBP_ARENA_GRANULE_BYTES ((size_t)64 << 10)
-#define RADAR_WEBP_ARENA_ALIGN ((size_t)_Alignof(max_align_t))
+// RADAR_WEBP_ARENA_ALIGN, the alignment malloc would give, is defined per
+// platform below next to map_pages.
 
 typedef struct ArenaChunk {
   struct ArenaChunk* next;
@@ -52,6 +53,9 @@ static size_t round_up(size_t value, size_t multiple) {
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+// MSVC's C headers have no max_align_t; this is the heap's own guarantee.
+#define RADAR_WEBP_ARENA_ALIGN ((size_t)MEMORY_ALLOCATION_ALIGNMENT)
+
 static void* map_pages(size_t bytes) {
   return VirtualAlloc(NULL, bytes, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
@@ -62,6 +66,8 @@ static void unmap_pages(void* pages, size_t bytes) {
 }
 #else
 #include <sys/mman.h>
+
+#define RADAR_WEBP_ARENA_ALIGN ((size_t)_Alignof(max_align_t))
 
 static void* map_pages(size_t bytes) {
   void* pages = mmap(NULL, bytes, PROT_READ | PROT_WRITE,

@@ -83,11 +83,13 @@ class BuildError(Exception):
     pass
 
 
-def run(argv: list[str], env: dict[str, str] | None = None) -> str:
-    result = subprocess.run(argv, capture_output=True, text=True, env=env)
+def run(argv: list[str] | str, env: dict[str, str] | None = None) -> str:
+    """argv as a str is a raw Windows command line, passed to CreateProcess as is."""
+    result = subprocess.run(argv, capture_output=True, text=True, errors="replace", env=env)
     if result.returncode != 0:
+        shown = argv if isinstance(argv, str) else ' '.join(argv)
         raise BuildError(
-            f"command failed (exit {result.returncode}, expected 0): {' '.join(argv)}\n"
+            f"command failed (exit {result.returncode}, expected 0): {shown}\n"
             f"{result.stdout}{result.stderr}"
         )
     return result.stdout
@@ -226,7 +228,9 @@ def object_name(src: Path) -> str:
 
 def vcvars_env(script: str) -> dict[str, str]:
     """Environment after running the Visual Studio developer prompt script."""
-    out = run(["cmd", "/d", "/c", f'call "{script}" >nul && set'])
+    # A raw command line, not a list: subprocess would escape the inner quotes
+    # as \" (C runtime rules), which cmd.exe does not understand.
+    out = run(f'cmd /d /c call "{script}" >nul && set')
     env = dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
     if "INCLUDE" not in env:
         raise BuildError(f"expected INCLUDE in the environment after {script}, not set")
