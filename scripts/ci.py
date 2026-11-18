@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Builds Petrichor release apps and publishes them to a GitHub release.
 
+    python3 scripts/ci.py                 # macos + android on this Mac, pubspec version
     python3 scripts/ci.py --version X.Y.Z --platform <p> [--publish]
 
-  --platform  macos | linux-arm64 | linux-x64 | windows | all
+  --platform  macos | linux-arm64 | linux-x64 | windows | android | all
   --publish   upload the built assets to GitHub release vX.Y.Z (Mac only)
 
-Driven from the Mac: macOS builds natively, Linux in OrbStack docker
+Driven from the Mac: macOS and Android (universal release APK) build natively, Linux in OrbStack docker
 (image petrichor-linux-build:<arm64|x64>), Windows on the ssh box. Linux and
 Windows build a `git archive HEAD` snapshot, so the tracked tree must be clean.
 Assets land in build/ci-dist/. `--local --out DIR` is the host-local mode the
 container and the Windows box run; it builds only the host's own platform.
 
+With no arguments nothing is published and the clean-tree check is skipped.
 --version must equal the pubspec.yaml version name. This script builds only:
 the guard below refuses any test command (exit 3).
 
@@ -95,7 +97,7 @@ def run(argv: list[str], *, capture: bool = False, stdin: Path | None = None, ch
 # ---- Everything below goes through run(). ----
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DIST = REPO_ROOT / "build" / "ci-dist"
-PLATFORMS = ("macos", "linux-arm64", "linux-x64", "windows")
+PLATFORMS = ("macos", "linux-arm64", "linux-x64", "windows", "android")
 SECRET_NAMES = {"token.txt", ".env"}
 DOCKER_ARCH = {"linux-arm64": "arm64", "linux-x64": "amd64"}
 LINUX_ARCH = {"aarch64": "arm64", "arm64": "arm64", "x86_64": "x64", "amd64": "x64"}
@@ -136,6 +138,8 @@ def asset_name(version: str, plat: str) -> str:
         return f"petrichor-{version}-macos-{macos_arch()}.zip"
     if plat == "windows":
         return f"petrichor-{version}-windows-x64.zip"
+    if plat == "android":
+        return f"petrichor-{version}-android.apk"
     return f"petrichor-{version}-{plat}.tar.gz"
 
 
@@ -159,10 +163,10 @@ def check_secrets(asset: Path, names: list[str]) -> None:
 
 def build_local(version: str, plat: str, out: Path) -> Path:
     """Build and package the host's own platform into out/."""
-    if plat != host_platform():
+    if plat != host_platform() and not (plat == "android" and host_platform() == "macos"):
         die(f"--local: expected --platform {host_platform()} on this host, got {plat}", 2)
     os_name = plat.split("-")[0]
-    run(["flutter", "build", os_name, "--release"])
+    run(["flutter", "build", "apk" if os_name == "android" else os_name, "--release"])
     out.mkdir(parents=True, exist_ok=True)
     asset = out / asset_name(version, plat)
     if asset.exists():
@@ -173,6 +177,13 @@ def build_local(version: str, plat: str, out: Path) -> Path:
             die(f"expected {app} after flutter build, missing")
         # ditto keeps the framework symlinks that zipfile would flatten.
         run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app), str(asset)])
+        with zipfile.ZipFile(asset) as z:
+            check_secrets(asset, z.namelist())
+    elif os_name == "android":
+        apk = REPO_ROOT / "build/app/outputs/flutter-apk/app-release.apk"
+        if not apk.is_file():
+            die(f"expected {apk} after flutter build, missing")
+        shutil.copyfile(apk, asset)
         with zipfile.ZipFile(asset) as z:
             check_secrets(asset, z.namelist())
     elif os_name == "linux":
@@ -301,12 +312,20 @@ def publish(version: str, assets: list[Path], sha: str) -> None:
 def main() -> int:
     _self_scan()
     p = argparse.ArgumentParser(description="Build Petrichor release apps and publish them to GitHub.")
-    p.add_argument("--version", required=True, help="X.Y.Z, must equal the pubspec.yaml version name")
-    p.add_argument("--platform", required=True, choices=(*PLATFORMS, "all"))
+    p.add_argument("--version", help="X.Y.Z, must equal the pubspec.yaml version name")
+    p.add_argument("--platform", choices=(*PLATFORMS, "all"))
     p.add_argument("--publish", action="store_true", help="upload assets to GitHub release vX.Y.Z (Mac only)")
     p.add_argument("--local", action="store_true", help="build this host's platform only (container / Windows box)")
     p.add_argument("--out", type=Path, default=DIST, help="asset directory for --local (default build/ci-dist)")
     args = p.parse_args()
+
+    local_default = args.version is None and args.platform is None and not args.local
+    if local_default:
+        if args.publish:
+            die("--publish: expected an explicit --version and --platform, got neither", 2)
+        args.version = pubspec_version()
+    elif args.version is None or args.platform is None:
+        die(f"expected --version and --platform together, got version={args.version} platform={args.platform}", 2)
 
     if not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
         die(f"version gate: expected --version X.Y.Z, got {args.version!r}", 2)
@@ -321,11 +340,12 @@ def main() -> int:
 
     if host_platform() != "macos":
         die(f"expected the dispatcher to run on macos, got {host_platform()} (use --local)", 2)
-    require_clean_tree()
+    if not local_default:
+        require_clean_tree()
     sha = git_out("rev-parse", "HEAD")  # every platform and the release use this one commit
     DIST.mkdir(parents=True, exist_ok=True)
     assets = []
-    for plat in PLATFORMS if args.platform == "all" else (args.platform,):
+    for plat in ("macos", "android") if local_default else PLATFORMS if args.platform == "all" else (args.platform,):
         # One run per platform at a time: the macOS tree, the Windows work dir and the
         # per-arch docker volume are single-owner. Left behind only if the process is killed.
         lock = DIST / f"{plat}.lock"
@@ -334,7 +354,7 @@ def main() -> int:
         except FileExistsError:
             die(f"expected no other run building {plat}, found {lock} (delete it if no run is active)")
         try:
-            if plat == "macos":
+            if plat in ("macos", "android"):
                 assets.append(build_local(args.version, plat, DIST))
             elif plat == "windows":
                 assets.append(build_windows(args.version, sha))
